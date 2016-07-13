@@ -6,6 +6,31 @@ import textwrap
 import multif
 from .. import SU2
 
+
+def CheckSU2Version(nozzle):
+	import subprocess;
+	su2_exe = 'SU2_CFD';
+		
+	#sys.path.append("/Users/menier/codes/SU2_DARPA/SU2_CFD/bin/");
+	#sys.pythonpath.append("/Users/menier/codes/SU2_DARPA/SU2_CFD/bin/");
+	#os.environ['PATH'] = ':'.join('/Users/menier/codes/SU2_DARPA/SU2_CFD/bin/')
+	
+	try :
+		cmd = [su2_exe];
+		out = subprocess.check_output(cmd, stderr=subprocess.STDOUT);
+	except subprocess.CalledProcessError as err: 
+		if ( 'DARPA' in err.output ):
+			sys.stdout.write('Check SU2 version : OK\n');
+			nozzle.LocalRelax = 'YES';
+		else:
+			sys.stdout.write('\n');
+			sys.stdout.write('#' * 90);
+			sys.stdout.write('\n  ## WARNING : You are not using the right version of SU2. This may cause robustness issues.\n');
+			sys.stdout.write('#' * 90);
+			sys.stdout.write('\n\n');
+			nozzle.LocalRelax = 'NO';
+
+	
 def SetupConfig (nozzle):
 	
 	config = SU2.io.Config();
@@ -90,9 +115,14 @@ def SetupConfig (nozzle):
 	config.NUMBER_PART= 1;
 	
 	# --- Local relaxation / CFL
-	
-	config.RELAXATION_LOCAL= 'YES';
-	
+	#     Note: these options are only available in a custom version of su2:
+	#     				https://github.com/vmenier/SU2/tree/darpa
+	if (nozzle.LocalRelax == 'YES') :
+		config.RELAXATION_LOCAL= 'YES';
+		config.CFL_ADAPT_LOCAL= 'YES';
+		config.HARD_LIMITING_PARAM= '(0.15, 1e-5)';
+		config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 30.0 )';
+			
 	return config;
 	
 	
