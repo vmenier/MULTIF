@@ -1,0 +1,229 @@
+#include "meshutils.h"
+#include "python.h"
+
+int py_ConvertGMFToSU2( char *MshNam, char *SolNam, char *OutNam ) 
+{
+	
+	Options *mshopt = AllocOptions();
+	
+	strcpy(mshopt->OutNam,OutNam);
+	strcpy(mshopt->InpNam,MshNam);
+	strcpy(mshopt->SolNam,SolNam);
+	
+	mshopt->clean = 1; // remove unconnected vertices
+	
+	if ( !CheckOptions(mshopt) ) {
+		return 0;
+	}
+	
+	return ConvertGMFtoSU2Sol (mshopt);
+}
+
+
+int py_MeshPrepro2D( char *InpNam, char *OutNam ) 
+{
+	
+	Options *mshopt = AllocOptions();
+	
+	strcpy(mshopt->OutNam,OutNam);
+	strcpy(mshopt->InpNam,InpNam);
+	
+	mshopt->clean = 1; // remove unconnected vertices
+	mshopt->Dim   = 2; // force dim to be 2
+	
+	if ( !CheckOptions(mshopt) ) {
+		return 0;
+	}
+	
+	return ConvertGMFtoSU2Sol (mshopt);
+}
+
+
+int py_BSplineGeo3 (PyObject *pyknots, PyObject *pycoefs, PyObject *pyx, PyObject *pyy, int nx)
+{	
+	int i, k, c;
+	double len, hx;
+	int size_knots = 0;
+	int size_coefs = 0;
+	int size_x     = 0;
+	int size_y     = 0;
+	int size_dydx  = 0;
+	
+	double *knots = NULL;
+	double *coefs = NULL;
+	double *x     = NULL;
+	double *y     = NULL;
+	double *dydx  = NULL;
+		
+	//--- Knots
+	
+  if ( PyList_Check(pyknots) )
+  {
+      size_knots = PyList_Size(pyknots);
+      knots = malloc( size_knots * sizeof(double));
+			
+			for (i=0; i<size_knots; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyknots,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					knots[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+	
+	//--- Coefs
+
+  if ( PyList_Check(pycoefs) )
+  {
+      size_coefs = PyList_Size(pycoefs);
+      coefs = malloc( size_coefs * sizeof(double));
+			
+			for (i=0; i<size_coefs; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pycoefs,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					coefs[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+	
+	//--- Call function
+	
+	x    = (double*)malloc(nx*sizeof(double));
+	y    = (double*)malloc(nx*sizeof(double));
+	dydx = (double*)malloc(nx*sizeof(double));
+	
+	k = size_knots;
+	c = size_coefs/2;
+	
+	len = coefs[c-1];
+	hx = len/(double)(nx-1);
+	
+	x[0] = 0.;
+	for (i=1; i<nx; i++) 
+		x[i] = x[i-1]+hx;
+		
+	bSplineGeo3(knots, coefs, x, y, dydx, nx, k, c);
+	
+	for (i=0; i<nx; i++){
+		PyList_Append(pyx, PyFloat_FromDouble(x[i]));
+	}
+	
+	for (i=0; i<nx; i++){
+		PyList_Append(pyy, PyFloat_FromDouble(y[i]));
+	}
+	
+	//--- Free memory
+	
+	if (x)
+		free(x);
+	if (y)
+		free(y);
+	if (dydx)
+		free(dydx);
+}
+
+
+
+int py_BSplineGeo3LowF (PyObject *pyknots, PyObject *pycoefs, PyObject *pyx, PyObject *pyy, PyObject *pydydx)
+{	
+	int i, k, c, nx=0;
+	double len, hx;
+	int size_knots = 0;
+	int size_coefs = 0;
+	int size_x     = 0;
+	int size_y     = 0;
+	int size_dydx  = 0;
+	
+	double *knots = NULL;
+	double *coefs = NULL;
+	double *x     = NULL;
+	double *y     = NULL;
+	double *dydx  = NULL;
+	
+	//--- Knots
+		
+  if ( PyList_Check(pyknots) )
+  {
+      size_knots = PyList_Size(pyknots);
+      knots = malloc( size_knots * sizeof(double));
+			
+			for (i=0; i<size_knots; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyknots,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					knots[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+	
+	//--- Coefs
+
+  if ( PyList_Check(pycoefs) )
+  {
+      size_coefs = PyList_Size(pycoefs);
+      coefs = malloc( size_coefs * sizeof(double));
+			
+			for (i=0; i<size_coefs; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pycoefs,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					coefs[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+	
+	//--- x
+	
+	if ( PyList_Check(pyx) )
+  {
+      nx = PyList_Size(pyx);
+			x  = (double*)malloc(nx*sizeof(double));
+			
+			for (i=0; i<nx; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyx,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					x[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+	
+	//--- Call function
+	
+	y    = (double*)malloc(nx*sizeof(double));
+	dydx = (double*)malloc(nx*sizeof(double));
+	
+	k = size_knots;
+	c = size_coefs/2;
+	
+	len = coefs[c-1];
+	
+	bSplineGeo3(knots, coefs, x, y, dydx, nx, k, c);
+	
+	//for (i=0; i<nx; i++){
+	//	PyList_Append(pyx, PyFloat_FromDouble(x[i]));
+	//}
+	
+	for (i=0; i<nx; i++){
+		PyList_Append(pyy, PyFloat_FromDouble(y[i]));
+	}
+	
+	for (i=0; i<nx; i++){
+		PyList_Append(pydydx, PyFloat_FromDouble(dydx[i]));
+	}
+	
+	//--- Free memory
+	
+	if (x)
+		free(x);
+	if (y)
+		free(y);
+	if (dydx)
+		free(dydx);
+}
