@@ -48,7 +48,7 @@ class Environment:
 # %
 # % Rick Fenrich 9/12/14
 #============================================================================== 
-def StndAtm(h):
+def StndAtm(alt):
     
     T = 0. # temperature
     rho =  0. # density
@@ -65,40 +65,41 @@ def StndAtm(h):
     saSigma = 1.0
     saDelta = 1.0
     
-    if( h > 232940 ):
+    if( alt > 232940 ):
         print "Atmospheric model only valid up to 232,294 ft"
         saTheta = 0.
         saSigma = 0.
         saDelta = 0.
-    if( h < 232940 ):
-        saTheta = 1.434843 - h/337634
-        saSigma = (0.79899-h/606330)**11.20114
-        saDelta = (0.838263-h/577922)**12.20114
-    if( h < 167323 ):
+    if( alt< 232940 ):
+        saTheta = 1.434843 - alt /337634
+        saSigma = (0.79899-alt /606330)**11.20114
+        saDelta = (0.838263-alt /577922)**12.20114
+    if( alt < 167323 ):
         saTheta = 0.939268
-        saSigma = 0.00116533*np.exp( (h-154200)/-25992 )
-        saDelta = 0.00109456*np.exp( (h-154200)/-25992 )
-    if( h < 154199 ):
-        saTheta = 0.482561 + h/337634
-        saSigma = (0.857003+h/190115)**-13.20114
-        saDelta = (0.898309+h/181373)**-12.20114
-    if( h < 104987 ):
-        saTheta = 0.682457 + h/945374
-        saSigma = (0.978261+h/659515)**-35.16319
-        saDelta = (0.988626+h/652600)**-34.16319
-    if( h < 65617 ):
+        saSigma = 0.00116533*np.exp( (alt - 154200)/-25992 )
+        saDelta = 0.00109456*np.exp( (alt - 154200)/-25992 )
+    if( alt < 154199 ):
+        saTheta = 0.482561 + alt /337634
+        saSigma = (0.857003+alt /190115)**-13.20114
+        saDelta = (0.898309+alt /181373)**-12.20114
+    if( alt < 104987 ):
+        saTheta = 0.682457 + alt /945374
+        saSigma = (0.978261+alt /659515)**-35.16319
+        saDelta = (0.988626+alt /652600)**-34.16319
+    if( alt < 65617 ):
         saTheta = 0.751865
-        saSigma = 0.297076*np.exp((36089-h)/20806 )
-        saDelta = 0.223361*np.exp((36089-h)/20806 )
-    if( h < 36089 ):
-        saTheta = 1.0 - h/145442
-        saSigma = (1.0-h/145442)**4.255876
-        saDelta = (1.0-h/145442)**5.255876
+        saSigma = 0.297076*np.exp((36089- alt)/20806 )
+        saDelta = 0.223361*np.exp((36089- alt)/20806 )
+    if( alt < 36089 ):
+        saTheta = 1.0 - alt /145442
+        saSigma = (1.0-alt /145442)**4.255876
+        saDelta = (1.0-alt /145442)**5.255876
     
     T = TEMPSL*saTheta # degR
     rho = RHOSL*saSigma # sl/ft^3
     P = PRESSSL*saDelta # lb/ft^2
     mu = 0.0226968*T**1.5 / (T+198.72) / 1000000.0 # lb-sec/ft^2
     c = np.sqrt( 1.4*1716.56*T ) # ft/sec
+		
     
     return (T, rho, P, mu, c)

@@ -38,8 +38,8 @@ def main():
 	options.flevel     = int( options.flevel )
 	
 	if options.flevel < 0 :
-		print "  ## ERROR : Please choose a fidelity level to run (option -l or --flevel)"
-		sys.exit(1);
+		sys.stderr.write("  ## ERROR : Please choose a fidelity level to run (option -l or --flevel)");
+		sys.exit(0);
 	
 	nozzle = multif.nozzle.NozzleSetup( options.filename, options.flevel );
 		

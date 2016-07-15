@@ -704,6 +704,9 @@ int LoadSU2Solution(char *SolNam, Mesh *Msh)
 			
 			tok = strtok (NULL, "	,");
 			i++;
+			
+			if ( idx == SolSiz )
+				break;
 		}
 	}
 	

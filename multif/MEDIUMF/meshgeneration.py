@@ -3,7 +3,17 @@
 import os, time, sys, shutil, copy
 from optparse import OptionParser
 import textwrap
+import ctypes
+import numpy as np
+import pylab
+
 import multif
+
+
+class optionsmesh:
+	def __init__(self):
+		pass
+
 
 def GenerateNozzleMesh (nozzle):
 	import tempfile
@@ -12,7 +22,14 @@ def GenerateNozzleMesh (nozzle):
 	hdl, nozzle.tmpMshNam = tempfile.mkstemp(suffix='.mesh');
 	
 	# --- Write geo file
-	NozzleGeoFile(nozzle.tmpGeoNam, nozzle.xwall, nozzle.ywall, nozzle.meshhl);
+	
+	mesh_options = optionsmesh();
+	mesh_options.xwall  = nozzle.xwall;
+	mesh_options.ywall  = nozzle.ywall;
+	mesh_options.hl     = nozzle.meshhl; 
+	mesh_options.method = nozzle.method; # Euler or RANS
+	
+	NozzleGeoFile(nozzle.tmpGeoNam, mesh_options);
 	
 	# --- Call Gmsh
 	
@@ -47,7 +64,15 @@ def MeshPrepro (nozzle):
 	if ( out == 0 ) :
 		raise;
 	
-def NozzleGeoFile(FilNam, xwall, ywall, hl):
+def NozzleGeoFile(FilNam, Mesh_options):
+	
+	
+	# --- Options
+		
+	xwall  = Mesh_options.xwall;
+	ywall  = Mesh_options.ywall;
+ 	hl     = Mesh_options.hl;
+	method = Mesh_options.method;
 	
 	# --- Domain definition
 	
@@ -114,9 +139,9 @@ def NozzleGeoFile(FilNam, xwall, ywall, hl):
 	# --- Define B-Spline
 	
 	fil.write('BSpline(12) = { 12');
-	eid=12;
+	eid=13;
 	
-	for i in range(eid, eid+nx):
+	for i in range(eid, eid+nx-1):
 		fil.write(', %d' % i);
 	
 	fil.write('};\n');
@@ -141,7 +166,7 @@ def NozzleGeoFile(FilNam, xwall, ywall, hl):
 	          [-100, 100, -10, 0.5,    hl5],\
 	          [-100, 0.3, -10, 0.37,   hl4],\
 						[-100, 100, -10, 0.8,    hl2],\
-	          [-100, length, -10, 0.5, hl4]];
+	          [-100, length+0.04, -10, 0.5, hl4]];
 	
 	NbrFld = len(fields);
 	
@@ -163,6 +188,19 @@ def NozzleGeoFile(FilNam, xwall, ywall, hl):
 	fil.write('};\n');
 	
 	fil.write('Background Field = %d;\n' % (NbrFld+1));
+	
+	# --- Add boundary layer definition
+	if method == 'RANS':
+		fil.write('Field[%d] = BoundaryLayer;          \n' % (NbrFld+2));
+		fil.write('Field[%d].EdgesList = {9,10,11,12}; \n' % (NbrFld+2));
+		fil.write('Field[%d].NodesList = {6,111};      \n' % (NbrFld+2));
+		fil.write('Field[%d].hfar = 1;                 \n' % (NbrFld+2));
+		fil.write('Field[%d].hwall_n = 0.000007;       \n' % (NbrFld+2));
+		fil.write('Field[%d].hwall_t = 0.300000;       \n' % (NbrFld+2));
+		fil.write('Field[%d].ratio = 1.3;              \n' % (NbrFld+2));
+		fil.write('Field[%d].thickness = 0.01;         \n' % (NbrFld+2));
+		fil.write('BoundaryLayer Field = %d;           \n' % (NbrFld+2));
+	
 	
 	fil.close();
 	

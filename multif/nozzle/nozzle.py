@@ -36,11 +36,11 @@ def NozzleSetup( config_name, flevel ):
 	
 	if not os.path.isfile(config_name) :
 		msg = "  ## ERROR : could not find configuration file %s\n\ns" % config_name;
-		sys.stdout.write(msg);
-		sys.exit(1);
+		sys.stderr.write(msg);
+		sys.exit(0);
 	
 	nozzle = multif.nozzle.nozzle.Nozzle()
-	
+		
 	config = SU2.io.Config(config_name)
 	
 	fidelity_tags = config['FIDELITY_LEVELS_TAGS'].strip('()');
@@ -50,7 +50,7 @@ def NozzleSetup( config_name, flevel ):
 	
 	if NbrFidLev < 1 :
 		print "  ## ERROR : No fidelity level was defined.\n"
-		sys.exit(1)
+		sys.exit(0)
 	
 	sys.stdout.write('\n%d fidelity level(s) defined. Summary :\n' % (NbrFidLev));
 	
@@ -64,8 +64,8 @@ def NozzleSetup( config_name, flevel ):
 		kwd = "DEF_%s" % tag;
 	
 		if kwd not in config :
-			print "\n  ## ERROR : The fidelity level tagged %s is not defined.\n" % kwd;
-			sys.exit(1)
+			sys.stderr.write("\n  ## ERROR : The fidelity level tagged %s is not defined.\n" % kwd);
+			sys.exit(0);
 	
 		cfgLvl = config[kwd].strip('()');
 		cfgLvl = cfgLvl.split(",");
@@ -81,7 +81,8 @@ def NozzleSetup( config_name, flevel ):
 						
 			tol = float(cfgLvl[1]);
 			if tol < 1e-30 :
-				print "  ## ERROR : Wrong tolerance for fidelity level %d (tagged %s)\n" % (i,tag);
+				sys.stderr.write("  ## ERROR : Wrong tolerance for fidelity level %d (tagged %s)\n" % (i,tag));
+				sys.exit(0);
 			description = "Quasi 1D non ideal nozzle with tolerance set to %lf." % (tol);	
 			
 			if i == flevel :
@@ -91,10 +92,12 @@ def NozzleSetup( config_name, flevel ):
 		elif method == 'RANS' or method == 'EULER':
 			dim = cfgLvl[1];
 			if dim != '2D' and dim != '3D' :
-				print "  ## ERROR : Wrong dimension for fidelity level %d (tagged %s) : only 2D or 3D simulations" % (i,tag);
+				sys.stderr.write("  ## ERROR : Wrong dimension for fidelity level %d (tagged %s) : only 2D or 3D simulations" % (i,tag));
+				sys.exit(0);
 			meshsize = cfgLvl[2];	
 			if meshsize != 'COARSE' and meshsize != 'MEDIUM' and meshsize != 'FINE' :
-				print "  ## ERROR : Wrong mesh level for fidelity level %d (tagged %s) : must be set to either COARSE, MEDIUM or FINE" % (i,tag);
+				sys.stderr.write("  ## ERROR : Wrong mesh level for fidelity level %d (tagged %s) : must be set to either COARSE, MEDIUM or FINE" % (i,tag));
+				sys.exit(0);
 			description = "%s %s CFD simulation using the %s mesh level." % (dim, method, meshsize);
 			
 			if i == flevel :
@@ -107,8 +110,9 @@ def NozzleSetup( config_name, flevel ):
 					nozzle.meshhl = [0.1, 0.07, 0.06, 0.006, 0.0108];
 		
 		else :
-			print "  ## ERROR : Unknown governing method (%s) for fidelity level %s." % (method, tag);
-			print "  Note: it must be either NONIDEALNOZZLE, EULER, or RANS\n";
+			sys.stderr.write("  ## ERROR : Unknown governing method (%s) for fidelity level %s." % (method, tag));
+			sys.stderr.write("  Note: it must be either NONIDEALNOZZLE, EULER, or RANS\n");
+			sys.exit(0);
 	
 			
 		sys.stdout.write("   %s | %s | %s \n" % ( ("%d" % i).ljust(7), tag.ljust(10), textwrap.fill(description,70, subsequent_indent="".ljust(26))) );

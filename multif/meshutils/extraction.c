@@ -43,7 +43,6 @@ int SolutionExtraction(Options *mshopt,Mesh *Msh)
 		
 		fprintf(FilHdl, "\n");
 		
-		
 	}
 	
 	if ( FilHdl )
@@ -52,3 +51,13 @@ int SolutionExtraction(Options *mshopt,Mesh *Msh)
 	return 1;
 	
 }
+
+int ExtractAlongLine (Options *mshopt, Mesh *Msh)
+{
+	
+	
+	
+}
+
+
+

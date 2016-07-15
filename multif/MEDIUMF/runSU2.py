@@ -7,6 +7,7 @@ import multif
 from .. import SU2
 
 
+
 def CheckSU2Version(nozzle):
 	import subprocess;
 	su2_exe = 'SU2_CFD';
@@ -30,10 +31,24 @@ def CheckSU2Version(nozzle):
 			sys.stdout.write('\n\n');
 			nozzle.LocalRelax = 'NO';
 
-	
-def SetupConfig (nozzle):
+
+def SetupConfig (solver_options):
 	
 	config = SU2.io.Config();
+	
+	# --- Options
+	
+	Mach = solver_options.Mach;
+	Pres = solver_options.Pres;
+	Temp = solver_options.Temp;
+	
+	InletPstag = solver_options.InletPstag;
+	InletTstag = solver_options.InletTstag;
+	
+	LocalRelax = solver_options.LocalRelax;
+	
+	NbrIte = solver_options.NbrIte;
+	
 	
 	# --- Governing
 	
@@ -44,18 +59,18 @@ def SetupConfig (nozzle):
 	
 	# --- Free stream
 	
-	config.MACH_NUMBER='0.9';
-	config.FREESTREAM_PRESSURE='23842.787765';
-	config.FREESTREAM_TEMPERATURE='218.807923';
+	config.MACH_NUMBER='%lf' % Mach;
+	config.FREESTREAM_PRESSURE='%lf' % Pres;
+	config.FREESTREAM_TEMPERATURE='%lf' % Temp;
 	config.REF_DIMENSIONALIZATION= 'DIMENSIONAL';
 	
 	# --- Boundary conditions
 	
 	config.MARKER_EULER= '( 9, 10, 11, 12 )';
-	config.MARKER_INLET= '( 13, 1021.500000, 144925.000000, 1.0, 0.0, 0.0 )';
+	config.MARKER_INLET= '( 13, %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag);
 	config.MARKER_FAR= '( 6, 7, 8 )';
 	config.MARKER_SYM= '( 1, 2 )';
-	config.MARKER_OUTLET= '( 3, 23842.787765,  4, 23842.787765,  5, 23842.787765)';
+	config.MARKER_OUTLET= '( 3, %lf,  4, %lf,  5, %lf)' % (Pres, Pres, Pres);
 	
 	# --- Numerical method
 	
@@ -63,7 +78,7 @@ def SetupConfig (nozzle):
 	config.CFL_NUMBER= '25';
 	config.CFL_ADAPT= 'NO';
 	config.MAX_DELTA_TIME= '1E6';
-	config.EXT_ITER= 500;
+	config.EXT_ITER= NbrIte;
 	config.LINEAR_SOLVER= 'FGMRES';
 	config.LINEAR_SOLVER_ERROR= '1E-6';
 	config.LINEAR_SOLVER_ITER= '3';
@@ -117,7 +132,7 @@ def SetupConfig (nozzle):
 	# --- Local relaxation / CFL
 	#     Note: these options are only available in a custom version of su2:
 	#     				https://github.com/vmenier/SU2/tree/darpa
-	if (nozzle.LocalRelax == 'YES') :
+	if (LocalRelax == 'YES') :
 		config.RELAXATION_LOCAL= 'YES';
 		config.CFL_ADAPT_LOCAL= 'YES';
 		config.HARD_LIMITING_PARAM= '(0.15, 1e-5)';

@@ -154,7 +154,7 @@ def read_history( History_filename ):
     history_data = ordered_bunch()    
     
     # header name to config file name map
-    map_dict = get_headerMap()    
+    map_dict = get_headerMap()
     
     # map header names
     for key in plot_data.keys():
