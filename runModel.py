@@ -3,8 +3,8 @@
 import os, time, sys, shutil, copy
 from optparse import OptionParser
 import textwrap
-import SU2
 import multif
+from multif import SU2
 
 # -------------------------------------------------------------------
 #  Main 
