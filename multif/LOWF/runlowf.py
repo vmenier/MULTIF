@@ -529,10 +529,8 @@ def Quasi1D(nozzle):
     while( 1 ):
         
         counter += 1
-
-        
-        
-        # Parameters passed to functions called by ODE        
+				
+        # Parameters passed to functions called by ODE 
         params = (xPositionOld,Cf,Tstag,dTstagdx)
         
         # Find where M = 1
@@ -560,7 +558,7 @@ def Quasi1D(nozzle):
         A = nozzle.wall.geometry.area(xPosition)
         #dAdx = nozzle.wall.geometry.dAdx(xPosition)
         t = nozzle.wall.thickness.radius(xPosition)
-            
+        
         # Calculate other 1D flow properties
         M = np.sqrt(M2)
         Tstag = np.interp(xPosition,xPositionOld,Tstag)
@@ -708,18 +706,21 @@ def Run (nozzle):
 	
 	xPosition, flowTuple, heatTuple, \
 	geoTuple, stressTuple, performanceTuple = Quasi1D(nozzle);
+		
+	#str = " Results ";
+	#nch = (60-len(str))/2;
+	#sys.stdout.write('-' * nch);
+	#sys.stdout.write(str);
+	#sys.stdout.write('-' * nch);
+	#sys.stdout.write('\n\n');
+	#
+	#
+	#sys.stdout.write('\tThrust = %lf\n' % performanceTuple[1]);
+	#sys.stdout.write('\tVolume = %lf\n' % performanceTuple[0]);
 	
+	nozzle.Thrust = performanceTuple[1];
+	nozzle.Volume = performanceTuple[0];
 	
-	str = " Results ";
-	nch = (60-len(str))/2;
-	sys.stdout.write('-' * nch);
-	sys.stdout.write(str);
-	sys.stdout.write('-' * nch);
-	sys.stdout.write('\n\n');
-	
-	
-	sys.stdout.write('\tThrust = %lf\n' % performanceTuple[1]);
-	sys.stdout.write('\tVolume = %lf\n' % performanceTuple[0]);
 	
 
 	

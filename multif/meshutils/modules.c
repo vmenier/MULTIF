@@ -133,7 +133,25 @@ int Extraction (Options *mshopt)
 		return 0;
 	}
 		
-	SolutionExtraction(mshopt,Msh);
+	//SolutionExtraction(mshopt,Msh);
+	
+	double box[4] = {0.67,0.67,0,0.3048};
+	
+	int NbrRes=0, Siz=0;
+	double *result = ExtractAlongLine(mshopt,Msh, box, &NbrRes, &Siz);
+	
+	//printf("NbrREs = %d\n", NbrRes);
+	//
+	//for (int i=0; i<NbrRes; i++) {
+	//	printf ("res %d : ", i);
+	//	for (int j=0; j<Siz; j++) {
+	//		printf(" %lf", result[i*Siz+j]);
+	//	}
+	//	printf("\n");
+	//}
+	
+	if ( result )
+		free(result);
 	
 	if ( Msh )
  		FreeMesh(Msh);

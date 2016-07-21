@@ -18,7 +18,11 @@ class Environment:
         self.rho = rho/0.068521/0.028317 # kg/m^3, atmospheric density
         self.mu = mu/0.22481/0.092903 # N-s/m^2, dynamic viscosity
         self.c = c/3.2808 # m/s, speed of sound
-
+				
+				
+				
+				
+				
 #==============================================================================
 # % StndAtm calculates properties of the 1976 U.S. Standard Atmosphere for
 # % up to altitudes of 230,000 ft. This function is adapted from Ilan Kroo's

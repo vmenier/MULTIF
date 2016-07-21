@@ -22,3 +22,6 @@ int py_MeshPrepro2D (char *InpNam, char *OutNam);
 	Similar to py_BSplineGeo3, only different i/o
 */
 int py_BSplineGeo3LowF (PyObject *pyknots, PyObject *pycoefs, PyObject *pyx, PyObject *pyy, PyObject *pydydx);
+
+
+void py_ExtractAlongLine (char *MshNam, char *SolNam, PyObject *pyBox,  PyObject *pyResult, PyObject *PyInfo, PyObject *pyHeader);

@@ -1,10 +1,16 @@
 #!/usr/bin/env python
 
 import os, time, sys, shutil, copy
+
+
+
 from optparse import OptionParser
 import textwrap
+
 import multif
 from multif import SU2
+
+
 
 # -------------------------------------------------------------------
 #  Main 
@@ -21,7 +27,6 @@ def main():
 	sys.stdout.write('-' * 90);
 	sys.stdout.write('\n\n');
 	
-	 
 	# Command Line Options
 	parser = OptionParser()
 	parser.add_option("-f", "--file", dest="filename",
@@ -42,11 +47,15 @@ def main():
 		sys.exit(0);
 	
 	nozzle = multif.nozzle.NozzleSetup( options.filename, options.flevel );
-		
+	
 	if nozzle.method == 'NONIDEALNOZZLE' :
 		multif.LOWF.Run(nozzle);
 	elif nozzle.method == 'EULER' or nozzle.method == 'RANS':
 		multif.MEDIUMF.Run(nozzle);
+		
+	# --- Output functions 
+	
+	nozzle.WriteOutputFunctions_Plain ();
 	
 	sys.stdout.write('\n\n');
 	

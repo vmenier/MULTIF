@@ -25,7 +25,23 @@ int py_MeshPrepro2D( char *InpNam, char *OutNam )
 	
 	Options *mshopt = AllocOptions();
 	
-	strcpy(mshopt->OutNam,OutNam);
+	
+	char BasNam[1024];
+  char *ptr = NULL;
+	
+	// --- Get BasNam
+	
+  strcpy(BasNam,OutNam);
+  
+  ptr = strstr(BasNam,".su2");	
+  if ( ptr != NULL )
+    BasNam[ptr-BasNam]='\0';
+  
+	printf("BASNAM = %s\n", BasNam);
+
+	strcpy(mshopt->OutNam,BasNam);	
+	
+	//strcpy(mshopt->OutNam,OutNam);
 	strcpy(mshopt->InpNam,InpNam);
 	
 	mshopt->clean = 1; // remove unconnected vertices
@@ -227,3 +243,68 @@ int py_BSplineGeo3LowF (PyObject *pyknots, PyObject *pycoefs, PyObject *pyx, PyO
 	if (dydx)
 		free(dydx);
 }
+
+
+void py_ExtractAlongLine (char *MshNam, char *SolNam, PyObject *pyBox,  PyObject *pyResult, PyObject *PyInfo, PyObject *pyHeader)
+{
+	int i;
+	double box[4] = {0.67,0.67,0,0.3048};
+	
+	//--- Get box
+	
+	if ( PyList_Check(pyBox) )
+  {
+		
+			for (i=0; i<4; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyBox,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					box[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+	
+	Options *mshopt = AllocOptions();
+	
+	strcpy(mshopt->InpNam,MshNam);
+	strcpy(mshopt->SolNam,SolNam);
+	
+	
+	//--- Open mesh/solution file
+	Mesh *Msh = NULL;
+	Msh = SetupMeshAndSolution (mshopt->InpNam, mshopt->SolNam);
+	
+	//PrintMeshInfo (Msh);
+	
+	if ( !Msh->Sol ) {
+		printf("  ## ERROR SolutionExtraction : A solution must be provided.\n");
+		return;
+	}
+	
+	int NbrRes=0, Siz=0;
+	double *result = ExtractAlongLine(mshopt,Msh, box, &NbrRes, &Siz);
+	
+	for (i=0; i<NbrRes*Siz; i++){
+		PyList_Append(pyResult, PyFloat_FromDouble(result[i]));
+	}
+	
+	
+	PyList_Append(PyInfo, PyInt_FromLong(NbrRes));
+	PyList_Append(PyInfo, PyInt_FromLong(Siz));
+	
+	
+	for (i=0; i<Msh->SolSiz; i++){
+		PyList_Append(pyHeader, PyString_FromString(Msh->SolTag[i]));
+	}
+	
+	
+	
+	if (result)
+		free(result);
+	
+	if ( Msh )
+ 		FreeMesh(Msh);
+	
+}
+

@@ -42,8 +42,13 @@ from ..util import which
 #  Setup
 # ------------------------------------------------------------
 
-SU2_RUN = os.environ['SU2_RUN'] 
-sys.path.append( SU2_RUN )
+
+#print "os.environ['SU2_RUN']  = %s\n" % os.environ['SU2_RUN'] ;
+#SU2_RUN = os.environ['SU2_RUN'] 
+#sys.path.append( SU2_RUN )
+#sys.path.append('/usr/local/bin/SU2_2/');
+
+SU2_RUN="";
 
 # SU2 suite run command template
 base_Command = os.path.join(SU2_RUN,'%s')
@@ -80,10 +85,21 @@ def CFD(config):
     """ run SU2_CFD
         partitions set by config.NUMBER_PART
     """
+
+    #config['SU2_RUN'] = 'toto';
+		
+    base='';
+
+    if 'SU2_RUN' in config:
+        print "SU2_RUN IN DICT";
+        base = "{0}".format(config['SU2_RUN']);
+		
+    config.pop("SU2_RUN", None);
+		
     konfig = copy.deepcopy(config)
     
     direct_diff = not konfig.get('DIRECT_DIFF',"") in ["NONE", ""]
-
+		
     auto_diff = konfig.MATH_PROBLEM == 'DISCRETE_ADJOINT'
 
     if direct_diff:
@@ -111,7 +127,12 @@ def CFD(config):
     
         the_Command = 'SU2_CFD ' + tempname
 
+			
     the_Command = build_command( the_Command , processes )
+		
+    the_Command = '%s/%s' % (base,the_Command);
+
+    print "COMMAND = %s\n" % the_Command;
     run_command( the_Command )
     
     #os.remove(tempname)
@@ -261,9 +282,14 @@ def SOL_FSI(config):
 #  Helper functions
 # ------------------------------------------------------------
 
-def build_command( the_Command , processes=0 ):
+def build_command( the_Command , processes=0, base='' ):
     """ builds an mpi command for given number of processes """
-    the_Command = base_Command % the_Command
+
+    if base == '':
+        the_Command = base_Command % the_Command;
+    else:
+        the_Command = base % the_Command;
+    
     if processes > 1:
         if not mpi_Command:
             raise RuntimeError , 'could not find an mpi interface'

@@ -114,6 +114,10 @@ py_MeshPrepro2D = _meshutils_module.py_MeshPrepro2D
 def py_BSplineGeo3LowF(pyknots, pycoefs, pyx, pyy, pydydx):
     return _meshutils_module.py_BSplineGeo3LowF(pyknots, pycoefs, pyx, pyy, pydydx)
 py_BSplineGeo3LowF = _meshutils_module.py_BSplineGeo3LowF
+
+def py_ExtractAlongLine(MshNam, SolNam, pyBox, pyResult, PyInfo, pyHeader):
+    return _meshutils_module.py_ExtractAlongLine(MshNam, SolNam, pyBox, pyResult, PyInfo, pyHeader)
+py_ExtractAlongLine = _meshutils_module.py_ExtractAlongLine
 # This file is compatible with both classic and new-style classes.
 
 

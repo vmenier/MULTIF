@@ -1,4 +1,3 @@
-#from .. import CFD
 from .. import SU2
 from meshgeneration import *
 from runSU2 import *
@@ -30,10 +29,17 @@ def Run( nozzle ):
 	
 	solver_options.NbrIte = 500;
 	
+	solver_options.SU2_RUN = nozzle.SU2_RUN;
+	
+	solver_options.mesh_name    = nozzle.mesh_name;
+	solver_options.restart_name = nozzle.restart_name;
+	
 	GenerateNozzleMesh(nozzle);
 	
 	config = SetupConfig(solver_options);
 	
-	info = SU2.run.CFD(config);
+	#info = SU2.run.CFD(config);
 	
-	CheckConvergence(config);
+	PostProcessing(config, nozzle);
+	
+	

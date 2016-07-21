@@ -5,7 +5,6 @@ class EvaluationFailure(RuntimeError):
 class DivergenceFailure(EvaluationFailure):
     pass
 
-
 import run
 import io
 import mesh

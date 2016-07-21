@@ -4,6 +4,7 @@ import os, time, sys, shutil, copy
 from optparse import OptionParser
 import textwrap
 import multif
+
 from .. import SU2
 
 
@@ -49,6 +50,11 @@ def SetupConfig (solver_options):
 	
 	NbrIte = solver_options.NbrIte;
 	
+	mesh_name = solver_options.mesh_name;
+	restart_name = solver_options.restart_name;
+	
+	# --- SU2_RUN
+	config.SU2_RUN = solver_options.SU2_RUN;
 	
 	# --- Governing
 	
@@ -119,10 +125,10 @@ def SetupConfig (solver_options):
 	
 	# --- Input/Output
 	
-	config.MESH_FILENAME= 'axinoz.su2';
+	config.MESH_FILENAME= mesh_name;
 	config.OUTPUT_FORMAT= 'TECPLOT';
 	config.CONV_FILENAME= 'history';
-	config.RESTART_FLOW_FILENAME= 'restart_flow.dat';
+	config.RESTART_FLOW_FILENAME= restart_name;
 	config.WRT_SOL_FREQ= '1000';
 	config.WRT_CON_FREQ= '1';
 	

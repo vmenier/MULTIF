@@ -10,6 +10,8 @@ import pylab
 import multif
 
 
+
+
 class optionsmesh:
 	def __init__(self):
 		pass
@@ -33,7 +35,7 @@ def GenerateNozzleMesh (nozzle):
 	
 	# --- Call Gmsh
 	
-	try : 
+	try :   
 		CallGmsh(nozzle);
 	except:
 		print "\n  ## ERROR : Mesh generation failed.\n";
@@ -59,7 +61,7 @@ def CallGmsh (nozzle):
 def MeshPrepro (nozzle):
 	from .. import _meshutils_module
 	
-	out = _meshutils_module.py_MeshPrepro2D (nozzle.tmpMshNam, 'axinoz');
+	out = _meshutils_module.py_MeshPrepro2D (nozzle.tmpMshNam, nozzle.mesh_name);
 	
 	if ( out == 0 ) :
 		raise;
@@ -94,7 +96,8 @@ def NozzleGeoFile(FilNam, Mesh_options):
 	try:
 		fil = open(FilNam, 'w');
 	except:
-		sys.stdout.write("  ## ERROR : Could not open %s\n" % FilNam);
+		sys.stderr.write("  ## ERROR : Could not open %s\n" % FilNam);
+		sys.exit(0);
 	
 	sys.stdout.write("%s OPENED.\n" % FilNam);
 	

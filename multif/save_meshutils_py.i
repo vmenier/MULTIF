@@ -10,6 +10,14 @@
 
 %include "numpy.i"
 
+
 /*  Parse the header file to generate wrappers */
 %include "./meshutils/meshutils_py.h"
 
+/*
+%include "typemaps.i"
+%apply int *OUTPUT { int *pyNbrRes, int *pyResSiz };
+%inlne %{
+extern void py_ExtractAlongLine (char *MshNam, char *SolNam, PyObject *pyResult, int *pyNbrRes, int *pyResSiz)
+%}
+*/
