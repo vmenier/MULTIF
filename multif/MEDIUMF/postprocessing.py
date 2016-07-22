@@ -155,21 +155,8 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
 		Thrust = Thrust + dy*(rhoU*(U-U0)+Pres-P0);
 		
 	return Thrust;
-		
-		
-	
-
-		
-	
-	
-	
-	
-	
-	
-	
-	
-	
 
 
-	
+def ExtractSolutionAtWall ():
+	print "ExtractSolutionAtWall"
 	

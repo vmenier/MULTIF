@@ -81,8 +81,6 @@ int AddSU2MeshSize(char *FilNam, int *SizMsh)
  	rewind(FilHdl);
 	SizMsh[GmfVertices] = GetSU2KeywordValue (FilHdl, "NPOIN=");
   
-	printf("SizMsh[GmfVertices] =%d\n", SizMsh[GmfVertices] );
-
   //--- Boundary Elements?
 	NbrMark = 0;	
 	

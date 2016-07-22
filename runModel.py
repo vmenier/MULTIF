@@ -57,7 +57,7 @@ def main():
 	
 	nozzle.WriteOutputFunctions_Plain ();
 	
-	sys.stdout.write('\n\n');
+	sys.stdout.write('\n');
 	
 # -------------------------------------------------------------------
 #  Run Main Program

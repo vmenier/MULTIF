@@ -186,17 +186,21 @@ class Nozzle:
 				if tol < 1e-30 :
 					sys.stderr.write("  ## ERROR : Wrong tolerance for fidelity level %d (tagged %s)\n" % (i,tag));
 					sys.exit(0);
-				description = "Quasi 1D non ideal nozzle with tolerance set to %lf." % (tol);	
+				description = "Quasi 1D non ideal nozzle with tolerance set to %le." % (tol);	
 
 				if i == flevel :
 					nozzle.tolerance = tolerance.Tolerance();
 					nozzle.tolerance.setTol(tol);
+					#nozzle.tolerance.exitTempPercentError = tol;
 
 			elif method == 'RANS' or method == 'EULER':
 				dim = cfgLvl[1];
 				if dim != '2D' and dim != '3D' :
 					sys.stderr.write("  ## ERROR : Wrong dimension for fidelity level %d (tagged %s) : only 2D or 3D simulations" % (i,tag));
 					sys.exit(0);
+				
+				nozzle.Dim = dim;
+				
 				meshsize = cfgLvl[2];	
 				if meshsize != 'COARSE' and meshsize != 'MEDIUM' and meshsize != 'FINE' :
 					sys.stderr.write("  ## ERROR : Wrong mesh level for fidelity level %d (tagged %s) : must be set to either COARSE, MEDIUM or FINE" % (i,tag));
@@ -281,7 +285,7 @@ class Nozzle:
 		
 		nozzle = self;
 		
-		wall_keys = ('GEOM_WALL_PARAM','GEOM_WALL_COEFS_DV','GEOM_WALL_KNOTS','GEOM_WALL_COEFS');
+		wall_keys = ('GEOM_WALL_PARAM','GEOM_WALL_KNOTS','GEOM_WALL_COEFS');
 
 		if all (key in config for key in wall_keys):
 
@@ -628,25 +632,39 @@ class Nozzle:
 		nozzle = self;
 
 		filename = nozzle.Output_Name;
-
+		
+		sys.stdout.write('\n');
+		str = " Post-processing ";
+		nch = (60-len(str))/2;
+		sys.stdout.write('-' * nch);
+		sys.stdout.write(str);
+		sys.stdout.write('-' * nch);
+		sys.stdout.write('\n\n');
+		
 		try:
 			fil = open(filename, 'w');
 		except:
 			sys.stderr.write("  ## ERROR : Could not open output file %s\n" % filename);
 			sys.exit(0);
   
+		sys.stdout.write('  -- Info : Output functions file : %s\n' % filename);
+
 		for i in range(0, len(nozzle.Output_Tags)):
-  
+  		
 			tag = nozzle.Output_Tags[i];
-  
+  		
 			if tag == 'THRUST':
 				fil.write('%lf\n' % nozzle.Thrust);
+				sys.stdout.write('      Thrust = %lf\n' % nozzle.Thrust);
   
 			if tag == 'VOLUME':
 				fil.write('%lf\n' % nozzle.Volume);
-  
-		fil.close();		
-		
+				sys.stdout.write('      Volume = %lf\n' % nozzle.Volume);
+  	
+		sys.stdout.write('\n');
+		fil.close();
+
+
 def NozzleSetup( config_name, flevel ):
 	
 	if not os.path.isfile(config_name) :
@@ -659,10 +677,9 @@ def NozzleSetup( config_name, flevel ):
 	
 	# --- File names
 	
-	nozzle.mesh_name = 'blabla.su2';
+	nozzle.mesh_name    = 'blabla.su2';
 	nozzle.restart_name = 'blabla.dat';
-	
-	nozzle.Output_Name = 'output.dat';
+	nozzle.Output_Name  = 'output.dat';
 	
 	# --- Path to SU2 exe
 	
@@ -679,7 +696,7 @@ def NozzleSetup( config_name, flevel ):
 	
 	nozzle.SetupMission(config);
 	
-	# --- Setup nozzle inner wall
+	# --- Setup Bspline coefficients 
 	
 	nozzle.SetupBSplineCoefs(config);
 	
