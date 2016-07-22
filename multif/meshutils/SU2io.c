@@ -571,7 +571,7 @@ int LoadSU2Mesh(char *FilNam, Mesh *Msh)
 		return 0;
 	}
 	
-  printf("  %%%% %s OPENED (READ)\n",FilNam);
+  //printf("  %%%% %s OPENED (READ)\n",FilNam);
 	strcpy(Msh->MshNam, FilNam);
 	Msh->FilTyp = FILE_SU2;
 	
@@ -635,7 +635,7 @@ int LoadSU2Solution(char *SolNam, Mesh *Msh)
     return 0;
 	}
 	
-	printf("  %%%% %s OPENED\n",SolNam);
+	//printf("  %%%% %s OPENED\n",SolNam);
 	
 	strcpy(Msh->SolNam, SolNam);
 	
@@ -779,7 +779,7 @@ void WriteSU2Mesh(char *nam, Mesh *Msh)
 		printf("  ## ERROR Write SU2: Can't open %s\n", OutNam);
 	}
  	
-  printf("  %%%% %s OPENED\n",OutNam);
+  printf("  %%%% %s OPENED (WRITE)\n",OutNam);
   
   fprintf(OutFil, "NDIME= %d\n", Dim);
 

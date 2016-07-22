@@ -5,8 +5,12 @@ from optparse import OptionParser
 import textwrap
 import multif
 
+from meshgeneration import *
 from .. import SU2
 
+class Solver_Options:
+	def __init__(self):
+		pass
 
 
 def CheckSU2Version(nozzle):
@@ -145,5 +149,37 @@ def SetupConfig (solver_options):
 		config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 30.0 )';
 			
 	return config;
+	
+def runSU2 ( nozzle ):
+	
+	solver_options = Solver_Options();
+	
+	solver_options.Mach = nozzle.mission.mach;
+	solver_options.Pres = nozzle.environment.P;
+	solver_options.Temp = nozzle.environment.T;
+	
+	solver_options.InletPstag = nozzle.inlet.Pstag;
+	solver_options.InletTstag = nozzle.inlet.Tstag;
+	
+	solver_options.LocalRelax = nozzle.LocalRelax;
+	
+	solver_options.NbrIte = 5;
+	
+	solver_options.SU2_RUN = nozzle.SU2_RUN;
+	
+	solver_options.mesh_name    = nozzle.mesh_name;
+	solver_options.restart_name = nozzle.restart_name;
+		
+	GenerateNozzleMesh(nozzle);
+	
+	config = SetupConfig(solver_options);
+	
+	nozzle.OUTPUT_FORMAT = config['OUTPUT_FORMAT'];
+	nozzle.CONV_FILENAME = config['CONV_FILENAME'];
+	
+	info = SU2.run.CFD(config);
+	
+	
+	#return info;
 	
 	

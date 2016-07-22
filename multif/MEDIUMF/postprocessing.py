@@ -15,11 +15,11 @@ import pylab
 from .. import nozzle as nozzlemod
 
 
-def PostProcessing (config, nozzle):
+def PostProcessing (nozzle):
 	
 	# --- Check residual convergence
 	
-	IniRes, FinRes = CheckConvergence(config);
+	IniRes, FinRes = CheckConvergence(nozzle);
 	ResDif = FinRes - IniRes;
 	sys.stdout.write("Initial res = %le, Final res = %lf, Diff = %lf\n" % (IniRes, FinRes, ResDif));
 	
@@ -40,13 +40,13 @@ def PostProcessing (config, nozzle):
 		nozzle.Volume = nozzlemod.geometry.wallVolume(nozzle.wall.geometry,nozzle.wall.thickness)
 	
 
-def CheckConvergence ( config ) :
+def CheckConvergence ( nozzle ) :
 	
 	# filenames
-	plot_format      = config['OUTPUT_FORMAT']
+	plot_format      = nozzle.OUTPUT_FORMAT;
 	plot_extension   = SU2.io.get_extension(plot_format)
-	history_filename = config['CONV_FILENAME'] + plot_extension
-	special_cases    = SU2.io.get_specialCases(config)
+	history_filename = nozzle.CONV_FILENAME + plot_extension
+	#special_cases    = SU2.io.get_specialCases(config)
 	
 	history      = SU2.io.read_history( history_filename )
 	
@@ -155,8 +155,52 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
 		Thrust = Thrust + dy*(rhoU*(U-U0)+Pres-P0);
 		
 	return Thrust;
-
-
-def ExtractSolutionAtWall ():
-	print "ExtractSolutionAtWall"
+	
+	
+def ExtractSolutionAtWall (nozzle):
+	
+	# --- Extract CFD solution at the inner wall
+	
+	mesh_name    = nozzle.mesh_name;
+	restart_name = nozzle.restart_name;
+	
+	pyResult = [];
+	pyInfo   = [];
+	pyHeader = [];
+	
+	pyRef = [12];
+	
+	_meshutils_module.py_ExtractAtRef (mesh_name, restart_name, pyRef, pyResult, pyInfo, pyHeader);
+	
+	NbrRes = pyInfo[0];
+	ResSiz = pyInfo[1];
+		
+	Result = np.asarray(pyResult);
+	
+	OutResult = np.reshape(Result,(NbrRes, ResSiz));
+		
+	#print "%d results" % NbrRes;
+	#
+	#for i in range(0,10):
+	#	print "%d : (%lf,%lf) : rho = %lf" % (i, OutResult[i][0], OutResult[i][1], OutResult[i][2]);
+	
+	# --- Get solution field indices
+	
+	iMach  = -1;
+	iTem   = -1;
+	iCons1 = -1;
+	iCons2 = -1;
+	iCons3 = -1;
+	iCons4 = -1;
+	iPres  = -1;
+		
+	idHeader = dict();
+	for iFld in range(0,len(pyHeader)):
+		idHeader[pyHeader[iFld]] = iFld+2;
+	
+	
+	return OutResult, pyInfo, idHeader;
+	
+	
+	
 	

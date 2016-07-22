@@ -245,6 +245,7 @@ int py_BSplineGeo3LowF (PyObject *pyknots, PyObject *pycoefs, PyObject *pyx, PyO
 }
 
 
+
 void py_ExtractAlongLine (char *MshNam, char *SolNam, PyObject *pyBox,  PyObject *pyResult, PyObject *PyInfo, PyObject *pyHeader)
 {
 	int i;
@@ -307,4 +308,72 @@ void py_ExtractAlongLine (char *MshNam, char *SolNam, PyObject *pyBox,  PyObject
  		FreeMesh(Msh);
 	
 }
+
+
+void py_ExtractAtRef (char *MshNam, char *SolNam, PyObject *pyRefs,  PyObject *pyResult, PyObject *PyInfo, PyObject *pyHeader)
+{
+	int i;
+	
+	int *Ref = NULL;
+	int size_Ref = 0;
+	
+	//--- Get box
+	
+	if ( PyList_Check(pyRefs) )
+  {
+	
+			size_Ref = PyList_Size(pyRefs);
+      Ref = (int*) malloc( size_Ref * sizeof(int));
+			
+			for (i=0; i<size_Ref; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyRefs,i);
+       	if ( PyInt_Check(oo) )
+       	{
+					Ref[i] = (int) PyInt_AS_LONG(oo);
+       	}
+      }
+  }
+
+	Options *mshopt = AllocOptions();
+	//
+	strcpy(mshopt->InpNam,MshNam);
+	strcpy(mshopt->SolNam,SolNam);
+	//
+	//
+	//--- Open mesh/solution file
+	Mesh *Msh = NULL;
+	Msh = SetupMeshAndSolution (mshopt->InpNam, mshopt->SolNam);
+	
+	//PrintMeshInfo (Msh);
+	
+	if ( !Msh->Sol ) {
+		printf("  ## ERROR SolutionExtraction : A solution must be provided.\n");
+		return;
+	}
+	
+	//double * ExtractSolutionAtRef (Options *mshopt, Mesh *Msh, int *Ref, int NbrRef,  int *NbrRes, int *Siz)
+	int NbrRes=0, Siz=0;
+	double *result = ExtractSolutionAtRef(mshopt,Msh, Ref, size_Ref,  &NbrRes, &Siz);
+	
+	for (i=0; i<NbrRes*Siz; i++){
+		PyList_Append(pyResult, PyFloat_FromDouble(result[i]));
+	}
+	
+	PyList_Append(PyInfo, PyInt_FromLong(NbrRes));
+	PyList_Append(PyInfo, PyInt_FromLong(Siz));
+	
+	for (i=0; i<Msh->SolSiz; i++){
+		PyList_Append(pyHeader, PyString_FromString(Msh->SolTag[i]));
+	}
+	
+	
+	if (result)
+		free(result);
+	
+	if ( Msh )
+ 		FreeMesh(Msh);
+	
+}
+
 

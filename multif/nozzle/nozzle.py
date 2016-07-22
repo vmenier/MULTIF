@@ -590,7 +590,7 @@ class Nozzle:
 		
 		nozzle.GetOutput['VOLUME'] = 0;
 		nozzle.GetOutput['THRUST'] = 0;
-		
+				
 		# --- Initialize outputs
 		nozzle.Thrust = -1;
 		nozzle.Volume = -1;
@@ -666,7 +666,8 @@ class Nozzle:
 
 
 def NozzleSetup( config_name, flevel ):
-	
+	import tempfile
+		
 	if not os.path.isfile(config_name) :
 		sys.stderr.write("  ## ERROR : could not find configuration file %s\n\ns" % config_name);
 		sys.exit(0);
@@ -677,8 +678,15 @@ def NozzleSetup( config_name, flevel ):
 	
 	# --- File names
 	
-	nozzle.mesh_name    = 'blabla.su2';
-	nozzle.restart_name = 'blabla.dat';
+ 	#nozzle.mesh_name    =	 'blabla.su2'
+ 	#nozzle.restart_name =  'blabla.dat'
+
+	#hdl, toto = tempfile.mkstemp(suffix='.su2');
+ 	#
+	#print "TMPNAME = %s" %  (toto);
+
+	hdl , nozzle.mesh_name    =  tempfile.mkstemp(suffix='.su2');
+	hdl , nozzle.restart_name =  tempfile.mkstemp(suffix='.dat');
 	nozzle.Output_Name  = 'output.dat';
 	
 	# --- Path to SU2 exe

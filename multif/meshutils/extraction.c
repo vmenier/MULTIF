@@ -70,14 +70,32 @@ int CmpInterface (const void *a, const void *b)
 
 	double eps = 1e-20;
 
-	if ( fabs(ia->y-ib->y) < eps )
-		return 0;
-	else if ( ia->y > ib->y  )
-		return 1;
-	else return -1;
+
+  if ( fabs(ia->x-ib->x) < DBL_EPSILON ) {
+    if ( fabs(ia->y-ib->y) < DBL_EPSILON ) {
+			return 0;
+    }
+    else if ( ia->y > ib->y ) return 1;
+    else return -1;
+  }
+  else if ( ia->x > ib->x ) return 1;
+  else return -1;
+
+	
+
+	//if ( fabs(ia->y-ib->y) < eps )
+	//	return 0;
+	//else if ( ia->y > ib->y  )
+	//	return 1;
+	//else return -1;
+	
+	//if ( fabs(ia->y-ib->y) < eps )
+	//	return 0;
+	//else if ( ia->y > ib->y  )
+	//	return 1;
+	//else return -1;
 
 }
-
 
 
 double * ExtractAlongLine (Options *mshopt, Mesh *Msh, double *box, int *NbrRes, int *Siz)
@@ -264,6 +282,105 @@ double * ExtractAlongLine (Options *mshopt, Mesh *Msh, double *box, int *NbrRes,
 	
 	return result;
 	
+}
+
+
+double * ExtractSolutionAtRef (Options *mshopt, Mesh *Msh, int *Ref, int NbrRef,  int *NbrRes, int *Siz)
+{
+	
+	int iEfr, iVer, v, cptVer=0, idx=0, iVar, i, flag=0;
+	double *result = NULL;
+	
+	int *Tag = (int*) malloc(sizeof(int)*(Msh->NbrVer+1));
+	memset(Tag, 0, sizeof(int)*(Msh->NbrVer+1));
+	
+	SortInterface *SrtInt = (SortInterface*) malloc (sizeof(struct cvt_SortInterface)*(Msh->NbrVer+1));	
+	double * Sol = (double*) malloc(sizeof(double)*(Msh->NbrVer+1)*Msh->SolSiz);
+	
+	//--- Tag vertices that belong to chosen bdr edges
+	
+	
+	for (iEfr=1; iEfr<=Msh->NbrEfr; iEfr++) {
+		
+		flag = 0;
+		for (i=0; i<NbrRef; i++) {
+			if ( Msh->Efr[iEfr][2] == Ref[i] ) {
+				flag = 1;
+				break;
+			}
+		}
+		
+		if ( flag == 0 )
+			continue;
+		
+		for (v=0; v<2; v++) {
+			iVer = Msh->Efr[iEfr][v];
+			Tag[iVer] = 1;
+		}	
+	}
+	
+	//--- Count vertices
+	
+	cptVer = 0;
+	for (iVer=1; iVer<=Msh->NbrVer; iVer++) {
+		
+		
+		if ( Tag[iVer] == 1 ) {
+			
+			SrtInt[cptVer].x      = Msh->Ver[iVer][0];
+			SrtInt[cptVer].y      = Msh->Ver[iVer][1];
+			SrtInt[cptVer].IdxSol = cptVer;
+			
+			idx = cptVer * Msh->SolSiz;
+			for (iVar=0; iVar<Msh->SolSiz; iVar++) { 
+				Sol[idx+iVar] = Msh->Sol[iVer*Msh->SolSiz+iVar];
+			}
+			
+			//printf("Ver %d, dens = %lf\n", iVer, Sol[idx]);
+			
+			cptVer++;
+		}
+	
+	}
+	
+	//--- Sort
+	
+	qsort(SrtInt,cptVer,sizeof(struct cvt_SortInterface),CmpInterface);
+	
+	//--- Alloc and output result
+	
+	result = (double *) malloc(sizeof(double)*cptVer*(2+Msh->SolSiz));
+	
+	for (i=0; i<cptVer; i++) {
+		
+		idx = i*(Msh->SolSiz+2);
+		
+		result[idx+0] = SrtInt[i].x;
+		result[idx+1] = SrtInt[i].y;
+		
+		for (iVar=0; iVar<Msh->SolSiz; iVar++) 
+			result[idx+2+iVar] = Sol[SrtInt[i].IdxSol*Msh->SolSiz+iVar];
+		
+		//if ( i < 10 )
+		//	printf(" %d : %lf\n", i, result[idx+2]);
+		
+	}
+	
+	//--- Free memory
+	
+	if ( SrtInt )
+		free(SrtInt);
+	
+	if (Sol)
+		free(Sol);
+	
+	if (Tag)
+		free(Tag);
+		
+	*NbrRes = cptVer;
+	*Siz    = Msh->SolSiz+2;
+		
+	return result;
 }
 
 
