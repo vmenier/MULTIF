@@ -433,11 +433,13 @@ class Nozzle:
 			sys.exit(0);
 		
 		if format == 'PLAIN':
-			DV_List = ParseDesignVariables_Plain(filename);
+			DV_List, OutputCode, Derivatives_DV = ParseDesignVariables_Plain(filename);	
 			NbrDV = len(DV_List);		
+			
 		elif format == 'DAKOTA' :
-			sys.stderr.write("  ## ERROR : Dakota parser not implemented yet\n");
-			sys.exit(0);
+			print "HERE\n"
+			DV_List, OutputCode, Derivatives_DV = ParseDesignVariables_Dakota(filename);	
+			NbrDV = len(DV_List);
 		else:
 			sys.stderr.write("  ## ERROR : Unknown DV input file format %s\n" % format);
 			sys.exit(0);
@@ -663,7 +665,7 @@ class Nozzle:
   	
 		sys.stdout.write('\n');
 		fil.close();
-
+		
 
 def NozzleSetup( config_name, flevel ):
 	import tempfile

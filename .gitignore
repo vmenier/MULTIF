@@ -23,6 +23,7 @@ autom4te.cache
 
 # Python files
 *.pyc
+*_py_wrap.c
 
 # Mac files
 *.DS_Store
@@ -35,3 +36,8 @@ Makefile
 *~
 
 ./multif/build
+
+./example/*.su2
+./example/*.dat
+./example/config_CFD.cfg
+./example/*.csv

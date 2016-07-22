@@ -22,8 +22,11 @@ def runAEROS ( nozzle ):
 	iPres = idHeader['Pressure'];
 	iTemp = idHeader['Temperature'];
 	
-	for i in range(0,10):
-		print "VER %d : (x,y) = (%lf, %lf) , Pres = %lf, Temp = %lf" % (i, SolExtract[i][0], SolExtract[i][1], SolExtract[i][iPres], SolExtract[i][iTemp]);
+	print "\n\nINTERFACE WITH AEROS GOES HERE\n\n" ;
+	
+	# --- How to get x, y, P, T :
+	#for i in range(0,10):
+	#	print "VER %d : (x,y) = (%lf, %lf) , Pres = %lf, Temp = %lf" % (i, SolExtract[i][0], SolExtract[i][1], SolExtract[i][iPres], SolExtract[i][iTemp]);
 		
 		
 	
