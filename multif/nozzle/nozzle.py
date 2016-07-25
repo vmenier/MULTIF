@@ -503,7 +503,7 @@ class Nozzle:
 				prt_basval.append('%.2lf'% nozzle.inlet.Pstag);
 				prt_newval.append('%.2lf'% nozzle.DV_List[id_dv]);
 				
-				nozzle.inlet.Tstag = nozzle.DV_List[id_dv];
+				nozzle.inlet.Pstag = nozzle.DV_List[id_dv];
 			
 			elif Tag == 'THERMAL_CONDUCTIVITY':
 				
