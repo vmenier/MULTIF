@@ -118,9 +118,11 @@ int py_BSplineGeo3 (PyObject *pyknots, PyObject *pycoefs, PyObject *pyx, PyObjec
 	hx = len/(double)(nx-1);
 	
 	x[0] = 0.;
-	for (i=1; i<nx; i++) 
+	for (i=1; i<nx; i++) {
 		x[i] = x[i-1]+hx;
-		
+		printf("x[%d] = %lf\n", i, x[i]);
+	}
+	
 	bSplineGeo3(knots, coefs, x, y, dydx, nx, k, c);
 	
 	for (i=0; i<nx; i++){
