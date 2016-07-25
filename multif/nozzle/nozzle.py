@@ -687,8 +687,10 @@ def NozzleSetup( config_name, flevel ):
  	#
 	#print "TMPNAME = %s" %  (toto);
 
-	hdl , nozzle.mesh_name    =  tempfile.mkstemp(suffix='.su2');
-	hdl , nozzle.restart_name =  tempfile.mkstemp(suffix='.dat');
+	nozzle.mesh_name    =  'nozzle.su2'; #tempfile.mkstemp(suffix='.su2');
+	nozzle.restart_name =  'nozzle.dat'; #tempfile.mkstemp(suffix='.dat');
+	nozzle.runDir       =  tempfile.mkdtemp();
+	
 	nozzle.Output_Name  = 'output.dat';
 	
 	# --- Path to SU2 exe

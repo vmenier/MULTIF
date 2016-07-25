@@ -26,6 +26,12 @@ def Run( nozzle ):
 	
 	CheckOptions (nozzle);
 	
+	curDir = os.path.dirname(os.path.realpath(__file__));
+
+
+	os.chdir(nozzle.runDir);
+	
+	
 	# --- Run CFD
 	
 	runSU2 (nozzle);
@@ -37,5 +43,7 @@ def Run( nozzle ):
 	# --- Postprocessing
 	
 	PostProcessing(nozzle);
+	
+	sys.stdout.write("\n  -- Info : Result directory :  %s\n\n" % nozzle.runDir);
 	
 	

@@ -179,7 +179,6 @@ def runSU2 ( nozzle ):
 	
 	info = SU2.run.CFD(config);
 	
-	
 	#return info;
 	
 	
