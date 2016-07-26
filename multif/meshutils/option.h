@@ -25,4 +25,4 @@ typedef struct T_Options
 	
 } Options;
 
-Options* AllocOptions();
+Options* AllocOptions(void);

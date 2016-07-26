@@ -221,7 +221,7 @@ int WriteGMFMesh(char *nam, Mesh *Msh, int OptBin)
 {
   int       OutMsh,FilVer,i, j;
   int       iVer,iTri,iEfr,iTet; 
-  long long idx[3];
+  long long idx[6];
   char      OutFil[512];
   
   int Dim = Msh->Dim;
