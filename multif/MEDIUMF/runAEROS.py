@@ -7,7 +7,7 @@ import multif
 import ctypes
 import numpy as np
 import pylab
-import _nozzle_module
+from .. import _nozzle_module
 
 from postprocessing import *
 
