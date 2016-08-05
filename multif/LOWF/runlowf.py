@@ -574,7 +574,7 @@ def Quasi1D(nozzle):
         # Recalculate friction and heat
         # heat transfer coefficient to interior nozzle wall, estimated using
         # Chilton-Colburn analogy
-        hf = nozzle.fluid.Pr(T)**(2./3.)*density*nozzle.fluid.Cp(T)*U*Cf/2
+        hf = nozzle.fluid.Pr(T)**(-2./3.)*density*nozzle.fluid.Cp(T)*U*Cf/2
         
         # Redefine stagnation temperature distribution
         TstagXIntegrand = 4./(nozzle.fluid.Cp(T)*density*U*D*(1./hf +        \
