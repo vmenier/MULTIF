@@ -256,7 +256,7 @@ int writeAEROS(GModel *g,
       writeTemp(entities[i]->mesh_vertices[j], fp6, entities[i]->tag(),
                 scalingFactor, boundaries);
   fclose(fp6);
-
+	
   // main file
   fprintf(fp, "STATICS\n");
   fprintf(fp, "sparse\n");
@@ -376,12 +376,13 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
   }
 
   m->mesh(dimension);
-
+	
   double tolerance = lc/50;
   m->removeDuplicateMeshVertices(tolerance);
 
-  m->writeGEO("nozzle.geo");
-  m->writeMSH("nozzle.msh");
+  //m->writeGEO("nozzle.geo");
+  //m->writeMSH("nozzle.msh");
+	//m->writeMESH("nozzlefem.mesh");
   writeAEROS(m, materials, boundaries, "nozzle.aeros", 2);
 
   delete m;

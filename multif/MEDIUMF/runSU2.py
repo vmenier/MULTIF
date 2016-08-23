@@ -15,11 +15,16 @@ class Solver_Options:
 
 def CheckSU2Version(nozzle):
 	import subprocess;
-	su2_exe = 'SU2_CFD';
+	su2_exe = '%s/SU2_CFD' % nozzle.SU2_RUN;
 		
 	#sys.path.append("/Users/menier/codes/SU2_DARPA/SU2_CFD/bin/");
 	#sys.pythonpath.append("/Users/menier/codes/SU2_DARPA/SU2_CFD/bin/");
 	#os.environ['PATH'] = ':'.join('/Users/menier/codes/SU2_DARPA/SU2_CFD/bin/')
+	
+	nozzle.SU2Version = '';
+	
+	print "EXE = %s" % su2_exe;
+	
 	
 	try :
 		cmd = [su2_exe];
@@ -28,6 +33,7 @@ def CheckSU2Version(nozzle):
 		if ( 'DARPA' in err.output ):
 			sys.stdout.write('Check SU2 version : OK\n');
 			nozzle.LocalRelax = 'YES';
+			nozzle.SU2Version = 'OK';
 		else:
 			sys.stdout.write('\n');
 			sys.stdout.write('#' * 90);
@@ -35,6 +41,8 @@ def CheckSU2Version(nozzle):
 			sys.stdout.write('#' * 90);
 			sys.stdout.write('\n\n');
 			nozzle.LocalRelax = 'NO';
+			nozzle.SU2Version = 'NOT_OK';
+			
 
 
 def SetupConfig (solver_options):
@@ -58,10 +66,10 @@ def SetupConfig (solver_options):
 	restart_name = solver_options.restart_name;
 	
 	# --- SU2_RUN
+	
 	config.SU2_RUN = solver_options.SU2_RUN;
 	
 	# --- Governing
-	
 	config.PHYSICAL_PROBLEM= 'EULER';
 	config.MATH_PROBLEM= 'DIRECT';
 	config.RESTART_SOL= 'NO';
@@ -147,7 +155,8 @@ def SetupConfig (solver_options):
 		config.CFL_ADAPT_LOCAL= 'YES';
 		config.HARD_LIMITING_PARAM= '(0.15, 1e-5)';
 		config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 30.0 )';
-			
+		config.RESIDUAL_MAXVAL= 2;
+				
 	return config;
 	
 def runSU2 ( nozzle ):

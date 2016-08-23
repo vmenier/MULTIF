@@ -55,9 +55,18 @@ def main():
 		
 	# --- Output functions 
 	
-	nozzle.WriteOutputFunctions_Plain ();
+	#nozzle.WriteOutputFunctions_Plain ();
+	nozzle.WriteOutputFunctions_Dakota ();
 	
 	sys.stdout.write('\n');
+	
+	# --- Print warning in case the wrong SU2 version was run
+	if nozzle.method != 'NONIDEALNOZZLE' and nozzle.SU2Version != 'OK':
+		sys.stdout.write('\n');
+		sys.stdout.write('#' * 90);
+		sys.stdout.write('\n  ## WARNING : You are not using the right version of SU2. This may have caused robustness issues.\n');
+		sys.stdout.write('#' * 90);
+		sys.stdout.write('\n\n');
 	
 # -------------------------------------------------------------------
 #  Run Main Program

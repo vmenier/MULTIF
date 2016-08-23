@@ -569,6 +569,7 @@ def Quasi1D(nozzle):
         density = P/(nozzle.fluid.R*T)
         U = M*np.sqrt(gam*nozzle.fluid.R*T) # velocity
         Re = density*U*D/dynamicViscosity(T) # Reynolds number from definition
+				
         Cf = np.interp(xPosition,xPositionOld,Cf) # friction coefficient
             
         # Recalculate friction and heat

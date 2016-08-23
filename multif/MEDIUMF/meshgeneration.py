@@ -31,6 +31,10 @@ def GenerateNozzleMesh (nozzle):
 	mesh_options.hl     = nozzle.meshhl; 
 	mesh_options.method = nozzle.method; # Euler or RANS
 	
+	mesh_options.ds          = nozzle.bl_ds;
+	mesh_options.ratio       = nozzle.bl_ratio 
+	mesh_options.thickness   = nozzle.bl_thickness; 
+	
 	NozzleGeoFile(nozzle.tmpGeoNam, mesh_options);
 	
 	# --- Call Gmsh
@@ -68,13 +72,18 @@ def MeshPrepro (nozzle):
 	
 def NozzleGeoFile(FilNam, Mesh_options):
 	
-	
 	# --- Options
 		
 	xwall  = Mesh_options.xwall;
 	ywall  = Mesh_options.ywall;
  	hl     = Mesh_options.hl;
 	method = Mesh_options.method;
+	
+	
+	ds        =  Mesh_options.ds;       
+	ratio     =  Mesh_options.ratio;   
+	thickness =  Mesh_options.thickness;
+	
 	
 	# --- Domain definition
 	
@@ -198,10 +207,10 @@ def NozzleGeoFile(FilNam, Mesh_options):
 		fil.write('Field[%d].EdgesList = {9,10,11,12}; \n' % (NbrFld+2));
 		fil.write('Field[%d].NodesList = {6,111};      \n' % (NbrFld+2));
 		fil.write('Field[%d].hfar = 1;                 \n' % (NbrFld+2));
-		fil.write('Field[%d].hwall_n = 0.000007;       \n' % (NbrFld+2));
+		fil.write('Field[%d].hwall_n = %le;       \n' % ((NbrFld+2), ds));
 		fil.write('Field[%d].hwall_t = 0.300000;       \n' % (NbrFld+2));
-		fil.write('Field[%d].ratio = 1.3;              \n' % (NbrFld+2));
-		fil.write('Field[%d].thickness = 0.01;         \n' % (NbrFld+2));
+		fil.write('Field[%d].ratio = %le;              \n' % ((NbrFld+2),ratio));
+		fil.write('Field[%d].thickness = %le;         \n' % ((NbrFld+2), thickness));
 		fil.write('BoundaryLayer Field = %d;           \n' % (NbrFld+2));
 	
 	
