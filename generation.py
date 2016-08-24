@@ -14,6 +14,8 @@ from multif.MEDIUMF import *
 
 from decimal import Decimal
 
+from multif import _meshutils_module
+
 class optionsmesh:
 	def __init__(self):
 		pass
@@ -53,6 +55,9 @@ def main():
 	nozzle.mesh_name = 'nozzle.su2';
 	
 	GenerateNozzleMesh(nozzle);
+	
+	
+	_meshutils_module.py_ConvertSU2toGMSH("nozzle.su2", "", "nozzle")
 	
 	#mesh_options = optionsmesh();
 	#mesh_options.xwall  = nozzle.xwall;

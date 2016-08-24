@@ -118,6 +118,31 @@ int ConvertSU2SolToGMF (Options *mshopt)
 	return 1;
 }
 
+
+int ConvertSU2ToGMSH (Options *mshopt)
+{
+	Mesh *Msh = NULL;
+	char OutSol[1024];
+
+	Msh = SetupMeshAndSolution (mshopt->InpNam, mshopt->SolNam);
+
+	if ( Msh->FilTyp != FILE_SU2 ) {
+		printf("  ## ERROR : Input mesh file must be a .su2\n");
+		return 0;
+	}
+
+	PrintMeshInfo (Msh);
+
+	WriteGMSHMesh(mshopt->OutNam, Msh, 1);
+
+	if ( Msh )
+ 		FreeMesh(Msh);
+
+	return 1;
+}
+
+
+
 int Extraction (Options *mshopt)
 {
 	

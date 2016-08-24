@@ -3,6 +3,10 @@
 
 int py_ConvertGMFToSU2( char *MshNam, char *SolNam, char *OutNam ) ;
 
+
+int py_ConvertSU2toGMSH( char *MshNam, char *SolNam, char *OutNam ) ;
+
+
 /*
 	Return nx points (pyx,pyy) of the bspline defined by knots and coefs
 */
