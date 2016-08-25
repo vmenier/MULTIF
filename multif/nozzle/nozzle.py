@@ -39,8 +39,7 @@ class Nozzle:
 		coefs_size = nozzle.coefs_size;
 
 		NbrDVTot = 0;		
-		
-		
+				
 		if 'DV_LIST' in config:
 
 			dv_keys = ('WALL', 'INLET_TSTAG', 'INLET_PSTAG', 'THERMAL_CONDUCTIVITY', 'THERMAL_DIFFUSIVITY', 'ELASTIC_MODULUS', 'ATM_PRES', 'ATM_TEMP');
@@ -54,8 +53,7 @@ class Nozzle:
 			nozzle.DV_Head = []; # correspondance btw DV_Tags and DV_List
 
 			nozzle.wall_dv = []; # 
-
-
+			
 			for i in range(0,2*dv_keys_size,2):
 				key = hdl[i].strip();
 				NbrDV = int(hdl[i+1]);
@@ -76,7 +74,7 @@ class Nozzle:
 						if  wall_dv_size != coefs_size  :
 							sys.stderr.write('  ## ERROR : Inconsistent number of design variables for the inner wall: %d coefs provided, %d design variables.\n',coefs_size,  wall_dv_size);
 							sys.stderr.exit(0);
-
+						
 						tag = np.zeros(NbrDV);
 						for iw in range(0,wall_dv_size):
 
@@ -214,6 +212,11 @@ class Nozzle:
 
 				if i == flevel :
 					nozzle.meshsize = meshsize;
+					
+					nozzle.bl_ds        = 0.000007;
+					nozzle.bl_ratio     = 1.3; 
+					nozzle.bl_thickness = 0.1;
+					
 					if meshsize == 'COARSE':
 						nozzle.meshhl = [0.1, 0.07, 0.06, 0.006, 0.0108];
 					elif meshsize == 'MEDIUM':
@@ -444,19 +447,19 @@ class Nozzle:
 		else :
 			sys.stderr.write("  ## ERROR : Input DV file format not specified. (INPUT_DV_FORMAT expected: PLAIN or DAKOTA)\n");
 			sys.exit(0);
-			
+		
+				
 		if 'INPUT_DV_NAME' in config:
 			filename = config['INPUT_DV_NAME'];
 		else :
 			sys.stderr.write("  ## ERROR : Input DV file name not specified. (INPUT_DV_NAME expected)\n");
 			sys.exit(0);
-		
+				
 		if format == 'PLAIN':
 			DV_List, OutputCode, Derivatives_DV = ParseDesignVariables_Plain(filename);	
 			NbrDV = len(DV_List);		
 			
 		elif format == 'DAKOTA' :
-			print "HERE\n"
 			DV_List, OutputCode, Derivatives_DV = ParseDesignVariables_Dakota(filename);	
 			NbrDV = len(DV_List);
 		else:
@@ -616,6 +619,13 @@ class Nozzle:
 		
 		nozzle.GetOutput['VOLUME'] = 0;
 		nozzle.GetOutput['THRUST'] = 0;
+		
+		if 'OUTPUT_NAME' in config:
+			nozzle.Output_Name = config['OUTPUT_NAME'];
+		else :
+			sys.stderr.write("  ## ERROR : Output function file name not specified. (OUTPUT_NAME expected)\n");
+			sys.exit(0);
+		
 				
 		# --- Initialize outputs
 		nozzle.Thrust = -1;
@@ -703,6 +713,35 @@ class Nozzle:
 			sys.stdout.write('\n');
 		fil.close();
 		
+	def WriteOutputFunctions_Dakota (self):
+	
+		nozzle = self;
+	
+		filename = nozzle.Output_Name;
+	
+		try:
+			fil = open(filename, 'w');
+		except:
+			sys.stderr.write("  ## ERROR : Could not open output file %s\n" % filename);
+			sys.exit(0);
+	
+		sys.stdout.write('  -- Info : Output functions file : %s\n' % filename);
+	
+		for i in range(0, len(nozzle.Output_Tags)):
+	
+			tag = nozzle.Output_Tags[i];
+	
+			if tag == 'THRUST':
+				fil.write('%lf thrust\n' % nozzle.Thrust);
+				#sys.stdout.write('%lf thrust\n' % nozzle.Thrust);
+	
+			if tag == 'VOLUME':
+				fil.write('%lf volume\n' % nozzle.Volume);
+				#sys.stdout.write(' %lf \n' % nozzle.Volume);
+	
+		sys.stdout.write('\n');
+		fil.close();
+		
 
 def NozzleSetup( config_name, flevel, output='verbose' ):
 	import tempfile
@@ -726,9 +765,14 @@ def NozzleSetup( config_name, flevel, output='verbose' ):
 
 	nozzle.mesh_name    =  'nozzle.su2'; #tempfile.mkstemp(suffix='.su2');
 	nozzle.restart_name =  'nozzle.dat'; #tempfile.mkstemp(suffix='.dat');
-	nozzle.runDir       =  tempfile.mkdtemp();
 	
-	nozzle.Output_Name  = 'output.dat';
+	if 'TEMP_RUN_DIR' in config:
+		if config['TEMP_RUN_DIR'] == 'YES':
+			nozzle.runDir       =  tempfile.mkdtemp();	
+		else:
+			nozzle.runDir = '';
+	else:
+		nozzle.runDir = '';
 	
 	# --- Path to SU2 exe
 	

@@ -19,13 +19,33 @@ int py_ConvertGMFToSU2( char *MshNam, char *SolNam, char *OutNam )
 	return ConvertGMFtoSU2Sol (mshopt);
 }
 
+int py_ConvertSU2toGMSH( char *MshNam, char *SolNam, char *OutNam ) 
+{
+	
+	Options *mshopt = AllocOptions();
+	
+	strcpy(mshopt->OutNam,OutNam);
+	strcpy(mshopt->InpNam,MshNam);
+	strcpy(mshopt->SolNam,SolNam);
+	
+	mshopt->clean = 0; // remove unconnected vertices
+	
+	if ( !CheckOptions(mshopt) ) {
+		return 0;
+	}
+	
+	return ConvertSU2ToGMSH (mshopt);
+	
+	
+	return 1;
+}
+
 
 int py_MeshPrepro2D( char *InpNam, char *OutNam ) 
 {
 	
 	Options *mshopt = AllocOptions();
-	
-	
+		
 	char BasNam[1024];
   char *ptr = NULL;
 	

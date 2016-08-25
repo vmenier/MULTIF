@@ -18,6 +18,7 @@ typedef int    int9[9];
 #define FILE_DAT    3
 #define FILE_GMFSOL 4
 #define FILE_GEO    5
+#define FILE_MSH    6
 
 #define SU2_LINE         3
 #define SU2_TRIANGLE     5
@@ -28,6 +29,11 @@ typedef int    int9[9];
 #define SU2_PYRAMID      14
 #define SU2_TRIANGLEP2   105
 #define SU2_LINEP2       103
+
+#define GMSH_EDGE         1
+#define GMSH_TRIANGLE     2
+#define GMSH_HEXAHEDRON   3
+#define GMSH_TETRAHEDRON  4
 
 typedef struct S_Mesh
 {

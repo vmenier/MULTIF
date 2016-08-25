@@ -39,13 +39,13 @@ def runAEROS ( nozzle ):
 	iPres = idHeader['Pressure'];
 	iTemp = idHeader['Temperature'];
 	
-	print "\n\n#####################################";
-	print "###  INTERFACE WITH AERO-S GOES HERE" ;
-	print "#####################################\n\n";
+	#print "\n\n#####################################";
+	#print "###  INTERFACE WITH AERO-S GOES HERE" ;
+	#print "#####################################\n\n";
 	
-	# --- How to get x, y, P, T :
-	for i in range(0,Size[0]):
-		print "VER %d : (x,y) = (%lf, %lf) , Pres = %lf, Temp = %lf" % (i, SolExtract[i][0], SolExtract[i][1], SolExtract[i][iPres], SolExtract[i][iTemp]);
+	## --- How to get x, y, P, T :
+	#for i in range(0,Size[0]):
+	#	print "VER %d : (x,y) = (%lf, %lf) , Pres = %lf, Temp = %lf" % (i, SolExtract[i][0], SolExtract[i][1], SolExtract[i][iPres], SolExtract[i][iTemp]);
 		
 	f1 = open("NOZZLE.txt", 'w');
 	print >> f1, "%d %d %d %f" % (Size[0], 2, 1, 0.02);
@@ -64,5 +64,5 @@ def runAEROS ( nozzle ):
 	f2.close();
 
 	_nozzle_module.generate();
-
+	
 	os.system("aeros nozzle.aeros")

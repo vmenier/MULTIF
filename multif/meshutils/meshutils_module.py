@@ -103,6 +103,10 @@ def py_ConvertGMFToSU2(MshNam, SolNam, OutNam):
     return _meshutils_module.py_ConvertGMFToSU2(MshNam, SolNam, OutNam)
 py_ConvertGMFToSU2 = _meshutils_module.py_ConvertGMFToSU2
 
+def py_ConvertSU2toGMSH(MshNam, SolNam, OutNam):
+    return _meshutils_module.py_ConvertSU2toGMSH(MshNam, SolNam, OutNam)
+py_ConvertSU2toGMSH = _meshutils_module.py_ConvertSU2toGMSH
+
 def py_BSplineGeo3(pyknots, pycoefs, pyx, pyy, nx):
     return _meshutils_module.py_BSplineGeo3(pyknots, pycoefs, pyx, pyy, nx)
 py_BSplineGeo3 = _meshutils_module.py_BSplineGeo3

@@ -29,7 +29,8 @@ def Run( nozzle ):
 	curDir = os.path.dirname(os.path.realpath(__file__));
 
 
-	os.chdir(nozzle.runDir);
+	if nozzle.runDir != '':
+		os.chdir(nozzle.runDir);
 	
 	
 	# --- Run CFD
