@@ -479,7 +479,7 @@ def integrateTrapezoidal(y,x):
 #% transfer coefficient hf, friction coefficient Cf, interior wall temp. Tw,
 #% exterior wall temp. Text, and approximate stress along length of nozzle.
 #==============================================================================
-def Quasi1D(nozzle):
+def Quasi1D(nozzle,output='verbose'):
     
     # Initialize
     gam = nozzle.fluid.gam
@@ -516,15 +516,20 @@ def Quasi1D(nozzle):
     
     #------------------------------ Begin Solver -----------------------------
     
-    str = " Begin Solver ";
-    nch = (60-len(str))/2;
-    sys.stdout.write('-' * nch);
-    sys.stdout.write(str);
-    sys.stdout.write('-' * nch);
-    sys.stdout.write('\n\n');
+    if output == 'verbose':
+        introString = " Begin Solver ";
+        nch = (60-len(introString))/2;
+        sys.stdout.write('-' * nch);
+        sys.stdout.write(introString);
+        sys.stdout.write('-' * nch);
+        sys.stdout.write('\n\n');
     
-    sys.stdout.write(" Running non ideal nozzle computation (target error %.3le): \n\n" % tolerance);
-    sys.stdout.write('\t %s %s\n' % ("Iter".ljust(10), "Error %".ljust(10)));
+        sys.stdout.write(" Running non ideal nozzle computation (target error %.3le): \n\n" % tolerance);
+        sys.stdout.write('\t %s %s\n' % ("Iter".ljust(10), "Error %".ljust(10)));
+    elif output == 'quiet':
+        pass
+    else:
+        raise ValueError('keyword argument output can only be set to "verbose" or "quiet" mode')
 		
     while( 1 ):
         
@@ -625,7 +630,7 @@ def Quasi1D(nozzle):
         #print "%i\n" % counter
         
         if( counter >= maxIterations ):
-            sys.stdout.write("\n Done (max number of iterations reached)\n\n");
+            sys.stdout.write("\n WARNING: Done (max number of iterations reached)\n\n");
             #print "Iteration limit for quasi-1D heat xfer & friction reached\n"
             break
         
@@ -634,12 +639,14 @@ def Quasi1D(nozzle):
         #print "Percent error: %e\n" % (percentError*100)
         Texit_old = T[-1]
 				
-        sys.stdout.write("\t %s %s\n" % (("%d" % counter).ljust(10), ("%.3le" % percentError).ljust(10)));
+        if output == 'verbose':
+            sys.stdout.write("\t %s %s\n" % (("%d" % counter).ljust(10), ("%.3le" % percentError).ljust(10)));
 				
 				
 				
         if( percentError < tolerance ):
-            sys.stdout.write("\n Done (converged)\n\n");
+            if output == 'verbose':
+                sys.stdout.write("\n Done (converged)\n\n");
             #print "%i iterations to converge quasi-1D heat xfer & friction \
 #calcs\n" % counter    
             break
@@ -702,10 +709,10 @@ def Quasi1D(nozzle):
     
 # END OF analysis(nozzle,tol)
 
-def Run (nozzle):
+def Run (nozzle,output='verbose'):
 	
 	xPosition, flowTuple, heatTuple, \
-	geoTuple, stressTuple, performanceTuple = Quasi1D(nozzle);
+	geoTuple, stressTuple, performanceTuple = Quasi1D(nozzle,output);
 		
 	#str = " Results ";
 	#nch = (60-len(str))/2;
