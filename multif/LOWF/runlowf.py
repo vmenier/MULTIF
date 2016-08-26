@@ -107,7 +107,7 @@ def findApparentThroat(nozzle,tol,(xInterp,Cf,Tstag,dTstagdx)):
       dTstagdx)/(2*np.interp(x,xInterp,Tstag))
       
     # Find sign changes in dMdxCoeffFunc
-    xFind = np.linspace(0.,nozzle.wall.geometry.length-1e-4,200.)
+    xFind = np.linspace(0.,nozzle.wall.geometry.length-1e-4,1000.)
     coeffFind = dMdxCoeffFunc(xFind)
     coeffFindSign = np.sign(coeffFind)
     coeffFindSignChange = ((np.roll(coeffFindSign,1) - coeffFindSign)        \
@@ -123,6 +123,7 @@ def findApparentThroat(nozzle,tol,(xInterp,Cf,Tstag,dTstagdx)):
         
         # Check to make sure each following possible throat is far enough away
         ind = signChangeLocations[minInd]
+        indKeep = ind
         for ii in range(minInd+1,signChangeLocations.size):
             currentInd = signChangeLocations[ii]
             dx = xFind[currentInd] - xFind[ind]
@@ -141,6 +142,7 @@ def findApparentThroat(nozzle,tol,(xInterp,Cf,Tstag,dTstagdx)):
             
             if( dAdxbarEst <= RHS ):
                 throatGuess = xFind[currentInd]
+                indKeep = currentInd
             
         # END OF for ii in range(minInd,signChangeLocations.size)
             
@@ -156,6 +158,16 @@ def findApparentThroat(nozzle,tol,(xInterp,Cf,Tstag,dTstagdx)):
     if( nozzle.wall.geometry.diameter(xApparentThroat) >                      \
       nozzle.wall.geometry.diameter(nozzle.wall.geometry.length)):
         xApparentThroat = nozzle.wall.geometry.length
+        
+    if( indKeep != len(xFind) and indKeep != 0 and 
+      (xApparentThroat > xFind[indKeep+1] or xApparentThroat < xFind[indKeep-1]) ):
+      print 'scipy fsolve found wrong apparent throat at %f' % xApparentThroat
+      # Reset apparent throat to a linear interpolation between the 2 points
+      # Sign change index of 1 implies sign change between indices 0 and 1
+      slope = (coeffFind[indKeep] - coeffFind[indKeep-1])/(xFind[indKeep] -   \
+        xFind[indKeep-1])
+      xApparentThroat = xFind[indKeep] - coeffFind[indKeep]/slope
+      print 'apparent throat interpolated and set to %f' % xApparentThroat
 
     return xApparentThroat
 
@@ -479,7 +491,7 @@ def integrateTrapezoidal(y,x):
 #% transfer coefficient hf, friction coefficient Cf, interior wall temp. Tw,
 #% exterior wall temp. Text, and approximate stress along length of nozzle.
 #==============================================================================
-def Quasi1D(nozzle):
+def Quasi1D(nozzle,output='verbose'):
     
     # Initialize
     gam = nozzle.fluid.gam
@@ -507,7 +519,7 @@ def Quasi1D(nozzle):
     dTstagdx = np.array(([-6., -6.]))
     xPositionOld = np.array(([0., nozzle.wall.geometry.length]))
     
-    maxIterations = 10 # max number of iterations to solve for Cf and Tstag
+    maxIterations = 12 # max number of iterations to solve for Cf and Tstag
     counter = 0 # used to count b/w number of iterations
     tolerance = tol["exitTempPercentError"] # tolerance for % error in
                 # exit static temperature between iterations
@@ -516,15 +528,20 @@ def Quasi1D(nozzle):
     
     #------------------------------ Begin Solver -----------------------------
     
-    str = " Begin Solver ";
-    nch = (60-len(str))/2;
-    sys.stdout.write('-' * nch);
-    sys.stdout.write(str);
-    sys.stdout.write('-' * nch);
-    sys.stdout.write('\n\n');
+    if output == 'verbose':
+        introString = " Begin Solver ";
+        nch = (60-len(introString))/2;
+        sys.stdout.write('-' * nch);
+        sys.stdout.write(introString);
+        sys.stdout.write('-' * nch);
+        sys.stdout.write('\n\n');
     
-    sys.stdout.write(" Running non ideal nozzle computation (target error %.3le): \n\n" % tolerance);
-    sys.stdout.write('\t %s %s\n' % ("Iter".ljust(10), "Error %".ljust(10)));
+        sys.stdout.write(" Running non ideal nozzle computation (target error in exit temp %.3le): \n\n" % tolerance);
+        sys.stdout.write('\t %s %s\n' % ("Iter".ljust(10), "Error %".ljust(10)));
+    elif output == 'quiet':
+        pass
+    else:
+        raise ValueError('keyword argument output can only be set to "verbose" or "quiet" mode')
 		
     while( 1 ):
         
@@ -625,22 +642,23 @@ def Quasi1D(nozzle):
         
         #print "%i\n" % counter
         
-        if( counter >= maxIterations ):
-            sys.stdout.write("\n Done (max number of iterations reached)\n\n");
-            #print "Iteration limit for quasi-1D heat xfer & friction reached\n"
-            break
-        
         # Check tolerance on static temperature at nozzle exit
         percentError = abs(T[-1] - Texit_old)/T[-1]
         #print "Percent error: %e\n" % (percentError*100)
         Texit_old = T[-1]
+        
+        if( counter >= maxIterations ):
+            sys.stdout.write("\n WARNING: Done (max number of iterations (%i) reached)\n" % maxIterations);
+            sys.stdout.write("Terminated with error in exit temp: %le\n\n" % percentError);
+            #print "Iteration limit for quasi-1D heat xfer & friction reached\n"
+            break
 				
-        sys.stdout.write("\t %s %s\n" % (("%d" % counter).ljust(10), ("%.3le" % percentError).ljust(10)));
-				
-				
+        if output == 'verbose':
+            sys.stdout.write("\t %s %s\n" % (("%d" % counter).ljust(10), ("%.3le" % percentError).ljust(10)));
 				
         if( percentError < tolerance ):
-            sys.stdout.write("\n Done (converged)\n\n");
+            if output == 'verbose':
+                sys.stdout.write("\n Done (converged)\n\n");
             #print "%i iterations to converge quasi-1D heat xfer & friction \
 #calcs\n" % counter    
             break
@@ -703,10 +721,10 @@ def Quasi1D(nozzle):
     
 # END OF analysis(nozzle,tol)
 
-def Run (nozzle):
+def Run (nozzle,output='verbose'):
 	
 	xPosition, flowTuple, heatTuple, \
-	geoTuple, stressTuple, performanceTuple = Quasi1D(nozzle);
+	geoTuple, stressTuple, performanceTuple = Quasi1D(nozzle,output);
 		
 	#str = " Results ";
 	#nch = (60-len(str))/2;

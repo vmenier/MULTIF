@@ -140,7 +140,7 @@ class Nozzle:
 		if NbrDVTot > 0 :
 			nozzle.DV_Head.append(NbrDVTot);
 
-	def SetupFidelityLevels (self, config, flevel):
+	def SetupFidelityLevels (self, config, flevel, output='verbose'):
 		
 		nozzle = self;
 		
@@ -153,12 +153,17 @@ class Nozzle:
 			print "  ## ERROR : No fidelity level was defined.\n"
 			sys.exit(0)
 
-		sys.stdout.write('\n%d fidelity level(s) defined. Summary :\n' % (NbrFidLev));
+		if output == 'verbose':
+		  sys.stdout.write('\n%d fidelity level(s) defined. Summary :\n' % (NbrFidLev));
 
-		sys.stdout.write('-' * 90);
-		sys.stdout.write('\n%s | %s | %s\n' % ("Level #".ljust(10), "Tag".ljust(10),"Description.".ljust(70)));
-		sys.stdout.write('-' * 90);
-		sys.stdout.write('\n'); 
+		  sys.stdout.write('-' * 90);
+		  sys.stdout.write('\n%s | %s | %s\n' % ("Level #".ljust(10), "Tag".ljust(10),"Description.".ljust(70)));
+		  sys.stdout.write('-' * 90);
+		  sys.stdout.write('\n'); 
+		elif output == 'quiet':
+		  pass
+		else:
+		  raise ValueError('keyword argument output can only be set to "verbose" or "quiet" mode')
 
 		for i in range(NbrFidLev) :
 			tag = fidelity_tags[i];
@@ -184,12 +189,13 @@ class Nozzle:
 				if tol < 1e-30 :
 					sys.stderr.write("  ## ERROR : Wrong tolerance for fidelity level %d (tagged %s)\n" % (i,tag));
 					sys.exit(0);
-				description = "Quasi 1D non ideal nozzle with tolerance set to %le." % (tol);	
 
 				if i == flevel :
 					nozzle.tolerance = tolerance.Tolerance();
-					nozzle.tolerance.setTol(tol);
+					nozzle.tolerance.setRelTol(tol);
+					nozzle.tolerance.setAbsTol(tol);
 					#nozzle.tolerance.exitTempPercentError = tol;
+					description = "ODE solver relative and absolute tolerance set to %le." % (tol);	
 
 			elif method == 'RANS' or method == 'EULER':
 				dim = cfgLvl[1];
@@ -224,17 +230,31 @@ class Nozzle:
 				sys.stderr.write("  Note: it must be either NONIDEALNOZZLE, EULER, or RANS\n");
 				sys.exit(0);
 
+			if output == 'verbose':
+				sys.stdout.write("   %s | %s | %s \n" % ( ("%d" % i).ljust(7), tag.ljust(10), textwrap.fill(description,70, subsequent_indent="".ljust(26))) );
+			elif output == 'quiet':
+				pass
+			else:
+				raise ValueError('keyword argument output can only be set to "verbose" or "quiet" mode')
 
-			sys.stdout.write("   %s | %s | %s \n" % ( ("%d" % i).ljust(7), tag.ljust(10), textwrap.fill(description,70, subsequent_indent="".ljust(26))) );
-
-		sys.stdout.write('-' * 90);
-		sys.stdout.write('\n\n');
+		if output == 'verbose':
+			sys.stdout.write('-' * 90);
+			sys.stdout.write('\n\n');
+		elif output == 'quiet':
+			pass
+		else:
+			raise ValueError('keyword argument output can only be set to "verbose" or "quiet" mode')
 
 		if flevel >= NbrFidLev :
 			sys.stderr.write("\n ## ERROR : Level %d not defined !! \n\n" % flevel);
 			sys.exit(0);
 
-		sys.stdout.write('  -- Info : Fidelity level to be run : %d\n\n' % flevel);
+		if output == 'verbose':
+			sys.stdout.write('  -- Info : Fidelity level to be run : %d\n\n' % flevel);
+		elif output == 'quiet':
+			pass
+		else:
+			raise ValueError('keyword argument output can only be set to "verbose" or "quiet" mode')
 		
 	def SetupMission(self, config):
 	
@@ -454,7 +474,7 @@ class Nozzle:
 	
 		nozzle.DV_List = DV_List;
 	
-	def UpdateDV(self, config):
+	def UpdateDV(self, config, output='verbose'):
 		
 		nozzle = self;
 		
@@ -571,16 +591,21 @@ class Nozzle:
 				NbrChanged = NbrChanged+1;
 		
 		# --- Print summary
-		sys.stdout.write('\n%d parameter(s) updated according to %d design variable(s). Summary:\n' % (NbrChanged, nozzle.NbrDVTot));
-    
-		sys.stdout.write('-' * 79);
-		sys.stdout.write('\n%s | %s | %s\n' % ("DV name".ljust(30), "Baseline value".ljust(20),"Updated value".ljust(20)));
-		sys.stdout.write('-' * 79);
-		sys.stdout.write('\n');
-		for i in range(0,len(prt_name)):
-			sys.stdout.write('%s | %s | %s\n' % (prt_name[i].ljust(30), prt_basval[i].ljust(20),prt_newval[i].ljust(20)));
-		sys.stdout.write('-' * 79);	
-		sys.stdout.write('\n\n');
+		if output == 'verbose':
+		  sys.stdout.write('\n%d parameter(s) updated according to %d design variable(s). Summary:\n' % (NbrChanged, nozzle.NbrDVTot));
+      
+		  sys.stdout.write('-' * 79);
+		  sys.stdout.write('\n%s | %s | %s\n' % ("DV name".ljust(30), "Baseline value".ljust(20),"Updated value".ljust(20)));
+		  sys.stdout.write('-' * 79);
+		  sys.stdout.write('\n');
+		  for i in range(0,len(prt_name)):
+			  sys.stdout.write('%s | %s | %s\n' % (prt_name[i].ljust(30), prt_basval[i].ljust(20),prt_newval[i].ljust(20)));
+		  sys.stdout.write('-' * 79);	
+		  sys.stdout.write('\n\n');
+		elif output == 'quiet':
+		  pass
+		else:
+		  raise ValueError('keyword argument output can only be set to "verbose" or "quiet" mode')
 		
 	def SetupOutputFunctions (self, config):
 		
@@ -599,7 +624,7 @@ class Nozzle:
 		if 'OUTPUT_NAME' in config:
 			nozzle.Output_Name = config['OUTPUT_NAME'];
 		else :
-			sys.stderr.write("  ## ERROR : Output function file name not specified. (OUTPUT_NAME expected)\n");
+			sys.stderr.write("  ## ERROR : Output function file name not specified in config file. (OUTPUT_NAME expected)\n");
 			sys.exit(0);
 		
 				
@@ -639,19 +664,24 @@ class Nozzle:
 			sys.exit(0);
 
 
-	def WriteOutputFunctions_Plain (self):
+	def WriteOutputFunctions_Plain (self, output='verbose'):
   	
 		nozzle = self;
 
 		filename = nozzle.Output_Name;
 		
-		sys.stdout.write('\n');
-		str = " Post-processing ";
-		nch = (60-len(str))/2;
-		sys.stdout.write('-' * nch);
-		sys.stdout.write(str);
-		sys.stdout.write('-' * nch);
-		sys.stdout.write('\n\n');
+		if output == 'verbose':
+			sys.stdout.write('\n');
+			str = " Post-processing ";
+			nch = (60-len(str))/2;
+			sys.stdout.write('-' * nch);
+			sys.stdout.write(str);
+			sys.stdout.write('-' * nch);
+			sys.stdout.write('\n\n');
+		elif output == 'quiet':
+			pass
+		else:
+			raise ValueError('keyword argument output can only be set to "verbose" or "quiet" mode')
 		
 		try:
 			fil = open(filename, 'w');
@@ -659,7 +689,12 @@ class Nozzle:
 			sys.stderr.write("  ## ERROR : Could not open output file %s\n" % filename);
 			sys.exit(0);
   
-		sys.stdout.write('  -- Info : Output functions file : %s\n' % filename);
+		if output == 'verbose':
+			sys.stdout.write('  -- Info : Output functions file : %s\n' % filename);
+		elif output == 'quiet':
+			pass
+		else:
+			raise ValueError('keyword argument output can only be set to "verbose" or "quiet" mode')
 
 		for i in range(0, len(nozzle.Output_Tags)):
   		
@@ -667,13 +702,16 @@ class Nozzle:
   		
 			if tag == 'THRUST':
 				fil.write('%lf\n' % nozzle.Thrust);
-				sys.stdout.write('      Thrust = %lf\n' % nozzle.Thrust);
+				if output == 'verbose':
+					sys.stdout.write('      Thrust = %lf\n' % nozzle.Thrust);
   
 			if tag == 'VOLUME':
 				fil.write('%lf\n' % nozzle.Volume);
-				sys.stdout.write('      Volume = %lf\n' % nozzle.Volume);
+				if output == 'verbose':
+					sys.stdout.write('      Volume = %lf\n' % nozzle.Volume);
   	
-		sys.stdout.write('\n');
+		if output == 'verbose':
+			sys.stdout.write('\n');
 		fil.close();
 		
 	def WriteOutputFunctions_Dakota (self):
@@ -706,7 +744,7 @@ class Nozzle:
 		fil.close();
 		
 
-def NozzleSetup( config_name, flevel ):
+def NozzleSetup( config_name, flevel, output='verbose' ):
 	import tempfile
 		
 	if not os.path.isfile(config_name) :
@@ -746,7 +784,7 @@ def NozzleSetup( config_name, flevel ):
 	
 	# --- Parse fidelity levels
 	
-	nozzle.SetupFidelityLevels(config, flevel);
+	nozzle.SetupFidelityLevels(config, flevel, output);
 	
 	# --- Set flight regime + fluid
 	
@@ -768,7 +806,7 @@ def NozzleSetup( config_name, flevel ):
 		nozzle.ParseDV(config);
 		
 		# Update DV using values provided in input DV file
-		nozzle.UpdateDV(config);
+		nozzle.UpdateDV(config,output);
 	
 	# --- Compute inner wall's bspline from coefs and knots
 	#     It is done now because the coefs might have been updated according to the input DV file
