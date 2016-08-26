@@ -107,7 +107,7 @@ def findApparentThroat(nozzle,tol,(xInterp,Cf,Tstag,dTstagdx)):
       dTstagdx)/(2*np.interp(x,xInterp,Tstag))
       
     # Find sign changes in dMdxCoeffFunc
-    xFind = np.linspace(0.,nozzle.wall.geometry.length-1e-4,200.)
+    xFind = np.linspace(0.,nozzle.wall.geometry.length-1e-4,1000.)
     coeffFind = dMdxCoeffFunc(xFind)
     coeffFindSign = np.sign(coeffFind)
     coeffFindSignChange = ((np.roll(coeffFindSign,1) - coeffFindSign)        \
@@ -123,6 +123,7 @@ def findApparentThroat(nozzle,tol,(xInterp,Cf,Tstag,dTstagdx)):
         
         # Check to make sure each following possible throat is far enough away
         ind = signChangeLocations[minInd]
+        indKeep = ind
         for ii in range(minInd+1,signChangeLocations.size):
             currentInd = signChangeLocations[ii]
             dx = xFind[currentInd] - xFind[ind]
@@ -141,6 +142,7 @@ def findApparentThroat(nozzle,tol,(xInterp,Cf,Tstag,dTstagdx)):
             
             if( dAdxbarEst <= RHS ):
                 throatGuess = xFind[currentInd]
+                indKeep = currentInd
             
         # END OF for ii in range(minInd,signChangeLocations.size)
             
@@ -156,6 +158,16 @@ def findApparentThroat(nozzle,tol,(xInterp,Cf,Tstag,dTstagdx)):
     if( nozzle.wall.geometry.diameter(xApparentThroat) >                      \
       nozzle.wall.geometry.diameter(nozzle.wall.geometry.length)):
         xApparentThroat = nozzle.wall.geometry.length
+        
+    if( indKeep != len(xFind) and indKeep != 0 and 
+      (xApparentThroat > xFind[indKeep+1] or xApparentThroat < xFind[indKeep-1]) ):
+      print 'scipy fsolve found wrong apparent throat at %f' % xApparentThroat
+      # Reset apparent throat to a linear interpolation between the 2 points
+      # Sign change index of 1 implies sign change between indices 0 and 1
+      slope = (coeffFind[indKeep] - coeffFind[indKeep-1])/(xFind[indKeep] -   \
+        xFind[indKeep-1])
+      xApparentThroat = xFind[indKeep] - coeffFind[indKeep]/slope
+      print 'apparent throat interpolated and set to %f' % xApparentThroat
 
     return xApparentThroat
 
