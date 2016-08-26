@@ -507,7 +507,7 @@ def Quasi1D(nozzle,output='verbose'):
     dTstagdx = np.array(([-6., -6.]))
     xPositionOld = np.array(([0., nozzle.wall.geometry.length]))
     
-    maxIterations = 10 # max number of iterations to solve for Cf and Tstag
+    maxIterations = 12 # max number of iterations to solve for Cf and Tstag
     counter = 0 # used to count b/w number of iterations
     tolerance = tol["exitTempPercentError"] # tolerance for % error in
                 # exit static temperature between iterations
@@ -524,7 +524,7 @@ def Quasi1D(nozzle,output='verbose'):
         sys.stdout.write('-' * nch);
         sys.stdout.write('\n\n');
     
-        sys.stdout.write(" Running non ideal nozzle computation (target error %.3le): \n\n" % tolerance);
+        sys.stdout.write(" Running non ideal nozzle computation (target error in exit temp %.3le): \n\n" % tolerance);
         sys.stdout.write('\t %s %s\n' % ("Iter".ljust(10), "Error %".ljust(10)));
     elif output == 'quiet':
         pass
@@ -630,20 +630,19 @@ def Quasi1D(nozzle,output='verbose'):
         
         #print "%i\n" % counter
         
-        if( counter >= maxIterations ):
-            sys.stdout.write("\n WARNING: Done (max number of iterations reached)\n\n");
-            #print "Iteration limit for quasi-1D heat xfer & friction reached\n"
-            break
-        
         # Check tolerance on static temperature at nozzle exit
         percentError = abs(T[-1] - Texit_old)/T[-1]
         #print "Percent error: %e\n" % (percentError*100)
         Texit_old = T[-1]
+        
+        if( counter >= maxIterations ):
+            sys.stdout.write("\n WARNING: Done (max number of iterations (%i) reached)\n" % maxIterations);
+            sys.stdout.write("Terminated with error in exit temp: %le\n\n" % percentError);
+            #print "Iteration limit for quasi-1D heat xfer & friction reached\n"
+            break
 				
         if output == 'verbose':
             sys.stdout.write("\t %s %s\n" % (("%d" % counter).ljust(10), ("%.3le" % percentError).ljust(10)));
-				
-				
 				
         if( percentError < tolerance ):
             if output == 'verbose':

@@ -189,12 +189,13 @@ class Nozzle:
 				if tol < 1e-30 :
 					sys.stderr.write("  ## ERROR : Wrong tolerance for fidelity level %d (tagged %s)\n" % (i,tag));
 					sys.exit(0);
-				description = "Quasi 1D non ideal nozzle with tolerance set to %le." % (tol);	
 
 				if i == flevel :
 					nozzle.tolerance = tolerance.Tolerance();
-					nozzle.tolerance.setTol(tol);
+					nozzle.tolerance.setRelTol(tol);
+					nozzle.tolerance.setAbsTol(tol);
 					#nozzle.tolerance.exitTempPercentError = tol;
+					description = "ODE solver relative and absolute tolerance set to %le." % (tol);	
 
 			elif method == 'RANS' or method == 'EULER':
 				dim = cfgLvl[1];
@@ -623,7 +624,7 @@ class Nozzle:
 		if 'OUTPUT_NAME' in config:
 			nozzle.Output_Name = config['OUTPUT_NAME'];
 		else :
-			sys.stderr.write("  ## ERROR : Output function file name not specified. (OUTPUT_NAME expected)\n");
+			sys.stderr.write("  ## ERROR : Output function file name not specified in config file. (OUTPUT_NAME expected)\n");
 			sys.exit(0);
 		
 				
