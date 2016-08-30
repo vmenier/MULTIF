@@ -53,9 +53,7 @@ struct PointData { double x, y; };
 struct VertexData { int p, mb; double wb; };
 struct SegmentData { int m, ns, ms; double ws; };
 struct MaterialData { double E, nu, rho, t, w, Ta; };
-struct BoundaryData { double x, P, T; static std::vector<int> tags; };
-
-std::vector<int> BoundaryData::tags;
+struct BoundaryData { double x, P, T; };
 
 bool cmp(const BoundaryData &a, const double &b) { return a.x < b; }
 
@@ -124,14 +122,15 @@ void writeDisp(MVertex *m, FILE *fp, double scalingFactor)
   }
 }
 
-void writePres(MElement *m, FILE *fp, int elementTagType, int elementary,
-               double scalingFactor, const std::vector<BoundaryData> &boundaries)
+void writePres(MElement *m, FILE *fp, int elementTagType, std::pair<GEntity::GeomType,int> elementary,
+               double scalingFactor, const std::vector<BoundaryData> &boundaries,
+               const std::vector<std::pair<GEntity::GeomType,int> > &boundaryTags)
 {
   const char *str = m->getStringForBDF();
   if(!str) return;
 
   if(std::strcmp(str,"CTRIA3") == 0 &&
-     std::find(BoundaryData::tags.begin(), BoundaryData::tags.end(), elementary) != BoundaryData::tags.end()) {
+     std::find(boundaryTags.begin(), boundaryTags.end(), elementary) != boundaryTags.end()) {
 
     // find x-coordinate of triangle centroid
     double x = 0;
@@ -148,12 +147,13 @@ void writePres(MElement *m, FILE *fp, int elementTagType, int elementary,
   }
 }
 
-void writeTemp(MVertex *m, FILE *fp, int elementary, double scalingFactor,
-               const std::vector<BoundaryData> &boundaries)
+void writeTemp(MVertex *m, FILE *fp, std::pair<GEntity::GeomType,int> elementary, double scalingFactor,
+               const std::vector<BoundaryData> &boundaries,
+               const std::vector<std::pair<GEntity::GeomType,int> > &boundaryTags)
 {
   if(m->getIndex() < 0) return;
 
-  if(std::find(BoundaryData::tags.begin(), BoundaryData::tags.end(), elementary) != BoundaryData::tags.end()) {
+  if(std::find(boundaryTags.begin(), boundaryTags.end(), elementary) != boundaryTags.end()) {
 
     double x = m->x() * scalingFactor;
 
@@ -168,6 +168,7 @@ void writeTemp(MVertex *m, FILE *fp, int elementary, double scalingFactor,
 int writeAEROS(GModel *g,
                const std::vector<MaterialData> &materials,
                const std::vector<BoundaryData> &boundaries,
+               const std::vector<std::pair<GEntity::GeomType,int> > &boundaryTags,
                const std::string &name,
                int elementTagType=1, bool saveAll=false, double scalingFactor=1.0)
 {
@@ -243,8 +244,8 @@ int writeAEROS(GModel *g,
       int numPhys = entities[i]->physicals.size();
       if(saveAll || numPhys)
         writePres(entities[i]->getMeshElement(j),
-           fp5, elementTagType, entities[i]->tag(),
-           scalingFactor, boundaries);
+           fp5, elementTagType, std::make_pair(entities[i]->geomType(),entities[i]->tag()),
+           scalingFactor, boundaries, boundaryTags);
     }
   fclose(fp5);
 
@@ -253,17 +254,19 @@ int writeAEROS(GModel *g,
   fprintf(fp6, "TEMPERATURE\n");
   for(unsigned int i = 0; i < entities.size(); i++)
     for(unsigned int j = 0; j < entities[i]->mesh_vertices.size(); j++)
-      writeTemp(entities[i]->mesh_vertices[j], fp6, entities[i]->tag(),
-                scalingFactor, boundaries);
+      writeTemp(entities[i]->mesh_vertices[j], fp6, std::make_pair(entities[i]->geomType(),entities[i]->tag()),
+                scalingFactor, boundaries, boundaryTags);
   fclose(fp6);
-	
+
   // main file
   fprintf(fp, "STATICS\n");
   fprintf(fp, "sparse\n");
   fprintf(fp, "*\n");
   fprintf(fp, "OUTPUT\n");
   fprintf(fp, "gdisplac \"DISP\" 1\n");
-  fprintf(fp, "stressvm \"STRESS\" 1\n");
+  fprintf(fp, "stressvm \"STRESS\" 1 lower\n");
+  fprintf(fp, "stressvm \"THERMAL_STRESS\" 1 lower thermal\n");
+  fprintf(fp, "stressvm \"MECHANICAL_STRESS\" 1 lower mechanical\n");
   fprintf(fp, "*\n");
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "GEOMETRY.txt");
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "TOPOLOGY.txt");
@@ -304,6 +307,8 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
   std::vector<VertexData>::const_iterator vertexIt = vertices.begin();
   GVertex *vertex1 = m->addVertex((*pointIt1)[0], (*pointIt1)[1], (*pointIt1)[2], lc);
 
+  std::vector<std::pair<GEntity::GeomType,int> > boundaryTags;
+
   // loop over the segments
   for(std::vector<SegmentData>::const_iterator segmentIt = segments.begin(); segmentIt != segments.end(); ++segmentIt, ++vertexIt) {
 
@@ -328,8 +333,14 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
       }
       //main shell:
       face = m->revolve(edge, p1, p2, angle);
+      std::list<GEdge*> edges = face->cast2Face()->edges();
+      for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
+        boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
+        boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
+        boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
+      }
       face->addPhysicalEntity(mm+1);
-      BoundaryData::tags.push_back(face->tag());
+      boundaryTags.push_back(std::make_pair(face->geomType(),face->tag()));
 
       std::vector<double> p3(3), p4(3); // points defining radial unit vector
       p3[0] = edge->getBeginVertex()->x(); p3[1] = p3[2] = 0;
@@ -376,14 +387,14 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
   }
 
   m->mesh(dimension);
-	
+
   double tolerance = lc/50;
   m->removeDuplicateMeshVertices(tolerance);
 
   //m->writeGEO("nozzle.geo");
   //m->writeMSH("nozzle.msh");
-	//m->writeMESH("nozzlefem.mesh");
-  writeAEROS(m, materials, boundaries, "nozzle.aeros", 2);
+  //m->writeMESH("nozzlefem.mesh");
+  writeAEROS(m, materials, boundaries, boundaryTags, "nozzle.aeros", 2);
 
   delete m;
   GmshFinalize();
