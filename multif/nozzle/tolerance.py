@@ -12,6 +12,8 @@ class Tolerance:
 				self.solverAbsTol                 = 1e-10
 				self.solverApparentThroatLocation = 1e-6
         
-    def setTol(self, tol):
+    def setRelTol(self, tol):
         self.solverRelTol = tol;
+        
+    def setAbsTol(self, tol):
         self.solverAbsTol = tol;
