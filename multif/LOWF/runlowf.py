@@ -693,8 +693,8 @@ def Quasi1D(nozzle,output='verbose'):
       (ro**2. - ri**2.)*np.log(ro/ri))
     stressThermalTangential = stressThermalRadial
     # Estimate vonMises, even though not really valid for composites
-    #stressVonMises = np.sqrt( (stressHoop+stressThermalTangential)**2 -      \
-    #   stressHoop*stressThermalRadial + stressThermalRadial**2 )
+    stressVonMises = np.sqrt( (stressHoop+stressThermalTangential)**2 -      \
+       stressHoop*stressThermalRadial + stressThermalRadial**2 )
     stressMaxPrincipal = stressHoop + stressThermalTangential
     stressPrincipal = (stressMaxPrincipal, stressThermalRadial,              \
       np.zeros(xPosition.size))
@@ -715,7 +715,8 @@ def Quasi1D(nozzle,output='verbose'):
       Tstag[-1]/Tstag[0], status)
     stressTuple = (stressHoop, stressThermalRadial, stressThermalTangential, \
       stressMaxPrincipal, stressPrincipal)
-      
+    
+		
     return (xPosition, flowTuple, heatTuple, geoTuple, stressTuple,          \
       performanceTuple)
     
@@ -739,6 +740,10 @@ def Run (nozzle,output='verbose'):
 	
 	nozzle.Thrust = performanceTuple[1];
 	nozzle.Volume = performanceTuple[0];
+	nozzle.Mechanical_Stress = 0;
+	
+	#for i in range(0,10):
+	#	print stressTuple[0][i], stressTuple[1][i] , stressTuple[2][i] , stressTuple[3][i] 
 	
 	
 

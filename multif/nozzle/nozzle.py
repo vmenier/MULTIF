@@ -195,7 +195,7 @@ class Nozzle:
 					nozzle.tolerance.setRelTol(tol);
 					nozzle.tolerance.setAbsTol(tol);
 					#nozzle.tolerance.exitTempPercentError = tol;
-					description = "ODE solver relative and absolute tolerance set to %le." % (tol);	
+				description = "ODE solver relative and absolute tolerance set to %le." % (tol);	
 
 			elif method == 'RANS' or method == 'EULER':
 				dim = cfgLvl[1];
@@ -616,6 +616,9 @@ class Nozzle:
 		nozzle.Output_Volume = 0 ;
 		nozzle.Output_Thrust = 0 ;
 		
+		nozzle.thermal_stress    = 0.0;
+		nozzle.mechanical_stress = 0.0;
+		
 		nozzle.GetOutput = dict();
 		
 		nozzle.GetOutput['VOLUME'] = 0;
@@ -644,7 +647,7 @@ class Nozzle:
 				key = hdl[i].strip();
 						
 				if (
-				key == 'VOLUME' or key == 'THRUST'
+				key == 'VOLUME' or key == 'THRUST' or 'MECHANICAL_STRESS' or 'THERMAL_STRESS'
 				):
 					nozzle.GetOutput[key] = 1;
 					nozzle.Output_Tags.append(key);
@@ -739,7 +742,13 @@ class Nozzle:
 			if tag == 'VOLUME':
 				fil.write('%lf volume\n' % nozzle.Volume);
 				#sys.stdout.write(' %lf \n' % nozzle.Volume);
-	
+			
+			if tag == 'MECHANICAL_STRESS':
+				fil.write('%lf mechanical_stress\n' % nozzle.mechanical_stress);
+			
+			if tag == 'THERMAL_STRESS':
+				fil.write('%lf thermal_stress\n' % nozzle.thermal_stress);
+		
 		sys.stdout.write('\n');
 		fil.close();
 		

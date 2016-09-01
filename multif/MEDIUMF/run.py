@@ -28,6 +28,10 @@ def Run( nozzle ):
 	
 	curDir = os.path.dirname(os.path.realpath(__file__));
 
+	## HACK
+	#AEROSPostProcessing(nozzle);
+	#return;
+
 
 	if nozzle.runDir != '':
 		os.chdir(nozzle.runDir);
