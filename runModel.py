@@ -48,6 +48,10 @@ def main():
 	
 	nozzle = multif.nozzle.NozzleSetup( options.filename, options.flevel );
 	
+	### HACK
+	#multif.MEDIUMF.AEROSPostProcessing(nozzle);
+	#sys.exit(1);
+	
 	if nozzle.method == 'NONIDEALNOZZLE' :
 		multif.LOWF.Run(nozzle);
 	elif nozzle.method == 'EULER' or nozzle.method == 'RANS':

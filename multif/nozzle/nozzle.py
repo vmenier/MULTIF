@@ -39,10 +39,13 @@ class Nozzle:
 		coefs_size = nozzle.coefs_size;
 
 		NbrDVTot = 0;		
+		
 				
 		if 'DV_LIST' in config:
 
-			dv_keys = ('WALL', 'INLET_TSTAG', 'INLET_PSTAG', 'THERMAL_CONDUCTIVITY', 'THERMAL_DIFFUSIVITY', 'ELASTIC_MODULUS', 'ATM_PRES', 'ATM_TEMP');
+			dv_keys = ('WALL', 'INLET_TSTAG', 'INLET_PSTAG', 'THERMAL_CONDUCTIVITY', \
+			'THERMAL_DIFFUSIVITY', 'ELASTIC_MODULUS', 'ATM_PRES', 'ATM_TEMP', \
+			'LOWER_WALL_THICKNESS', 'UPPER_WALL_THICKNESS');
 
 			hdl = config['DV_LIST'].strip('()');
 			hdl = hdl.split(",");
@@ -51,13 +54,12 @@ class Nozzle:
 			
 			nozzle.DV_Tags = []; # tags: e.g. wall, tstag etc.
 			nozzle.DV_Head = []; # correspondance btw DV_Tags and DV_List
-
 			nozzle.wall_dv = []; # 
 			
 			for i in range(0,2*dv_keys_size,2):
 				key = hdl[i].strip();
 				NbrDV = int(hdl[i+1]);
-				
+								
 				if key == 'WALL' :
 					nozzle.DV_Tags.append(key);
 					nozzle.DV_Head.append(NbrDVTot);
@@ -97,6 +99,24 @@ class Nozzle:
 					else :
 						sys.stderr.write('  ## ERROR : Expected GEOM_WALL_COEFS_DV.\n');
 						sys.exit(0);
+				
+				elif ( key == 'LOWER_WALL_THICKNESS' ):
+					
+					if NbrDV != len(nozzle.lower_wall_thickness) :
+						sys.stderr.write('  ## ERROR : Inconsistent number of DV for lower wall thickness definition.\n');
+						sys.exit(0);
+					
+					nozzle.DV_Tags.append(key);
+					nozzle.DV_Head.append(NbrDVTot);
+
+				elif ( key == 'UPPER_WALL_THICKNESS' ):
+					
+					if NbrDV != len(nozzle.upper_wall_thickness) :
+						sys.stderr.write('  ## ERROR : Inconsistent number of DV for upper wall thickness definition.\n');
+						sys.exit(0);
+					
+					nozzle.DV_Tags.append(key);
+					nozzle.DV_Head.append(NbrDVTot);
 				
 				elif (
 				key == 'INLET_TSTAG' or key == 'INLET_PSTAG' 
@@ -358,7 +378,64 @@ class Nozzle:
 		
 		nozzle.wall = component.AxisymmetricWall();
 		nozzle.wall.material = material.Material(thermalConductivity,coeffThermalExpansion,elasticModulus,poissonRatio);
+	
+	def ParseThickness(self, config, key):
+		nozzle = self;
 		
+		loc_name = '%s_WALL_THICKNESS_LOCATIONS' % key;
+		val_name = '%s_WALL_THICKNESS_VALUES' % key;
+		
+		wall_keys = (loc_name, val_name);
+		
+		if all (key in config for key in wall_keys):
+    	
+			hdl = config[loc_name].strip('()');
+			hdl = hdl.split(",");
+  
+			size_loc = len(hdl);
+  		
+			wall_thickness = [[0 for i in range(2)] for j in range(size_loc)];
+						
+			for i in range(0,size_loc):
+				wall_thickness[i][0] = float(hdl[i]);
+				if wall_thickness[i][0] < 0.0 or wall_thickness[i][0] > 1.0:
+					sys.stderr.write('\n ## ERROR : Invalid wall thickness definition (%s).\n' % key);
+					sys.stderr.write('              All values must be between 0 and 1.\n\n');
+					sys.exit(0);
+			
+			hdl = config[val_name].strip('()');
+			hdl = hdl.split(",");
+			size_val = len(hdl);
+			
+			if size_val != size_loc :
+				sys.stderr.write('\n ## ERROR : Inconsistent wall thickness definition (%s).\n' % key);
+				sys.stderr.write('              Same number of locations and values required.\n\n');
+				sys.exit(0);
+			
+			for i in range(0,size_val):
+				wall_thickness[i][1] = float(hdl[i]);
+			
+			if wall_thickness[0][0] != 0.0 or wall_thickness[size_val-1][0] != 1.0:
+				sys.stderr.write('\n ## ERROR : Invalid wall thickness definition (%s).\n' % key);
+				sys.stderr.write('              First and last loc values must be 0 and 1 resp.\n\n');
+				sys.exit(0);
+				
+					
+			return wall_thickness;
+		
+		
+	
+	def SetupWallThickness(self, config):
+  
+		nozzle = self;
+  	
+		nozzle.lower_wall_thickness = nozzle.ParseThickness(config, "LOWER");
+		#print lower_wall_thickness
+		
+		nozzle.upper_wall_thickness = nozzle.ParseThickness(config, "UPPER");
+		#print upper_wall_thickness
+		
+
 	def SetupInnerWall (self, config):
 		
 		nozzle = self;
@@ -382,8 +459,7 @@ class Nozzle:
 
 			nozzle.xwall = x;
 			nozzle.ywall = y;
-
-    
+			
 		#coefs = np.array(([0.0000, 0.0000, 0.1500, 0.1700, 
 	  #    0.1900, 0.2124, 0.2269, 0.2734, 0.3218, 0.3218, 0.3230, 0.3343, 0.3474, 
 	  #    0.4392, 0.4828, 0.5673, 0.6700, 0.6700],[0.3255, 0.3255, 0.3255, 
@@ -396,11 +472,38 @@ class Nozzle:
 			coefsnp[0][i] = coefs[i];
 			coefsnp[1][i] = coefs[i+coefs_size/2];
     
-		thicknessNodeArray = np.array(([0., 0.33, 0.67],[0.01, 0.01, 0.01]));
-    
+		#thicknessNodeArray = np.array(([0., 0.33, 0.67],[0.01, 0.01, 0.01]));
+		
+		
 		#nozzle.wall.geometry = geometry.Bspline
 		nozzle.wall.geometry = geometry.Bspline(coefsnp);
-		nozzle.wall.thickness = geometry.PiecewiseLinear(thicknessNodeArray);
+		
+		#print thicknessNodeArray;
+		
+		# --- LOWER WALL THICKNESS
+		
+		size_thickness = len(nozzle.lower_wall_thickness);
+		thicknessNodeArray = np.zeros(shape=(2,size_thickness))
+		
+		for i in range(size_thickness):
+			thicknessNodeArray[0][i] = nozzle.lower_wall_thickness[i][0]*nozzle.length;
+			thicknessNodeArray[1][i] = nozzle.lower_wall_thickness[i][1];
+		
+		nozzle.wall.lower_thickness = geometry.PiecewiseLinear(thicknessNodeArray);
+
+		# --- UPPER WALL THICKNESS
+		
+		size_thickness = len(nozzle.upper_wall_thickness);
+		thicknessNodeArray = np.zeros(shape=(2,size_thickness))
+		
+		for i in range(size_thickness):
+			thicknessNodeArray[0][i] = nozzle.upper_wall_thickness[i][0]*nozzle.length;
+			thicknessNodeArray[1][i] = nozzle.upper_wall_thickness[i][1];
+		
+		nozzle.wall.upper_thickness = geometry.PiecewiseLinear(thicknessNodeArray);
+		
+		
+		nozzle.wall.thickness = nozzle.wall.lower_thickness;
 			
 
 		#sys.exit(1);
@@ -582,6 +685,28 @@ class Nozzle:
 				prt_newval.append('%.2lf'% nozzle.DV_List[id_dv]);
 				
 				nozzle.environment.T = nozzle.DV_List[id_dv];
+				
+			elif Tag == 'LOWER_WALL_THICKNESS':
+				
+				for i in range(NbrDV):
+					id_dv = nozzle.DV_Head[iTag]+i;
+					
+					prt_name.append('Lower wall thickness t=%.3lf' % nozzle.lower_wall_thickness[i][0]);
+					prt_basval.append('%.4lf'% nozzle.lower_wall_thickness[i][1]);
+					prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+					
+					nozzle.lower_wall_thickness[i][1] = nozzle.DV_List[id_dv];
+					
+			elif Tag == 'UPPER_WALL_THICKNESS':
+      
+				for i in range(NbrDV):
+					id_dv = nozzle.DV_Head[iTag]+i;
+      
+					prt_name.append('Upper wall thickness t=%.3lf' % nozzle.upper_wall_thickness[i][0]);
+					prt_basval.append('%.4lf'% nozzle.upper_wall_thickness[i][1]);
+					prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+      
+					nozzle.upper_wall_thickness[i][1] = nozzle.DV_List[id_dv];
 			
 			else :
 				sys.stderr.write("  ## Error : Unknown tag name %s\n" % Tag);
@@ -802,6 +927,10 @@ def NozzleSetup( config_name, flevel, output='verbose' ):
 	# --- Setup Bspline coefficients 
 	
 	nozzle.SetupBSplineCoefs(config);
+	
+	# --- Setup wall thickness
+	
+	nozzle.SetupWallThickness(config);
 	
 	# --- Setup DV definition : 
 		

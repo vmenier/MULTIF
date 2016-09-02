@@ -20,6 +20,15 @@ def runAEROS ( nozzle ):
 	
 	SolExtract, Size, idHeader  = ExtractSolutionAtWall(nozzle);
 	
+	# --- Wall thicknesses
+	
+	xtab = np.linspace(0, nozzle.length, num=10);
+	for i in range(len(xtab)):
+		x = xtab[i];
+		hl = nozzle.wall.lower_thickness.radius(x);
+		hu = nozzle.wall.upper_thickness.radius(x);
+		print "x = %lf lower thickness = %lf upper thickness = %lf " % (x, hl, hu);
+	
 	# --- Material properties
 	
 	#self.k = k # W/m*K, thermal conductivity of wall
@@ -71,6 +80,7 @@ def runAEROS ( nozzle ):
 	
 def AEROSPostProcessing ( nozzle ):
 	
+		
 	# --- Open MECHANICAL_STRESS
 	
 	try:

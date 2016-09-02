@@ -31,11 +31,9 @@ def Run( nozzle ):
 	## HACK
 	#AEROSPostProcessing(nozzle);
 	#return;
-
-
+	
 	if nozzle.runDir != '':
 		os.chdir(nozzle.runDir);
-	
 	
 	# --- Run CFD
 	
