@@ -420,20 +420,29 @@ class Nozzle:
 				sys.stderr.write('              First and last loc values must be 0 and 1 resp.\n\n');
 				sys.exit(0);
 				
-					
 			return wall_thickness;
 		
+		else:
+			raise; 
 		
 	
 	def SetupWallThickness(self, config):
   
 		nozzle = self;
   	
-		nozzle.lower_wall_thickness = nozzle.ParseThickness(config, "LOWER");
-		#print lower_wall_thickness
+		try :
+			nozzle.lower_wall_thickness = nozzle.ParseThickness(config, "LOWER");
+			#print lower_wall_thickness
+		except:
+			nozzle.lower_wall_thickness = [[0.0,0.01], [1.0, 0.01]];
+			
+		#print nozzle.lower_wall_thickness;
 		
-		nozzle.upper_wall_thickness = nozzle.ParseThickness(config, "UPPER");
-		#print upper_wall_thickness
+		try:
+			nozzle.upper_wall_thickness = nozzle.ParseThickness(config, "UPPER");
+		except:
+			nozzle.lower_wall_thickness = [[0.0,0.01], [1.0, 0.01]];
+		#print nozzle.upper_wall_thickness
 		
 
 	def SetupInnerWall (self, config):
