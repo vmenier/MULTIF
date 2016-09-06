@@ -606,6 +606,7 @@ def Quasi1D(nozzle,output='verbose'):
           
         # Estimate interior wall temperature
         Qw = nozzle.fluid.Cp(T)*density*U*D*dTstagdx/4.
+				
         Tinside = Tstag + Qw/hf # interior wall temperature
         #recoveryFactor = (Tinside/T - 1)/((gam-1)*M2/2)
         

@@ -324,6 +324,13 @@ class Nozzle:
 		gasCst    = 287.06;
 		nozzle.fluid = fluid.Fluid(heatRatio, gasCst);
 		
+		# --- Setup convergence parameter
+		
+		if 'SU2_CONVERGENCE_ORDER' in config:
+			nozzle.su2_convergence_order = config['SU2_CONVERGENCE_ORDER'];
+		else:
+			nozzle.su2_convergence_order = 3;
+		
 	def SetupBSplineCoefs(self, config):
 		
 		nozzle = self;
@@ -430,6 +437,9 @@ class Nozzle:
   
 		nozzle = self;
   	
+		nozzle.upper_wall_thickness = [[0.0,0.01], [1.0, 0.01]];
+		nozzle.lower_wall_thickness = [[0.0,0.01], [1.0, 0.01]];
+
 		try :
 			nozzle.lower_wall_thickness = nozzle.ParseThickness(config, "LOWER");
 			#print lower_wall_thickness
