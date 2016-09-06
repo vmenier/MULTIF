@@ -28,7 +28,7 @@ def CheckSU2Version(nozzle):
 	
 	try :
 		cmd = [su2_exe];
-		out = subprocess.check_output(cmd, stderr=subprocess.STDOUT);
+		out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=None);
 	except subprocess.CalledProcessError as err: 
 		if ( 'DARPA' in err.output ):
 			sys.stdout.write('Check SU2 version : OK\n');
