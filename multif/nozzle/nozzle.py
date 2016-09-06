@@ -856,6 +856,12 @@ class Nozzle:
 				fil.write('%0.16f\n' % nozzle.Volume);
 				if output == 'verbose':
 					sys.stdout.write('      Volume = %0.16f\n' % nozzle.Volume);
+					
+			if tag == 'MECHANICAL_STRESS':
+				fil.write('%0.16f mechanical_stress\n' % nozzle.mechanical_stress);
+			
+			if tag == 'THERMAL_STRESS':
+				fil.write('%0.16f thermal_stress\n' % nozzle.thermal_stress);					
   	
 		if output == 'verbose':
 			sys.stdout.write('\n');
