@@ -386,7 +386,7 @@ def bSplineGeometryC(x,bSpline):
 #==============================================================================
 def wallVolume(innerWall,thickness):
     
-    xVolume = np.linspace(0,innerWall.length,1000)
+    xVolume = np.linspace(0,innerWall.length,2000)
     volumeIntegrand = np.pi*innerWall.diameter(xVolume)*                     \
       thickness.radius(xVolume) + np.pi*thickness.radius(xVolume)**2
     volume = scipy.integrate.trapz(volumeIntegrand,xVolume)
