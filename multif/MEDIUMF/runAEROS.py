@@ -20,6 +20,15 @@ def runAEROS ( nozzle ):
 	
 	SolExtract, Size, idHeader  = ExtractSolutionAtWall(nozzle);
 	
+	# --- Wall thicknesses
+	
+	xtab = np.linspace(0, nozzle.length, num=10);
+	for i in range(len(xtab)):
+		x = xtab[i];
+		hl = nozzle.wall.lower_thickness.radius(x);
+		hu = nozzle.wall.upper_thickness.radius(x);
+		print "x = %lf lower thickness = %lf upper thickness = %lf " % (x, hl, hu);
+	
 	# --- Material properties
 	
 	#self.k = k # W/m*K, thermal conductivity of wall
@@ -46,7 +55,7 @@ def runAEROS ( nozzle ):
 	## --- How to get x, y, P, T :
 	#for i in range(0,Size[0]):
 	#	print "VER %d : (x,y) = (%lf, %lf) , Pres = %lf, Temp = %lf" % (i, SolExtract[i][0], SolExtract[i][1], SolExtract[i][iPres], SolExtract[i][iTemp]);
-		
+	
 	f1 = open("NOZZLE.txt", 'w');
 	print >> f1, "%d %d %d %f" % (Size[0], 2, 1, 0.02);
 	for i in range(0,Size[0]):
@@ -66,3 +75,51 @@ def runAEROS ( nozzle ):
 	_nozzle_module.generate();
 	
 	os.system("aeros nozzle.aeros")
+	
+	AEROSPostProcessing ( nozzle );
+	
+def AEROSPostProcessing ( nozzle ):
+	
+		
+	# --- Open MECHANICAL_STRESS
+	
+	try:
+		fil = open("MECHANICAL_STRESS", "r" );
+	except IOError:
+		sys.stderr.write('## ERROR : UNABLE TO OPEN MECHANICAL_STRESS FILE. RETURN 0.\n');
+		nozzle.mechanical_stress = 0;
+		return;
+	
+	lines = [line.split() for line in fil];
+	
+	max_mech = 0.0;
+	for i in range(2,len(lines)):
+		max_mech = max(float(lines[i][0]), max_mech);
+		
+	nozzle.mechanical_stress = max_mech;
+	
+	fil.close();
+	
+	# --- Open THERMAL_STRESS
+	
+	try:
+		fil = open("THERMAL_STRESS", "r" );
+	except IOError:
+		sys.stderr.write('## ERROR : UNABLE TO OPEN THERMAL_STRESS FILE. RETURN 0.\n');
+		nozzle.thermal_stress = 0;
+		return;
+	
+	lines = [line.split() for line in fil];
+	
+	max_therm = 0.0;
+	for i in range(2,len(lines)):
+		max_therm = max(float(lines[i][0]), max_therm);
+	
+	nozzle.thermal_stress = max_therm;
+	
+	fil.close();
+	
+	
+	
+	
+	

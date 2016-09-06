@@ -20,8 +20,11 @@ class optionsmesh:
 def GenerateNozzleMesh (nozzle):
 	import tempfile
 	
-	hdl, nozzle.tmpGeoNam = tempfile.mkstemp(suffix='.geo');
-	hdl, nozzle.tmpMshNam = tempfile.mkstemp(suffix='.mesh');
+	#hdl, nozzle.tmpGeoNam = tempfile.mkstemp(suffix='.geo');
+	#hdl, nozzle.tmpMshNam = tempfile.mkstemp(suffix='.mesh');
+	
+	nozzle.tmpGeoNam = 'nozzle_tmp.geo';
+	nozzle.tmpMshNam = 'nozzle_tmp.mesh';
 	
 	# --- Write geo file
 	
@@ -58,7 +61,7 @@ def CallGmsh (nozzle):
 	gmsh_executable = 'gmsh';
 	try :
 		cmd = [gmsh_executable, '-2', nozzle.tmpGeoNam, '-o', nozzle.tmpMshNam];
-		out = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+		out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=None)
 	except:
 		raise;
 	

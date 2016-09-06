@@ -140,7 +140,7 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
 	U0  = M0*np.sqrt(Gam*Rs*T0);
 	
 	for iVer in range(1, NbrVer) :
-				
+		
 		y    = SolExtract[iVer][1];
 		rho  = SolExtract[iVer][2+iCons1];
 		rhoU = SolExtract[iVer][2+iCons2];

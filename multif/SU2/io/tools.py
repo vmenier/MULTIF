@@ -37,7 +37,7 @@ import os, time, sys, pickle, errno, copy
 import shutil, glob
 
 sys.path.append('/usr/local/bin/SU2_2/');
-from SU2.util import ordered_bunch
+from ..util import ordered_bunch
 
 # -------------------------------------------------------------------
 #  Read SU2_DOT Gradient Values
