@@ -25,7 +25,6 @@ import geometry
 from .. import _meshutils_module
 import ctypes
 import numpy as np
-import pylab
 
 from parserDV import *
 
