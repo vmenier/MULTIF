@@ -1,6 +1,5 @@
 import _meshutils_module
 import numpy as np
-import pylab
 
 #_meshutils_module.hello_meshutils(2);
 
