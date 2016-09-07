@@ -606,6 +606,7 @@ def Quasi1D(nozzle,output='verbose'):
           
         # Estimate interior wall temperature
         Qw = nozzle.fluid.Cp(T)*density*U*D*dTstagdx/4.
+				
         Tinside = Tstag + Qw/hf # interior wall temperature
         #recoveryFactor = (Tinside/T - 1)/((gam-1)*M2/2)
         
@@ -693,11 +694,14 @@ def Quasi1D(nozzle,output='verbose'):
       (ro**2. - ri**2.)*np.log(ro/ri))
     stressThermalTangential = stressThermalRadial
     # Estimate vonMises, even though not really valid for composites
-    #stressVonMises = np.sqrt( (stressHoop+stressThermalTangential)**2 -      \
-    #   stressHoop*stressThermalRadial + stressThermalRadial**2 )
+    stressVonMises = np.sqrt( (stressHoop+stressThermalTangential)**2 -      \
+       stressHoop*stressThermalRadial + stressThermalRadial**2 )
     stressMaxPrincipal = stressHoop + stressThermalTangential
     stressPrincipal = (stressMaxPrincipal, stressThermalRadial,              \
       np.zeros(xPosition.size))
+    nozzle.mechanical_stress = np.max(stressHoop)
+    nozzle.thermal_stress = np.max(stressThermalRadial)
+    nozzle.max_stress = np.max(stressMaxPrincipal)
       
     # Calculate cycles to failure, Nf
     Nf = nozzlemod.lifetime.estimate(Tinside,stressMaxPrincipal,1)
@@ -715,7 +719,8 @@ def Quasi1D(nozzle,output='verbose'):
       Tstag[-1]/Tstag[0], status)
     stressTuple = (stressHoop, stressThermalRadial, stressThermalTangential, \
       stressMaxPrincipal, stressPrincipal)
-      
+    
+		
     return (xPosition, flowTuple, heatTuple, geoTuple, stressTuple,          \
       performanceTuple)
     
@@ -739,6 +744,10 @@ def Run (nozzle,output='verbose'):
 	
 	nozzle.Thrust = performanceTuple[1];
 	nozzle.Volume = performanceTuple[0];
+	nozzle.Mechanical_Stress = 0;
+	
+	#for i in range(0,10):
+	#	print stressTuple[0][i], stressTuple[1][i] , stressTuple[2][i] , stressTuple[3][i] 
 	
 	
 

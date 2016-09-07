@@ -28,7 +28,7 @@ def CheckSU2Version(nozzle):
 	
 	try :
 		cmd = [su2_exe];
-		out = subprocess.check_output(cmd, stderr=subprocess.STDOUT);
+		out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=None);
 	except subprocess.CalledProcessError as err: 
 		if ( 'DARPA' in err.output ):
 			sys.stdout.write('Check SU2 version : OK\n');
@@ -64,6 +64,8 @@ def SetupConfig (solver_options):
 	
 	mesh_name = solver_options.mesh_name;
 	restart_name = solver_options.restart_name;
+	
+	convergence_order = solver_options.convergence_order;
 	
 	# --- SU2_RUN
 	
@@ -131,7 +133,7 @@ def SetupConfig (solver_options):
 	# --- Convergence parameters
 	
 	config.CONV_CRITERIA= 'RESIDUAL';
-	config.RESIDUAL_REDUCTION= '3';
+	config.RESIDUAL_REDUCTION= convergence_order;
 	config.RESIDUAL_MINVAL= '-12';
 	config.STARTCONV_ITER= '25';
 	
@@ -178,6 +180,8 @@ def runSU2 ( nozzle ):
 	
 	solver_options.mesh_name    = nozzle.mesh_name;
 	solver_options.restart_name = nozzle.restart_name;
+	
+	solver_options.convergence_order = nozzle.su2_convergence_order;
 		
 	GenerateNozzleMesh(nozzle);
 	
