@@ -13,7 +13,6 @@ import scipy.integrate
 
 from .. import _meshutils_module
 import ctypes
-import pylab
 
 class Bspline():
     def __init__(self, coefs): # assumes 3rd degree B-spline
