@@ -5,7 +5,6 @@ from optparse import OptionParser
 import textwrap
 import ctypes
 import numpy as np
-import pylab
 
 import multif
 
