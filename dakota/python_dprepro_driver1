@@ -1,4 +1,4 @@
 #!/bin/bash
 
 dprepro $1 optim_inputDV_template.cfg optim_inputDV.cfg
-python runModel.py -f input.cfg -l 1
+python runModel.py -f optim_inputDV.cfg -l 1
