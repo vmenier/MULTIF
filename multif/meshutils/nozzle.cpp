@@ -386,12 +386,14 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
     vertex1 = vertex2;
   }
 
+	
+  m->writeGEO("nozzle.geo");
+
   m->mesh(dimension);
 
   double tolerance = lc/50;
   m->removeDuplicateMeshVertices(tolerance);
 
-  //m->writeGEO("nozzle.geo");
   //m->writeMSH("nozzle.msh");
   //m->writeMESH("nozzlefem.mesh");
   writeAEROS(m, materials, boundaries, boundaryTags, "nozzle.aeros", 2);

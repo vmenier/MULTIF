@@ -87,7 +87,7 @@ def AEROSPostProcessing ( nozzle ):
 		fil = open("MECHANICAL_STRESS", "r" );
 	except IOError:
 		sys.stderr.write('## ERROR : UNABLE TO OPEN MECHANICAL_STRESS FILE. RETURN 0.\n');
-		nozzle.mechanical_stress = 0;
+		nozzle.max_mechanical_stress = 0;
 		return;
 	
 	lines = [line.split() for line in fil];
@@ -96,7 +96,7 @@ def AEROSPostProcessing ( nozzle ):
 	for i in range(2,len(lines)):
 		max_mech = max(float(lines[i][0]), max_mech);
 		
-	nozzle.mechanical_stress = max_mech;
+	nozzle.max_mechanical_stress = max_mech;
 	
 	fil.close();
 	
@@ -106,7 +106,7 @@ def AEROSPostProcessing ( nozzle ):
 		fil = open("THERMAL_STRESS", "r" );
 	except IOError:
 		sys.stderr.write('## ERROR : UNABLE TO OPEN THERMAL_STRESS FILE. RETURN 0.\n');
-		nozzle.thermal_stress = 0;
+		nozzle.max_thermal_stress = 0;
 		return;
 	
 	lines = [line.split() for line in fil];
@@ -115,7 +115,7 @@ def AEROSPostProcessing ( nozzle ):
 	for i in range(2,len(lines)):
 		max_therm = max(float(lines[i][0]), max_therm);
 	
-	nozzle.thermal_stress = max_therm;
+	nozzle.max_thermal_stress = max_therm;
 	
 	fil.close();
 	

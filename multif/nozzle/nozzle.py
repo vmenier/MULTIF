@@ -760,8 +760,8 @@ class Nozzle:
 		nozzle.Output_Volume = 0 ;
 		nozzle.Output_Thrust = 0 ;
 		
-		nozzle.thermal_stress    = 0.0;
-		nozzle.mechanical_stress = 0.0;
+		nozzle.max_thermal_stress    = 0.0;
+		nozzle.max_mechanical_stress = 0.0;
 		
 		nozzle.GetOutput = dict();
 		
@@ -888,10 +888,10 @@ class Nozzle:
 				#sys.stdout.write(' %lf \n' % nozzle.Volume);
 			
 			if tag == 'MECHANICAL_STRESS':
-				fil.write('%lf mechanical_stress\n' % nozzle.mechanical_stress);
+				fil.write('%lf mechanical_stress\n' % nozzle.max_mechanical_stress);
 			
 			if tag == 'THERMAL_STRESS':
-				fil.write('%lf thermal_stress\n' % nozzle.thermal_stress);
+				fil.write('%lf thermal_stress\n' % nozzle.max_thermal_stress);
 		
 		sys.stdout.write('\n');
 		fil.close();

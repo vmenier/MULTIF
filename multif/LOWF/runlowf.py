@@ -741,7 +741,7 @@ def Run (nozzle,output='verbose'):
 	
 	nozzle.Thrust = performanceTuple[1];
 	nozzle.Volume = performanceTuple[0];
-	nozzle.Mechanical_Stress = 0;
+	nozzle.max_mechanical_stress = 0;
 	
 	#for i in range(0,10):
 	#	print stressTuple[0][i], stressTuple[1][i] , stressTuple[2][i] , stressTuple[3][i] 

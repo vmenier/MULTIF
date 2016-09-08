@@ -88,6 +88,9 @@ def CFD(config):
 
     #config['SU2_RUN'] = 'toto';
 		
+    #print "SU2_RUN = %s" %  config['SU2_RUN'];
+    #sys.exit(1);
+		
     base='';
 
     if 'SU2_RUN' in config:
@@ -95,7 +98,7 @@ def CFD(config):
         base = "{0}".format(config['SU2_RUN']);
 		
     config.pop("SU2_RUN", None);
-		
+				
     konfig = copy.deepcopy(config)
     
     direct_diff = not konfig.get('DIRECT_DIFF',"") in ["NONE", ""]
