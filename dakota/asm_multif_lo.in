@@ -1,0 +1,55 @@
+# Usage:
+# dakota -i asm_multif_lo.in -o asm_multif_lo.out
+
+environment
+  output_precision = 16
+  method_pointer = 'ID_METHOD'
+
+method,
+  id_method = 'ID_METHOD'
+  sampling
+    model_pointer = 'SUBSPACE'
+    seed = 24620
+    samples = 1
+    sample_type random
+  output debug
+
+model
+  subspace
+    id_model = 'SUBSPACE'
+    actual_model_pointer = 'FULLSPACE'
+    initial_samples  5000
+   truncation_method constantine
+  normalization gradient
+
+model 
+  single
+  id_model = 'FULLSPACE'
+    variables_pointer = 'ID_V'  
+    interface_pointer = 'ID_I'  
+    responses_pointer = 'ID_R' 
+
+variables
+  id_variables = 'ID_V'
+  uniform_uncertain = 15
+    lower_bounds      =  897.75        8.064                  57000      248.9      7.38e10           1.8e-6                216000        0.0880 0.0960 0.1040 0.1120 0.0800 0.0880 0.0880 0.0880
+    upper_bounds      =  992.25        9.856                  63000      275.1      9.02e10           2.2e-6                264000        0.1320 0.1440 0.1560 0.1680 0.1200 0.1320 0.1320 0.1320
+    descriptors       = 'INLET_TSTAG' 'THERMAL_CONDUCTIVITY' 'ATM_PRES' 'ATM_TEMP' 'ELASTIC_MODULUS' 'THERMAL_DIFFUSIVITY' 'INLET_PSTAG' 'LWT1' 'LWT2' 'LWT3' 'LWT4' 'UWT1' 'UWT2' 'UWT3' 'UWT4'
+
+interface
+  id_interface = 'ID_I'
+    analysis_driver = 'python runModel.py -f input.cfg -l 0'
+        fork
+        work_directory named '/tmp/jamonsc/dakota_work'
+        link_files '/ascldap/users/jamonsc/multif/*'
+        directory_tag #directory_save
+        #file_tag #file_save
+        parameters_file = 'inputdv_all.in'
+        results_file    = 'output.dat'
+
+responses
+  id_responses = 'ID_R'
+  numerical_gradients
+  no_hessians
+  response_functions = 4
+  response_descriptors = 'VOLUME' 'THRUST' 'MECHANICAL_STRESS' 'THERMAL_STRESS'
