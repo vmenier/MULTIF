@@ -160,7 +160,7 @@ void bSplineGeo3(double *knots, double *coefs, double *x, double *y,
   for(int ii = 0; ii < nx; ii++) {
 
     /* Check that x is within proper range */
-    if(x[ii] > coefs[c-1] + 1e-15) {
+    if(x[ii] > coefs[c-1] + 1e-06) {
 	
 			printf("x (%lf) not within range specified by coefs vector (max = %lf)\n", x[ii], coefs[c-1]);
       //std::cout << "x (" << x[ii] << ") not within range specified by coefs vector"<< std::endl;
