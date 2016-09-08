@@ -32,6 +32,9 @@ def main():
 	nozzle.SetupBSplineCoefs(config);
 	nozzle.SetupDV(config);
 	
+	nozzle.lower_wall_thickness = [[0.0,0.01], [1.0, 0.01]];
+	nozzle.upper_wall_thickness = [[0.0,0.01], [1.0, 0.01]];
+	
 	if nozzle.NbrDVTot > 0 :	
 		
 		# Parse DV from input DV file (plain or dakota format)
