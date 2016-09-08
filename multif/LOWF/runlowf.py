@@ -699,6 +699,9 @@ def Quasi1D(nozzle,output='verbose'):
     stressMaxPrincipal = stressHoop + stressThermalTangential
     stressPrincipal = (stressMaxPrincipal, stressThermalRadial,              \
       np.zeros(xPosition.size))
+    nozzle.max_mechanical_stress = np.max(stressHoop)
+    nozzle.max_thermal_stress = np.max(stressThermalRadial)
+    nozzle.max_stress = np.max(stressMaxPrincipal)
       
     # Calculate cycles to failure, Nf
     Nf = nozzlemod.lifetime.estimate(Tinside,stressMaxPrincipal,1)

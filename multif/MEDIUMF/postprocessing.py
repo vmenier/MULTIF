@@ -9,7 +9,6 @@ from .. import SU2
 from .. import _meshutils_module
 import ctypes
 import numpy as np
-import pylab
 
 
 from .. import nozzle as nozzlemod

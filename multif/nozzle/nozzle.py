@@ -25,7 +25,6 @@ import geometry
 from .. import _meshutils_module
 import ctypes
 import numpy as np
-import pylab
 
 from parserDV import *
 
@@ -848,14 +847,20 @@ class Nozzle:
 			tag = nozzle.Output_Tags[i];
   		
 			if tag == 'THRUST':
-				fil.write('%lf\n' % nozzle.Thrust);
+				fil.write('%0.16f\n' % nozzle.Thrust);
 				if output == 'verbose':
-					sys.stdout.write('      Thrust = %lf\n' % nozzle.Thrust);
+					sys.stdout.write('      Thrust = %0.16f\n' % nozzle.Thrust);
   
 			if tag == 'VOLUME':
-				fil.write('%lf\n' % nozzle.Volume);
+				fil.write('%0.16f\n' % nozzle.Volume);
 				if output == 'verbose':
-					sys.stdout.write('      Volume = %lf\n' % nozzle.Volume);
+					sys.stdout.write('      Volume = %0.16f\n' % nozzle.Volume);
+					
+			if tag == 'MECHANICAL_STRESS':
+				fil.write('%0.16f mechanical_stress\n' % nozzle.max_mechanical_stress);
+			
+			if tag == 'THERMAL_STRESS':
+				fil.write('%0.16f thermal_stress\n' % nozzle.max_thermal_stress);					
   	
 		if output == 'verbose':
 			sys.stdout.write('\n');
@@ -880,12 +885,12 @@ class Nozzle:
 			tag = nozzle.Output_Tags[i];
 	
 			if tag == 'THRUST':
-				fil.write('%lf thrust\n' % nozzle.Thrust);
-				#sys.stdout.write('%lf thrust\n' % nozzle.Thrust);
+				fil.write('%0.16f thrust\n' % nozzle.Thrust);
+				#sys.stdout.write('%0.16f thrust\n' % nozzle.Thrust);
 	
 			if tag == 'VOLUME':
-				fil.write('%lf volume\n' % nozzle.Volume);
-				#sys.stdout.write(' %lf \n' % nozzle.Volume);
+				fil.write('%0.16f volume\n' % nozzle.Volume);
+				#sys.stdout.write(' %0.16f \n' % nozzle.Volume);
 			
 			if tag == 'MECHANICAL_STRESS':
 				fil.write('%lf mechanical_stress\n' % nozzle.max_mechanical_stress);
