@@ -40,6 +40,9 @@ def main():
 	parser.add_option("-i", "--id", dest="id_sample", default=-1,
 	                  help="ID of the sample to be run", metavar="IDSAMPLE")
 	
+	parser.add_option("-s", "--sample", dest="sample_filename", default="TPMC_10k.txt",
+	                  help="name of the sample file", metavar="samplefilename")
+	
 	
 	
 	(options, args)=parser.parse_args()
@@ -62,7 +65,7 @@ def main():
 	
 	### --- Read sample file and get DV
 	
-	options.sample_filename = 'TPMC_10k.txt';
+	#options.sample_filename = 'TPMC_10k.txt';
 	
 	try:
 		fil = open(options.sample_filename, 'r');
@@ -100,12 +103,15 @@ def main():
 	nozzle.UpdateDV(config,'verbose');
 	
 	nozzle.SetupInnerWall(config);
+
+	nozzle.runDir = "run_%d" % options.id_sample;
 	
+	newpath = nozzle.runDir; 
+	print newpath
+	if not os.path.exists(newpath):
+	    os.makedirs(newpath)
 	multif.MEDIUMF.Run(nozzle);
-	
-	
-	
-	
+		
 	#nozzle = multif.nozzle.NozzleSetup( options.filename, options.flevel );
 	#
 	#### HACK
