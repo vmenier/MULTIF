@@ -236,13 +236,16 @@ class Nozzle:
 					nozzle.bl_ds        = 0.000007;
 					nozzle.bl_ratio     = 1.3; 
 					nozzle.bl_thickness = 0.1;
-					
+
+					scaleMesh = 1.0;
 					if meshsize == 'COARSE':
-						nozzle.meshhl = [0.1, 0.07, 0.06, 0.006, 0.0108];
+						scaleMesh = 2.5;
 					elif meshsize == 'MEDIUM':
-						nozzle.meshhl = [0.1, 0.07, 0.06, 0.006, 0.0108];
+						scaleMesh = 1.1;
 					elif meshsize == 'FINE':
-						nozzle.meshhl = [0.1, 0.07, 0.06, 0.006, 0.0108];
+						scaleMesh = 0.5;
+
+					nozzle.meshhl = scaleMesh*np.asarray([0.1, 0.07, 0.06, 0.006, 0.0108]);
 
 			else :
 				sys.stderr.write("  ## ERROR : Unknown governing method (%s) for fidelity level %s." % (method, tag));
