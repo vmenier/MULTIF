@@ -39,7 +39,7 @@ model,
 	responses_pointer = 'ID_R'
 	simulation
 	  solution_level_control = 'MF_discretization'
-	  solution_level_cost = 22.5 2000 500 # match ascending MF_discretization
+	  solution_level_cost = 22.5 423 107 # match ascending MF_discretization
 
 variables,
 	id_variables = 'LF_VARS'
