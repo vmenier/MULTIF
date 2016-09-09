@@ -69,12 +69,12 @@ variables,
 
 interface
   id_interface = 'LF_I'
-#     analysis_driver = 'python_dprepro_driver0' # if LF_solver_tol is active
-      analysis_driver = 'python runModel.py -f input.cfg -l 0' # python model1
+      analysis_driver = 'python_dprepro_driver0' # if LF_solver_tol is active
+#     analysis_driver = 'python runModel.py -f input.cfg -l 0' # python model1
         fork
-#        work_directory named '/tmp/jamonsc/dakota_work'
-#        link_files '/ascldap/users/jamonsc/multif/*'
-#        directory_tag #directory_save
+        work_directory named '/tmp/jamonsc/dakota_work'
+        link_files '/ascldap/users/jamonsc/multif/*'
+        directory_tag #directory_save
         file_tag file_save
         parameters_file = 'inputdv_all.in'
         results_file    = 'output.dat'
@@ -84,9 +84,9 @@ interface
      analysis_driver = 'python_dprepro_driver1' # if MF_discretization is active
 #    analysis_driver = 'python runModel.py -f input.cfg -l 1' # python model2
         fork
-#        work_directory named '/tmp/jamonsc/dakota_work'
-#        link_files '/ascldap/users/jamonsc/multif/*'
-#        directory_tag #directory_save
+        work_directory named '/tmp/jamonsc/dakota_work'
+        link_files '/ascldap/users/jamonsc/multif/*'
+        directory_tag #directory_save
         file_tag file_save
         parameters_file = 'inputdv_all.in'
         results_file    = 'output.dat'
