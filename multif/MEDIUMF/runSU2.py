@@ -108,7 +108,7 @@ def SetupConfig (solver_options):
 	config.REF_ELEM_LENGTH= '0.005 ';
 	config.LIMITER_COEFF= '0.3';
 	config.SHARP_EDGES_COEFF= '3.0';
-	config.LIMITER_ITER= '150';
+	config.LIMITER_ITER= '200';
 	config.REF_SHARP_EDGES= '3.0';
 	config.SENS_REMOVE_SHARP= 'YES';
 	
@@ -174,7 +174,7 @@ def runSU2 ( nozzle ):
 	
 	solver_options.LocalRelax = nozzle.LocalRelax;
 	
-	solver_options.NbrIte = 10;
+	solver_options.NbrIte = 500;
 	
 	solver_options.SU2_RUN = nozzle.SU2_RUN;
 	
