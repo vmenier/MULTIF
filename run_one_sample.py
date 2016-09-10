@@ -74,7 +74,7 @@ def main():
 		sys.exit(0);
 	
 	for ilin, line in enumerate(fil):
-		if ilin == options.id_sample:
+		if ilin == options.id_sample-1:
 			break;
 	
 	#print line.split(",");
@@ -110,7 +110,17 @@ def main():
 	print newpath
 	if not os.path.exists(newpath):
 	    os.makedirs(newpath)
-	multif.MEDIUMF.Run(nozzle);
+	
+	
+	if nozzle.method == 'NONIDEALNOZZLE' :
+		nozzle.Output_Name = 'output_%d.dat' %  options.id_sample;
+		multif.LOWF.Run(nozzle);
+	elif nozzle.method == 'EULER' or nozzle.method == 'RANS':
+		multif.MEDIUMF.Run(nozzle);
+	
+	# --- output results
+	
+	nozzle.WriteOutputFunctions_Dakota ();
 		
 	#nozzle = multif.nozzle.NozzleSetup( options.filename, options.flevel );
 	#

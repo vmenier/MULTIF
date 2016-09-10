@@ -1,7 +1,7 @@
 from .. import SU2
 from meshgeneration import *
 from runSU2 import *
-#from runAEROS import *
+from runAEROS import *
 from postprocessing import *
 
 
@@ -41,7 +41,7 @@ def Run( nozzle ):
 	
 	# --- Run AEROS
 	
-	#runAEROS (nozzle);
+	runAEROS (nozzle);
 	
 	# --- Postprocessing
 	

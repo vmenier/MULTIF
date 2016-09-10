@@ -898,6 +898,11 @@ class Nozzle:
 			if tag == 'THERMAL_STRESS':
 				fil.write('%lf thermal_stress\n' % nozzle.max_thermal_stress);
 		
+		
+		for i in range(len(nozzle.DV_List)):
+			fil.write('%le dv_%d\n' % (nozzle.DV_List[i], i));
+			
+		
 		sys.stdout.write('\n');
 		fil.close();
 		
