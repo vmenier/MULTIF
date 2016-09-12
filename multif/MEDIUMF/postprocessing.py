@@ -36,8 +36,9 @@ def PostProcessing (nozzle):
 		nozzle.Thrust = ComputeThrust ( nozzle, SolExtract, Size, Header );
 		
 	if nozzle.GetOutput['VOLUME'] == 1:
-		nozzle.Volume = nozzlemod.geometry.wallVolume(nozzle.wall.geometry,nozzle.wall.thickness)
-	
+		#nozzle.Volume = nozzlemod.geometry.wallVolume(nozzle.wall.geometry,nozzle.wall.thickness)
+	  nozzle.Volume = nozzlemod.geometry.wallVolume2Layer(nozzle.wall.geometry,nozzle.wall.lower_thickness,nozzle.wall.upper_thickness)
+
 
 def CheckConvergence ( nozzle ) :
 	

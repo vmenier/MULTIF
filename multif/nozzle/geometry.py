@@ -391,3 +391,15 @@ def wallVolume(innerWall,thickness):
     volume = scipy.integrate.trapz(volumeIntegrand,xVolume)
     
     return volume
+    
+def wallVolume2Layer(innerWall,thickness1,thickness2):
+
+    xVolume = np.linspace(0,innerWall.length,2000)
+    volumeIntegrand = np.pi*innerWall.diameter(xVolume)*                     \
+      (thickness1.radius(xVolume)+thickness2.radius(xVolume)) +              \
+      np.pi*(thickness1.radius(xVolume)+thickness2.radius(xVolume))**2
+    volume = scipy.integrate.trapz(volumeIntegrand,xVolume)
+    
+    return volume
+
+
