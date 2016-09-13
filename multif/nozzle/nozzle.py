@@ -908,6 +908,8 @@ class Nozzle:
 		
 		nozzle = self;
 		
+		sys.stdout.write("  -- Output a vectorized picture of the nozzle and material thicknesses.\n");
+		
 		FilNam = "nozzle.svg"
 		
 		wid = 1.3*nozzle.length;
@@ -931,7 +933,6 @@ class Nozzle:
 		ymin = min(ytab);
 		ymax = max(ytab);
 		
-		print ymin;
 		
 		Box = [[0, nozzle.length],[ymin, ymax]];
 				
@@ -946,9 +947,9 @@ class Nozzle:
 		
 		wid =  wid*sca + 2*margin;
 		hei =  hei*sca + 2*margin;
-		print Box
+		#print Box
 		
-		print "WID = %lf, HEI = %lf" % (wid, hei);
+		#print "WID = %lf, HEI = %lf" % (wid, hei);
 		
 		for i in range(0,len(xtab)):
 			xtab[i] = margin+sca*xtab[i];
@@ -987,10 +988,10 @@ class Nozzle:
 	    
 			fil.write("<polygon id=\"tri\" points=\"%lf,%lf %lf,%lf %lf,%lf %lf,%lf\" style=\"fill:#2E4053;stroke:%s;stroke-width:0;fill-rule:nonzero;\" />" % \
 			  (xtab[i-1],  ytab[i-1]-hl,  xtab[i],  ytab[i]-hl,  xtab[i],  ytab[i]-hl-hu, xtab[i-1],  ytab[i-1]-hl-hu, "black"));
-
-		
 		
 		fil.write("</svg>");
+		
+		sys.stdout.write("  -- Info : nozzle.svg OPENED.\n\n");
 
 def NozzleSetup( config_name, flevel, output='verbose' ):
 	import tempfile
