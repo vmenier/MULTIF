@@ -7,5 +7,6 @@ setup(ext_modules=[Extension("_meshutils_module",
        sources = ['./meshutils/nozzle.cpp'],
 #       include_dirs=['/home/avery/Projects/Gmsh/gmsh-2.13.1-install/include/gmsh'],
 #       library_dirs=['/home/avery/Projects/Gmsh/gmsh-2.13.1-install/lib'],
+       extra_compile_args=["-Wno-maybe-uninitialized"],
        libraries=['Gmsh'])])
 
