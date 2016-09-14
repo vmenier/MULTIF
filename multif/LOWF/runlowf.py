@@ -575,6 +575,12 @@ def Quasi1D(nozzle,output='verbose'):
         A = nozzle.wall.geometry.area(xPosition)
         #dAdx = nozzle.wall.geometry.dAdx(xPosition)
         t = nozzle.wall.thickness.radius(xPosition)
+        ti = nozzle.wall.thicknessInner.radius(xPosition) # inner wall thickness
+        to = nozzle.wall.thicknessOuter.radius(xPosition) # outer wall thickness
+        
+        # Calculate material properties
+        ki = nozzle.wall.material.inner.k(xPosition,1) # inner thermal conductivity perp. to axis
+        ko = nozzle.wall.material.outer.k(xPosition,1) # outer thermal conductivity perp. to axis
         
         # Calculate other 1D flow properties
         M = np.sqrt(M2)
@@ -594,7 +600,21 @@ def Quasi1D(nozzle,output='verbose'):
         # Chilton-Colburn analogy
         hf = nozzle.fluid.Pr(T)**(-2./3.)*density*nozzle.fluid.Cp(T)*U*Cf/2
         
-        # Redefine stagnation temperature distribution
+        # Total thermal resistance (*dx) from fluid stag. temp. to ambient temp.
+        # For a 2-layer wall
+        RwallPrime = np.log((D/2.+ti+to)/(D/2.+ti))/(2.*np.pi*ki) +          \
+          np.log((D/2.+ti)/(D/2.))/(2.*pi*ko)
+        RtotPrime = 1./(hf*np.pi*D) + RwallPrime +                           \
+          1./(nozzle.environment.hInf*np.pi*(D+2.*ti+2.*to))
+        
+        # Redefine stagnation temperature distribution (for axisymmetric nozzle)
+        TstagXIntegrand = 1./(RtotPrime*density*U*A*nozzle.fluid.Cp(T))
+        TstagXIntegral = integrateTrapezoidal(TstagXIntegrand,xPosition)
+        Tstag = nozzle.environment.T*(1. - np.exp(-TstagXIntegral)) +        \
+          nozzle.inlet.Tstag*np.exp(-TstagXIntegral)
+        dTstagdx = (nozzle.environment.T - Tstag)/(RtotPrime*rho*U*A*Cp(T))
+        
+        # Redefine stagnation temperature distribution (for flat plate)
         TstagXIntegrand = 4./(nozzle.fluid.Cp(T)*density*U*D*(1./hf +        \
           t/nozzle.wall.material.k + 1./nozzle.environment.hInf))   
         TstagXIntegral = integrateTrapezoidal(TstagXIntegrand,xPosition)
