@@ -43,10 +43,16 @@ def runAEROS ( nozzle ):
 	Rk   = 0.0;                        # (float > 0) Reference temperature of k­th material.              -> Victorien : ?
 	
 	Lbd  = nozzle.wall.material.k;     # W/m*K, thermal conductivity of wall                              
+	Hk   = 7.2;                        # XXX W/m^2-K, heat transfer coefficient
 	
 	iPres = idHeader['Pressure'];
 	iTemp = idHeader['Temperature'];
-	
+
+	# --- Mesh parameters
+	Nn   = 21; # Number of nodes in longitudinal direction
+        Mn   = 21; # Number of nodes in circumferential direction 
+	Tn   = 4;  # Number of nodes through thickness of thermal insulating layer
+
 	#print "\n\n#####################################";
 	#print "###  INTERFACE WITH AERO-S GOES HERE" ;
 	#print "#####################################\n\n";
@@ -56,24 +62,27 @@ def runAEROS ( nozzle ):
 	#	print "VER %d : (x,y) = (%lf, %lf) , Pres = %lf, Temp = %lf" % (i, SolExtract[i][0], SolExtract[i][1], SolExtract[i][iPres], SolExtract[i][iTemp]);
 	
 	f1 = open("NOZZLE.txt", 'w');
-	print >> f1, "%d %d %d %f" % (Size[0], 2, 1, 0.02);
+	print >> f1, "%d %d %d %f" % (Size[0], 2, 2, 0.02);
 	for i in range(0,Size[0]):
 		print >> f1, "%lf %lf" % (SolExtract[i][0], SolExtract[i][1]);
-	print >> f1, "%d 0.0 -1" % (0);
-	print >> f1, "%d 0.0 -1" % (Size[0]-1);
-	print >> f1, "%d 0 0.0 -1" %(0);
-	print >> f1, "%lf %lf %lf %lf %lf %lf" % (Ek, Nuk, Rhok, Tk, Ak, Rk);
+	print >> f1, "%d 0.0 -1 0 %lf %lf" % (0, nozzle.wall.upper_thickness.radius(0), nozzle.wall.lower_thickness.radius(0));
+	print >> f1, "%d 0.0 -1 0 %lf %lf" % (Size[0]-1, nozzle.wall.upper_thickness.radius(nozzle.length), nozzle.wall.lower_thickness.radius(nozzle.length));
+	print >> f1, "0 2 0.0 -1 %d %d 0 1 %d" % (Nn, Mn, Tn);
+	print >> f1, "%lf %lf %lf %lf %lf %lf %lf" % (Ek, Nuk, Rhok, Tk, Ak, Lbd, Hk); # material properties for the upper layer
+	print >> f1, "0 0 0 0 0 1.58 0"; # XXX material properties for the lower layer
 	f1.close();
 
 	f2 = open("BOUNDARY.txt", 'w');
 	print >> f2, "%d" % (Size[0]);
 	for i in range(0,Size[0]):
-		print >> f2, "%lf %lf %lf" % (SolExtract[i][0], SolExtract[i][iPres], SolExtract[i][iTemp]);
+		print >> f2, "%lf %lf %lf %lf" % (SolExtract[i][0], SolExtract[i][iPres], SolExtract[i][iTemp], Rk); # XXX
 	f2.close();
 
-	_nozzle_module.generate();
-	
-	os.system("aeros nozzle.aeros")
+	_nozzle_module.generate();       # generate the meshes for thermal and structural analyses
+
+	os.system("aeros nozzle.aeroh"); # execute the thermal analysis
+	_nozzle_module.convert();        # convert temperature output from thermal analysis to input for structural analysis
+	os.system("aeros nozzle.aeros"); # execute the structural analysis
 	
 	AEROSPostProcessing ( nozzle );
 	
