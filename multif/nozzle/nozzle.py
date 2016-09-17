@@ -904,6 +904,94 @@ class Nozzle:
 		sys.stdout.write('\n');
 		fil.close();
 		
+	def Draw (self, output='verbose'):
+		
+		nozzle = self;
+		
+		sys.stdout.write("  -- Output a vectorized picture of the nozzle and material thicknesses.\n");
+		
+		FilNam = "nozzle.svg"
+		
+		wid = 1.3*nozzle.length;
+		hei = 1.3*nozzle.length;
+		
+		SVGDim = [500, 500];
+		margin = 50;
+		
+		xtab       = [];
+		ytab       = [];
+
+		
+		nx = 100;
+		_meshutils_module.py_BSplineGeo3 (nozzle.knots, nozzle.coefs, xtab, ytab, nx);
+		
+		# --- Get nozzle shape
+
+		
+		# --- Define scaling
+
+		ymin = min(ytab);
+		ymax = max(ytab);
+		
+		
+		Box = [[0, nozzle.length],[ymin, ymax]];
+				
+		wid = Box[0][1] - Box[0][0];
+		hei = Box[1][1] - Box[1][0];
+		
+		if ( wid > hei ) :
+			sca = SVGDim[0] / wid;
+		
+		else :
+			sca = SVGDim[1] / hei;
+		
+		wid =  wid*sca + 2*margin;
+		hei =  hei*sca + 2*margin;
+		#print Box
+		
+		#print "WID = %lf, HEI = %lf" % (wid, hei);
+		
+		for i in range(0,len(xtab)):
+			xtab[i] = margin+sca*xtab[i];
+			ytab[i] = -margin+ hei - (sca*ytab[i] - ymin * sca);
+			
+		
+		
+		#--- Write file
+		
+		try:
+			fil = open(FilNam, 'w');
+		except:
+			sys.stderr.write("  ## ERROR : Could not open %s\n" % FilNam);
+			return;
+			
+		fil.write("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
+		fil.write("<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n");
+		fil.write("<svg version=\"1.1\" id=\"Layer_1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" x=\"%lfpx\" y=\"%lfpx\" width=\"%lfpx\" height=\"%lfpx\"  viewBox=\"0 0 %lf %lf\" enable-background=\"new 0 0 %lf %lf\" xml:space=\"preserve\">" % (0, 0, wid, hei, wid, hei, wid, hei));
+		
+		#fprintf(OutFil,"<g id=\"BdryEdges\" fill=\"blue\">");
+		
+		
+		for i in range(1,len(xtab)):
+			x = sca*xtab[i];
+			y = sca*ytab[i];
+			hl = sca*nozzle.wall.lower_thickness.radius(x);
+			hu = sca*nozzle.wall.upper_thickness.radius(x);
+			#print "x = %lf y = %lf lower thickness = %lf upper thickness = %lf " % (x, y, hl, hu);	
+			fil.write("<g id=\"BdryEdges\" fill=\"blue\">");
+			fil.write("<line fill=\"none\" stroke=\"%s\" stroke-miterlimit=\"1\" x1=\"%lf\" y1=\"%lf\" x2=\"%lf\" y2=\"%lf\"/>" \
+			% ("black", xtab[i-1],  ytab[i-1],  xtab[i],  ytab[i]));
+			fil.write("</g>\n");
+			
+			fil.write("<polygon id=\"tri\" points=\"%lf,%lf %lf,%lf %lf,%lf %lf,%lf\" style=\"fill:#717D7E;stroke:%s;stroke-width:0;fill-rule:nonzero;\" />" % \
+			  (xtab[i-1],  ytab[i-1],  xtab[i],  ytab[i],  xtab[i],  ytab[i]-hl, xtab[i-1],  ytab[i-1]-hl, "black"));
+	    
+			fil.write("<polygon id=\"tri\" points=\"%lf,%lf %lf,%lf %lf,%lf %lf,%lf\" style=\"fill:#2E4053;stroke:%s;stroke-width:0;fill-rule:nonzero;\" />" % \
+			  (xtab[i-1],  ytab[i-1]-hl,  xtab[i],  ytab[i]-hl,  xtab[i],  ytab[i]-hl-hu, xtab[i-1],  ytab[i-1]-hl-hu, "black"));
+		
+		fil.write("</svg>");
+		
+		sys.stdout.write("  -- Info : nozzle.svg OPENED.\n\n");
 
 def NozzleSetup( config_name, flevel, output='verbose' ):
 	import tempfile

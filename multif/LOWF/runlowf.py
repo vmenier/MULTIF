@@ -707,7 +707,8 @@ def Quasi1D(nozzle,output='verbose'):
     Nf = nozzlemod.lifetime.estimate(Tinside,stressMaxPrincipal,1)
     
     # Calculate volume of nozzle material (approximately using trap. integ.)
-    volume = nozzlemod.geometry.wallVolume(nozzle.wall.geometry,nozzle.wall.thickness)
+    #volume = nozzlemod.geometry.wallVolume(nozzle.wall.geometry,nozzle.wall.thickness)
+    volume = nozzlemod.geometry.wallVolume2Layer(nozzle.wall.geometry,nozzle.wall.lower_thickness,nozzle.wall.upper_thickness)
     
     # Assign all data for output
     #flowDimension = 1 # 1-dimensional flow field
