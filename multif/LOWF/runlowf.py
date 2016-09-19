@@ -542,11 +542,11 @@ def Quasi1D(nozzle,output='verbose'):
         pass
     else:
         raise ValueError('keyword argument output can only be set to "verbose" or "quiet" mode')
-		
+        
     while( 1 ):
         
         counter += 1
-				
+                
         # Parameters passed to functions called by ODE 
         params = (xPositionOld,Cf,Tstag,dTstagdx)
         
@@ -574,13 +574,13 @@ def Quasi1D(nozzle,output='verbose'):
         D = nozzle.wall.geometry.diameter(xPosition)
         A = nozzle.wall.geometry.area(xPosition)
         #dAdx = nozzle.wall.geometry.dAdx(xPosition)
-        t = nozzle.wall.thickness.radius(xPosition)
-        ti = nozzle.wall.thicknessInner.radius(xPosition) # inner wall thickness
-        to = nozzle.wall.thicknessOuter.radius(xPosition) # outer wall thickness
+        #t = nozzle.wall.thickness.radius(xPosition)
+        ti = nozzle.wall.thermal_layer.thickness.radius(xPosition) # inner wall thickness
+        to = nozzle.wall.load_layer.thickness.radius(xPosition) # outer wall thickness
         
         # Calculate material properties
-        ki = nozzle.wall.material.inner.k(xPosition,1) # inner thermal conductivity perp. to axis
-        ko = nozzle.wall.material.outer.k(xPosition,1) # outer thermal conductivity perp. to axis
+        ki = nozzle.wall.thermal_layer.material.getThermalConductivity('radial',xPosition) # inner thermal conductivity perp. to axis
+        ko = nozzle.wall.load_layer.material.getThermalConductivity('radial',xPosition) # outer thermal conductivity perp. to axis
         
         # Calculate other 1D flow properties
         M = np.sqrt(M2)
@@ -592,7 +592,7 @@ def Quasi1D(nozzle,output='verbose'):
         density = P/(nozzle.fluid.R*T)
         U = M*np.sqrt(gam*nozzle.fluid.R*T) # velocity
         Re = density*U*D/dynamicViscosity(T) # Reynolds number from definition
-				
+                
         Cf = np.interp(xPosition,xPositionOld,Cf) # friction coefficient
             
         # Recalculate friction and heat
@@ -603,7 +603,7 @@ def Quasi1D(nozzle,output='verbose'):
         # Total thermal resistance (*dx) from fluid stag. temp. to ambient temp.
         # For a 2-layer wall
         RwallPrime = np.log((D/2.+ti+to)/(D/2.+ti))/(2.*np.pi*ki) +          \
-          np.log((D/2.+ti)/(D/2.))/(2.*pi*ko)
+          np.log((D/2.+ti)/(D/2.))/(2.*np.pi*ko)
         RtotPrime = 1./(hf*np.pi*D) + RwallPrime +                           \
           1./(nozzle.environment.hInf*np.pi*(D+2.*ti+2.*to))
         
@@ -612,21 +612,22 @@ def Quasi1D(nozzle,output='verbose'):
         TstagXIntegral = integrateTrapezoidal(TstagXIntegrand,xPosition)
         Tstag = nozzle.environment.T*(1. - np.exp(-TstagXIntegral)) +        \
           nozzle.inlet.Tstag*np.exp(-TstagXIntegral)
-        dTstagdx = (nozzle.environment.T - Tstag)/(RtotPrime*rho*U*A*Cp(T))
+        dTstagdx = (nozzle.environment.T - Tstag)/(RtotPrime*density*U*A*    \
+          nozzle.fluid.Cp(T))
         
         # Redefine stagnation temperature distribution (for flat plate)
-        TstagXIntegrand = 4./(nozzle.fluid.Cp(T)*density*U*D*(1./hf +        \
-          t/nozzle.wall.material.k + 1./nozzle.environment.hInf))   
-        TstagXIntegral = integrateTrapezoidal(TstagXIntegrand,xPosition)
-        Tstag = nozzle.environment.T*(1. - np.exp(-TstagXIntegral)) +        \
-          nozzle.inlet.Tstag*np.exp(-TstagXIntegral)
-        dTstagdx = (nozzle.environment.T - Tstag)*4./(nozzle.fluid.Cp(T)*    \
-          density*U*D*(1./hf + t/nozzle.wall.material.k +                    \
-          1./nozzle.environment.hInf))
+#        TstagXIntegrand = 4./(nozzle.fluid.Cp(T)*density*U*D*(1./hf +        \
+#          t/nozzle.wall.material.k + 1./nozzle.environment.hInf))   
+#        TstagXIntegral = integrateTrapezoidal(TstagXIntegrand,xPosition)
+#        Tstag = nozzle.environment.T*(1. - np.exp(-TstagXIntegral)) +        \
+#          nozzle.inlet.Tstag*np.exp(-TstagXIntegral)
+#        dTstagdx = (nozzle.environment.T - Tstag)*4./(nozzle.fluid.Cp(T)*    \
+#          density*U*D*(1./hf + t/nozzle.wall.material.k +                    \
+#          1./nozzle.environment.hInf))
           
         # Estimate interior wall temperature
         Qw = nozzle.fluid.Cp(T)*density*U*D*dTstagdx/4.
-				
+                
         Tinside = Tstag + Qw/hf # interior wall temperature
         #recoveryFactor = (Tinside/T - 1)/((gam-1)*M2/2)
         
@@ -673,10 +674,10 @@ def Quasi1D(nozzle,output='verbose'):
             sys.stdout.write("Terminated with error in exit temp: %le\n\n" % percentError);
             #print "Iteration limit for quasi-1D heat xfer & friction reached\n"
             break
-				
+                
         if output == 'verbose':
             sys.stdout.write("\t %s %s\n" % (("%d" % counter).ljust(10), ("%.3le" % percentError).ljust(10)));
-				
+                
         if( percentError < tolerance ):
             if output == 'verbose':
                 sys.stdout.write("\n Done (converged)\n\n");
@@ -700,81 +701,80 @@ def Quasi1D(nozzle,output='verbose'):
       nozzle.environment.c) + (P[-1] - nozzle.environment.P)*A[-1]
     #grossThrust = divergenceFactor*mdot[0]*U + (P[-1] -                      \
     #  nozzle.environment.P)*A[-1]
-      
-    # Calculate stresses
-    # Stresses calculated assuming cylinder; nozzle length not constrained in 
-    # thermal expansion
-    stressHoop = P*D/(2.*t)
-    # Thermal stresses calculated assuming steady-state, give max tens. stress
-    ri = D/2. # inner radius
-    ro = D/2. + t # outer radius
-    stressThermalRadial = nozzle.wall.material.E*                            \
-      nozzle.wall.material.alpha*(Tinside-Toutside)/                         \
-      (2.*(1.-nozzle.wall.material.v))*(1./np.log(ro/ri))*(1. - 2.*ri**2./   \
+    
+    
+    # Simplified stress calculation (calculate stresses IN LOAD LAYER ONLY)
+    # Assumptions: nozzle is a cylinder; nozzle length is not constrained;
+    #              thermal mismatch at interface of both material layers is 
+    #              neglected; steady state
+    stressHoop = P*(D/2.+ti+to/2.)/to
+    ri = D/2. + ti # inner radius
+    ro = D/2. + ti + to # outer radius
+    
+    ERadial = nozzle.wall.load_layer.material.getElasticModulus('radial',xPosition)
+    EAxial = nozzle.wall.load_layer.material.getElasticModulus('axial',xPosition)
+    alphaRadial = nozzle.wall.load_layer.material.getThermalExpansionCoef('radial',xPosition)
+    alphaAxial = nozzle.wall.load_layer.material.getThermalExpansionCoef('axial',xPosition)
+    v = nozzle.wall.load_layer.material.getPoissonRatio()
+    
+    stressThermalRadial = ERadial*alphaRadial*(Tinside-Toutside)/            \
+      (2.*(1.-v))*(1./np.log(ro/ri))*(1. - 2.*ri**2./                        \
       (ro**2. - ri**2.)*np.log(ro/ri))
-    stressThermalTangential = stressThermalRadial
+    stressThermalAxial = EAxial*alphaAxial*(Tinside-Toutside)/               \
+      (2.*(1.-v))*(1./np.log(ro/ri))*(1. - 2.*ri**2./                        \
+      (ro**2. - ri**2.)*np.log(ro/ri))      
+    
+    # THE EQUATIONS BELOW NEED TO BE CHECKED (ITEMS HAVE BEEN RENAMED)
     # Estimate vonMises, even though not really valid for composites
-    stressVonMises = np.sqrt( (stressHoop+stressThermalTangential)**2 -      \
-       stressHoop*stressThermalRadial + stressThermalRadial**2 )
-    stressMaxPrincipal = stressHoop + stressThermalTangential
+#    stressVonMises = np.sqrt( (stressHoop+stressThermalAxial)**2 -           \
+#       stressHoop*stressThermalRadial + stressThermalRadial**2 )    
+    stressMaxPrincipal = stressHoop + stressThermalAxial
     stressPrincipal = (stressMaxPrincipal, stressThermalRadial,              \
       np.zeros(xPosition.size))
-    nozzle.mechanical_stress = np.max(stressHoop)
-    nozzle.thermal_stress = np.max(stressThermalRadial)
-    nozzle.max_stress = np.max(stressMaxPrincipal)
       
     # Calculate cycles to failure, Nf
     Nf = nozzlemod.lifetime.estimate(Tinside,stressMaxPrincipal,1)
     
     # Calculate volume of nozzle material (approximately using trap. integ.)
     #volume = nozzlemod.geometry.wallVolume(nozzle.wall.geometry,nozzle.wall.thickness)
-    volume = nozzlemod.geometry.wallVolume2Layer(nozzle.wall.geometry,nozzle.wall.lower_thickness,nozzle.wall.upper_thickness)
+    volume = nozzlemod.geometry.wallVolume2Layer(nozzle.wall.geometry,       \
+      nozzle.wall.thermal_layer.thickness,nozzle.wall.load_layer.thickness)
     
     # Assign all data for output
-    #flowDimension = 1 # 1-dimensional flow field
-    
     flowTuple = (M, U, density, P, Pstag, T, Tstag, Re)
     heatTuple = (Tinside, Toutside, Cf, hf, Qw)
-    geoTuple = (D, A, t, dAdx, minSlope, maxSlope)
+    geoTuple = (D, A, (ti,to), dAdx, minSlope, maxSlope)
     performanceTuple= (volume, netThrust, Nf, mdot, Pstag[-1]/Pstag[0],      \
       Tstag[-1]/Tstag[0], status)
-    stressTuple = (stressHoop, stressThermalRadial, stressThermalTangential, \
-      stressMaxPrincipal, stressPrincipal)
+    stressTuple = (stressPrincipal, stressHoop, stressThermalRadial,         \
+      stressThermalAxial)
     
-		
     return (xPosition, flowTuple, heatTuple, geoTuple, stressTuple,          \
       performanceTuple)
     
 # END OF analysis(nozzle,tol)
 
 def Run (nozzle,output='verbose'):
-	
-	xPosition, flowTuple, heatTuple, \
-	geoTuple, stressTuple, performanceTuple = Quasi1D(nozzle,output);
-		
-	#str = " Results ";
-	#nch = (60-len(str))/2;
-	#sys.stdout.write('-' * nch);
-	#sys.stdout.write(str);
-	#sys.stdout.write('-' * nch);
-	#sys.stdout.write('\n\n');
-	#
-	#
-	#sys.stdout.write('\tThrust = %lf\n' % performanceTuple[1]);
-	#sys.stdout.write('\tVolume = %lf\n' % performanceTuple[0]);
-	
-	nozzle.Thrust = performanceTuple[1];
-	nozzle.Volume = performanceTuple[0];
-	nozzle.Mechanical_Stress = 0;
-	
-	#for i in range(0,10):
-	#	print stressTuple[0][i], stressTuple[1][i] , stressTuple[2][i] , stressTuple[3][i] 
-	
-	
-
-	
-	
-	
-	
-	
-	
+    
+    xPosition, flowTuple, heatTuple,                                         \
+    geoTuple, stressTuple, performanceTuple = Quasi1D(nozzle,output);
+        
+    #str = " Results ";
+    #nch = (60-len(str))/2;
+    #sys.stdout.write('-' * nch);
+    #sys.stdout.write(str);
+    #sys.stdout.write('-' * nch);
+    #sys.stdout.write('\n\n');
+    #
+    #
+    #sys.stdout.write('\tThrust = %lf\n' % performanceTuple[1]);
+    #sys.stdout.write('\tVolume = %lf\n' % performanceTuple[0]);
+     
+    nozzle.thrust = performanceTuple[1];
+    nozzle.volume = performanceTuple[0];
+    # EQUATION FOR MECHANICAL STRESS NEEDS TO BE UPDATED TO BE CONSISTENT WITH
+    # MEDIUM FIDELITY
+    nozzle.max_mechanical_stress = np.max(stressTuple[1]) # hoop stress
+    nozzle.max_thermal_stress = np.max(np.hstack((stressTuple[2],stressTuple[3]))) # both thermal stresses
+    
+    
