@@ -89,6 +89,10 @@ def runAEROS ( nozzle ):
     for i in range(0,Size[0]):
         print >> f2, "%lf %lf %lf %lf" % (SolExtract[i][0], SolExtract[i][iPres], SolExtract[i][iTemp], Rk); # XXX
     f2.close();
+	
+	## --- How to get x, y, P, T :
+	#for i in range(0,Size[0]):
+	#	print "VER %d : (x,y) = (%lf, %lf) , Pres = %lf, Temp = %lf" % (i, SolExtract[i][0], SolExtract[i][1], SolExtract[i][iPres], SolExtract[i][iTemp]);
 
     _nozzle_module.generate();       # generate the meshes for thermal and structural analyses
 
