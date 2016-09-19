@@ -514,8 +514,12 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
                     const std::vector<SegmentData> &segments,
                     const std::vector<MaterialData> &materials,
                     const std::vector<BoundaryData> &boundaries,
-                    double lc)
+                    double lc, int bf)
 {
+  // bf = 0: constrain inner wall inlet edge
+  // bf = 1: constrain baffle outer edges
+  // bf = 2: constrain both inner wall inlet and baffle outer edges
+
   GmshInitialize();
   GModel *m = new GModel();
   m->setFactory("OpenCASCADE");
@@ -564,7 +568,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
     // outside of inner layer / inside of outer layer
     GVertex *vertex3 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+tt, (*pointIt1)[2], lc);
     GVertex *vertex4 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+(vertexIt+1)->tt, (*pointIt2)[2], lc);
-    for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it)
+    for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it) 
       (*it)[1] += (tt + ((vertexIt+1)->tt - tt)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
     GEdge *edge2 = m->addBSpline(vertex3, vertex4, controlPoints);
     // middle of outer layer
@@ -611,7 +615,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
         surfaceTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
         surfaceTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
         surfaceTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
-        if(segmentIt == segments.begin() && edgeIndex == 0) {
+        if(bf != 1 && segmentIt == segments.begin() && edgeIndex == 0) {
           boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
           boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
           boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
@@ -630,11 +634,17 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
         std::list<GEdge*> edges = baffleFace->cast2Face()->edges();
         for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
           (*it)->meshAttributes.method = MESH_TRANSFINITE;
-          switch(std::distance(edges.begin(),it)) {
+          int edgeIndex = std::distance(edges.begin(),it);
+          switch(edgeIndex) {
             case 0: case 2: (*it)->meshAttributes.nbPointsTransfinite = mn; break;
             case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = nb; break;
           }
           (*it)->meshAttributes.coeffTransfinite = 1.0;
+          if(bf != 0 && edgeIndex == 2) {
+            boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
+            boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
+            boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
+          }
         }
         baffleFace->addPhysicalEntity(mb+1);
       }
@@ -658,7 +668,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
       }
 
       // final baffle:
-      if(wb > 0 && segmentIt+1 == segments.end()) {
+      if((vertexIt+1)->wb > 0 && segmentIt+1 == segments.end()) {
         double wb = (vertexIt+1)->wb; // width of baffle
         int mb = (vertexIt+1)->mb;    // material id of baffle
         std::vector<double> p3(3), p4(3);
@@ -675,11 +685,17 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
         baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 2;
         for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
           (*it)->meshAttributes.method = MESH_TRANSFINITE;
-          switch(std::distance(edges.begin(),it)) {
+          int edgeIndex = std::distance(edges.begin(),it);
+          switch(edgeIndex) {
             case 0: case 2: (*it)->meshAttributes.nbPointsTransfinite = mn; break;
             case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = nb; break;
           }
           (*it)->meshAttributes.coeffTransfinite = 1.0;
+          if(bf != 0 && edgeIndex == 2) {
+            boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
+            boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
+            boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
+          }
         }
         baffleFace->addPhysicalEntity(mb+1);
       }
@@ -886,8 +902,8 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
 {
   std::ifstream fin("NOZZLE.txt");
 
-  int np, nv, nm; double lc;
-  fin >> np >> nv >> nm >> lc;
+  int np, nv, nm; double lc; int bf;
+  fin >> np >> nv >> nm >> lc >> bf;
   
   std::vector<std::vector<double> > points;
   for(int i=0; i<np; ++i) {
@@ -929,7 +945,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
 
   fin2.close();
 
-  generateNozzle(points, vertices, segments, materials, boundaries, lc);
+  generateNozzle(points, vertices, segments, materials, boundaries, lc, bf);
 
   Py_RETURN_NONE;
 }
