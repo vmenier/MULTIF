@@ -60,7 +60,8 @@ MOD_INIT(_nozzle_module)
 #include "Gmsh.h"
 #include "GModel.h"
 #include "GEntity.h"
-#include "Options.h"
+//#include "Options.h"
+#include "option.h"
 #include "Context.h"
 #include "gmshLevelset.h"
 
