@@ -10,7 +10,6 @@ from .. import _meshutils_module
 import ctypes
 import numpy as np
 
-
 from .. import nozzle as nozzlemod
 
 
@@ -29,15 +28,15 @@ def PostProcessing (nozzle):
 	
 	SolExtract, Size, Header  = ExtractSolutionAtExit(nozzle);
 	
-	nozzle.Thrust = -1;
-	nozzle.Volume = -1;
+	nozzle.thrust = -1;
+	nozzle.volume = -1;
 	
 	if nozzle.GetOutput['THRUST'] == 1:			
-		nozzle.Thrust = ComputeThrust ( nozzle, SolExtract, Size, Header );
+		nozzle.thrust = ComputeThrust ( nozzle, SolExtract, Size, Header );
 		
 	if nozzle.GetOutput['VOLUME'] == 1:
 		#nozzle.Volume = nozzlemod.geometry.wallVolume(nozzle.wall.geometry,nozzle.wall.thickness)
-	  nozzle.Volume = nozzlemod.geometry.wallVolume2Layer(nozzle.wall.geometry,nozzle.wall.lower_thickness,nozzle.wall.upper_thickness)
+	  nozzle.volume = nozzlemod.geometry.wallVolume2Layer(nozzle.wall.geometry,nozzle.wall.thermal_layer.thickness,nozzle.wall.load_layer.thickness)
 
 
 def CheckConvergence ( nozzle ) :

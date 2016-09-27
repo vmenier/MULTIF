@@ -9,16 +9,38 @@ import numpy as np
 
 class Environment:
     def __init__(self, altitude, hInf):
-        self.altitude = altitude # ft
-        self.hInf = hInf # W/m^2/K, heat transfer coefficient to atmosphere
         
+        # Altitude measured in FEET, all other parameters in SI units
+        self.reset(altitude)
+        self.setHeatTransferCoefficient(hInf)
+    
+    # Set heat transfer coefficient from external surface of nozzle to
+    # surrounding structure and eventually atmosphere
+    def setHeatTransferCoefficient(self,hInf):
+        self.hInf = hInf # W/m^2/K, hea transfer coef. to atmosphere
+    
+    # Manually set pressure
+    def setPressure(self,P):
+        self.P = P # Pa
+        self.consistentWithStandardAtmosphere = 0
+    
+    # Manually set temperature
+    def setTemperature(self,T):
+        self.T = T # K
+        self.consistentWithStandardAtmosphere = 0
+        
+    def reset(self,altitude):
+        self.altitude = altitude
         (T, rho, P, mu, c) = StndAtm(altitude)
         self.P = P/0.020885 # Pa, atmospheric pressure
         self.T = T/1.8 # K, atmospheric temperature
         self.rho = rho/0.068521/0.028317 # kg/m^3, atmospheric density
         self.mu = mu/0.22481/0.092903 # N-s/m^2, dynamic viscosity
         self.c = c/3.2808 # m/s, speed of sound
-				
+        
+        # record whether environment properties are consistent with the US
+        # 1976 Standard Atmosphere
+        self.consistentWithStandardAtmosphere = 1
 				
 				
 				
