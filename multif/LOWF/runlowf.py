@@ -14,6 +14,8 @@ from .. import nozzle as nozzlemod
 #import lifetime
 #import geometry
 
+from matplotlib import pyplot as plt
+
 #==============================================================================
 # Sutherland's Law of dynamic viscosity of air
 #==============================================================================
@@ -496,6 +498,12 @@ def Quasi1D(nozzle,output='verbose'):
     # Initialize
     gam = nozzle.fluid.gam
     xApparentThroat = nozzle.wall.geometry.findMinimumRadius()[0]
+    # Using 1000 equally-spaced ODE integration steps will give thrust an
+    # accuracy of 7 digits, to 2 decimal places. Integration will take about 
+    # 6 seconds. Increasing the number of ODE integration steps to 10,000 will
+    # yield an additional 1 or 2 decimal places of accuracy at nearly 10 times
+    # the computational expense. Unfortunately, adaptive timesteps are not
+    # implemented.
     nOdeIntegrationSteps = 1000;
     
     tol = {};
@@ -515,7 +523,7 @@ def Quasi1D(nozzle,output='verbose'):
     
     # Initialize loop variables
     Cf = np.array(([0.004, 0.004]))
-    Tstag = np.array(([nozzle.inlet.Tstag, nozzle.inlet.Tstag]))
+    Tstag = np.array(([nozzle.inlet.Tstag, nozzle.inlet.Tstag-6.*nozzle.wall.geometry.length]))
     dTstagdx = np.array(([-6., -6.]))
     xPositionOld = np.array(([0., nozzle.wall.geometry.length]))
     
@@ -616,23 +624,27 @@ def Quasi1D(nozzle,output='verbose'):
           nozzle.fluid.Cp(T))
         
         # Redefine stagnation temperature distribution (for flat plate)
+#        t = ti+to
 #        TstagXIntegrand = 4./(nozzle.fluid.Cp(T)*density*U*D*(1./hf +        \
-#          t/nozzle.wall.material.k + 1./nozzle.environment.hInf))   
+#          t/ki + 1./nozzle.environment.hInf))   
 #        TstagXIntegral = integrateTrapezoidal(TstagXIntegrand,xPosition)
 #        Tstag = nozzle.environment.T*(1. - np.exp(-TstagXIntegral)) +        \
 #          nozzle.inlet.Tstag*np.exp(-TstagXIntegral)
 #        dTstagdx = (nozzle.environment.T - Tstag)*4./(nozzle.fluid.Cp(T)*    \
-#          density*U*D*(1./hf + t/nozzle.wall.material.k +                    \
+#          density*U*D*(1./hf + t/ki +                    \
 #          1./nozzle.environment.hInf))
           
         # Estimate interior wall temperature
-        Qw = nozzle.fluid.Cp(T)*density*U*D*dTstagdx/4.
+        #Qw = nozzle.fluid.Cp(T)*density*U*D*dTstagdx/4.
+        QwFlux = (Tstag - nozzle.environment.T)/RtotPrime/(np.pi*D) # W/m
                 
-        Tinside = Tstag + Qw/hf # interior wall temperature
+        #Tinside = Tstag + Qw/hf # interior wall temperature
+        Tinside = Tstag - QwFlux/hf
         #recoveryFactor = (Tinside/T - 1)/((gam-1)*M2/2)
         
         # Estimate exterior wall temperature
-        Toutside = nozzle.environment.T - Qw/nozzle.environment.hInf
+        #Toutside = nozzle.environment.T - Qw/nozzle.environment.hInf
+        Toutside = nozzle.environment.T + QwFlux/nozzle.environment.hInf
     
         # Redefine friction coefficient distribution (Sommer & Short's method)
         TPrimeRatio = 1. + 0.035*M2 + 0.45*(Tinside/T - 1.)
@@ -742,7 +754,7 @@ def Quasi1D(nozzle,output='verbose'):
     
     # Assign all data for output
     flowTuple = (M, U, density, P, Pstag, T, Tstag, Re)
-    heatTuple = (Tinside, Toutside, Cf, hf, Qw)
+    heatTuple = (Tinside, Toutside, Cf, hf, QwFlux)
     geoTuple = (D, A, (ti,to), dAdx, minSlope, maxSlope)
     performanceTuple= (volume, netThrust, Nf, mdot, Pstag[-1]/Pstag[0],      \
       Tstag[-1]/Tstag[0], status)
@@ -758,17 +770,6 @@ def Run (nozzle,output='verbose'):
     
     xPosition, flowTuple, heatTuple,                                         \
     geoTuple, stressTuple, performanceTuple = Quasi1D(nozzle,output);
-        
-    #str = " Results ";
-    #nch = (60-len(str))/2;
-    #sys.stdout.write('-' * nch);
-    #sys.stdout.write(str);
-    #sys.stdout.write('-' * nch);
-    #sys.stdout.write('\n\n');
-    #
-    #
-    #sys.stdout.write('\tThrust = %lf\n' % performanceTuple[1]);
-    #sys.stdout.write('\tVolume = %lf\n' % performanceTuple[0]);
      
     nozzle.thrust = performanceTuple[1];
     nozzle.volume = performanceTuple[0];
@@ -776,5 +777,13 @@ def Run (nozzle,output='verbose'):
     # MEDIUM FIDELITY
     nozzle.max_mechanical_stress = np.max(stressTuple[1]) # hoop stress
     nozzle.max_thermal_stress = np.max(np.hstack((stressTuple[2],stressTuple[3]))) # both thermal stresses
+    
+    # For testing purposes only; usually these do not need to be output
+    #nozzle.xPosition = xPosition
+    #nozzle.flowTuple = flowTuple
+    #nozzle.heatTuple = heatTuple
+    #nozzle.geoTuple = geoTuple
+    #nozzle.performanceTuple = performanceTuple
+    #nozzle.stressTuple = stressTuple
     
     
