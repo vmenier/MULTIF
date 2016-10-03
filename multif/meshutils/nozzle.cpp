@@ -223,7 +223,7 @@ int writeAEROS(GModel *g,
                const std::vector<std::pair<GEntity::GeomType,int> > &surfaceTags,
                const std::vector<std::pair<GEntity::GeomType,int> > &boundaryTags,
                const std::string &name,
-               int elementTagType=1, bool saveAll=false, double scalingFactor=1.0)
+               int elementTagType=1, bool saveAll=false, double scalingFactor=1.0, bool temp=false)
 {
   FILE *fp = Fopen(name.c_str(), "w");
   if(!fp){
@@ -299,7 +299,7 @@ int writeAEROS(GModel *g,
   }
   fclose(fp8);
 
-  // displacement (all nodes on the inlet boundary edge)
+  // displacement (all nodes on the boundary edges)
   FILE *fp4 = Fopen("DISPLACEMENTS.txt", "w");
   fprintf(fp4, "DISPLACEMENTS\n");
   for(unsigned int i = 0; i < entities.size(); i++) {
@@ -323,6 +323,19 @@ int writeAEROS(GModel *g,
     }
   }
   fclose(fp5);
+
+  // temperatures (all the nodes on the nozzle surface)
+  if(temp) {
+    FILE *fp6 = Fopen("TEMPERATURES.txt", "w");
+    fprintf(fp6, "TEMPERATURE\n");
+    for(unsigned int i = 0; i < entities.size(); i++) {
+      if(std::find(surfaceTags.begin(), surfaceTags.end(), std::make_pair(entities[i]->geomType(),entities[i]->tag())) != surfaceTags.end()) {
+        for(unsigned int j = 0; j < entities[i]->mesh_vertices.size(); j++)
+          writeTemp(entities[i]->mesh_vertices[j], fp6, scalingFactor, boundaries);
+      }
+    }
+    fclose(fp6);
+  }
 
   // surface topology (all the triangles on the nozzle surface)
   FILE *fp7 = Fopen("SURFACETOPO.txt", "w");
@@ -360,7 +373,7 @@ int writeAEROS(GModel *g,
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "MATERIAL.txt");
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "DISPLACEMENTS.txt");
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "PRESSURES.txt");
-  fprintf(fp, "INCLUDE \"%s\"\n*\n", "TEMPERATURES.txt"); // this file is generated using thermal analysis
+  fprintf(fp, "INCLUDE \"%s\"\n*\n", "TEMPERATURES.txt"); // this file is generated using thermal analysis if temp is false
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "SURFACETOPO.txt");
   fprintf(fp, "END\n");
 
@@ -515,11 +528,14 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
                     const std::vector<SegmentData> &segments,
                     const std::vector<MaterialData> &materials,
                     const std::vector<BoundaryData> &boundaries,
-                    double lc, int bf)
+                    double lc, int bf, int tf)
 {
   // bf = 0: constrain inner wall inlet edge
   // bf = 1: constrain baffle outer edges
   // bf = 2: constrain both inner wall inlet and baffle outer edges
+
+  // tf = 0: generate mesh for structural model only
+  // tf = 1: generate mesh for both structural and thermal models
 
   GmshInitialize();
   GModel *m = new GModel();
@@ -540,6 +556,8 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
   std::vector<std::pair<GEntity::GeomType,int> > interiorBoundaryTags;
   std::vector<std::pair<GEntity::GeomType,int> > surfaceTags;
   std::vector<std::pair<GEntity::GeomType,int> > boundaryTags;
+
+  double cth1, cth2, cth3, cth4;
 
   // loop over the segments
   for(std::vector<SegmentData>::const_iterator segmentIt = segments.begin(); segmentIt != segments.end(); ++segmentIt, ++vertexIt) {
@@ -567,22 +585,26 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
     double angle = 2*M_PI/ns;
 
     // outside of inner layer / inside of outer layer
-    GVertex *vertex3 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+tt, (*pointIt1)[2], lc);
-    GVertex *vertex4 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+(vertexIt+1)->tt, (*pointIt2)[2], lc);
+    cth1 = (segmentIt == segments.begin()) ? dot(edge1->firstDer(0.).unit(),SVector3(1.,0.,0.)) : cth2;
+    cth2 = dot(edge1->firstDer(1.).unit(),SVector3(1.,0.,0.)); // cosine of angles between normals and y-axis
+    GVertex *vertex3 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+cth1*tt, (*pointIt1)[2], lc);
+    GVertex *vertex4 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+cth2*(vertexIt+1)->tt, (*pointIt2)[2], lc);
     for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it) 
-      (*it)[1] += (tt + ((vertexIt+1)->tt - tt)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
+      (*it)[1] += (cth1*tt + (cth2*(vertexIt+1)->tt - cth1*tt)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
     GEdge *edge2 = m->addBSpline(vertex3, vertex4, controlPoints);
     // middle of outer layer
-    GVertex *vertex5 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+tt+t/2, (*pointIt1)[2], lc);
-    GVertex *vertex6 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+(vertexIt+1)->tt+(vertexIt+1)->t/2, (*pointIt2)[2], lc);
+    cth3 = (segmentIt == segments.begin()) ? dot(edge2->firstDer(0.).unit(),SVector3(1.,0.,0.)) : cth4;
+    cth4 = dot(edge2->firstDer(1.).unit(),SVector3(1.,0.,0.)); // cosine of angles between normals and y-axis
+    GVertex *vertex5 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+cth1*tt+cth3*t/2, (*pointIt1)[2], lc);
+    GVertex *vertex6 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+cth2*(vertexIt+1)->tt+cth4*(vertexIt+1)->t/2, (*pointIt2)[2], lc);
     for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it)
-      (*it)[1] += (t/2 + ((vertexIt+1)->t/2 - t/2)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
+      (*it)[1] += (cth3*t/2 + (cth4*(vertexIt+1)->t/2 - cth3*t/2)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
     GEdge *edge3 = m->addBSpline(vertex5, vertex6, controlPoints);
     // outside of outer layer
-    GVertex *vertex7 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+tt+t, (*pointIt1)[2], lc);
-    GVertex *vertex8 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+(vertexIt+1)->tt+(vertexIt+1)->t, (*pointIt2)[2], lc);
+    GVertex *vertex7 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+cth1*tt+cth3*t, (*pointIt1)[2], lc);
+    GVertex *vertex8 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+cth2*(vertexIt+1)->tt+cth4*(vertexIt+1)->t, (*pointIt2)[2], lc);
     for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it)
-      (*it)[1] += (t/2 + ((vertexIt+1)->t/2 - t/2)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
+      (*it)[1] += (cth3*t/2 + (cth4*(vertexIt+1)->t/2 - cth3*t/2)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
     GEdge *edge4 = m->addBSpline(vertex7, vertex8, controlPoints);
 
     GEntity *region1, *region2, *region3, *face3;
@@ -702,7 +724,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
       }
 
       // thermal model inner layer:
-      {
+      if(tf != 0) {
         if(i==0) {
           GEdge *edge5 = m->addLine(edge1->getEndVertex(), edge2->getEndVertex());
           GEdge *edge6 = m->addLine(edge2->getBeginVertex(), edge1->getBeginVertex());
@@ -762,7 +784,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
       }
   
       // thermal model inside half of outer layer
-      {
+      if(tf != 0) {
         if(i==0) {
           GEdge *edge7 = m->addLine(edge2->getEndVertex(), edge3->getEndVertex());
           GEdge *edge8 = m->addLine(edge3->getBeginVertex(), edge2->getBeginVertex());
@@ -815,7 +837,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
       }
 
       // thermal model outside half of outer layer
-      {
+      if(tf != 0) {
         if(i==0) {
           GEdge *edge9 = m->addLine(edge3->getEndVertex(), edge4->getEndVertex());
           GEdge *edge10 = m->addLine(edge4->getBeginVertex(), edge3->getBeginVertex());
@@ -891,8 +913,8 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
   m->removeDuplicateMeshVertices(tolerance);
 
   //m->writeMSH("nozzle.msh");
-  writeAEROS(m, points, vertices, materials, boundaries, surfaceTags, boundaryTags, "nozzle.aeros", 2);
-  writeAEROH(m, materials, boundaries, interiorBoundaryTags, exteriorBoundaryTags, surfaceTags, "nozzle.aeroh", 2);
+  writeAEROS(m, points, vertices, materials, boundaries, surfaceTags, boundaryTags, "nozzle.aeros", 2, false, 1.0, (tf==0));
+  if(tf != 0) writeAEROH(m, materials, boundaries, interiorBoundaryTags, exteriorBoundaryTags, surfaceTags, "nozzle.aeroh", 2);
 
   delete m;
 
@@ -903,8 +925,8 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
 {
   std::ifstream fin("NOZZLE.txt");
 
-  int np, nv, nm; double lc; int bf;
-  fin >> np >> nv >> nm >> lc >> bf;
+  int np, nv, nm; double lc; int bf, tf;
+  fin >> np >> nv >> nm >> lc >> bf >> tf;
   
   std::vector<std::vector<double> > points;
   for(int i=0; i<np; ++i) {
@@ -946,7 +968,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
 
   fin2.close();
 
-  generateNozzle(points, vertices, segments, materials, boundaries, lc, bf);
+  generateNozzle(points, vertices, segments, materials, boundaries, lc, bf, tf);
 
   Py_RETURN_NONE;
 }
