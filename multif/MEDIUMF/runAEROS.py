@@ -68,13 +68,16 @@ def runAEROS ( nozzle ):
     Nn   = 21; # Number of nodes in longitudinal direction
     Mn   = 21; # Number of nodes in circumferential direction 
     Tn   = 4;  # Number of nodes through thickness of thermal insulating layer
+
+    boundaryFlag = 0; # 0: inlet fixed, 1: baffles fixed, 2: both inlet and baffles fixed
+    thermalFlag = 1;  # 0: structural analysis only, 1: both thermal and structural analyses
     
     ## --- How to get x, y, P, T :
     #for i in range(0,Size[0]):
     #    print "VER %d : (x,y) = (%lf, %lf) , Pres = %lf, Temp = %lf" % (i, SolExtract[i][0], SolExtract[i][1], SolExtract[i][iPres], SolExtract[i][iTemp]);
     
     f1 = open("NOZZLE.txt", 'w');
-    print >> f1, "%d %d %d %f" % (Size[0], 2, 2, 0.02);
+    print >> f1, "%d %d %d %f %d %d" % (Size[0], 2, 2, 0.02, boundaryFlag, thermalFlag);
     for i in range(0,Size[0]):
         print >> f1, "%lf %lf" % (SolExtract[i][0], SolExtract[i][1]);
     print >> f1, "%d 0.0 -1 0 %lf %lf" % (0, nozzle.wall.load_layer.thickness.radius(0), nozzle.wall.thermal_layer.thickness.radius(0));
@@ -96,8 +99,9 @@ def runAEROS ( nozzle ):
 
     _nozzle_module.generate();       # generate the meshes for thermal and structural analyses
 
-    os.system("aeros nozzle.aeroh"); # execute the thermal analysis
-    _nozzle_module.convert();        # convert temperature output from thermal analysis to input for structural analysis
+    if thermalFlag > 0:
+      os.system("aeros nozzle.aeroh"); # execute the thermal analysis
+      _nozzle_module.convert();        # convert temperature output from thermal analysis to input for structural analysis
     os.system("aeros nozzle.aeros"); # execute the structural analysis
     
     AEROSPostProcessing ( nozzle );
