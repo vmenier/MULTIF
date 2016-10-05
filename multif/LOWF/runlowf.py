@@ -416,9 +416,9 @@ def integrateSupersonic(nozzle,tol,params,xThroat,nPartitions):
 
     # Else, assume nozzle is choked at throat, integrate forwards & backwards
     else:
-        UpperM = 1.0001 # start integration at this Mach number for aft portion
-        LowerM = 0.9999 # start integ. at this Mach number for fore portion
-        dx = 1e-4 # 1e-5 for 0.9999 to 1.0001 or 1e-4 for 0.999 to 1.001
+        UpperM = 1.001 # start integration at this Mach number for aft portion
+        LowerM = 0.999 # start integ. at this Mach number for fore portion
+        dx = 1e-3 # 1e-5 for 0.9999 to 1.0001 or 1e-4 for 0.999 to 1.001
         
         # Integrate forward from throat
         f = scipy.integrate.ode(dM2dxForward,jac=None).set_integrator(       \
