@@ -17,6 +17,66 @@ def runAEROS ( nozzle ):
     # Size : [NbrVer, SolSiz]
     # idHeader : id of each solution field, e.g. mach_ver89 = SolExtract[89][idHeader['MACH']]
     
+    # Start of example for accessing nozzle properties
+    
+    print '\nEntered runAEROS\n'
+    
+    x = np.linspace(0,nozzle.length,10)
+    
+    # First print all information related to geometry
+    print '--- Wall:'
+    print 'B-spline coefs (x-r coordinates): {}'.format(nozzle.wall.coefs)
+    print 'B-spline knots: {}'.format(nozzle.wall.knots)
+    print ''
+    for i in range(len(nozzle.wall.layer)):
+        print '--- %s:' % nozzle.wall.layer[i].name
+        print 'material: %s' % nozzle.wall.layer[i].material.name
+        print 'thickness node x-coordinate: {} m'.format(nozzle.wall.layer[i].thickness.nodes[0,:])
+        print 'thickness node local n-coordinate: {} m'.format(nozzle.wall.layer[i].thickness.nodes[1,:])
+        print '\n'
+    print '--- Baffles:'
+    print 'number: %i' % nozzle.baffles.n
+    print 'location (x-coordinate): {} m'.format(nozzle.baffles.location)
+    print 'thickness: {} m'.format(nozzle.baffles.thickness)
+    print 'height: {} m'.format(nozzle.baffles.height)
+    print ''
+    print '--- Stringers:'
+    print 'number: %i' % nozzle.stringers.n
+    print 'thickness: {} m'.format(nozzle.stringers.thickness)
+    print 'height: {} m'.format(nozzle.stringers.height)
+    print ''
+    
+    # aside: to easily calculate wall shape or thickness as a function of the
+    # x-coordinate in an item's local coordinates, use the radius method
+    r_innerwall = nozzle.wall.geometry.radius(x) # returns shape of inner wall at x in r-coordinate
+    t_thermal_layer = nozzle.wall.geometry.radius(x) # returns thickness of thermal layer at x in local n-coordinate
+    
+    # Next, print all information related to materials
+    for k in nozzle.materials:
+        print '--- %s material:' % nozzle.materials[k].name
+        print 'type: %s' % nozzle.materials[k].type
+        print 'density: %10.4f kg/m^3' % nozzle.materials[k].getDensity()
+        if nozzle.materials[k].name == 'TI-HC' or nozzle.materials[k].name == 'GR-BMI':
+            print 'elastic modulus: {} Pa'.format(nozzle.materials[k].getElasticModulus())
+            print 'shear modulus: %e Pa' % nozzle.materials[k].getShearModulus()
+            print 'poisson ratio: %1.4f' % nozzle.materials[k].getPoissonRatio()
+        if nozzle.materials[k].name == 'GR-BMI':            
+            print 'mutual influence coefs: {}'.format(nozzle.materials[k].getMutualInfluenceCoefs())
+        print 'thermal conductivity: {} W/m-K'.format(nozzle.materials[k].getThermalConductivity())
+        if nozzle.materials[k].name == 'TI-HC' or nozzle.materials[k].name == 'GR-BMI':
+            print 'thermal expansion coef: {} 1/K'.format(nozzle.materials[k].getThermalExpansionCoef())
+        print ''
+        
+    # So for example to obtain the Young's Moduli for the innermost Gr-BMI layer
+    [E1, E2] = nozzle.wall.layer[1].material.getElasticModulus()
+    # Example, obtain all 3 coefs of thermal expansion for outermost Gr-BMI layer
+    [alpha1, alpha2, alpha12] = nozzle.wall.layer[3].material.getThermalExpansionCoef()
+    # Example, obtain thermal conductivities for innermost Gr-BMI layer (there
+    # are 3 values: (1st in-plane direction, 2nd in-plane direction, out-of-plane direction))
+    [k1, k2, k3] = nozzle.wall.layer[1].material.getThermalConductivity()
+    
+    # End of example
+    
     SolExtract, Size, idHeader  = ExtractSolutionAtWall(nozzle);
     
     # --- Wall thicknesses
