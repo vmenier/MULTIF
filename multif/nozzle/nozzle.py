@@ -31,175 +31,199 @@ from parserDV import *
 class Nozzle:
     def __init__(self):
         pass
+    
+    def AssignListDV(self,config,dvList,key,NbrDV,sizeDV):
+        if key in config:
+    
+            dv = config[key].strip('()');
+            dv = dv.split(",");
+            dv_size = len(dv);
+            
+            if  dv_size != sizeDV:
+                sys.stderr.write('  ## ERROR : Inconsistent number of '      \
+                  'design variables found in %s: %d instead of %d\n\n' %     \
+                  (key,dv_size,sizeDV));
+                sys.exit(0);
+            
+            tag = np.zeros(NbrDV);
+            for iw in range(0,dv_size):
+    
+                val = int(dv[iw]);
+    
+                if ( val > NbrDV or val < 0 ):
+                    sys.stderr.write('  ## ERROR : Inconsistent design '     \
+                      'variables provided in %s (idx=%d).\n\n' % (key,val));
+                    sys.exit(0);
+    
+                dvList.append(val-1);
+    
+                if val-1 >= 0 :
+                    tag[val-1] = 1;
+                
+            for iw in range(0,NbrDV):
+                if tag[iw] != 1 :
+                    sys.stderr.write('  ## ERROR : Design variable %d '      \
+                      'in %s is not defined.\n\n' % (iw+1,key));
+                    sys.exit(0);
         
-    def SetupDV (self, config):
+        else :
+            sys.stderr.write('\n ## ERROR : Expected %s in config file.'     \
+              '\n\n' % key);
+            sys.exit(0);    
+
+        
+    def SetupDV (self, config, output='verbose'):
         nozzle = self;
         
-        coefs_size = nozzle.coefs_size;
-
-        NbrDVTot = 0;        
-                
+        NbrDVTot = 0;                
         if 'DV_LIST' in config:
 
-            dv_keys = ('WALL', 'THERMAL_LAYER_THICKNESS_LOCATIONS',          \
-                      'THERMAL_LAYER_THICKNESS_VALUES',                      \
-                      'LOAD_LAYER_THICKNESS_LOCATIONS',                      \
-                      'LOAD_LAYER_THICKNESS_VALUES', 'THERMAL_LAYER_DENSITY', \
-                      'THERMAL_LAYER_ELASTIC_MODULUS',                       \
-                      'THERMAL_LAYER_POISSON_RATIO',                         \
-                      'THERMAL_LAYER_THERMAL_CONDUCTIVITY',                  \
-                      'THERMAL_LAYER_THERMAL_EXPANSION_COEF',                \
-                      'LOAD_LAYER_DENSITY', 'LOAD_LAYER_ELASTIC_MODULUS',    \
-                      'LOAD_LAYER_POISSON_RATIO',                            \
-                      'LOAD_LAYER_THERMAL_CONDUCTIVITY',                     \
-                      'LOAD_LAYER_THERMAL_EXPANSION_COEF',                   \
-                      'INLET_PSTAG', 'INLET_TSTAG', 'ATM_PRES', 'ATM_TEMP',  \
-                      'HEAT_XFER_COEF_TO_ENV');
-            # Old keys include: UPPER_WALL_THICKNESS and LOWER_WALL_THICKNESS
-            # DENSITY, ELASTIC_MODULUS, POISSON_RATIO, THERMAL_CONDUCTIVITY,
-            # THERMAL_EXPANSION_COEF
-
+            # Build a list of all possible expected keys. The list contains
+            # other lists which represent possible more specific keys that can
+            # be specified.
+            dv_keys = list();
+            dv_n = list(); # record allowable number of dv for each key
+            dv_keys.append(['WALL']);
+            dv_n.append([len(nozzle.wall.coefs)])
+            for i in range(len(nozzle.wall.layer)): # assume piecewise linear
+                ltemp = [nozzle.wall.layer[i].name, 
+                         nozzle.wall.layer[i].name + '_THICKNESS_LOCATIONS', 
+                         nozzle.wall.layer[i].name + '_THICKNESS_VALUES'];
+                dv_keys.append(ltemp);
+                dv_n.append([2*len(nozzle.wall.layer[i].thicknessNodes),
+                             len(nozzle.wall.layer[i].thicknessNodes),
+                             len(nozzle.wall.layer[i].thicknessNodes)]);
+            dv_keys.append(['BAFFLES','BAFFLES_LOCATION','BAFFLES_THICKNESS',
+                            'BAFFLES_HEIGHT']);
+            dv_n.append([3*nozzle.baffles.n,nozzle.baffles.n,
+                        nozzle.baffles.n,nozzle.baffles.n]);
+            dv_keys.append(['STRINGERS','STRINGERS_THICKNESS',
+                            'STRINGERS_HEIGHT']);
+            dv_n.append([2*nozzle.stringers.n,nozzle.stringers.n,
+                        nozzle.stringers.n]);
+            for k in nozzle.materials:
+                ltemp = [k, k + '_DENSITY', k + '_ELASTIC_MODULUS',
+                         k + '_SHEAR_MODULUS', k + '_POISSON_RATIO',
+                         k + '_MUTUAL_INFLUENCE_COEFS',
+                         k + '_THERMAL_CONDUCTIVITY', 
+                         k + '_THERMAL_EXPANSION_COEF']
+                dv_keys.append(ltemp);
+                if nozzle.materials[k].type == 'ISOTROPIC':
+                    dv_n.append([[2,5],1,1,0,1,0,1,1]);
+                else: # ANISOTROPIC_SHELL
+                    dv_n.append([12,1,2,1,1,2,2,3])                
+            dv_keys.append(['INLET_PSTAG']);
+            dv_n.append([1]);
+            dv_keys.append(['INLET_TSTAG']);
+            dv_n.append([1]);
+            dv_keys.append(['ATM_PRES']);
+            dv_n.append([1]);
+            dv_keys.append(['ATM_TEMP']);
+            dv_n.append([1]);
+            dv_keys.append(['HEAT_XFER_COEF_TO_ENV']);
+            dv_n.append([1]);
+            
+            # Extract listed design variables
             hdl = config['DV_LIST'].strip('()');
-            hdl = hdl.split(",");
+            hdl = [x.strip() for x in hdl.split(",")];
 
             dv_keys_size = len(hdl)/2;
             
+            # First check that design variables have not been overspecified
+            for k in dv_keys:
+                if len(k) > 1:
+                    if k[0] in hdl:
+                        for i in range(1,len(k)):
+                            if k[i] in hdl:
+                                sys.stderr.write('\n ## ERROR: %s and %s '  \
+                                'cannot both be specified in DV_LIST\n\n' % \
+                                (k[0],k[i]));
+                                sys.exit(0);
+            
             nozzle.DV_Tags = []; # tags: e.g. wall, tstag etc.
             nozzle.DV_Head = []; # correspondance btw DV_Tags and DV_List
-            nozzle.wall_dv = []; # 
             
             for i in range(0,2*dv_keys_size,2):
-                key = hdl[i].strip();
+                key = hdl[i];
                 NbrDV = int(hdl[i+1]);
-                                
-                if key == 'WALL' :
 
-                    if 'GEOM_WALL_COEFS_DV' in config:
-
-                        wall_dv = config['GEOM_WALL_COEFS_DV'].strip('()');
-                        wall_dv = wall_dv.split(",");
-
-                        wall_dv_size = len(wall_dv);
-                        
-                        if  wall_dv_size != coefs_size  :
-                            sys.stderr.write('  ## ERROR : Inconsistent '     \
-                              'number of design variables for the inner wall:'\
-                              ' %d coefs provided, %d design variables.\n',   \
-                              coefs_size,  wall_dv_size);
-                            sys.stderr.exit(0);
-                        
-                        tag = np.zeros(NbrDV);
-                        for iw in range(0,wall_dv_size):
-
-                            val = int(wall_dv[iw]);
-
-                            if ( val > NbrDV or val < 0 ):
-                                sys.stderr.write('  ## ERROR : Inconsistent ' \
-                                  'design variables were provided for the '   \
-                                  'inner wall (idx=%d).\n' % val);
-                                sys.exit(0);
-
-                            nozzle.wall_dv.append(val-1);
-
-                            if val-1 >= 0 :
-                                tag[val-1] = 1;
-                            
-                        for iw in range(0,NbrDV):
-                            if tag[iw] != 1 :
-                                sys.stderr.write('  ## ERROR : Design '       \
-                                  'variable %d of inner wall is not defined.' \
-                                  '\n' % (iw+1));
-                                sys.exit(0);
-                    
-                    else :
-                        sys.stderr.write('\n ## ERROR : Expected '           \
-                                         'GEOM_WALL_COEFS_DV.\n\n');
-                        sys.exit(0);
-                
-                elif ( key == 'THERMAL_LAYER_THICKNESS_VALUES' 
-                or key == 'THERMAL_LAYER_THICKNESS_LOCATIONS'):
-                    
-                    if NbrDV != len(nozzle.wall.thermal_layer.thicknessNodes) :
-                        sys.stderr.write('\n ## ERROR : Inconsistent number ' \
-                          'of DV for thermal layer thickness definition (%d ' \
-                          'DV provided instead of %d).\n\n' % (NbrDV,         \
-                          len(nozzle.wall.thermal_layer.thicknessNodes)));
-                        sys.exit(0);
-
-                elif ( key == 'LOAD_LAYER_THICKNESS_VALUES' 
-                or key == 'LOAD_LAYER_THICKNESS_LOCATIONS' ):
-                    
-                    if NbrDV != len(nozzle.wall.load_layer.thicknessNodes) :
-                        sys.stderr.write('\n ## ERROR : Inconsistent number ' \
-                          'of DV for load layer thickness definition (%d '    \
-                          'DV provided instead of %d).\n\n' % (NbrDV,         \
-                          len(nozzle.wall.load_layer.thicknessNodes)));
-                        sys.exit(0);
-                    
-                elif ( key == 'THERMAL_LAYER_DENSITY' 
-                or key == 'LOAD_LAYER_DENSITY'
-                or key == 'THERMAL_LAYER_POISSON_RATIO'
-                or key == 'LOAD_LAYER_POISSON_RATIO' ):
-                    
-                    if NbrDV != 1 :
-                        sys.stderr.write('\n ## ERROR : Inconsistent number ' \
-                          'of DV for density or poisson ratio (%d '           \
-                          'DV provided instead of 1).\n\n' % NbrDV);
-                        sys.exit(0);
-    
-                elif ( key == 'THERMAL_LAYER_ELASTIC_MODULUS'
-                or key == 'THERMAL_LAYER_THERMAL_CONDUCTIVITY'
-                or key == 'THERMAL_LAYER_THERMAL_EXPANSION_COEF' ):
-                    
-                    if ( NbrDV == 0 
-                    or NbrDV > nozzle.wall.thermal_layer.material.n ):
-                        if nozzle.wall.thermal_layer.material.n == 1:
-                            strMsg = '1'
-                        else:
-                            strMsg = '1 or 2'
-                        sys.stderr.write('\n ## ERROR : Inconsistent number ' \
-                          'of DV for thermal layer material definition (%d '  \
-                          'DV provided, must be %s).\n\n' % (NbrDV,strMsg));
-                        sys.exit(0);  
-                    
-                elif ( key == 'LOAD_LAYER_ELASTIC_MODULUS'
-                or key == 'LOAD_LAYER_THERMAL_CONDUCTIVITY'
-                or key == 'LOAD_LAYER_THERMAL_EXPANSION_COEF' ):
-                    
-                    if ( NbrDV == 0 
-                    or NbrDV > nozzle.wall.load_layer.material.n ):
-                        if nozzle.wall.load_layer.material.n == 1:
-                            strMsg = '1'
-                        else:
-                            strMsg = '1 or 2'
-                        sys.stderr.write('\n ## ERROR : Inconsistent number ' \
-                          'of DV for load layer material definition (%d '     \
-                          'DV provided, must be %s).\n\n' % (NbrDV,strMsg));
-                        sys.exit(0);
-                
-                elif ( key == 'INLET_PSTAG' or key == 'INLET_TSTAG' 
-                or key == 'ATM_PRES' or key == 'ATM_TEMP'
-                or key == 'HEAT_XFER_COEF_TO_ENV' ):
-                    
-                    if NbrDV != 1 :
-                        sys.stderr.write('\n ## ERROR : Only one design '     \
-                          'variable expected for %s (%d given).\n' %          \
-                          (key, NbrDV));
-                        sys.exit(0);
-                    
-                else :
-                    strMsg = '';
-                    for k in dv_keys :
-                        strMsg = "%s %s " % (strMsg,k);
-                    sys.stderr.write('  ## ERROR : Unknown design variable '  \
-                      'key : %s\n' % key);
-                    sys.stderr.write('             Expected = %s\n\n' % strMsg);
+                # Check to make sure key is acceptable
+                check = 0;
+                strMsg = '';
+                for j in dv_keys:
+                    for k in j:
+                        strMsg = strMsg + ',' + k;
+                        if key == k:
+                            check = 1;
+                if check != 1:
+                    sys.stderr.write('\n ## ERROR : Unknown design variable ' \
+                      'key : %s\n\n' % key);
+                    sys.stderr.write('            Expected = %s\n\n' % strMsg);
                     sys.exit(0);
-
+                
+                # Append important information
                 nozzle.DV_Tags.append(key);
                 nozzle.DV_Head.append(NbrDVTot);   
                  
-                NbrDVTot = NbrDVTot + NbrDV;
+                NbrDVTot = NbrDVTot + NbrDV;                    
+
+                if key == 'WALL':                    
+                    nozzle.wall.dv = [];
+                    sizeTemp = nozzle.wall.coefs_size; # number of DV for checking
+                    self.AssignListDV(config,nozzle.wall.dv,'WALL_COEFS_DV',
+                                      NbrDV,sizeTemp);
+                    continue;
+                
+                # Check all layers with non-specific names, e.g. LAYER1, etc.
+                check = 0;
+                for j in range(len(nozzle.wall.layer)):
+                    if key == nozzle.wall.layer[j].name:
+                        nozzle.wall.layer[j].dv = [];
+                        # number of DV for checking; assumes 2xN array
+                        sizeTemp = 2*len(nozzle.wall.layer[j].thicknessNodes);
+                        self.AssignListDV(config,nozzle.wall.layer[j].dv,
+                                          nozzle.wall.layer[j].formalName+'_DV',
+                                          NbrDV,sizeTemp);
+                        check = 1;
+                if check == 1:
+                    continue;
+                    
+                if key == 'BAFFLES':                    
+                    nozzle.baffles.dv = [];
+                    sizeTemp = nozzle.baffles.n*3; # number of DV for checking
+                    self.AssignListDV(config,nozzle.baffles.dv,'BAFFLES_DV',
+                                      NbrDV,sizeTemp);
+                    continue;
+                    
+                if key == 'STRINGERS':
+                    nozzle.stringers.dv = [];
+                    sizeTemp = nozzle.stringers.n*2; # number of DV for checking
+                    self.AssignListDV(config,nozzle.stringers.dv,'STRINGERS_DV',
+                                      NbrDV,sizeTemp);
+                    continue;
+                    
+                # Check all design variables for the right quantity
+                for j in range(len(dv_keys)):
+                    for k in range(len(dv_keys[j])):
+                        if key == dv_keys[j][k]:
+                            if isinstance(dv_n[j][k], int):
+                                if NbrDV != dv_n[j][k]:
+                                    sys.stderr.write('\n ## ERROR : Inconsistent' \
+                                      ' number of DV for %s definition (%d '      \
+                                      'provided instead of %d).\n\n' %            \
+                                      (key,NbrDV,dv_n[j][k]));
+                                    sys.exit(0);
+                            else: # if list is provided
+                                check = 0;
+                                for m in dv_n[j][k]:
+                                    if NbrDV == m:
+                                        check = 1;
+                                if check == 0:
+                                    sys.stderr.write('\n ## ERROR : Inconsistent' \
+                                      ' number of DV for %s definition (%d '      \
+                                      'provided instead of %d).\n\n' %            \
+                                      (key,NbrDV,m));
+                                    sys.exit(0);                                        
                 
             # for i in keys
         
@@ -211,6 +235,9 @@ class Nozzle:
         
         if NbrDVTot > 0 :
             nozzle.DV_Head.append(NbrDVTot);
+            
+        if output == 'verbose':
+            sys.stdout.write('Setup Design Variables complete\n');            
             
 
     def SetupFidelityLevels (self, config, flevel, output='verbose'):
@@ -354,8 +381,11 @@ class Nozzle:
         else:
             raise ValueError('keyword argument output can only be set to '    \
               '"verbose" or "quiet" mode')
+              
+        if output == 'verbose':
+            sys.stdout.write('Setup Fidelity Levels complete\n');              
         
-    def SetupMission(self, config):
+    def SetupMission(self, config, output='verbose'):
     
         nozzle = self;
         
@@ -445,21 +475,29 @@ class Nozzle:
             nozzle.su2_convergence_order = config['SU2_CONVERGENCE_ORDER'];
         else:
             nozzle.su2_convergence_order = 3;
-        
-    def SetupBSplineCoefs(self, config):
+            
+        if output == 'verbose':
+            sys.stdout.write('Setup Mission complete\n');            
+    
+    
+    def SetupBSplineCoefs(self, config, output='verbose'):
+        # Assume B-spline is a 3rd-degree B-spline. Thus, given the coefs, the
+        # knots can be calculated assuming evenly-spaced knots with a B-spline
+        # that terminates at both ends and not earlier.
         
         nozzle = self;
         
         # Set up nozzle wall
         nozzle.wall = component.AxisymmetricWall();
         
-        wall_keys = ('GEOM_WALL_PARAM','GEOM_WALL_KNOTS','GEOM_WALL_COEFS');
+        #wall_keys = ('WALL','WALL_KNOTS','WALL_COEFS');
+        wall_keys = ('WALL','WALL_COEFS');
 
         if all (key in config for key in wall_keys):
 
             # --- Get coefs
 
-            hdl = config['GEOM_WALL_COEFS'].strip('()');
+            hdl = config['WALL_COEFS'].strip('()');
             hdl = hdl.split(",");
 
             coefs_size = len(hdl);
@@ -471,15 +509,15 @@ class Nozzle:
 
             # --- Get knots
 
-            hdl = config['GEOM_WALL_KNOTS'].strip('()');
-            hdl = hdl.split(",");
-
-            knots_size = len(hdl);
-
-            knots = [];
-
-            for i in range(0,knots_size):
-                knots.append(float(hdl[i]));
+#            hdl = config['GEOM_WALL_KNOTS'].strip('()');
+#            hdl = hdl.split(",");
+#
+#            knots_size = len(hdl);
+#
+#            knots = [];
+#
+#            for i in range(0,knots_size):
+#                knots.append(float(hdl[i]));
 
             #print "%d coefs, %d knots\n" % (coefs_size, knots_size);
 
@@ -491,10 +529,17 @@ class Nozzle:
                              'PROVIDED.\n\n');
             sys.stderr.write('             Expected = %s\n\n' % str);
             sys.exit(0);
+            
+        # Calculate knots using assumptions about 3rd degree B-spline
+        n = len(coefs)/2-3;
+        knots =  [0,0,0,0] + range(1,n) + [n,n,n,n];
         
-        nozzle.coefs =  coefs;
-        nozzle.knots =  knots;
-        nozzle.coefs_size = coefs_size;
+        nozzle.wall.coefs =  coefs;
+        nozzle.wall.knots = [float(i) for i in knots];
+        nozzle.wall.coefs_size = coefs_size;
+        
+        if output == 'verbose':
+            sys.stdout.write('Setup B-Spline Coefs complete\n');        
         
     
     def ParseThickness(self, config, key):
@@ -634,36 +679,214 @@ class Nozzle:
             else:
                 sys.stderr.write('\n ## ERROR: Key %s could not implemented' \
                 ' for %s layer' % (key,name));
-                sys.exit(0);        
-        
+                sys.exit(0);
     
-    def SetupWallLayers(self, config):
+    def SetupLayerThickness(self, config, layer):
+        
+        if layer.param == 'PIECEWISE_LINEAR':            
+            # Setup thickness keys
+            t_keys = ['_THICKNESS_LOCATIONS','_THICKNESS_VALUES'];
+            for i in range(len(t_keys)):
+                t_keys[i] = layer.formalName + t_keys[i];
+            t_keys = tuple(t_keys)
+
+            # Assign thicknesses
+            if all (k in config for k in t_keys):
+                try:
+                    layer.thicknessNodes = self.ParseThickness(config,layer.formalName);
+                except:
+                    sys.stderr.write('\n ## ERROR : Thickness definition '   \
+                         'could not be parsed for %s.\n\n' % layer.name);
+                    sys.exit(0);
+            else: # assume smart values for constant thickness layer
+                if layer.name == 'THERMAL_LAYER':
+                    layer.thicknessNodes = [[0.0,0.01], [1.0, 0.01]];
+                elif layer.name == 'LOAD_LAYER_INSIDE':
+                    layer.thicknessNodes = [[0.0,0.004], [1.0, 0.004]];
+                elif layer.name == 'LOAD_LAYER_MIDDLE':
+                    layer.thicknessNodes = [[0.0,0.008], [1.0, 0.008]];   
+                elif layer.name == 'LOAD_LAYER_OUTSIDE':
+                    layer.thicknessNodes = [[0.0,0.004], [1.0, 0.004]];                      
+                else: # just assume a layer 1 cm thick
+                    layer.thicknessNodes = [[0.0,0.01], [1.0, 0.01]];  
+                    
+        else:
+            sys.stderr.write('\n ## ERROR: Parameterization %s '     \
+            'is not valid for %s. Only PIECEWISE_LINEAR is '    \
+            'accepted\n' % (layer.param, layer.name));
+            sys.exit(0);
+            
+    def SetupMaterials(self, config,output='verbose'):
+        
+        nozzle = self;
+        
+        nozzle.materials = {};
+ 
+        # Discover all materials and assign data
+        i = 1;
+        while i:
+            key = 'MATERIAL' + str(i);
+            if key in config:
+                # Parse information related to layer
+                info = config[key].strip('()');
+                info = [x.strip() for x in info.split(',')];
+                if len(info) == 2:
+                    name = info[0];
+                    type_prop = info[1]; # ISOTROPIC or ANISOTROPIC
+                    
+                    nozzle.materials[name] = material.Material(name,type_prop,'single');
+                    
+                    # Setup material keys
+                    m_keys = ['_DENSITY','_ELASTIC_MODULUS','_SHEAR_MODULUS', 
+                              '_POISSON_RATIO','_MUTUAL_INFLUENCE_COEFS',
+                              '_THERMAL_CONDUCTIVITY',
+                              '_THERMAL_EXPANSION_COEF'];
+                    for j in range(len(m_keys)):
+                        m_keys[j] = key + m_keys[j];
+                    m_keys = tuple(m_keys)
+                    
+                    # Assign material properties
+                    for k in m_keys:
+                        
+                        if k not in config:
+                            if output == 'verbose':
+                                sys.stdout.write('%s not found in config ' \
+                                'file. Skipping assignment...\n' % k);
+                            continue;
+                        
+                        var = config[k].strip('()');
+                        var = var.split(',');
+                        if len(var) > 1:
+                            var = [float(x) for x in var]
+                        elif len(var) == 1:
+                            var = float(var[0]);
+                        else:
+                            sys.stderr.write('\n ## ERROR: Key %s could not be parsed '  \
+                            'for %s material\n\n' % (k,name));
+                            sys.exit(0);
+                        
+                        if k == key + '_DENSITY':
+                            nozzle.materials[name].setDensity(var);
+                        elif k == key + '_ELASTIC_MODULUS':
+                            nozzle.materials[name].setElasticModulus(var);
+                        elif k == key + '_SHEAR_MODULUS':
+                            nozzle.materials[name].setShearModulus(var);
+                        elif k == key + '_POISSON_RATIO':
+                            nozzle.materials[name].setPoissonRatio(var);
+                        elif k == key + '_MUTUAL_INFLUENCE_COEFS':
+                            nozzle.materials[name].setMutualInfluenceCoefs(var);
+                        elif k == key + '_THERMAL_CONDUCTIVITY':
+                            nozzle.materials[name].setThermalConductivity(var);
+                        elif k == key + '_THERMAL_EXPANSION_COEF':
+                            nozzle.materials[name].setThermalExpansionCoef(var);
+                        else:
+                            sys.stderr.write('\n ## ERROR: Key %s could not implemented' \
+                            ' for %s material\n\n' % (k,name));
+                            sys.exit(0);
+                    
+                else: # concise material format
+                    sys.stderr.write('\n ## ERROR: Concise material format ' \
+                    'not implemented yet\n\n');
+                    sys.exit(0);
+                
+            else:
+                break;
+            i += 1
+        
+        if output == 'verbose':
+            sys.stdout.write('%d materials processed\n' % (i-1));
+            sys.stdout.write('Setup Materials complete\n');
+
+    
+    def SetupWallLayers(self, config, output='verbose'):
   
         nozzle = self;
         
-        # Inner thermal layer to take heat load
-        nozzle.wall.thermal_layer = component.AxisymmetricWall('THERMAL_LAYER');
+        nozzle.wall.layer = list();
         
-        # Outer structural layer to take structural load
-        nozzle.wall.load_layer = component.AxisymmetricWall('LOAD_LAYER');
+        # Discover all layers and assign data
+        i = 1;
+        while i:
+            key = 'LAYER' + str(i);
+            if key in config:
+                # Parse information related to layer
+                info = config[key].strip('()');
+                name, param, material = [x.strip() for x in info.split(',')];
+                nozzle.wall.layer.append(component.AxisymmetricWall(name));
+                nozzle.wall.layer[i-1].param = param;
+                nozzle.wall.layer[i-1].formalName = key;
+                
+                # Assign thickness distribution
+                self.SetupLayerThickness(config,nozzle.wall.layer[i-1]);
+                # Assign material
+                nozzle.wall.layer[i-1].material=nozzle.materials[material]
+                
+            else:
+                break;
+            i += 1
         
-        # Setup thickness and material for thermal layer
-        nozzle.SetupLayer(config,nozzle.wall.thermal_layer,'single')
+        if output == 'verbose':
+            sys.stdout.write('%d layers processed\n' % (i-1));
+            sys.stdout.write('Setup Wall Layers complete\n');        
+        #print nozzle.wall.layer[1].__dict__
+
         
-        # Setup thickness and material for load layer
-        nozzle.SetupLayer(config,nozzle.wall.load_layer,'single')
+    def SetupBaffles(self, config, output='verbose'):
+        
+        nozzle = self;
+        
+        info = config['BAFFLES'].strip('()');
+        n, material = [x.strip() for x in info.split(',')];
+        nozzle.baffles = component.Baffles(n);
+        nozzle.baffles.material = nozzle.materials[material];
+        
+        info = config['BAFFLES_LOCATION'].strip('()');
+        ltemp = [x.strip() for x in info.split(',')];
+        nozzle.baffles.location = [float(x) for x in ltemp];
+        
+        info = config['BAFFLES_HEIGHT'].strip('()');
+        ltemp = [x.strip() for x in info.split(',')];        
+        nozzle.baffles.height = [float(x) for x in ltemp];
+        
+        info = config['BAFFLES_THICKNESS'].strip('()');
+        ltemp = [x.strip() for x in info.split(',')];          
+        nozzle.baffles.thickness = [float(x) for x in ltemp];  
+        
+        if output == 'verbose':
+            sys.stdout.write('Setup Baffles complete\n');        
+
+        
+    def SetupStringers(self, config, output='verbose'):
+        
+        nozzle = self;
+        
+        info = config['STRINGERS'].strip('()');
+        n, material = [x.strip() for x in info.split(',')];
+        nozzle.stringers = component.Stringers(n);
+        nozzle.stringers.material = nozzle.materials[material];
+        
+        info = config['STRINGERS_HEIGHT'].strip('()');
+        ltemp = [x.strip() for x in info.split(',')];        
+        nozzle.stringers.height = [float(x) for x in ltemp];
+        
+        info = config['STRINGERS_THICKNESS'].strip('()');
+        ltemp = [x.strip() for x in info.split(',')];          
+        nozzle.stringers.thickness = [float(x) for x in ltemp];
+        
+        if output == 'verbose':
+            sys.stdout.write('Setup Stringers complete\n');        
         
 
-    def SetupWall (self, config):
+    def SetupWall (self, config, output='verbose'):
         
         nozzle = self;
         
         # --- SHAPE OF INNER WALL (B-SPLINE)
         
-        coefs = nozzle.coefs;
-        knots = nozzle.knots;
+        coefs = nozzle.wall.coefs;
+        knots = nozzle.wall.knots;
         
-        coefs_size = nozzle.coefs_size;
+        coefs_size = nozzle.wall.coefs_size;
         
         nozzle.height = coefs[coefs_size-1];
         nozzle.length = coefs[coefs_size/2-1];
@@ -686,30 +909,25 @@ class Nozzle:
         
         nozzle.wall.geometry = geometry.Bspline(coefsnp);
         
-        # --- THERMAL LAYER THICKNESS
+        # --- Setup thickness of each layer
         
-        size_thickness = len(nozzle.wall.thermal_layer.thicknessNodes);
-        thicknessNodeArray = np.zeros(shape=(2,size_thickness))
-        
-        for i in range(size_thickness):
-            thicknessNodeArray[0][i] = nozzle.wall.thermal_layer.thicknessNodes[i][0]*nozzle.length;
-            thicknessNodeArray[1][i] = nozzle.wall.thermal_layer.thicknessNodes[i][1];
-        
-        nozzle.wall.thermal_layer.thickness = geometry.PiecewiseLinear(thicknessNodeArray);
-
-        # --- LOAD LAYER THICKNESS
-        
-        size_thickness = len(nozzle.wall.load_layer.thicknessNodes);
-        thicknessNodeArray = np.zeros(shape=(2,size_thickness))
-        
-        for i in range(size_thickness):
-            thicknessNodeArray[0][i] = nozzle.wall.load_layer.thicknessNodes[i][0]*nozzle.length;
-            thicknessNodeArray[1][i] = nozzle.wall.load_layer.thicknessNodes[i][1];
-        
-        nozzle.wall.load_layer.thickness = geometry.PiecewiseLinear(thicknessNodeArray);
+        for i in range(len(nozzle.wall.layer)):
             
+            tsize = len(nozzle.wall.layer[i].thicknessNodes);
+            thicknessNodeArray = np.zeros(shape=(2,tsize))        
+            for j in range(tsize):
+                thicknessNodeArray[0][j] = nozzle.wall.layer[i].thicknessNodes[j][0]*nozzle.length;
+                thicknessNodeArray[1][j] = nozzle.wall.layer[i].thicknessNodes[j][1];
+            nozzle.wall.layer[i].thickness = geometry.PiecewiseLinear(thicknessNodeArray);
+            
+        # --- Rescale x-coordinates of baffles
+            
+        nozzle.baffles.location = [x*nozzle.length for x in nozzle.baffles.location];
+            
+        if output == 'verbose':
+            sys.stdout.write('Setup Wall complete\n');
 
-    def ParseDV (self, config):
+    def ParseDV (self, config, output='verbose'):
         
         nozzle = self;
         
@@ -746,6 +964,9 @@ class Nozzle:
             sys.exit(0);
     
         nozzle.DV_List = DV_List;
+        
+        if output == 'verbose':
+            sys.stdout.write('Setup Parse Design Variables complete\n');        
     
     
     def UpdateDV(self, config, output='verbose'):
@@ -767,338 +988,423 @@ class Nozzle:
             NbrDV = nozzle.DV_Head[iTag+1] - nozzle.DV_Head[iTag];
             
             if Tag == 'WALL':
-                
-                for iCoef in range(len(nozzle.wall_dv)):
-                    id_dv = nozzle.DV_Head[iTag] + nozzle.wall_dv[iCoef];
-                    
+                for iCoef in range(len(nozzle.wall.dv)):
+                    id_dv = nozzle.DV_Head[iTag] + nozzle.wall.dv[iCoef];                    
                     # --- Update coef iCoef if required
-                    if id_dv >= 0 :
+                    if id_dv >= nozzle.DV_Head[iTag]:
                         prt_name.append('Bspline coef #%d' % (iCoef+1));
-                        prt_basval.append('%.4lf'% nozzle.coefs[iCoef]);
+                        prt_basval.append('%.4lf'% nozzle.wall.coefs[iCoef]);
                         prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                        nozzle.coefs[iCoef] = nozzle.DV_List[id_dv];
+                        nozzle.wall.coefs[iCoef] = nozzle.DV_List[id_dv];
                         NbrChanged = NbrChanged+1;
+                continue;
+                
+            # Update all layers with non-specific names, e.g. LAYER1, etc.
+            check = 0;
+            for j in range(len(nozzle.wall.layer)):
+                if Tag == nozzle.wall.layer[j].name:
+                    lsize = len(nozzle.wall.layer[j].thicknessNodes);
+                    brk = np.max(nozzle.wall.layer[j].dv[:lsize])+1;
+                    for iCoord in range(len(nozzle.wall.layer[j].dv)):
+                        id_dv = nozzle.DV_Head[iTag] + nozzle.wall.layer[j].dv[iCoord];
+                        # Update coordinate in thickness array if required
+                        if id_dv < nozzle.DV_Head[iTag]:
+                            pass
+                        elif id_dv < nozzle.DV_Head[iTag]+brk:
+                            prt_name.append('%s thickness location #%d' % (nozzle.wall.layer[j].name,iCoord+1));
+                            prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodes[iCoord][0]);
+                            prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                            nozzle.wall.layer[j].thicknessNodes[iCoord][0] = nozzle.DV_List[id_dv];
+                            NbrChanged = NbrChanged+1;
+                        else: # id_dv > nozzle.DV_Head[iTag]+brk
+                            prt_name.append('%s thickness value #%d' % (nozzle.wall.layer[j].name,iCoord+1-lsize));
+                            prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodes[iCoord-lsize][1]);
+                            prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                            nozzle.wall.layer[j].thicknessNodes[iCoord-lsize][1] = nozzle.DV_List[id_dv];
+                            NbrChanged = NbrChanged+1;
+                    check = 1;
+            if check == 1:
+                continue;
+                
+            # Update all layers with specific names, e.g. LAYER1_THICKNESS_VALUES
+            check = 0;
+            for j in range(len(nozzle.wall.layer)):
+                if Tag == nozzle.wall.layer[j].name + '_THICKNESS_LOCATIONS':
+                    for iCoord in range(len(nozzle.wall.layer[j].thicknessNodes)):
+                        id_dv = nozzle.DV_Head[iTag] + iCoord;
+                        prt_name.append('%s thickness location #%d' % (nozzle.wall.layer[j].name,iCoord+1));
+                        prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodes[iCoord][0]);
+                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                        nozzle.wall.layer[j].thicknessNodes[iCoord][0] = nozzle.DV_List[id_dv];
+                        NbrChanged = NbrChanged+1;
+                    check = 1;
+                elif Tag == nozzle.wall.layer[j].name + '_THICKNESS_VALUES':
+                    for iCoord in range(len(nozzle.wall.layer[j].thicknessNodes)):
+                        id_dv = nozzle.DV_Head[iTag] + iCoord;                  
+                        prt_name.append('%s thickness value #%d' % (nozzle.wall.layer[j].name,iCoord+1));
+                        prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodes[iCoord][1]);
+                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                        nozzle.wall.layer[j].thicknessNodes[iCoord][1] = nozzle.DV_List[id_dv];
+                        NbrChanged = NbrChanged+1;
+                    check = 1;
+            if check == 1:
+                continue;            
+                       
+            if Tag == 'BAFFLES':
+                lsize = len(nozzle.baffles.dv)/3;
+                brk1 = np.max(nozzle.baffles.dv[:lsize])+1;
+                brk2 = np.max(nozzle.baffles.dv[lsize:2*lsize])+1;
+                for iCoord in range(len(nozzle.baffles.dv)):
+                    id_dv = nozzle.DV_Head[iTag] + nozzle.baffles.dv[iCoord];                    
+                    # --- Update coordinate in baffle definition if required
+                    if id_dv < nozzle.DV_Head[iTag]:
+                        pass;
+                    elif id_dv < nozzle.DV_Head[iTag] + brk1:
+                        prt_name.append('baffle location #%d' % (iCoord+1));
+                        prt_basval.append('%.4lf'% nozzle.baffles.location[iCoord]);
+                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                        nozzle.baffles.location[iCoord] = nozzle.DV_List[id_dv];
+                        NbrChanged = NbrChanged+1;
+                    elif id_dv < nozzle.DV_Head[iTag] + brk2:
+                        prt_name.append('baffle thickness #%d' % (iCoord+1-lsize));
+                        prt_basval.append('%.4lf'% nozzle.baffles.thickness[iCoord-lsize]);
+                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                        nozzle.baffles.thickness[iCoord-lsize] = nozzle.DV_List[id_dv];
+                        NbrChanged = NbrChanged+1;                        
+                    else:
+                        prt_name.append('baffle height #%d' % (iCoord+1-2*lsize));
+                        prt_basval.append('%.4lf'% nozzle.baffles.height[iCoord-2*lsize]);
+                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                        nozzle.baffles.height[iCoord-2*lsize] = nozzle.DV_List[id_dv];
+                        NbrChanged = NbrChanged+1;                        
+                continue;
+                
+            if Tag == 'BAFFLES_LOCATION':
+                for iCoord in range(len(nozzle.baffles.location)):
+                    id_dv = nozzle.DV_Head[iTag] + iCoord;
+                    prt_name.append('baffle location #%d' % (iCoord+1));
+                    prt_basval.append('%.4lf'% nozzle.baffles.location[iCoord]);
+                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                    nozzle.baffles.location[iCoord] = nozzle.DV_List[id_dv];
+                    NbrChanged = NbrChanged+1;
+                continue;
+               
+            if Tag == 'BAFFLES_HEIGHT':
+                for iCoord in range(len(nozzle.baffles.height)):
+                    id_dv = nozzle.DV_Head[iTag] + iCoord;
+                    prt_name.append('baffle height #%d' % (iCoord+1));
+                    prt_basval.append('%.4lf'% nozzle.baffles.height[iCoord]);
+                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                    nozzle.baffles.height[iCoord] = nozzle.DV_List[id_dv];
+                    NbrChanged = NbrChanged+1;
+                continue;
+            
+            if Tag == 'BAFFLES_THICKNESS':
+                for iCoord in range(len(nozzle.baffles.thickness)):
+                    id_dv = nozzle.DV_Head[iTag] + iCoord;
+                    prt_name.append('baffle thickness #%d' % (iCoord+1));
+                    prt_basval.append('%.4lf'% nozzle.baffles.thickness[iCoord]);
+                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                    nozzle.baffles.thickness[iCoord] = nozzle.DV_List[id_dv];
+                    NbrChanged = NbrChanged+1;
+                continue;
+                
+            if Tag == 'STRINGERS':
+                lsize = len(nozzle.stringers.dv)/2;
+                brk = np.max(nozzle.stringers.dv[:lsize])+1;
+                for iCoord in range(len(nozzle.stringers.dv)):
+                    id_dv = nozzle.DV_Head[iTag] + nozzle.stringers.dv[iCoord];                    
+                    # --- Update coordinate in stringer definition if required
+                    if id_dv < nozzle.DV_Head[iTag]:
+                        pass;
+                    elif id_dv < nozzle.DV_Head[iTag] + brk:
+                        prt_name.append('stringer thickness #%d' % (iCoord+1));
+                        prt_basval.append('%.4lf'% nozzle.stringers.thickness[iCoord]);
+                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                        nozzle.stringers.thickness[iCoord] = nozzle.DV_List[id_dv];
+                        NbrChanged = NbrChanged+1;
+                    else:
+                        prt_name.append('stringer height #%d' % (iCoord+1-lsize));
+                        prt_basval.append('%.4lf'% nozzle.stringers.height[iCoord-lsize]);
+                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                        nozzle.stringers.height[iCoord-lsize] = nozzle.DV_List[id_dv];
+                        NbrChanged = NbrChanged+1;
+                continue;   
+                
+            if Tag == 'STRINGERS_THICKNESS':
+                for iCoord in range(len(nozzle.stringers.thickness)):
+                    id_dv = nozzle.DV_Head[iTag] + iCoord;
+                    prt_name.append('stringer thickness #%d' % (iCoord+1));
+                    prt_basval.append('%.4lf'% nozzle.stringers.thickness[iCoord]);
+                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                    nozzle.stringers.thickness[iCoord] = nozzle.DV_List[id_dv];
+                    NbrChanged = NbrChanged+1;
+                continue;  
+                
+            if Tag == 'STRINGERS_HEIGHT':
+                for iCoord in range(len(nozzle.stringers.height)):
+                    id_dv = nozzle.DV_Head[iTag] + iCoord;
+                    prt_name.append('stringers height #%d' % (iCoord+1));
+                    prt_basval.append('%.4lf'% nozzle.stringers.height[iCoord]);
+                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                    nozzle.stringers.height[iCoord] = nozzle.DV_List[id_dv];
+                    NbrChanged = NbrChanged+1;
+                continue;
                         
-            elif Tag == 'THERMAL_LAYER_THICKNESS_LOCATIONS':
+            # Update all materials with non-specific names, e.g. MATERIAL1, etc.
+            check = 0;
+            for k in nozzle.materials:
+                id_dv = nozzle.DV_Head[iTag]
                 
-                for i in range(NbrDV):
-                    id_dv = nozzle.DV_Head[iTag]+i;
+                if Tag == k: # Update material with non-specific names                
+                    if NbrDV == 2: # update density and thermal conductivity
                     
-                    prt_name.append('Thermal layer thickness location #%i' % i);
-                    prt_basval.append('%.4lf'%                               \
-                      nozzle.wall.thermal_layer.thicknessNodes[i][0]);
-                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                    
-                    nozzle.wall.thermal_layer.thicknessNodes[i][0] =              \
-                      nozzle.DV_List[id_dv];
+                        prt_name.append('%s density' % k);
+                        prt_basval.append('%.2le' % nozzle.materials[k].getDensity());
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                        nozzle.materials[k].setDensity(nozzle.DV_List[id_dv]);
+
+                        prt_name.append('%s thermal conductivity' % k);
+                        prt_basval.append('%.2le' % nozzle.materials[k].getThermalConductivity());
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);
+                        nozzle.materials[k].setThermalConductivity(nozzle.DV_List[id_dv+1]);
                         
-            elif Tag == 'THERMAL_LAYER_THICKNESS_VALUES':
-                
-                for i in range(NbrDV):
-                    id_dv = nozzle.DV_Head[iTag]+i;
-                    
-                    # if THERMAL_LAYER_THICKNESS_LOCATIONS is not updated yet,
-                    # then the following print label will not be correct
-                    prt_name.append('Thermal layer thickness t=%.3lf'        \
-                      % nozzle.wall.thermal_layer.thicknessNodes[i][0]);
-                    prt_basval.append('%.4lf'%                               \
-                      nozzle.wall.thermal_layer.thicknessNodes[i][1]);
-                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                    
-                    nozzle.wall.thermal_layer.thicknessNodes[i][1] =         \
-                      nozzle.DV_List[id_dv];
-            
-            elif Tag == 'LOAD_LAYER_THICKNESS_LOCATIONS':
+                        NbrChanged = NbrChanged+2;
+                        
+                    elif NbrDV == 5:
+                        
+                        prt_name.append('%s density' % k);
+                        prt_basval.append('%.2le' % nozzle.materials[k].getDensity());
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                        nozzle.materials[k].setDensity(nozzle.DV_List[id_dv]);
+                        
+                        prt_name.append('%s elastic modulus' % k);
+                        prt_basval.append('%.2le' % nozzle.materials[k].getElasticModulus());
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);
+                        nozzle.materials[k].setElasticModulus(nozzle.DV_List[id_dv+1]);
 
-                for i in range(NbrDV):
-                    id_dv = nozzle.DV_Head[iTag]+i;
-                    
-                    prt_name.append('Load layer thickness location #%i' % i);
-                    prt_basval.append('%.4lf'%                               \
-                      nozzle.wall.load_layer.thicknessNodes[i][0]);
-                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                    
-                    nozzle.wall.load_layer.thicknessNodes[i][0] =            \
-                      nozzle.DV_List[id_dv];
-            
-            elif Tag == 'LOAD_LAYER_THICKNESS_VALUES':
-      
-                for i in range(NbrDV):
-                    id_dv = nozzle.DV_Head[iTag]+i;
-                    
-                    # if LOAD_LAYER_THICKNESS_LOCATIONS is not updated yet,
-                    # then the following print label will not be correct
-                    prt_name.append('Load layer thickness t=%.3lf'           \
-                      % nozzle.wall.load_layer.thicknessNodes[i][0]);
-                    prt_basval.append('%.4lf'%                               \
-                      nozzle.wall.load_layer.thicknessNodes[i][1]);
-                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                    
-                    nozzle.wall.load_layer.thicknessNodes[i][1] =            \
-                      nozzle.DV_List[id_dv];   
-            
-            elif Tag == 'THERMAL_LAYER_DENSITY':
-                
-                # Only single material enabled; panel material not implemented
-                id_dv = nozzle.DV_Head[iTag];
-                
-                prt_name.append('Thermal layer density');
-                prt_basval.append('%.2le'%                                   \
-                  nozzle.wall.thermal_layer.material.getDensity());
-                prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                
-                var = nozzle.DV_List[id_dv];
-                nozzle.wall.thermal_layer.material.setDensity(var);
-            
-            elif Tag == 'THERMAL_LAYER_ELASTIC_MODULUS':
-                
-                id_dv = nozzle.DV_Head[iTag];
-                
-                if NbrDV == 1:
-                    prt_name.append('Thermal layer elastic modulus');
-                    prt_basval.append('%.2le'%                               \
-                      nozzle.wall.thermal_layer.material.E);
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                    
-                    var = nozzle.DV_List[id_dv]; 
-                    nozzle.wall.thermal_layer.material.setElasticModulus(var);
-                else: # NbrDV == 2
-                    prt_name.append('Thermal layer elastic modulus (axial)');
-                    prt_basval.append('%.2le'%                               \
-                      nozzle.wall.thermal_layer.material.EAxial);
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                    
-                    prt_name.append('Thermal layer elastic modulus (radial)');
-                    prt_basval.append('%.2le'%                               \
-                      nozzle.wall.thermal_layer.material.ERadial);
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);
-                    
-                    var = nozzle.DV_List[id_dv:id_dv+2]; 
-                    nozzle.wall.thermal_layer.material.setElasticModulus(var);                
-                
-            elif Tag == 'THERMAL_LAYER_POISSON_RATIO':
+                        prt_name.append('%s poisson ratio' % k);
+                        prt_basval.append('%.2le' % nozzle.materials[k].getPoissonRatio());
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+2]);
+                        nozzle.materials[k].setPoissonRatio(nozzle.DV_List[id_dv+2]);
 
-                id_dv = nozzle.DV_Head[iTag];
-                
-                prt_name.append('Thermal layer Poisson ratio');
-                prt_basval.append('%.4f'%                                   \
-                  nozzle.wall.thermal_layer.material.getPoissonRatio());
-                prt_newval.append('%.4f'% nozzle.DV_List[id_dv]);
-                
-                var = nozzle.DV_List[id_dv];
-                nozzle.wall.thermal_layer.material.setPoissonRatio(var);
-            
-            elif Tag == 'THERMAL_LAYER_THERMAL_CONDUCTIVITY':
-                
-                id_dv = nozzle.DV_Head[iTag];
-                
-                if NbrDV == 1:
-                    prt_name.append('Thermal layer thermal cond.');
-                    prt_basval.append('%.2le'%                               \
-                      nozzle.wall.thermal_layer.material.k);
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                    
-                    var = nozzle.DV_List[id_dv]; 
-                    nozzle.wall.thermal_layer.material.setThermalConductivity(var);
-                else: # NbrDV == 2
-                    prt_name.append('Thermal layer thermal cond. (axial)');
-                    prt_basval.append('%.2le'%                               \
-                      nozzle.wall.thermal_layer.material.kAxial);
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                    
-                    prt_name.append('Thermal layer thermal cond. (radial)');
-                    prt_basval.append('%.2le'%                               \
-                      nozzle.wall.thermal_layer.material.kRadial);
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);
-                    
-                    var = nozzle.DV_List[id_dv:id_dv+2]; 
-                    nozzle.wall.thermal_layer.material.setThermalConductivity(var); 
-                
-            elif Tag == 'THERMAL_LAYER_THERMAL_EXPANSION_COEF':
-                
-                id_dv = nozzle.DV_Head[iTag];
-                
-                if NbrDV == 1:
-                    prt_name.append('Thermal layer thermal expansion coef.');
-                    prt_basval.append('%.2le'%                               \
-                      nozzle.wall.thermal_layer.material.alpha);
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                    
-                    var = nozzle.DV_List[id_dv]; 
-                    nozzle.wall.thermal_layer.material.setThermalExpansionCoef(var);
-                else: # NbrDV == 2
-                    prt_name.append('Thermal layer thermal expansion coef. (axial)');
-                    prt_basval.append('%.2le'%                               \
-                      nozzle.wall.thermal_layer.material.alphaAxial);
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                    
-                    prt_name.append('Thermal layer thermal expansion coef. (radial)');
-                    prt_basval.append('%.2le'%                               \
-                      nozzle.wall.thermal_layer.material.alphaRadial);
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);
-                    
-                    var = nozzle.DV_List[id_dv:id_dv+2]; 
-                    nozzle.wall.thermal_layer.material.setThermalExpansionCoef(var);                 
-            
-            elif Tag == 'LOAD_LAYER_DENSITY':
+                        prt_name.append('%s thermal conductivity' % k);
+                        prt_basval.append('%.2le' % nozzle.materials[k].getThermalConductivity());
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+3]);
+                        nozzle.materials[k].setThermalConductivity(nozzle.DV_List[id_dv+3]);
 
-                # Only single material enabled; panel material not implemented
-                id_dv = nozzle.DV_Head[iTag];
-                
-                prt_name.append('Load layer density');
-                prt_basval.append('%.2le'%                                   \
-                  nozzle.wall.load_layer.material.getDensity());
-                prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                
-                var = nozzle.DV_List[id_dv];
-                nozzle.wall.load_layer.material.setDensity(var);
-            
-            elif Tag == 'LOAD_LAYER_ELASTIC_MODULUS':
+                        prt_name.append('%s thermal expansion coef' % k);
+                        prt_basval.append('%.2le' % nozzle.materials[k].getThermalExpansionCoef());
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+4]);
+                        nozzle.materials[k].setThermalExpansionCoef(nozzle.DV_List[id_dv+4]);
+                        
+                        NbrChanged = NbrChanged+5;
+                        
+                    elif NbrDV == 12:
+                        
+                        prt_name.append('%s density' % k);
+                        prt_basval.append('%.2le' % nozzle.materials[k].getDensity());
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                        nozzle.materials[k].setDensity(nozzle.DV_List[id_dv]);
 
-                id_dv = nozzle.DV_Head[iTag];
-                
-                if NbrDV == 1:
-                    prt_name.append('Load layer elastic modulus');
-                    prt_basval.append('%.2le'%                               \
-                      nozzle.wall.load_layer.material.E);
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                    
-                    var = nozzle.DV_List[id_dv]; 
-                    nozzle.wall.load_layer.material.setElasticModulus(var);
-                else: # NbrDV == 2
-                    prt_name.append('Load layer elastic modulus (axial)');
-                    prt_basval.append('%.2le'%                               \
-                      nozzle.wall.load_layer.material.EAxial);
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                    
-                    prt_name.append('Load layer elastic modulus (radial)');
-                    prt_basval.append('%.2le'%                               \
-                      nozzle.wall.load_layer.material.ERadial);
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);
-                    
-                    var = nozzle.DV_List[id_dv:id_dv+2]; 
-                    nozzle.wall.load_layer.material.setElasticModulus(var);
-                
-            elif Tag == 'LOAD_LAYER_POISSON_RATIO':
+                        ltemp = nozzle.materials[k].getElasticModulus();
+                        prt_name.append('%s elastic modulus E1' % k);
+                        prt_basval.append('%.2le' % ltemp[0]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);
+                        prt_name.append('%s elastic modulus E2' % k);
+                        prt_basval.append('%.2le' % ltemp[1]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+2]);                        
+                        nozzle.materials[k].setElasticModulus(nozzle.DV_List[id_dv+1:id_dv+3]);
+                        
+                        prt_name.append('%s shear modulus' % k);
+                        prt_basval.append('%.2le' % nozzle.materials[k].getShearModulus());
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+3]);
+                        nozzle.materials[k].setShearModulus(nozzle.DV_List[id_dv+3]);
+                        
+                        prt_name.append('%s poisson ratio' % k);
+                        prt_basval.append('%.2le' % nozzle.materials[k].getPoissonRatio());
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+4]);
+                        nozzle.materials[k].setPoissonRatio(nozzle.DV_List[id_dv+4]);
+                        
+                        ltemp = nozzle.materials[k].getMutualInfluenceCoefs();
+                        prt_name.append('%s mutual influence coef u1' % k);
+                        prt_basval.append('%.2le' % ltemp[0]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+5]);
+                        prt_name.append('%s mutual influence coef u2' % k);
+                        prt_basval.append('%.2le' % ltemp[1]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+6]);                        
+                        nozzle.materials[k].setMutualInfluenceCoefs(nozzle.DV_List[id_dv+5:id_dv+7]);       
+                        
+                        ltemp = nozzle.materials[k].getThermalConductivity();
+                        prt_name.append('%s thermal conductivity k1' % k);
+                        prt_basval.append('%.2le' % ltemp[0]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+7]);
+                        prt_name.append('%s thermal conductivity k2' % k);
+                        prt_basval.append('%.2le' % ltemp[1]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+8]);                        
+                        nozzle.materials[k].setThermalConductivity(nozzle.DV_List[id_dv+7:id_dv+9]);  
 
-                id_dv = nozzle.DV_Head[iTag];
-                
-                prt_name.append('Load layer Poisson ratio');
-                prt_basval.append('%.4f'%                                   \
-                  nozzle.wall.load_layer.material.getPoissonRatio());
-                prt_newval.append('%.4f'% nozzle.DV_List[id_dv]);
-                
-                var = nozzle.DV_List[id_dv];
-                nozzle.wall.load_layer.material.setPoissonRatio(var);
-            
-            elif Tag == 'LOAD_LAYER_THERMAL_CONDUCTIVITY':
+                        ltemp = nozzle.materials[k].getThermalExpansionCoef();
+                        prt_name.append('%s thermal expansion coef a1' % k);
+                        prt_basval.append('%.2le' % ltemp[0]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+9]);
+                        prt_name.append('%s thermal expansion coef a2' % k);
+                        prt_basval.append('%.2le' % ltemp[1]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+10]);           
+                        prt_name.append('%s thermal expansion coef a12' % k);
+                        prt_basval.append('%.2le' % ltemp[2]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+11]);                         
+                        nozzle.materials[k].setThermalExpansionCoef(nozzle.DV_List[id_dv+9:id_dv+12]);
+                        
+                        NbrChanged = NbrChanged+12;
 
-                id_dv = nozzle.DV_Head[iTag];
-                
-                if NbrDV == 1:
-                    prt_name.append('Load layer thermal cond.');
-                    prt_basval.append('%.2le'%                               \
-                      nozzle.wall.load_layer.material.k);
+                    else:
+                        raise RuntimeError('%d design variables not accepted' \
+                              ' for assignment for %s material' % (NbrDV,k));
+                    
+                    check = 1;
+                              
+                elif Tag == k + '_DENSITY':
+                    prt_name.append('%s density' % k);
+                    prt_basval.append('%.2le' % nozzle.materials[k].getDensity());
                     prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                    
-                    var = nozzle.DV_List[id_dv]; 
-                    nozzle.wall.load_layer.material.setThermalConductivity(var);
-                else: # NbrDV == 2
-                    prt_name.append('Load layer thermal cond. (axial)');
-                    prt_basval.append('%.2le'%                               \
-                      nozzle.wall.load_layer.material.kAxial);
+                    nozzle.materials[k].setDensity(nozzle.DV_List[id_dv]);
+                    NbrChanged = NbrChanged + 1;
+                    check = 1;
+                elif Tag == k + '_ELASTIC_MODULUS':
+                    if NbrDV == 1:
+                        prt_name.append('%s elastic modulus' % k);
+                        prt_basval.append('%.2le' % nozzle.materials[k].getElasticModulus());
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);
+                        nozzle.materials[k].setElasticModulus(nozzle.DV_List[id_dv+1]);
+                        NbrChanged = NbrChanged + 1;
+                    elif NbrDV == 2:
+                        ltemp = nozzle.materials[k].getElasticModulus();
+                        prt_name.append('%s elastic modulus E1' % k);
+                        prt_basval.append('%.2le' % ltemp[0]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                        prt_name.append('%s elastic modulus E2' % k);
+                        prt_basval.append('%.2le' % ltemp[1]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);                        
+                        nozzle.materials[k].setElasticModulus(nozzle.DV_List[id_dv:id_dv+2]);
+                        NbrChanged = NbrChanged + 2;
+                    check = 1;                        
+                elif Tag == k + '_SHEAR_MODULUS':
+                    prt_name.append('%s shear modulus' % k);
+                    prt_basval.append('%.2le' % nozzle.materials[k].getShearModulus());
                     prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                    
-                    prt_name.append('Load layer thermal cond. (radial)');
-                    prt_basval.append('%.2le'%                               \
-                      nozzle.wall.load_layer.material.kRadial);
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);
-                    
-                    var = nozzle.DV_List[id_dv:id_dv+2]; 
-                    nozzle.wall.load_layer.material.setThermalConductivity(var); 
-                
-            elif Tag == 'LOAD_LAYER_THERMAL_EXPANSION_COEF':
+                    nozzle.materials[k].setShearModulus(nozzle.DV_List[id_dv]);
+                    NbrChanged = NbrChanged + 1;
+                    check = 1;
+                elif Tag == k + '_POISSON_RATIO':
+                    prt_name.append('%s poisson ratio' % k);
+                    prt_basval.append('%.2le' % nozzle.materials[k].getPoissonRatio());
+                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                    nozzle.materials[k].setPoissonRatio(nozzle.DV_List[id_dv]);
+                    NbrChanged = NbrChanged + 1;
+                    check = 1;
+                elif Tag == k + '_MUTUAL_INFLUENCE_COEFS':
+                    ltemp = nozzle.materials[k].getMutualInfluenceCoefs();
+                    prt_name.append('%s mutual influence coef u1' % k);
+                    prt_basval.append('%.2le' % ltemp[0]);
+                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                    prt_name.append('%s mutual influence coef u2' % k);
+                    prt_basval.append('%.2le' % ltemp[1]);
+                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]); 
+                    if NbrDV == 1:
+                        nozzle.materials[k].setMutualInfluenceCoefs(nozzle.DV_List[id_dv]);  
+                    elif NbrDV == 2:                                               
+                        nozzle.materials[k].setMutualInfluenceCoefs(nozzle.DV_List[id_dv:id_dv+2]);  
+                    NbrChanged = NbrChanged + 2;
+                    check = 1;
+                elif Tag == k + '_THERMAL_CONDUCTIVITY':
+                    if NbrDV == 1:
+                        prt_name.append('%s thermal conductivity' % k);
+                        prt_basval.append('%.2le' % nozzle.materials[k].getThermalConductivity());
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                        nozzle.materials[k].setThermalConductivity(nozzle.DV_List[id_dv]);
+                        NbrChanged = NbrChanged + 1;
+                        check = 1;
+                    elif NbrDV == 2:
+                        ltemp = nozzle.materials[k].getThermalConductivity();
+                        prt_name.append('%s mutual influence coef u1' % k);
+                        prt_basval.append('%.2le' % ltemp[0]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                        prt_name.append('%s mutual influence coef u2' % k);
+                        prt_basval.append('%.2le' % ltemp[1]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);                        
+                        nozzle.materials[k].setThermalConductivity(nozzle.DV_List[id_dv:id_dv+2]);    
+                        NbrChanged = NbrChanged + 2;
+                        check = 1;
+                elif Tag == k + '_THERMAL_EXPANSION_COEF':
+                    if NbrDV == 1:
+                        prt_name.append('%s thermal expansion coef' % k);
+                        prt_basval.append('%.2le' % nozzle.materials[k].getThermalExpansionCoef());
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                        nozzle.materials[k].setThermalExpansionCoef(nozzle.DV_List[id_dv]);
+                        NbrChanged = NbrChanged + 1;
+                        check = 1;
+                    elif NbrDV == 3:
+                        ltemp = nozzle.materials[k].getThermalExpansionCoef();
+                        prt_name.append('%s thermal expansion coef a1' % k);
+                        prt_basval.append('%.2le' % ltemp[0]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                        prt_name.append('%s thermal expansion coef a2' % k);
+                        prt_basval.append('%.2le' % ltemp[1]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);           
+                        prt_name.append('%s thermal expansion coef a12' % k);
+                        prt_basval.append('%.2le' % ltemp[2]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+2]);                         
+                        nozzle.materials[k].setThermalExpansionCoef(nozzle.DV_List[id_dv:id_dv+3]);
+                        NbrChanged = NbrChanged + 3;
+                        check = 1;                        
+            if check == 1:
+                continue;
 
-                id_dv = nozzle.DV_Head[iTag];
-                
-                if NbrDV == 1:
-                    prt_name.append('Load layer thermal expansion coef.');
-                    prt_basval.append('%.2le'%                               \
-                      nozzle.wall.load_layer.material.alpha);
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                    
-                    var = nozzle.DV_List[id_dv]; 
-                    nozzle.wall.load_layer.material.setThermalExpansionCoef(var);
-                else: # NbrDV == 2
-                    prt_name.append('Load layer thermal expansion coef. (axial)');
-                    prt_basval.append('%.2le'%                               \
-                      nozzle.wall.load_layer.material.alphaAxial);
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                    
-                    prt_name.append('Load layer thermal expansion coef. (radial)');
-                    prt_basval.append('%.2le'%                               \
-                      nozzle.wall.load_layer.material.alphaRadial);
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);
-                    
-                    var = nozzle.DV_List[id_dv:id_dv+2]; 
-                    nozzle.wall.load_layer.material.setThermalExpansionCoef(var);  
-
-            elif Tag == 'INLET_PSTAG':
-                
-                id_dv = nozzle.DV_Head[iTag];
-                
+            if Tag == 'INLET_PSTAG':                
+                id_dv = nozzle.DV_Head[iTag];                
                 prt_name.append('Inlet stagnation pressure');
                 prt_basval.append('%.2lf'% nozzle.inlet.Pstag);
-                prt_newval.append('%.2lf'% nozzle.DV_List[id_dv]);
-                
+                prt_newval.append('%.2lf'% nozzle.DV_List[id_dv]);                
                 nozzle.inlet.setPstag(nozzle.DV_List[id_dv]);
+                NbrChanged = NbrChanged + 1;
+                continue;
                 
-            elif Tag == 'INLET_TSTAG':
-                
-                id_dv = nozzle.DV_Head[iTag];
-                
+            if Tag == 'INLET_TSTAG':                
+                id_dv = nozzle.DV_Head[iTag];                
                 prt_name.append('Inlet stagnation temperature');
                 prt_basval.append('%.2lf'% nozzle.inlet.Tstag);
-                prt_newval.append('%.2lf'% nozzle.DV_List[id_dv]);
-                
+                prt_newval.append('%.2lf'% nozzle.DV_List[id_dv]);                
                 nozzle.inlet.setTstag(nozzle.DV_List[id_dv]);
+                NbrChanged = NbrChanged + 1;
+                continue;
 
-            elif Tag == 'ATM_PRES':
-                
-                id_dv = nozzle.DV_Head[iTag];
-                
+            if Tag == 'ATM_PRES':                
+                id_dv = nozzle.DV_Head[iTag];                
                 prt_name.append('Atmospheric pressure');
                 prt_basval.append('%.2lf'% nozzle.environment.P);
-                prt_newval.append('%.2lf'% nozzle.DV_List[id_dv]);
-                
+                prt_newval.append('%.2lf'% nozzle.DV_List[id_dv]);                
                 nozzle.environment.setPressure(nozzle.DV_List[id_dv]);
+                NbrChanged = NbrChanged + 1;
+                continue;
                 
-            elif Tag == 'ATM_TEMP':
-                
-                id_dv = nozzle.DV_Head[iTag];
-                
+            if Tag == 'ATM_TEMP':                
+                id_dv = nozzle.DV_Head[iTag];                
                 prt_name.append('Atmospheric temperature');
                 prt_basval.append('%.2lf'% nozzle.environment.T);
-                prt_newval.append('%.2lf'% nozzle.DV_List[id_dv]);
-                
+                prt_newval.append('%.2lf'% nozzle.DV_List[id_dv]);                
                 nozzle.environment.setTemperature(nozzle.DV_List[id_dv]);
+                NbrChanged = NbrChanged + 1;
+                continue;
 
-            elif Tag == 'HEAT_XFER_COEF_TO_ENV':
-
-                id_dv = nozzle.DV_Head[iTag];
-                
+            if Tag == 'HEAT_XFER_COEF_TO_ENV':
+                id_dv = nozzle.DV_Head[iTag];                
                 prt_name.append('Heat xfer coef. to environment');
                 prt_basval.append('%.2lf'% nozzle.environment.hInf);
-                prt_newval.append('%.2lf'% nozzle.DV_List[id_dv]);
-                
+                prt_newval.append('%.2lf'% nozzle.DV_List[id_dv]);                
                 nozzle.environment.setHeatTransferCoefficient(nozzle.DV_List[id_dv]);
-
-            else :
-                sys.stderr.write("\n ## Error : Unknown tag name %s\n\n" % Tag);
-                sys.exit(0);
-                
-            if Tag != 'WALL':
-                NbrChanged = NbrChanged + NbrDV;
+                NbrChanged = NbrChanged + 1;
+                continue;
         
         # --- Print summary
         if output == 'verbose':
@@ -1116,8 +1422,11 @@ class Nozzle:
           pass
         else:
           raise ValueError('keyword argument output can only be set to "verbose" or "quiet" mode')
+          
+        if output == 'verbose':
+            sys.stdout.write('Setup Update Design Variables complete\n');          
         
-    def SetupOutputFunctions (self, config):
+    def SetupOutputFunctions (self, config, output='verbose'):
         
         nozzle = self;
         
@@ -1168,6 +1477,9 @@ class Nozzle:
         if len(nozzle.Output_Tags) == 0 :
             sys.stderr.write("\n  ## Error : No output function was given.\n\n");
             sys.exit(0);
+        
+        if output == 'verbose':
+            sys.stdout.write('Setup Output Functions complete\n');
 
 
     def WriteOutputFunctions_Plain (self, output='verbose'):
@@ -1373,7 +1685,8 @@ def NozzleSetup( config_name, flevel, output='verbose' ):
     
     config = SU2.io.Config(config_name)
     
-    print config
+    if output == 'verbose':
+        print config;
     
     # --- File names
     
@@ -1408,26 +1721,35 @@ def NozzleSetup( config_name, flevel, output='verbose' ):
     
     # --- Set flight regime + fluid
     
-    nozzle.SetupMission(config);
+    nozzle.SetupMission(config,output);
     
     # --- Setup inner wall & parameterization (B-spline)
     
-    nozzle.SetupBSplineCoefs(config);
+    nozzle.SetupBSplineCoefs(config,output);
+    
+    # --- Setup materials
+    nozzle.SetupMaterials(config,output);
     
     # --- Setup wall layer thickness(es) and material(s)
     
-    nozzle.SetupWallLayers(config);
+    nozzle.SetupWallLayers(config,output);
+    
+    # --- Setup baffles
+    nozzle.SetupBaffles(config,output);
+    
+    # --- Setup stringers
+    nozzle.SetupStringers(config,output);
     
     # --- Setup DV definition
         
-    nozzle.SetupDV(config);
+    nozzle.SetupDV(config,output);
     
     # --- If input DV are provided, parse them and update nozzle
     
-    if nozzle.NbrDVTot > 0 :    
+    if nozzle.NbrDVTot > 0 :
         
         # Parse DV from input DV file (plain or dakota format)
-        nozzle.ParseDV(config);
+        nozzle.ParseDV(config,output);
         
         # Update DV using values provided in input DV file
         nozzle.UpdateDV(config,output);
@@ -1436,11 +1758,11 @@ def NozzleSetup( config_name, flevel, output='verbose' ):
     #     B-spline coefs, and thickness node arrays may have been updated by
     #     the design variables input file
     
-    nozzle.SetupWall(config);
+    nozzle.SetupWall(config,output);
     
     # --- Get output functions to be returned
     
-    nozzle.SetupOutputFunctions(config);
+    nozzle.SetupOutputFunctions(config,output);
         
     #sys.exit(1);
     return nozzle;    
