@@ -64,6 +64,10 @@ class Bspline():
         y = bSplineGeometryC(x,self)[0] # uses dynamic C library
         return np.pi*y**2
         
+    def radiusGradient(self, x): # drdx
+        (y, dydx) = bSplineGeometryC(x,self) # uses dynamic C library
+        return dydx
+        
     def areaGradient(self, x): # dAdx
         #(y, dydx) = bSplineGeometry(x,self) # Python version (slower)
         (y, dydx) = bSplineGeometryC(x,self) # uses dynamic C library
@@ -96,8 +100,7 @@ class PiecewiseLinear:
         y = np.interp(x,self.nodes[0,:],self.nodes[1,:])
         return np.pi*y**2
         
-    def areaGradient(self, x): # dAdx
-        y = np.interp(x,self.nodes[0,:],self.nodes[1,:])
+    def radiusGradient(self, x): # drdx
         if( isinstance(x,float) ):
             upperIndex = find(x,self.nodes[0,:])
             if( upperIndex == self.nodes.size/2 ):
@@ -115,7 +118,11 @@ class PiecewiseLinear:
                 dydx[ii] = (self.nodes[1,upperIndex] - 
                   self.nodes[1,lowerIndex])/(self.nodes[0,upperIndex]        \
                   - self.nodes[0,lowerIndex])
-            
+        return dydx
+        
+    def areaGradient(self, x): # dAdx
+        y = np.interp(x,self.nodes[0,:],self.nodes[1,:])
+        dydx = self.radiusGradient(x)            
         return 2*np.pi*y*dydx
 
 #==============================================================================
