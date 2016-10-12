@@ -1443,13 +1443,15 @@ class Nozzle:
         
         # --- Initialize outputs
         nozzle.thrust = -1;
+        nozzle.mass = -1;
         nozzle.volume = -1;
         nozzle.max_thermal_stress    = -1;
         nozzle.max_mechanical_stress = -1;
         
         if 'OUTPUT_FUNCTIONS' in config:
 
-            dv_keys = ('VOLUME', 'THRUST');
+            dv_keys = ('VOLUME', 'MASS', 'THRUST', 'MAX_MECHANICAL_STRESS',
+                       'MAX_THERMAL_STRESS');
 
             hdl = config['OUTPUT_FUNCTIONS'].strip('()');
             hdl = hdl.split(",");
@@ -1458,7 +1460,7 @@ class Nozzle:
                 
                 key = hdl[i].strip();
                         
-                if( key == 'VOLUME' or key == 'THRUST'
+                if( key == 'VOLUME' or key == 'MASS' or key == 'THRUST'
                 or 'MAX_MECHANICAL_STRESS' or 'MAX_THERMAL_STRESS' ):
                     nozzle.GetOutput[key] = 1;
                     nozzle.Output_Tags.append(key);
@@ -1524,7 +1526,12 @@ class Nozzle:
                 fil.write('%0.16f\n' % nozzle.thrust);
                 if output == 'verbose':
                     sys.stdout.write('      Thrust = %0.16f\n' % nozzle.thrust);
-  
+
+            if tag == 'MASS':
+                fil.write('%0.16f\n' % nozzle.mass);
+                if output == 'verbose':
+                    sys.stdout.write('      Mass = %0.16f\n' % nozzle.mass);
+                    
             if tag == 'VOLUME':
                 fil.write('%0.16f\n' % nozzle.volume);
                 if output == 'verbose':
@@ -1566,6 +1573,11 @@ class Nozzle:
                 fil.write('%0.16f thrust\n' % nozzle.thrust);
                 if output == 'verbose':
                     sys.stdout.write('      Thrust = %0.16f\n' % nozzle.thrust);
+
+            if tag == 'MASS':
+                fil.write('%0.16f\n' % nozzle.mass);
+                if output == 'verbose':
+                    sys.stdout.write('      Mass = %0.16f\n' % nozzle.mass);
                     
             if tag == 'VOLUME':
                 fil.write('%0.16f volume\n' % nozzle.volume);

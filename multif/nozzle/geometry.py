@@ -6,6 +6,7 @@ implemented.
 Rick Fenrich 6/28/16
 """
 
+import sys
 import numpy as np 
 import scipy.optimize
 import scipy.integrate   
@@ -64,6 +65,10 @@ class Bspline():
         y = bSplineGeometryC(x,self)[0] # uses dynamic C library
         return np.pi*y**2
         
+    def radiusGradient(self, x): # drdx
+        (y, dydx) = bSplineGeometryC(x,self) # uses dynamic C library
+        return dydx
+        
     def areaGradient(self, x): # dAdx
         #(y, dydx) = bSplineGeometry(x,self) # Python version (slower)
         (y, dydx) = bSplineGeometryC(x,self) # uses dynamic C library
@@ -96,8 +101,7 @@ class PiecewiseLinear:
         y = np.interp(x,self.nodes[0,:],self.nodes[1,:])
         return np.pi*y**2
         
-    def areaGradient(self, x): # dAdx
-        y = np.interp(x,self.nodes[0,:],self.nodes[1,:])
+    def radiusGradient(self, x): # drdx
         if( isinstance(x,float) ):
             upperIndex = find(x,self.nodes[0,:])
             if( upperIndex == self.nodes.size/2 ):
@@ -115,7 +119,11 @@ class PiecewiseLinear:
                 dydx[ii] = (self.nodes[1,upperIndex] - 
                   self.nodes[1,lowerIndex])/(self.nodes[0,upperIndex]        \
                   - self.nodes[0,lowerIndex])
-            
+        return dydx
+        
+    def areaGradient(self, x): # dAdx
+        y = np.interp(x,self.nodes[0,:],self.nodes[1,:])
+        dydx = self.radiusGradient(x)            
         return 2*np.pi*y*dydx
 
 #==============================================================================
@@ -401,5 +409,100 @@ def wallVolume2Layer(innerWall,thickness1,thickness2):
     volume = scipy.integrate.trapz(volumeIntegrand,xVolume)
     
     return volume
+
+#==============================================================================
+# Calculate volume and mass of axisymmetric nozzle wall 10/12/16 RWF
+#==============================================================================
+    
+# Take two functions of x, a lower one in a global (x,r) coordinate frame and 
+# an upper one in a local (x,n) coordinate frame, where n is defined as the 
+# normal to the lower function. The function below takes both functions and 
+# returns the (x-r) coordinates of the upper function.
+def localToGlobalCoordConversion(x,rLower,nUpper,drdxLower):
+
+    theta = np.arctan2(drdxLower,1)
+    
+    xTransform = x - nUpper*np.sin(theta)
+    rTransform = rLower + nUpper*np.cos(theta)
+    # Ensure bounds are right for linear extrapolation if necessary
+    if xTransform[0] > x[0]:
+        xStart = x[0] - xTransform[0]
+    else:
+        xStart = xTransform[0] - (x[0]-xTransform[0])
+        
+    if xTransform[-1] < x[-1]:
+        xEnd = x[-1] + (x[-1] - xTransform[-1])
+    else:
+        xEnd = xTransform[-1] + (xTransform[-1] - x[-1])
+    mStart = (rTransform[1] - rTransform[0])/(xTransform[1] - xTransform[0])
+    mEnd = (rTransform[-1] - rTransform[-2])/(xTransform[-1] - xTransform[-2])
+    rStart = rTransform[0] - mStart*(0 - xStart)
+    rEnd = rTransform[-1] + mEnd*(xEnd - xTransform[-1])
+    
+    xTransform = np.hstack((xStart,xTransform,xEnd))
+    rTransform = np.hstack((rStart,rTransform,rEnd))
+    
+    rUpper = np.interp(x,xTransform,rTransform)
+    
+    return rUpper
+
+# Calculate the (x,r) coordinates for the inside wall shape, as well each layer
+# thickness given vector x for interpolation. As x decreases in length and the 
+# number of layers increases, this function will degrade in accuracy due to
+# approximations of gradients and function values.
+def layerCoordinatesInGlobalFrame(nozzle,x):
+
+    rList = list()
+    for i in range(len(nozzle.wall.layer)):
+        if i == 0:
+            lower = nozzle.wall.geometry # original normal coordinates (x-r)
+            rLower = lower.radius(x)
+            drdxLower = lower.radiusGradient(x)
+            rList.append(rLower)
+        else:
+            lower = nozzle.wall.layer[i-1].thickness
+            rLower = rUpper # update from last time
+            # Approximate gradient from vector
+            drdxTemp = (rLower[1:] - rLower[:-1])/(x[1:] - x[:-1])
+            xTemp = (x[1:] - x[:-1])/2 + x[:-1]
+            xTemp = np.hstack((0.,xTemp,nozzle.length))
+            drdxTemp = np.hstack((drdxTemp[0],drdxTemp,drdxTemp[-1]))
+            drdxLower = np.interp(x,xTemp,drdxTemp)
+        
+        upper = nozzle.wall.layer[i].thickness
+        nUpper = upper.radius(x)
+    
+        rUpper = localToGlobalCoordConversion(x,rLower,nUpper,drdxLower)
+        rList.append(rUpper)
+        
+    return rList
+
+def calcVolumeAndMass(nozzle):
+    
+    sys.stdout.write('\nWARNING: current volume calculation only accurate'   \
+      ' to 5th decimal place. Mass calculations accurate to 3rd decimal '    \
+      ' place\n\n.')
+    
+    n = 10000
+    x = np.linspace(0,nozzle.length,n)
+    radiusList = layerCoordinatesInGlobalFrame(nozzle,x)
+    
+    # Now calculate volume and mass
+    s = list()
+    V = list()
+    for i in range(len(nozzle.wall.layer)):
+        midpoint = (radiusList[i+1] + radiusList[i])/2
+        ds = np.sqrt( (midpoint[1:] - midpoint[:-1])**2 + (x[1:] - x[:-1])**2 )
+        xMid = x[1:] - x[:-1]
+        mMid = np.interp(xMid,x,midpoint)
+        dV = 2*np.pi*mMid*nozzle.wall.layer[i].thickness.radius(xMid)*ds
+        s.append(np.sum(ds))
+        V.append(np.sum(dV))
+    
+    m = list()
+    for i in range(len(nozzle.wall.layer)):
+        m.append(nozzle.wall.layer[i].material.getDensity()*V[i])
+    
+    return V, m
 
 
