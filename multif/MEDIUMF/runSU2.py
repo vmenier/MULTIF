@@ -174,7 +174,7 @@ def runSU2 ( nozzle ):
 	
 	solver_options.LocalRelax = nozzle.LocalRelax;
 	
-	solver_options.NbrIte = 2;#300;
+	solver_options.NbrIte = 300;
 	
 	solver_options.SU2_RUN = nozzle.SU2_RUN;
 	
