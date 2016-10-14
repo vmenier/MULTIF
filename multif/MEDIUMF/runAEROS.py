@@ -16,15 +16,13 @@ def runAEROS ( nozzle ):
     # SolExtract : Solution (x, y, sol1, sol2, etc.)
     # Size : [NbrVer, SolSiz]
     # idHeader : id of each solution field, e.g. mach_ver89 = SolExtract[89][idHeader['MACH']]
-
+    
     nozzle.wall.load_layer    = nozzle.wall.layer[1];
     nozzle.wall.thermal_layer = nozzle.wall.layer[0];
     
-		# Start of example for accessing nozzle properties
-    
     print '\nEntered runAEROS\n'
     
-    x = np.linspace(0,nozzle.length,10)
+    # Start of example for accessing nozzle properties
     
     # First print all information related to geometry
     print '--- Wall:'
@@ -51,8 +49,8 @@ def runAEROS ( nozzle ):
     
     # aside: to easily calculate wall shape or thickness as a function of the
     # x-coordinate in an item's local coordinates, use the radius method
-    r_innerwall = nozzle.wall.geometry.radius(x) # returns shape of inner wall at x in r-coordinate
-    t_thermal_layer = nozzle.wall.geometry.radius(x) # returns thickness of thermal layer at x in local n-coordinate
+    #r_innerwall = nozzle.wall.geometry.radius(x) # returns shape of inner wall at x in r-coordinate
+    #t_thermal_layer = nozzle.wall.layer[0].thickness.radius(x) # returns thickness of thermal layer at x in local n-coordinate
     
     # Next, print all information related to materials
     for k in nozzle.materials:
@@ -71,111 +69,72 @@ def runAEROS ( nozzle ):
         print ''
         
     # So for example to obtain the Young's Moduli for the innermost Gr-BMI layer
-    [E1, E2] = nozzle.wall.layer[1].material.getElasticModulus()
+    #[E1, E2] = nozzle.wall.layer[1].material.getElasticModulus()
     # Example, obtain all 3 coefs of thermal expansion for outermost Gr-BMI layer
-    [alpha1, alpha2, alpha12] = nozzle.wall.layer[3].material.getThermalExpansionCoef()
+    #[alpha1, alpha2, alpha12] = nozzle.wall.layer[3].material.getThermalExpansionCoef()
     # Example, obtain thermal conductivities for innermost Gr-BMI layer (there
     # are 3 values: (1st in-plane direction, 2nd in-plane direction, out-of-plane direction))
-    [k1, k2, k3] = nozzle.wall.layer[1].material.getThermalConductivity()
-    
+    #[k1, k2, k3] = nozzle.wall.layer[1].material.getThermalConductivity()
     # End of example
     
     SolExtract, Size, idHeader  = ExtractSolutionAtWall(nozzle);
     
-    # --- Wall thicknesses
-    
-    xtab = np.linspace(0, nozzle.length, num=10);
-    for i in range(len(xtab)):
-        x = xtab[i];
-        #hl = nozzle.wall.thermal_layer.thickness.radius(x);
-        #hu = nozzle.wall.load_layer.thickness.radius(x);
-
-        hl = nozzle.wall.layer[0].thickness.radius(x);
-        hu = nozzle.wall.layer[1].thickness.radius(x);
-
-        #print "x = %lf lower thickness = %lf upper thickness = %lf " % (x, hl, hu);
-    
-    # --- Material properties
-    
-    # Thermal layer
-    k_axial  = nozzle.wall.thermal_layer.material.getThermalConductivity('axial');
-    k_radial = nozzle.wall.thermal_layer.material.getThermalConductivity('radial');
-		
-    Lbd_therm = (k_axial + k_radial)/2.;
-    
-    # Load layer
-    
-    # Young’s modulus of k­th material in axial direction. (float > 0)
-    #E_axial = nozzle.wall.load_layer.material.getElasticModulus('axial');
-    #E_radial = nozzle.wall.load_layer.material.getElasticModulus('radial');
-    E_axial = nozzle.wall.load_layer.material.getElasticModulus(1);
-    E_radial = nozzle.wall.load_layer.material.getElasticModulus(2);
-    Ek   = (E_axial + E_radial)/2.;     
-    # Poisson's ratio of kth material. (float < 0.5)
-    Nuk  = nozzle.wall.load_layer.material.getPoissonRatio();          
-    # Density of kth material. (float > 0)
-    Rhok = nozzle.wall.load_layer.material.getDensity();
-    # Shell thickness of kth material. (float > 0)             -> Victorien : ?
-    Tk   = 0.005;
-    # Coefficient of thermal expansion of k­th material. (float >= 0)  
-    #A_axial = nozzle.wall.load_layer.material.getThermalExpansionCoef('axial');
-    #A_radial = nozzle.wall.load_layer.material.getThermalExpansionCoef('radial');
-    A_axial = nozzle.wall.load_layer.material.getThermalExpansionCoef(1);
-    A_radial = nozzle.wall.load_layer.material.getThermalExpansionCoef(2);
-    Ak   = (A_axial + A_radial)/2.; 
-    # Reference temperature of k­th material. (float > 0) 
-    Rk   = nozzle.environment.T;
-    # Thermal conductivity of wall (W/m*K)
-    #k_axial = nozzle.wall.load_layer.material.getThermalConductivity('axial');
-    #k_radial = nozzle.wall.load_layer.material.getThermalConductivity('radial');
-    k_axial = nozzle.wall.load_layer.material.getThermalConductivity(1);
-    k_radial = nozzle.wall.load_layer.material.getThermalConductivity(2);
-    Lbd  = (k_axial + k_radial)/2.;     
-    
-    # Heat transfer coefficient to environment (W/m^2-K)         
-    Hk   = nozzle.environment.hInf;    
+    # Average thermal conductivity of load layer (W/m*K)
+    [k11, k12, k13] = nozzle.wall.layer[1].material.getThermalConductivity();
+    k2 = nozzle.wall.layer[2].material.getThermalConductivity();
+    [k31, k32, k33] = nozzle.wall.layer[3].material.getThermalConductivity();
+    Lbd = (k11+k12+k13+3*k2+k31+k32+k33)/9
     
     iPres = idHeader['Pressure'];
     iTemp = idHeader['Temperature'];
-
+    
     # --- Mesh parameters
     Nn   = 21; # Number of nodes in longitudinal direction
     Mn   = 21; # Number of nodes in circumferential direction 
     Tn   = 4;  # Number of nodes through thickness of thermal insulating layer
-
+    
     boundaryFlag = 0; # 0: inlet fixed, 1: baffles fixed, 2: both inlet and baffles fixed
     thermalFlag = 1;  # 0: structural analysis only, 1: both thermal and structural analyses
     
-    ## --- How to get x, y, P, T :
-    #for i in range(0,Size[0]):
-    #    print "VER %d : (x,y) = (%lf, %lf) , Pres = %lf, Temp = %lf" % (i, SolExtract[i][0], SolExtract[i][1], SolExtract[i][iPres], SolExtract[i][iTemp]);
-    
     f1 = open("NOZZLE.txt", 'w');
-    print >> f1, "%d %d %d %f %d %d" % (Size[0], 2, 2, 0.02, boundaryFlag, thermalFlag);
+    print >> f1, "%d %d %d %f %d %d %d" % (Size[0], 2, 4, 0.02, boundaryFlag, thermalFlag, 3);
     for i in range(0,Size[0]):
         print >> f1, "%lf %lf" % (SolExtract[i][0], SolExtract[i][1]);
-    print >> f1, "%d 0.0 -1 0 %lf %lf" % (0, nozzle.wall.load_layer.thickness.radius(0), nozzle.wall.thermal_layer.thickness.radius(0));
-    print >> f1, "%d 0.0 -1 0 %lf %lf" % (Size[0]-1, nozzle.wall.load_layer.thickness.radius(nozzle.length), nozzle.wall.thermal_layer.thickness.radius(nozzle.length));
-    print >> f1, "0 2 0.0 -1 %d %d 0 1 %d" % (Nn, Mn, Tn);
-    print >> f1, "%lf %lf %lf %lf %lf %lf %lf" % (Ek, Nuk, Rhok, Tk, Ak, Lbd, Hk); # material properties for the upper layer
-    print >> f1, "0 0 0 0 0 %lf 0" % (Lbd_therm); # material properties for the lower layer
+    print >> f1, "%d 0.0 -1 0 %lf %lf %lf %lf" % (0, nozzle.wall.layer[1].thickness.radius(0),
+             nozzle.wall.layer[2].thickness.radius(0), nozzle.wall.layer[3].thickness.radius(0),
+             nozzle.wall.layer[0].thickness.radius(0));
+    print >> f1, "%d 0.0 -1 0 %lf %lf %lf %lf" % (Size[0]-1, nozzle.wall.layer[1].thickness.radius(nozzle.length),
+             nozzle.wall.layer[2].thickness.radius(nozzle.length), nozzle.wall.layer[3].thickness.radius(nozzle.length),
+             nozzle.wall.layer[0].thickness.radius(nozzle.length));
+    print >> f1, "0 1 2 3 0.0 -1 %d %d 0 1 %d" % (Nn, Mn, Tn);
+    # material properties for the load layer
+    for i in range(1,4):
+      if nozzle.wall.layer[i].material.type == 'ISOTROPIC':
+        print >> f1, "ISOTROPIC %lf %lf %lf 0 %lf %lf %lf" % \
+                (nozzle.wall.layer[i].material.getElasticModulus(), nozzle.wall.layer[i].material.getPoissonRatio(),
+                 nozzle.wall.layer[i].material.getDensity(), nozzle.wall.layer[i].material.getThermalExpansionCoef(),
+                 Lbd, nozzle.environment.hInf);
+      else:
+        [E1, E2] = nozzle.wall.layer[i].material.getElasticModulus()
+        [mu1, mu2] = nozzle.wall.layer[i].material.getMutualInfluenceCoefs()
+        [alpha1, alpha2, alpha12] = nozzle.wall.layer[i].material.getThermalExpansionCoef()
+        print >> f1, "ANISOTROPIC %lf %lf %lf %lf %lf %lf %lf 0 %lf %lf %lf %lf %lf" % \
+                (E1, E2, nozzle.wall.layer[i].material.getPoissonRatio(), nozzle.wall.layer[i].material.getShearModulus(),
+                 mu1, mu2, nozzle.wall.layer[i].material.getDensity(), alpha1, alpha2, alpha12, Lbd, nozzle.environment.hInf);
+    # material properties for the thermal layer
+    print >> f1, "0 0 0 0 0 %lf 0" % (nozzle.wall.layer[0].material.getThermalConductivity());
     f1.close();
-
+    
     f2 = open("BOUNDARY.txt", 'w');
     print >> f2, "%d" % (Size[0]);
     for i in range(0,Size[0]):
-        print >> f2, "%lf %lf %lf %lf" % (SolExtract[i][0], SolExtract[i][iPres], SolExtract[i][iTemp], Rk); # XXX
+        print >> f2, "%lf %lf %lf %lf" % (SolExtract[i][0], SolExtract[i][iPres], SolExtract[i][iTemp], nozzle.environment.T);
     f2.close();
-	
-	## --- How to get x, y, P, T :
-	#for i in range(0,Size[0]):
-	#	print "VER %d : (x,y) = (%lf, %lf) , Pres = %lf, Temp = %lf" % (i, SolExtract[i][0], SolExtract[i][1], SolExtract[i][iPres], SolExtract[i][iTemp]);
-	
+    
     print "ENTER GENERATE"
     _nozzle_module.generate();       # generate the meshes for thermal and structural analyses
-		
     print "EXIT GENERATE"
-		
+    
     if thermalFlag > 0:
       os.system("aeros nozzle.aeroh"); # execute the thermal analysis
       _nozzle_module.convert();        # convert temperature output from thermal analysis to input for structural analysis

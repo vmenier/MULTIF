@@ -50,7 +50,9 @@ MOD_INIT(_nozzle_module)
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <iterator>
 #include <list>
+#include <numeric>
 #include <set>
 #include <string>
 #include <vector>
@@ -65,9 +67,20 @@ MOD_INIT(_nozzle_module)
 #include "Context.h"
 #include "gmshLevelset.h"
 
-struct VertexData { int p, mb; double wb; int nb; double t, tt; };
-struct SegmentData { int m, ns, ms; double ws; int nn, mn, sn; int mt, tn; };
-struct MaterialData { double E, nu, rho, t, w, k, h; };
+struct VertexData { int p, mb; double wb; int nb; std::vector<double> t; double tt; };
+struct SegmentData { std::vector<int> m; int ns, ms; double ws; int nn, mn, sn; int mt, tn; };
+struct MaterialData
+{
+  enum { ISOTROPIC=0, ANISOTROPIC } type;
+  union { double E; double E1; };
+  union { double nu; double nu12; };
+  double rho;
+  double t;
+  union { double w; double w1; };
+  double k;
+  double h;
+  double E2, G12, mu1, mu2, w2, w12;
+};
 struct BoundaryData { double x, P, T, Ta; };
 
 inline bool cmp(const BoundaryData &a, const double &b) { return a.x < b; }
@@ -117,7 +130,6 @@ void writeAttr(MElement *m, FILE *fp, int tag)
 }
 
 void writeMate(MElement *m, FILE *fp, double scalingFactor, const std::vector<BoundaryData> &boundaries,
-               const std::vector<std::vector<double> > &points, const std::vector<VertexData> &vertices,
                bool b, const MaterialData &mat)
 {
   // find x-coordinate of triangle centroid
@@ -131,18 +143,52 @@ void writeMate(MElement *m, FILE *fp, double scalingFactor, const std::vector<Bo
   std::vector<BoundaryData>::const_iterator it = std::lower_bound(boundaries.begin(), boundaries.end(), x, cmp);
   double Taval = (it == boundaries.begin()) ? it->Ta : ((it-1)->Ta + (it->Ta - (it-1)->Ta)*(x - (it-1)->x)/(it->x - (it-1)->x));
 
-  // interpolate shell thickness at centroid from vertex data if element is part of the nozzle shell, otherwise use tag
-  // to obtain shell thickness from material
-  double tval;
-  if(b) {
-    Cmp cmp(points);
-    std::vector<VertexData>::const_iterator it = std::lower_bound(vertices.begin(), vertices.end(), x, cmp);
-    tval = (it == vertices.begin()) ? it->t : ((it-1)->t + (it->t - (it-1)->t)*(x - points[(it-1)->p][0])/(points[it->p][0] - points[(it-1)->p][0]));
+  if(b) { // main shell (layered composite, material properties defined elsewhere)
+    fprintf(fp, "%d 0 %g %g %g 0 0 %g 0 %g 0 %g 0 0 0\n",
+            m->getNum(), 0., 0., 0., 0., Taval, 0.);
   }
-  else tval = mat.t;
+  else {
+    fprintf(fp, "%d 0 %g %g %g 0 0 %g 0 %g 0 %g 0 0 0\n",
+            m->getNum(), mat.E, mat.nu, mat.rho, mat.t, Taval, mat.w);
+  }
+}
 
-  fprintf(fp, "%d 0 %g %g %g 0 0 %g 0 %g 0 %g 0 0 0\n",
-          m->getNum(), mat.E, mat.nu, mat.rho, tval, Taval, mat.w);
+void writeComp(MElement *m, FILE *fp, double scalingFactor, const std::vector<std::vector<double> > &points,
+               const std::vector<VertexData> &vertices, const std::vector<SegmentData> &segments,
+               const std::vector<MaterialData> &materials)
+{
+  // find x-coordinate of triangle centroid
+  double x = 0;
+  for(int i = 0; i < 3; i++) {
+    x += m->getVertexBDF(i)->x() * scalingFactor;
+  } 
+  x /= 3;
+
+  fprintf(fp, "LAYC %d\n", m->getNum());
+  // interpolate each layer thickness at centroid from vertex data
+  double tval;
+  Cmp cmp(points);
+  std::vector<VertexData>::const_iterator it = std::lower_bound(vertices.begin(), vertices.end(), x, cmp);
+  int segment_id = std::min<long>(segments.size()-1,std::distance(vertices.begin(), it));
+  for(unsigned int k=0; k<it->t.size(); ++k) {
+    tval = (it == vertices.begin()) ? it->t[k] 
+         : ((it-1)->t[k] + (it->t[k] - (it-1)->t[k])*(x - points[(it-1)->p][0])/(points[it->p][0] - points[(it-1)->p][0]));
+    const MaterialData &mat = materials[segments[segment_id].m[k]];
+    if(mat.type == MaterialData::ISOTROPIC) {
+      double G = mat.E/(2*(1+mat.nu));
+      fprintf(fp, "%d %g %g %g %g %g %g %g %g %g %g %g %g\n",
+              k+1, mat.E, mat.E, mat.nu, G, 0., 0., mat.rho, tval, 0., mat.w, mat.w, 0.);
+    }
+    else {
+      fprintf(fp, "%d %g %g %g %g %g %g %g %g %g %g %g %g\n",
+              k+1, mat.E1, mat.E2, mat.nu12, mat.G12, mat.mu1, mat.mu2, mat.rho, tval, 0., mat.w1, mat.w2, mat.w12);
+    }
+  }
+}
+
+void writeCfra(MElement *m, FILE *fp)
+{
+  fprintf(fp, "%d 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0\n", m->getNum());
 }
 
 void writeDisp(MVertex *m, FILE *fp, double scalingFactor)
@@ -218,6 +264,7 @@ void writeConvec(MElement *m, FILE *fp, double scalingFactor, double h, const st
 int writeAEROS(GModel *g,
                const std::vector<std::vector<double> > &points,
                const std::vector<VertexData> &vertices,
+               const std::vector<SegmentData> &segments,
                const std::vector<MaterialData> &materials,
                const std::vector<BoundaryData> &boundaries,
                const std::vector<std::pair<GEntity::GeomType,int> > &surfaceTags,
@@ -273,14 +320,17 @@ int writeAEROS(GModel *g,
   // attributes (each element has its own material to enable the thickness and ambient temperature to vary)
   FILE *fp3 = Fopen("ATTRIBUTES.txt", "w");
   fprintf(fp3, "ATTRIBUTES\n");
-  for(unsigned int i = 0; i < entities.size(); i++)
+  for(unsigned int i = 0; i < entities.size(); i++) {
+    bool b = (std::find(surfaceTags.begin(), surfaceTags.end(), std::make_pair(entities[i]->geomType(),entities[i]->tag())) != surfaceTags.end());
     for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
       MElement *m = entities[i]->getMeshElement(j);
       const char *str = m->getStringForBDF();
       if(str && std::strcmp(str,"CTRIA3") == 0) {
-        fprintf(fp3, "%-8d %-8d\n", m->getNum(), m->getNum());
+        if(b) fprintf(fp3, "%-8d %-8d %-8d %-8d\n", m->getNum(), m->getNum(), m->getNum(), m->getNum());
+        else fprintf(fp3, "%-8d %-8d\n", m->getNum(), m->getNum());
       }
     }
+  }
   fclose(fp3);
 
   // material properties
@@ -293,11 +343,43 @@ int writeAEROS(GModel *g,
       const char *str = m->getStringForBDF();
       if(str && std::strcmp(str,"CTRIA3") == 0) {
         const MaterialData &mat = materials[entities[i]->physicals[0]-1];
-        writeMate(m, fp8, scalingFactor, boundaries, points, vertices, b, mat);
+        writeMate(m, fp8, scalingFactor, boundaries, b, mat);
       }
     }
   }
   fclose(fp8);
+
+  // composite material properties
+  FILE *fp9 = Fopen("COMPOSITE.txt", "w");
+  fprintf(fp9, "COMPOSITE\n");
+  for(unsigned int i = 0; i < entities.size(); i++) {
+    if(std::find(surfaceTags.begin(), surfaceTags.end(), std::make_pair(entities[i]->geomType(),entities[i]->tag())) != surfaceTags.end()) {
+      for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
+        MElement *m = entities[i]->getMeshElement(j);
+        const char *str = m->getStringForBDF();
+        if(str && std::strcmp(str,"CTRIA3") == 0) {
+          writeComp(m, fp9, scalingFactor, points, vertices, segments, materials);
+        }
+      }
+    }
+  }
+  fclose(fp9);
+
+  // composite frames
+  FILE *fp10 = Fopen("CFRAMES.txt", "w");
+  fprintf(fp10, "CFRAMES\n");
+  for(unsigned int i = 0; i < entities.size(); i++) {
+    if(std::find(surfaceTags.begin(), surfaceTags.end(), std::make_pair(entities[i]->geomType(),entities[i]->tag())) != surfaceTags.end()) {
+      for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
+        MElement *m = entities[i]->getMeshElement(j);
+        const char *str = m->getStringForBDF();
+        if(str && std::strcmp(str,"CTRIA3") == 0) {
+          writeCfra(m, fp10);
+        }
+      }
+    }
+  }
+  fclose(fp10);
 
   // displacement (all nodes on the boundary edges)
   FILE *fp4 = Fopen("DISPLACEMENTS.txt", "w");
@@ -371,6 +453,8 @@ int writeAEROS(GModel *g,
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "TOPOLOGY.txt");
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "ATTRIBUTES.txt");
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "MATERIAL.txt");
+  fprintf(fp, "INCLUDE \"%s\"\n*\n", "COMPOSITE.txt");
+  fprintf(fp, "INCLUDE \"%s\"\n*\n", "CFRAMES.txt");
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "DISPLACEMENTS.txt");
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "PRESSURES.txt");
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "TEMPERATURES.txt"); // this file is generated using thermal analysis if temp is false
@@ -568,7 +652,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
     // inside of inner layer
     GEdge *edge1 = m->addBSpline(vertex1, vertex2, controlPoints); 
 
-    int mm = segmentIt->m;              // material id of main shell
+    int mm = segmentIt->m[0];           // material id of first layer of main shell
     int ns = std::max(1,segmentIt->ns); // number of circumferential segments
     double wb = vertexIt->wb;           // width of baffle
     int mb = vertexIt->mb;              // material id of baffle
@@ -578,8 +662,10 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
     int nn = segmentIt->nn;             // number of transfinite points (longitudinal edges)
     int mn = segmentIt->mn;             // number of transfinite points (circumferential edges)
     int sn = segmentIt->sn;             // number of transfinite points (radial edges of stiffener)
-    double t = vertexIt->t;             // thickness of outer structural layer
-    double tt = vertexIt->tt;           // thickness of inner thermal insulating layer
+    double t1 = std::accumulate(vertexIt->t.begin(), vertexIt->t.end(), 0.);         // total thickness of outer structural layer
+    double t2 = std::accumulate((vertexIt+1)->t.begin(), (vertexIt+1)->t.end(), 0.); // total thickness of outer structural layer
+    double tt1 = vertexIt->tt;          // thickness of inner thermal insulating layer
+    double tt2 = (vertexIt+1)->tt;      // thickness of inner thermal insulating layer
     int tn = segmentIt->tn;             // number of transfinite points through thickness of insulating layer in thermal mesh
     int mt = segmentIt->mt;             // material id of insulating layer
     double angle = 2*M_PI/ns;
@@ -587,24 +673,24 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
     // outside of inner layer / inside of outer layer
     cth1 = (segmentIt == segments.begin()) ? dot(edge1->firstDer(0.).unit(),SVector3(1.,0.,0.)) : cth2;
     cth2 = dot(edge1->firstDer(1.).unit(),SVector3(1.,0.,0.)); // cosine of angles between normals and y-axis
-    GVertex *vertex3 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+cth1*tt, (*pointIt1)[2], lc);
-    GVertex *vertex4 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+cth2*(vertexIt+1)->tt, (*pointIt2)[2], lc);
+    GVertex *vertex3 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+cth1*tt1, (*pointIt1)[2], lc);
+    GVertex *vertex4 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+cth2*tt2, (*pointIt2)[2], lc);
     for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it) 
-      (*it)[1] += (cth1*tt + (cth2*(vertexIt+1)->tt - cth1*tt)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
+      (*it)[1] += (cth1*tt1 + (cth2*tt2 - cth1*tt1)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
     GEdge *edge2 = m->addBSpline(vertex3, vertex4, controlPoints);
     // middle of outer layer
     cth3 = (segmentIt == segments.begin()) ? dot(edge2->firstDer(0.).unit(),SVector3(1.,0.,0.)) : cth4;
     cth4 = dot(edge2->firstDer(1.).unit(),SVector3(1.,0.,0.)); // cosine of angles between normals and y-axis
-    GVertex *vertex5 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+cth1*tt+cth3*t/2, (*pointIt1)[2], lc);
-    GVertex *vertex6 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+cth2*(vertexIt+1)->tt+cth4*(vertexIt+1)->t/2, (*pointIt2)[2], lc);
+    GVertex *vertex5 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+cth1*tt1+cth3*t1/2, (*pointIt1)[2], lc);
+    GVertex *vertex6 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+cth2*tt2+cth4*t2/2, (*pointIt2)[2], lc);
     for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it)
-      (*it)[1] += (cth3*t/2 + (cth4*(vertexIt+1)->t/2 - cth3*t/2)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
+      (*it)[1] += (cth3*t1/2 + (cth4*t2/2 - cth3*t1/2)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
     GEdge *edge3 = m->addBSpline(vertex5, vertex6, controlPoints);
     // outside of outer layer
-    GVertex *vertex7 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+cth1*tt+cth3*t, (*pointIt1)[2], lc);
-    GVertex *vertex8 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+cth2*(vertexIt+1)->tt+cth4*(vertexIt+1)->t, (*pointIt2)[2], lc);
+    GVertex *vertex7 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+cth1*tt1+cth3*t1, (*pointIt1)[2], lc);
+    GVertex *vertex8 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+cth2*tt2+cth4*t2, (*pointIt2)[2], lc);
     for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it)
-      (*it)[1] += (cth3*t/2 + (cth4*(vertexIt+1)->t/2 - cth3*t/2)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
+      (*it)[1] += (cth3*t1/2 + (cth4*t2/2 - cth3*t1/2)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
     GEdge *edge4 = m->addBSpline(vertex7, vertex8, controlPoints);
 
     GEntity *region1, *region2, *region3, *face3;
@@ -913,7 +999,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
   m->removeDuplicateMeshVertices(tolerance);
 
   //m->writeMSH("nozzle.msh");
-  writeAEROS(m, points, vertices, materials, boundaries, surfaceTags, boundaryTags, "nozzle.aeros", 2, false, 1.0, (tf==0));
+  writeAEROS(m, points, vertices, segments, materials, boundaries, surfaceTags, boundaryTags, "nozzle.aeros", 2, false, 1.0, (tf==0));
   if(tf != 0) writeAEROH(m, materials, boundaries, interiorBoundaryTags, exteriorBoundaryTags, surfaceTags, "nozzle.aeroh", 2);
 
   delete m;
@@ -925,8 +1011,8 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
 {
   std::ifstream fin("NOZZLE.txt");
 
-  int np, nv, nm; double lc; int bf, tf;
-  fin >> np >> nv >> nm >> lc >> bf >> tf;
+  int np, nv, nm; double lc; int bf, tf, nl;
+  fin >> np >> nv >> nm >> lc >> bf >> tf >> nl;
   
   std::vector<std::vector<double> > points;
   for(int i=0; i<np; ++i) {
@@ -938,19 +1024,28 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
   std::vector<VertexData> vertices(nv);
   for(int j=0; j<nv; ++j) {
     VertexData &v = vertices[j];
-    fin >> v.p >> v.wb >> v.mb >> v.nb >> v.t >> v.tt;
+    fin >> v.p >> v.wb >> v.mb >> v.nb; for(int k=0; k<nl; ++k) { double tk; fin >> tk; v.t.push_back(tk); } fin >> v.tt;
   }
 
   std::vector<SegmentData> segments(nv-1);
   for(int j=0; j<nv-1; ++j) {
     SegmentData &s = segments[j];
-    fin >> s.m >> s.ns >> s.ws >> s.ms >> s.nn >> s.mn >> s.sn >> s.mt >> s.tn;
+    for(int k=0; k<nl; ++k) { int mk; fin >> mk; s.m.push_back(mk); } fin >> s.ns >> s.ws >> s.ms >> s.nn >> s.mn >> s.sn >> s.mt >> s.tn;
   }
 
   std::vector<MaterialData> materials(nm);
   for(int k=0; k<nm; ++k) {
     MaterialData &m = materials[k];
-    fin >> m.E >> m.nu >> m.rho >> m.t >> m.w >> m.k >> m.h;
+    std::string s;
+    fin >> s;
+    if(s == "ISOTROPIC") {
+      m.type = MaterialData::ISOTROPIC;
+      fin >> m.E >> m.nu >> m.rho >> m.t >> m.w >> m.k >> m.h;
+    }
+    else {
+      m.type = MaterialData::ANISOTROPIC;
+      fin >> m.E1 >> m.E2 >> m.nu12 >> m.G12 >> m.mu1 >> m.mu2 >> m.rho >> m.t >> m.w1 >> m.w2 >> m.w12 >> m.k >> m.h;
+    }
   }
 
   fin.close();
