@@ -477,14 +477,32 @@ def layerCoordinatesInGlobalFrame(nozzle,x):
         
     return rList
 
+# Calculate and return volume and mass of nozzle given fully parameterized
+# nozzle. Assumes piecewise-linear layer thickness definitions. On the baseline
+# geometry, using n = 1e4 results in ~0.02% error in gradients with respect
+# to some inner wall B-spline coefficients (compared to the derivatives
+# estimated using 1e7, where convergence of the mass calculation was observed).
 def calcVolumeAndMass(nozzle):
     
-    sys.stdout.write('\nWARNING: current volume calculation only accurate'   \
-      ' to 5th decimal place. Mass calculations accurate to 3rd decimal '    \
-      ' place\n\n.')
-    
-    n = 10000
+    n = 10000 # 1e4
     x = np.linspace(0,nozzle.length,n)
+    # Pick x smartly
+    xHit = set()
+    for i in range(len(nozzle.wall.geometry.coefs[0,:])):
+        xHit.add(nozzle.wall.geometry.coefs[0,i])
+    for i in range(len(nozzle.wall.layer)):
+        for j in range(len(nozzle.wall.layer[i].thickness.nodes[0,:])):
+            xHit.add(nozzle.wall.layer[i].thickness.nodes[0,j])
+    xHit = list(xHit)
+    xHit.sort()
+    x = np.array([])
+    for i in range(len(xHit)-1):
+        m = int(n*(xHit[i+1] - xHit[i])/xHit[-1])
+        xTemp = np.linspace(xHit[i],xHit[i+1],m)
+        if len(xTemp) <= 1:
+            x = np.hstack((x[:-1],[xHit[i],xHit[i+1]]))
+        else:
+            x = np.hstack((x[:-1],xTemp))
     radiusList = layerCoordinatesInGlobalFrame(nozzle,x)
     
     # Now calculate volume and mass
@@ -496,6 +514,7 @@ def calcVolumeAndMass(nozzle):
         xMid = x[1:] - x[:-1]
         mMid = np.interp(xMid,x,midpoint)
         dV = 2*np.pi*mMid*nozzle.wall.layer[i].thickness.radius(xMid)*ds
+        print 'Minimum ds is %e' % min(ds)
         s.append(np.sum(ds))
         V.append(np.sum(dV))
     
@@ -504,5 +523,6 @@ def calcVolumeAndMass(nozzle):
         m.append(nozzle.wall.layer[i].material.getDensity()*V[i])
     
     return V, m
+
 
 
