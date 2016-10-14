@@ -143,8 +143,11 @@ def runAEROS ( nozzle ):
     Mn   = 21; # Number of nodes in circumferential direction 
     Tn   = 4;  # Number of nodes through thickness of thermal insulating layer
 
-    boundaryFlag = 0; # 0: inlet fixed, 1: baffles fixed, 2: both inlet and baffles fixed
-    thermalFlag = 1;  # 0: structural analysis only, 1: both thermal and structural analyses
+    boundaryFlag = nozzle.boundaryFlag; # 0: inlet fixed, 1: baffles fixed, 2: both inlet and baffles fixed
+    if nozzle.thermalFlag == 1:
+        thermalFlag = 1;  # 0: structural analysis only, 1: both thermal and structural analyses
+    else: # only perform structural analysis
+        thermalFlag = 0;
     
     ## --- How to get x, y, P, T :
     #for i in range(0,Size[0]):

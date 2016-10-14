@@ -477,7 +477,36 @@ class Nozzle:
             nozzle.su2_convergence_order = 3;
             
         if output == 'verbose':
-            sys.stdout.write('Setup Mission complete\n');            
+            sys.stdout.write('Setup Mission complete\n');    
+            
+            
+    def SetupAnalyses(self, config, output='verbose'):   
+        
+        nozzle = self;
+
+        if 'STRUCTURAL_BOUNDARY_CONDTION' in config:
+            nozzle.boundaryFlag = int(config['STRUCTURAL_BOUNDARY_CONDITION']);
+        else:
+            nozzle.boundaryFlag = 0; # inlet fixed
+            if output == 'verbose':
+                sys.stdout.write('Structural boundary condition not '         \
+                  'specified. Setting boundary condition to fixed inlet\n.');
+            
+        if 'THERMAL_ANALYSIS' in config:
+            nozzle.thermalFlag = int(config['THERMAL_ANALYSIS']);
+        else:
+            nozzle.thermalFlag = 1; # do thermal analysis
+            if output == 'verbose':
+                sys.stdout.write('Thermal analysis flag not set. Thermal '    \
+                  'analysis will be performed.\n.');
+                  
+        if 'STRUCTURAL_ANALYSIS' in config:
+            nozzle.structuralFlag = int(config['STRUCTURAL_ANALYSIS']);
+        else:
+            nozzle.structuralFlag = 1; # do structural analysis
+            if output == 'verbose':
+                sys.stdout.write('Structural analysis flag not set. '         \
+                  'structural analysis will be performed.\n.');               
     
     
     def SetupBSplineCoefs(self, config, output='verbose'):
@@ -1460,11 +1489,26 @@ class Nozzle:
                 
                 key = hdl[i].strip();
                         
-                if( key == 'VOLUME' or key == 'MASS' or key == 'THRUST'
-                or 'MAX_MECHANICAL_STRESS' or 'MAX_THERMAL_STRESS' ):
+                if( key == 'VOLUME' or key == 'MASS' or key == 'THRUST' ):
                     nozzle.GetOutput[key] = 1;
-                    nozzle.Output_Tags.append(key);
-                
+                    nozzle.Output_Tags.append(key);                    
+                elif( key == 'MAX_MECHANICAL_STRESS' ):
+                    if nozzle.structuralFlag == 1:
+                        nozzle.GetOutput[key] = 1;
+                        nozzle.Output_Tags.append(key);
+                    else:
+                        sys.stderr.write('\n ## ERROR : %s cannot be '        \
+                          'returned if STRUCTURAL_ANALYSIS= 0.\n\n');
+                        sys.exit(0);                
+                elif( key == 'MAX_THERMAL_STRESS' ):
+                    if nozzle.structuralFlag == 1 and nozzle.thermalFlag == 1:
+                        nozzle.GetOutput[key] = 1;
+                        nozzle.Output_Tags.append(key);
+                    else:
+                        sys.stderr.write('\n ## ERROR : %s cannot be '        \
+                          'returned if THERMAL_ANALYSIS= 0 or '               \
+                          'STRUCTURAL_ANALYSIS= 0.\n\n');
+                        sys.exit(0);                        
                 else :
                     str = '';
                     for k in dv_keys :
@@ -1734,6 +1778,10 @@ def NozzleSetup( config_name, flevel, output='verbose' ):
     # --- Set flight regime + fluid
     
     nozzle.SetupMission(config,output);
+    
+    # --- Set analyses
+    
+    nozzle.SetupAnalyses(config,output);
     
     # --- Setup inner wall & parameterization (B-spline)
     
