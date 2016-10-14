@@ -1,7 +1,6 @@
 from .. import SU2
 from meshgeneration import *
 from runSU2 import *
-from runAEROS import *
 from postprocessing import *
 
 
@@ -38,6 +37,7 @@ def Run( nozzle ):
 	# --- Run AEROS
 	
 	if nozzle.runAEROS == 1 :	
+		from runAEROS import *
 		runAEROS (nozzle);
 	else :
 		sys.stdout.write('  -- Info: Skip call to AEROS.\n');

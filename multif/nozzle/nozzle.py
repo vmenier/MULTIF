@@ -1775,6 +1775,11 @@ def NozzleSetup( config_name, flevel, output='verbose' ):
     # --- Get output functions to be returned
     
     nozzle.SetupOutputFunctions(config,output);
-        
+    
+		
+    nozzle.wall.load_layer    = nozzle.wall.layer[1];
+    nozzle.wall.thermal_layer = nozzle.wall.layer[0];
+
+
     #sys.exit(1);
     return nozzle;    

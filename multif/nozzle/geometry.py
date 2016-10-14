@@ -12,7 +12,11 @@ import scipy.optimize
 import scipy.integrate   
 #import geometryC
 
-from .. import _meshutils_module
+try:
+    from .. import _meshutils_module
+except ImportError:
+    pass
+
 import ctypes
 
 class Bspline():
