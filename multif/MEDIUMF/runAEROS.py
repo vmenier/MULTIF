@@ -131,10 +131,8 @@ def runAEROS ( nozzle ):
         print >> f2, "%lf %lf %lf %lf" % (SolExtract[i][0], SolExtract[i][iPres], SolExtract[i][iTemp], nozzle.environment.T);
     f2.close();
     
-    print "ENTER GENERATE"
     _nozzle_module.generate();       # generate the meshes for thermal and structural analyses
-    print "EXIT GENERATE"
-    
+
     if thermalFlag > 0:
       os.system("aeros nozzle.aeroh"); # execute the thermal analysis
       _nozzle_module.convert();        # convert temperature output from thermal analysis to input for structural analysis

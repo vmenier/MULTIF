@@ -37,7 +37,10 @@ def Run( nozzle ):
 	
 	# --- Run AEROS
 	
-	runAEROS (nozzle);
+	if nozzle.runAEROS == 1 :	
+		runAEROS (nozzle);
+	else :
+		sys.stdout.write('  -- Info: Skip call to AEROS.\n');
 	
 	# --- Postprocessing
 	

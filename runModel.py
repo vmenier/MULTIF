@@ -48,6 +48,8 @@ def main():
 	
 	nozzle = multif.nozzle.NozzleSetup( options.filename, options.flevel );
 	
+	nozzle.runAEROS = 1;
+	
 	### HACK
 	#multif.MEDIUMF.AEROSPostProcessing(nozzle);
 	#sys.exit(1);
