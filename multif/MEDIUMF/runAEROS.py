@@ -171,10 +171,7 @@ def runAEROS ( nozzle ):
 	#for i in range(0,Size[0]):
 	#	print "VER %d : (x,y) = (%lf, %lf) , Pres = %lf, Temp = %lf" % (i, SolExtract[i][0], SolExtract[i][1], SolExtract[i][iPres], SolExtract[i][iTemp]);
 	
-    print "ENTER GENERATE"
     _nozzle_module.generate();       # generate the meshes for thermal and structural analyses
-		
-    print "EXIT GENERATE"
 		
     if thermalFlag > 0:
       os.system("aeros nozzle.aeroh"); # execute the thermal analysis
