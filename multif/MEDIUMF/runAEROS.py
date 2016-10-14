@@ -16,8 +16,11 @@ def runAEROS ( nozzle ):
     # SolExtract : Solution (x, y, sol1, sol2, etc.)
     # Size : [NbrVer, SolSiz]
     # idHeader : id of each solution field, e.g. mach_ver89 = SolExtract[89][idHeader['MACH']]
+
+    nozzle.wall.load_layer    = nozzle.wall.layer[1];
+    nozzle.wall.thermal_layer = nozzle.wall.layer[0];
     
-    # Start of example for accessing nozzle properties
+		# Start of example for accessing nozzle properties
     
     print '\nEntered runAEROS\n'
     
@@ -84,22 +87,29 @@ def runAEROS ( nozzle ):
     xtab = np.linspace(0, nozzle.length, num=10);
     for i in range(len(xtab)):
         x = xtab[i];
-        hl = nozzle.wall.thermal_layer.thickness.radius(x);
-        hu = nozzle.wall.load_layer.thickness.radius(x);
-        print "x = %lf lower thickness = %lf upper thickness = %lf " % (x, hl, hu);
+        #hl = nozzle.wall.thermal_layer.thickness.radius(x);
+        #hu = nozzle.wall.load_layer.thickness.radius(x);
+
+        hl = nozzle.wall.layer[0].thickness.radius(x);
+        hu = nozzle.wall.layer[1].thickness.radius(x);
+
+        #print "x = %lf lower thickness = %lf upper thickness = %lf " % (x, hl, hu);
     
     # --- Material properties
     
     # Thermal layer
-    k_axial = nozzle.wall.thermal_layer.material.getThermalConductivity('axial');
+    k_axial  = nozzle.wall.thermal_layer.material.getThermalConductivity('axial');
     k_radial = nozzle.wall.thermal_layer.material.getThermalConductivity('radial');
+		
     Lbd_therm = (k_axial + k_radial)/2.;
     
     # Load layer
     
     # Young’s modulus of k­th material in axial direction. (float > 0)
-    E_axial = nozzle.wall.load_layer.material.getElasticModulus('axial');
-    E_radial = nozzle.wall.load_layer.material.getElasticModulus('radial');
+    #E_axial = nozzle.wall.load_layer.material.getElasticModulus('axial');
+    #E_radial = nozzle.wall.load_layer.material.getElasticModulus('radial');
+    E_axial = nozzle.wall.load_layer.material.getElasticModulus(1);
+    E_radial = nozzle.wall.load_layer.material.getElasticModulus(2);
     Ek   = (E_axial + E_radial)/2.;     
     # Poisson's ratio of kth material. (float < 0.5)
     Nuk  = nozzle.wall.load_layer.material.getPoissonRatio();          
@@ -108,14 +118,18 @@ def runAEROS ( nozzle ):
     # Shell thickness of kth material. (float > 0)             -> Victorien : ?
     Tk   = 0.005;
     # Coefficient of thermal expansion of k­th material. (float >= 0)  
-    A_axial = nozzle.wall.load_layer.material.getThermalExpansionCoef('axial');
-    A_radial = nozzle.wall.load_layer.material.getThermalExpansionCoef('radial');
+    #A_axial = nozzle.wall.load_layer.material.getThermalExpansionCoef('axial');
+    #A_radial = nozzle.wall.load_layer.material.getThermalExpansionCoef('radial');
+    A_axial = nozzle.wall.load_layer.material.getThermalExpansionCoef(1);
+    A_radial = nozzle.wall.load_layer.material.getThermalExpansionCoef(2);
     Ak   = (A_axial + A_radial)/2.; 
     # Reference temperature of k­th material. (float > 0) 
     Rk   = nozzle.environment.T;
     # Thermal conductivity of wall (W/m*K)
-    k_axial = nozzle.wall.load_layer.material.getThermalConductivity('axial');
-    k_radial = nozzle.wall.load_layer.material.getThermalConductivity('radial');
+    #k_axial = nozzle.wall.load_layer.material.getThermalConductivity('axial');
+    #k_radial = nozzle.wall.load_layer.material.getThermalConductivity('radial');
+    k_axial = nozzle.wall.load_layer.material.getThermalConductivity(1);
+    k_radial = nozzle.wall.load_layer.material.getThermalConductivity(2);
     Lbd  = (k_axial + k_radial)/2.;     
     
     # Heat transfer coefficient to environment (W/m^2-K)         
@@ -156,9 +170,12 @@ def runAEROS ( nozzle ):
 	## --- How to get x, y, P, T :
 	#for i in range(0,Size[0]):
 	#	print "VER %d : (x,y) = (%lf, %lf) , Pres = %lf, Temp = %lf" % (i, SolExtract[i][0], SolExtract[i][1], SolExtract[i][iPres], SolExtract[i][iTemp]);
-
+	
+    print "ENTER GENERATE"
     _nozzle_module.generate();       # generate the meshes for thermal and structural analyses
-
+		
+    print "EXIT GENERATE"
+		
     if thermalFlag > 0:
       os.system("aeros nozzle.aeroh"); # execute the thermal analysis
       _nozzle_module.convert();        # convert temperature output from thermal analysis to input for structural analysis
