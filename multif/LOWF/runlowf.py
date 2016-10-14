@@ -14,8 +14,6 @@ from .. import nozzle as nozzlemod
 #import lifetime
 #import geometry
 
-from matplotlib import pyplot as plt
-
 #==============================================================================
 # Sutherland's Law of dynamic viscosity of air
 #==============================================================================
