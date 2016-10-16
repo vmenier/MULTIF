@@ -106,7 +106,7 @@ def runAEROS ( nozzle ):
     print >> f1, "%d 0.0 -1 0 %lf %lf %lf %lf" % (Size[0]-1, nozzle.wall.layer[1].thickness.radius(nozzle.length),
              nozzle.wall.layer[2].thickness.radius(nozzle.length), nozzle.wall.layer[3].thickness.radius(nozzle.length),
              nozzle.wall.layer[0].thickness.radius(nozzle.length));
-    print >> f1, "0 1 2 3 0.0 -1 %d %d 0 1 %d" % (Nn, Mn, Tn);
+    print >> f1, "0 1 2 2 0.0 -1 %d %d 0 3 %d" % (Nn, Mn, Tn);
     # material properties for the load layer
     for i in range(1,4):
       if nozzle.wall.layer[i].material.type == 'ISOTROPIC':
@@ -122,7 +122,7 @@ def runAEROS ( nozzle ):
                 (E1, E2, nozzle.wall.layer[i].material.getPoissonRatio(), nozzle.wall.layer[i].material.getShearModulus(),
                  mu1, mu2, nozzle.wall.layer[i].material.getDensity(), alpha1, alpha2, alpha12, Lbd, nozzle.environment.hInf);
     # material properties for the thermal layer
-    print >> f1, "0 0 0 0 0 %lf 0" % (nozzle.wall.layer[0].material.getThermalConductivity());
+    print >> f1, "ISOTROPIC 0 0 0 0 0 %lf 0" % (nozzle.wall.layer[0].material.getThermalConductivity());
     f1.close();
     
     f2 = open("BOUNDARY.txt", 'w');
