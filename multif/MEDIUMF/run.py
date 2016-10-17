@@ -42,10 +42,12 @@ def Run( nozzle ):
 	
 	try:
 		from runAEROS import *
-		nozzle.runAEROS == 1;
+		print "SUCCESS"
 	except ImportError:
-		nozzle.runAEROS == 0;
+		nozzle.runAEROS = 0;
 		pass;
+	
+	print "RUNAEROS = %d" % nozzle.runAEROS;
 	
 	if nozzle.runAEROS == 1 :	
 		runAEROS (nozzle);

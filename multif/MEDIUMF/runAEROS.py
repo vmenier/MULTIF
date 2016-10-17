@@ -17,8 +17,6 @@ def runAEROS ( nozzle ):
     # Size : [NbrVer, SolSiz]
     # idHeader : id of each solution field, e.g. mach_ver89 = SolExtract[89][idHeader['MACH']]
     
-    nozzle.wall.load_layer    = nozzle.wall.layer[1];
-    nozzle.wall.thermal_layer = nozzle.wall.layer[0];
     
     print '\nEntered runAEROS\n'
     
