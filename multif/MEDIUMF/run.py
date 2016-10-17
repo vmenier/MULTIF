@@ -1,9 +1,12 @@
 from .. import SU2
 from meshgeneration import *
 from runSU2 import *
-from runAEROS import *
 from postprocessing import *
 
+#try:
+#	from runAEROS import *
+#else ImportError:
+#	pass;
 
 def CheckOptions (nozzle):
 	
@@ -36,6 +39,13 @@ def Run( nozzle ):
 	runSU2 (nozzle);
 	
 	# --- Run AEROS
+	
+	try:
+		from runAEROS import *
+		nozzle.runAEROS == 1;
+	except ImportError:
+		nozzle.runAEROS == 0;
+		pass;
 	
 	if nozzle.runAEROS == 1 :	
 		runAEROS (nozzle);
