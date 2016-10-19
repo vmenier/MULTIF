@@ -67,7 +67,7 @@ MOD_INIT(_nozzle_module)
 #include "Context.h"
 #include "gmshLevelset.h"
 
-struct VertexData { int p, mb; double wb; int nb; std::vector<double> t; double tt; };
+struct VertexData { int p, mb; double wb; int nb; std::vector<double> t; double tt; double tb; double ts; };
 struct SegmentData { std::vector<int> m; int ns, ms; double ws; int nn, mn, sn; int mt, tn; };
 struct MaterialData
 {
@@ -75,7 +75,6 @@ struct MaterialData
   union { double E; double E1; };
   union { double nu; double nu12; };
   double rho;
-  double t;
   union { double w; double w1; };
   double k;
   double h;
@@ -130,7 +129,8 @@ void writeAttr(MElement *m, FILE *fp, int tag)
 }
 
 void writeMate(MElement *m, FILE *fp, double scalingFactor, const std::vector<BoundaryData> &boundaries,
-               bool b, const MaterialData &mat)
+               bool b, const MaterialData &mat, const std::vector<std::vector<double> > &points,
+               const std::vector<VertexData> &vertices, const std::vector<SegmentData> &segments)
 {
   // find x-coordinate of triangle centroid
   double x = 0;
@@ -148,8 +148,24 @@ void writeMate(MElement *m, FILE *fp, double scalingFactor, const std::vector<Bo
             m->getNum(), 0., 0., 0., 0., Taval, 0.);
   }
   else {
+
+    double tval;
+    Cmp cmp(points);
+    std::vector<VertexData>::const_iterator it = std::lower_bound(vertices.begin(), vertices.end(), x, cmp);
+    if(it != vertices.begin() && std::abs(x - points[(it-1)->p][0]) < 1e-5) { // baffle 
+      tval = (it-1)->tb;
+    }
+    else if(it != vertices.end() && std::abs(x - points[it->p][0]) < 1e-5) { // baffle
+      tval = it->tb;
+    }
+    else {
+      // interpolate stiffener thickness from vertex data
+      tval = (it == vertices.begin()) ? it->ts
+           : ((it-1)->ts + (it->ts - (it-1)->ts)*(x - points[(it-1)->p][0])/(points[it->p][0] - points[(it-1)->p][0]));
+    }
+
     fprintf(fp, "%d 0 %g %g %g 0 0 %g 0 %g 0 %g 0 0 0\n",
-            m->getNum(), mat.E, mat.nu, mat.rho, mat.t, Taval, mat.w);
+            m->getNum(), mat.E, mat.nu, mat.rho, tval, Taval, mat.w);
   }
 }
 
@@ -343,7 +359,7 @@ int writeAEROS(GModel *g,
       const char *str = m->getStringForBDF();
       if(str && std::strcmp(str,"CTRIA3") == 0) {
         const MaterialData &mat = materials[entities[i]->physicals[0]-1];
-        writeMate(m, fp8, scalingFactor, boundaries, b, mat);
+        writeMate(m, fp8, scalingFactor, boundaries, b, mat, points, vertices, segments);
       }
     }
   }
@@ -735,27 +751,81 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
 
       // baffle:
       if(wb > 0) {
-        std::vector<double> p5(p4); p5[1] *= wb; p5[2] *= wb; // point defining extrusion vector
-        GEntity *baffleEdge = m->extrude(edge3->getBeginVertex(), p3, p5);
-        GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
-        baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
-        baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 2;
-        std::list<GEdge*> edges = baffleFace->cast2Face()->edges();
-        for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
-          (*it)->meshAttributes.method = MESH_TRANSFINITE;
-          int edgeIndex = std::distance(edges.begin(),it);
-          switch(edgeIndex) {
-            case 0: case 2: (*it)->meshAttributes.nbPointsTransfinite = mn; break;
-            case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = nb; break;
+        if(ws == 0) { // no stiffeners
+          std::vector<double> p5(p4); p5[1] *= wb; p5[2] *= wb; // point defining extrusion vector
+          GEntity *baffleEdge = m->extrude(edge3->getBeginVertex(), p3, p5);
+          GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
+          baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
+          baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 2;
+          std::list<GEdge*> edges = baffleFace->cast2Face()->edges();
+          for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
+            (*it)->meshAttributes.method = MESH_TRANSFINITE;
+            int edgeIndex = std::distance(edges.begin(),it);
+            switch(edgeIndex) {
+              case 0: case 2: (*it)->meshAttributes.nbPointsTransfinite = mn; break;
+              case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = nb; break;
+            }
+            (*it)->meshAttributes.coeffTransfinite = 1.0;
+            if(bf != 0 && edgeIndex == 2) {
+              boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
+              boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
+              boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
+            }
           }
-          (*it)->meshAttributes.coeffTransfinite = 1.0;
-          if(bf != 0 && edgeIndex == 2) {
-            boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
-            boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
-            boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
-          }
+          baffleFace->addPhysicalEntity(mb+1);
         }
-        baffleFace->addPhysicalEntity(mb+1);
+        else {
+          std::vector<double> p5(p4); p5[1] *= ws; p5[2] *= ws; // point defining 1st extrusion vector
+          GEntity *baffleEdge = m->extrude(edge3->getBeginVertex(), p3, p5);
+          GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
+          baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
+          baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 2;
+          std::list<GEdge*> edges = baffleFace->cast2Face()->edges();
+          GEdge* edge5;
+          for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
+            (*it)->meshAttributes.method = MESH_TRANSFINITE;
+            int edgeIndex = std::distance(edges.begin(),it);
+            switch(edgeIndex) {
+              case 0: case 2: (*it)->meshAttributes.nbPointsTransfinite = mn; break;
+              case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = sn; break;
+            }
+            (*it)->meshAttributes.coeffTransfinite = 1.0;
+            if(edgeIndex == 2) {
+              if(bf != 0 && ws == wb) { // then, this is the boundary
+                boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
+                boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
+                boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
+              }
+              else edge5 = *it;
+            }
+          }
+          baffleFace->addPhysicalEntity(mb+1);
+
+          if(ws < wb) {
+            std::vector<double> p5(p4); p5[1] *= (wb-ws); p5[2] *= (wb-ws); // point defining 2nd extrusion vector
+            GEntity *baffleEdge = m->extrude(edge5->getBeginVertex(), p3, p5);
+            GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
+            baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
+            baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 2;
+            std::list<GEdge*> edges = baffleFace->cast2Face()->edges();
+            for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
+              (*it)->meshAttributes.method = MESH_TRANSFINITE;
+              int edgeIndex = std::distance(edges.begin(),it);
+              switch(edgeIndex) {
+                case 0: case 2: (*it)->meshAttributes.nbPointsTransfinite = mn; break;
+                case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = nb; break;
+              }
+              (*it)->meshAttributes.coeffTransfinite = 1.0;
+              if(bf != 0 && edgeIndex == 2) {
+                boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
+                boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
+                boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
+              }
+            }
+            baffleFace->addPhysicalEntity(mb+1);
+          }
+          else if(ws > wb) std::cerr << "error: stringer height is greater than baffle height\n"; 
+        }
       }
 
       // stiffener:
@@ -786,27 +856,81 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
         double r = std::sqrt(p4[1]*p4[1]+p4[2]*p4[2]);
         p4[1] /= r; p4[2] /= r;
 
-        std::vector<double> p5(p4); p5[1] *= wb; p5[2] *= wb; // point defining extrusion vector
-        GEntity *baffleEdge = m->extrude(edge3->getEndVertex(), p3, p5);
-        GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
-        std::list<GEdge*> edges = baffleFace->cast2Face()->edges();
-        baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
-        baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 2;
-        for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
-          (*it)->meshAttributes.method = MESH_TRANSFINITE;
-          int edgeIndex = std::distance(edges.begin(),it);
-          switch(edgeIndex) {
-            case 0: case 2: (*it)->meshAttributes.nbPointsTransfinite = mn; break;
-            case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = nb; break;
+        if(ws == 0) { // no stiffener
+          std::vector<double> p5(p4); p5[1] *= wb; p5[2] *= wb; // point defining extrusion vector
+          GEntity *baffleEdge = m->extrude(edge3->getEndVertex(), p3, p5);
+          GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
+          baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
+          baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 2;
+          std::list<GEdge*> edges = baffleFace->cast2Face()->edges();
+          for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
+            (*it)->meshAttributes.method = MESH_TRANSFINITE;
+            int edgeIndex = std::distance(edges.begin(),it);
+            switch(edgeIndex) {
+              case 0: case 2: (*it)->meshAttributes.nbPointsTransfinite = mn; break;
+              case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = nb; break;
+            }
+            (*it)->meshAttributes.coeffTransfinite = 1.0;
+            if(bf != 0 && edgeIndex == 2) {
+              boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
+              boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
+              boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
+            }
           }
-          (*it)->meshAttributes.coeffTransfinite = 1.0;
-          if(bf != 0 && edgeIndex == 2) {
-            boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
-            boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
-            boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
-          }
+          baffleFace->addPhysicalEntity(mb+1);
         }
-        baffleFace->addPhysicalEntity(mb+1);
+        else {
+          std::vector<double> p5(p4); p5[1] *= ws; p5[2] *= ws; // point defining 1st extrusion vector
+          GEntity *baffleEdge = m->extrude(edge3->getEndVertex(), p3, p5);
+          GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
+          baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
+          baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 2;
+          std::list<GEdge*> edges = baffleFace->cast2Face()->edges();
+          GEdge *edge5;
+          for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
+            (*it)->meshAttributes.method = MESH_TRANSFINITE;
+            int edgeIndex = std::distance(edges.begin(),it);
+            switch(edgeIndex) {
+              case 0: case 2: (*it)->meshAttributes.nbPointsTransfinite = mn; break;
+              case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = sn; break;
+            }
+            (*it)->meshAttributes.coeffTransfinite = 1.0;
+            if(edgeIndex == 2) {
+              if(bf !=0 && ws == wb) { // then, this is the boundary
+                boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
+                boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
+                boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
+              }
+              else edge5 = *it;
+            }
+          }
+          baffleFace->addPhysicalEntity(mb+1);
+
+          if(ws < wb) {
+            std::vector<double> p5(p4); p5[1] *= (wb-ws); p5[2] *= (wb-ws); // point defining 2nd extrusion vector
+            GEntity *baffleEdge = m->extrude(edge5->getBeginVertex(), p3, p5);
+            GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
+            baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
+            baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 2;
+            std::list<GEdge*> edges = baffleFace->cast2Face()->edges();
+            for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
+              (*it)->meshAttributes.method = MESH_TRANSFINITE;
+              int edgeIndex = std::distance(edges.begin(),it);
+              switch(edgeIndex) {
+                case 0: case 2: (*it)->meshAttributes.nbPointsTransfinite = mn; break;
+                case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = nb; break;
+              }
+              (*it)->meshAttributes.coeffTransfinite = 1.0;
+              if(bf != 0 && edgeIndex == 2) {
+                boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
+                boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
+                boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
+              }
+            }
+            baffleFace->addPhysicalEntity(mb+1);
+          }
+          else if(ws > wb) std::cerr << "error: stringer height is greater than baffle height\n";
+        }
       }
 
       // thermal model inner layer:
@@ -998,7 +1122,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
   double tolerance = CTX::instance()->geom.tolerance;
   m->removeDuplicateMeshVertices(tolerance);
 
-  //m->writeMSH("nozzle.msh");
+  m->writeMSH("nozzle.msh");
   writeAEROS(m, points, vertices, segments, materials, boundaries, surfaceTags, boundaryTags, "nozzle.aeros", 2, false, 1.0, (tf==0));
   if(tf != 0) writeAEROH(m, materials, boundaries, interiorBoundaryTags, exteriorBoundaryTags, surfaceTags, "nozzle.aeroh", 2);
 
@@ -1024,7 +1148,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
   std::vector<VertexData> vertices(nv);
   for(int j=0; j<nv; ++j) {
     VertexData &v = vertices[j];
-    fin >> v.p >> v.wb >> v.mb >> v.nb; for(int k=0; k<nl; ++k) { double tk; fin >> tk; v.t.push_back(tk); } fin >> v.tt;
+    fin >> v.p >> v.wb >> v.mb >> v.nb; for(int k=0; k<nl; ++k) { double tk; fin >> tk; v.t.push_back(tk); } fin >> v.tt >> v.tb >> v.ts;
   }
 
   std::vector<SegmentData> segments(nv-1);
@@ -1040,11 +1164,11 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
     fin >> s;
     if(s == "ISOTROPIC") {
       m.type = MaterialData::ISOTROPIC;
-      fin >> m.E >> m.nu >> m.rho >> m.t >> m.w >> m.k >> m.h;
+      fin >> m.E >> m.nu >> m.rho >> m.w >> m.k >> m.h;
     }
     else {
       m.type = MaterialData::ANISOTROPIC;
-      fin >> m.E1 >> m.E2 >> m.nu12 >> m.G12 >> m.mu1 >> m.mu2 >> m.rho >> m.t >> m.w1 >> m.w2 >> m.w12 >> m.k >> m.h;
+      fin >> m.E1 >> m.E2 >> m.nu12 >> m.G12 >> m.mu1 >> m.mu2 >> m.rho >> m.w1 >> m.w2 >> m.w12 >> m.k >> m.h;
     }
   }
 
