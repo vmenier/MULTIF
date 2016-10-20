@@ -514,7 +514,7 @@ def calcVolumeAndMass(nozzle):
         xMid = x[1:] - x[:-1]
         mMid = np.interp(xMid,x,midpoint)
         dV = 2*np.pi*mMid*nozzle.wall.layer[i].thickness.radius(xMid)*ds
-        print 'Minimum ds is %e' % min(ds)
+        #print 'Minimum ds is %e' % min(ds)
         s.append(np.sum(ds))
         V.append(np.sum(dV))
     

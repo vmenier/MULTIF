@@ -97,8 +97,8 @@ class Nozzle:
                             'BAFFLES_HEIGHT']);
             dv_n.append([3*nozzle.baffles.n,nozzle.baffles.n,
                         nozzle.baffles.n,nozzle.baffles.n]);
-            dv_keys.append(['STRINGERS','STRINGERS_THICKNESS',
-                            'STRINGERS_HEIGHT']);
+            dv_keys.append(['STRINGERS','STRINGERS_THICKNESS_LOCATIONS',
+                            'STRINGERS_THICKNESS_VALUES']);
             dv_n.append([2*nozzle.stringers.n,nozzle.stringers.n,
                         nozzle.stringers.n]);
             for k in nozzle.materials:
@@ -854,8 +854,8 @@ class Nozzle:
                 break;
             i += 1
         
-        nozzle.wall.load_layer    = nozzle.wall.layer[1];
-        nozzle.wall.thermal_layer = nozzle.wall.layer[0];
+        #nozzle.wall.load_layer    = nozzle.wall.layer[1];
+        #nozzle.wall.thermal_layer = nozzle.wall.layer[0];
 
         if output == 'verbose':
             sys.stdout.write('%d layers processed\n' % (i-1));
@@ -898,13 +898,21 @@ class Nozzle:
         nozzle.stringers = component.Stringers(n);
         nozzle.stringers.material = nozzle.materials[material];
         
-        info = config['STRINGERS_HEIGHT'].strip('()');
-        ltemp = [x.strip() for x in info.split(',')];        
-        nozzle.stringers.height = [float(x) for x in ltemp];
+        # Assign thickness distribution
+        try:
+            nozzle.stringers.thicknessNodes = self.ParseThickness(config,'STRINGERS');
+        except:
+            sys.stderr.write('\n ## ERROR : Thickness definition '   \
+                 'could not be parsed for STRINGERS.\n\n');
+            sys.exit(0);            
+
+        #info = config['STRINGERS_HEIGHT'].strip('()');
+        #ltemp = [x.strip() for x in info.split(',')];        
+        #nozzle.stringers.height = [float(x) for x in ltemp];
         
-        info = config['STRINGERS_THICKNESS'].strip('()');
-        ltemp = [x.strip() for x in info.split(',')];          
-        nozzle.stringers.thickness = [float(x) for x in ltemp];
+        #info = config['STRINGERS_THICKNESS'].strip('()');
+        #ltemp = [x.strip() for x in info.split(',')];          
+        #nozzle.stringers.thickness = [float(x) for x in ltemp];
         
         if output == 'verbose':
             sys.stdout.write('Setup Stringers complete\n');        
@@ -952,6 +960,14 @@ class Nozzle:
                 thicknessNodeArray[0][j] = nozzle.wall.layer[i].thicknessNodes[j][0]*nozzle.length;
                 thicknessNodeArray[1][j] = nozzle.wall.layer[i].thicknessNodes[j][1];
             nozzle.wall.layer[i].thickness = geometry.PiecewiseLinear(thicknessNodeArray);
+            
+        # --- Setup thickness distribution for stringers
+        tsize = len(nozzle.stringers.thicknessNodes);
+        thicknessNodeArray = np.zeros(shape=(2,tsize))
+        for j in range(tsize):
+            thicknessNodeArray[0][j] = nozzle.stringers.thicknessNodes[j][0]*nozzle.length;
+            thicknessNodeArray[1][j] = nozzle.stringers.thicknessNodes[j][1];    
+        nozzle.stringers.thickness = geometry.PiecewiseLinear(thicknessNodeArray);
             
         # --- Rescale x-coordinates of baffles
             
@@ -1143,46 +1159,47 @@ class Nozzle:
                 continue;
                 
             if Tag == 'STRINGERS':
-                lsize = len(nozzle.stringers.dv)/2;
+                lsize = len(nozzle.stringers.thicknessNodes);
                 brk = np.max(nozzle.stringers.dv[:lsize])+1;
                 for iCoord in range(len(nozzle.stringers.dv)):
-                    id_dv = nozzle.DV_Head[iTag] + nozzle.stringers.dv[iCoord];                    
-                    # --- Update coordinate in stringer definition if required
+                    id_dv = nozzle.DV_Head[iTag] + nozzle.stringers.dv[iCoord];  
+                    # Update coordinate in thickness array if required
                     if id_dv < nozzle.DV_Head[iTag]:
-                        pass;
-                    elif id_dv < nozzle.DV_Head[iTag] + brk:
-                        prt_name.append('stringer thickness #%d' % (iCoord+1));
-                        prt_basval.append('%.4lf'% nozzle.stringers.thickness[iCoord]);
+                        pass
+                    elif id_dv < nozzle.DV_Head[iTag]+brk:
+                        prt_name.append('stringer thickness location #%d' % (iCoord+1));
+                        prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodes[iCoord][0]);
                         prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                        nozzle.stringers.thickness[iCoord] = nozzle.DV_List[id_dv];
+                        nozzle.stringers.thicknessNodes[iCoord][0] = nozzle.DV_List[id_dv];
                         NbrChanged = NbrChanged+1;
-                    else:
-                        prt_name.append('stringer height #%d' % (iCoord+1-lsize));
-                        prt_basval.append('%.4lf'% nozzle.stringers.height[iCoord-lsize]);
+                    else: # id_dv > nozzle.DV_Head[iTag]+brk
+                        prt_name.append('stringer thickness value #%d' % (iCoord+1-lsize));
+                        prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodes[iCoord-lsize][1]);
                         prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                        nozzle.stringers.height[iCoord-lsize] = nozzle.DV_List[id_dv];
+                        nozzle.stringers.thicknessNodes[iCoord-lsize][1] = nozzle.DV_List[id_dv];
                         NbrChanged = NbrChanged+1;
-                continue;   
+                continue;               
                 
-            if Tag == 'STRINGERS_THICKNESS':
-                for iCoord in range(len(nozzle.stringers.thickness)):
+            # Update all layers with specific names, e.g. LAYER1_THICKNESS_VALUES
+            if Tag == 'STRINGERS_THICKNESS_LOCATIONS':
+                for iCoord in range(len(nozzle.stringers.thicknessNodes)):
                     id_dv = nozzle.DV_Head[iTag] + iCoord;
-                    prt_name.append('stringer thickness #%d' % (iCoord+1));
-                    prt_basval.append('%.4lf'% nozzle.stringers.thickness[iCoord]);
+                    prt_name.append('stringer thickness location #%d' % (iCoord+1));
+                    prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodes[iCoord][0]);
                     prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                    nozzle.stringers.thickness[iCoord] = nozzle.DV_List[id_dv];
+                    nozzle.stringers.thicknessNodes[iCoord][0] = nozzle.DV_List[id_dv];
                     NbrChanged = NbrChanged+1;
-                continue;  
-                
-            if Tag == 'STRINGERS_HEIGHT':
-                for iCoord in range(len(nozzle.stringers.height)):
-                    id_dv = nozzle.DV_Head[iTag] + iCoord;
-                    prt_name.append('stringers height #%d' % (iCoord+1));
-                    prt_basval.append('%.4lf'% nozzle.stringers.height[iCoord]);
+                    continue;
+            
+            if Tag == 'STRINGERS_THICKNESS_VALUES':
+                for iCoord in range(len(nozzle.stringers.thicknessNodes)):
+                    id_dv = nozzle.DV_Head[iTag] + iCoord;                  
+                    prt_name.append('stringer thickness value #%d' % (iCoord+1));
+                    prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodes[iCoord][1]);
                     prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                    nozzle.stringers.height[iCoord] = nozzle.DV_List[id_dv];
+                    nozzle.stringers.thicknessNodes[iCoord][1] = nozzle.DV_List[id_dv];
                     NbrChanged = NbrChanged+1;
-                continue;
+                    continue;
                         
             # Update all materials with non-specific names, e.g. MATERIAL1, etc.
             check = 0;

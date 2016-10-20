@@ -40,12 +40,12 @@ def runAEROS ( nozzle ):
     #print 'thickness: {} m'.format(nozzle.baffles.thickness)
     #print 'height: {} m'.format(nozzle.baffles.height)
     #print ''
-    #print '--- Stringers:'
-    #print 'number: %i' % nozzle.stringers.n
-    #print 'material: %s' % nozzle.stringers.material.name
-    #print 'thickness: {} m'.format(nozzle.stringers.thickness)
-    #print 'height: {} m'.format(nozzle.stringers.height)
-    #print ''
+    print '--- Stringers:'
+    print 'number: %i' % nozzle.stringers.n
+    print 'material: %s' % nozzle.stringers.material.name
+    print 'thickness node x-coordinate: {} m'.format(nozzle.stringers.thickness.nodes[0,:])
+    print 'thickness node local n-coordinate: {} m'.format(nozzle.stringers.thickness.nodes[1,:])
+    print '\n' 
     
     # aside: to easily calculate wall shape or thickness as a function of the
     # x-coordinate in an item's local coordinates, use the radius method
@@ -116,8 +116,10 @@ def runAEROS ( nozzle ):
         thermalFlag = 0;
 
     # XXX stringer height and thickness (currently assumed to be constant)
-    Ws = nozzle.stringers.height[0] if nozzle.stringers.n > 0 else 0;
-    Ts = nozzle.stringers.thickness[0] if nozzle.stringers.n > 0 else 0;
+    #Ws = nozzle.stringers.height[0] if nozzle.stringers.n > 0 else 0;
+    Ws= nozzle.stringers.thickness.radius(0) if nozzle.stringers.n > 0 else 0;
+    #Ts = nozzle.stringers.thickness[0] if nozzle.stringers.n > 0 else 0;
+    Ts = nozzle.stringers.thickness.radius(0) if nozzle.stringers.n > 0 else 0;
 
     materialNames = [nozzle.materials[k].name for k in nozzle.materials]
     # material ids of the thermal and load layers
