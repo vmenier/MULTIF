@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import os, time, sys, shutil, copy
+import os, time, sys, shutil, copy, math
 from optparse import OptionParser
 import textwrap
 import multif
@@ -16,169 +16,165 @@ def runAEROS ( nozzle ):
     # SolExtract : Solution (x, y, sol1, sol2, etc.)
     # Size : [NbrVer, SolSiz]
     # idHeader : id of each solution field, e.g. mach_ver89 = SolExtract[89][idHeader['MACH']]
-
-    nozzle.wall.load_layer    = nozzle.wall.layer[1];
-    nozzle.wall.thermal_layer = nozzle.wall.layer[0];
     
-		# Start of example for accessing nozzle properties
     
-    print '\nEntered runAEROS\n'
+    #print '\nEntered runAEROS\n'
     
-    x = np.linspace(0,nozzle.length,10)
+    # Start of example for accessing nozzle properties
     
     # First print all information related to geometry
-    print '--- Wall:'
-    print 'B-spline coefs (x-r coordinates): {}'.format(nozzle.wall.coefs)
-    print 'B-spline knots: {}'.format(nozzle.wall.knots)
-    print ''
-    for i in range(len(nozzle.wall.layer)):
-        print '--- %s:' % nozzle.wall.layer[i].name
-        print 'material: %s' % nozzle.wall.layer[i].material.name
-        print 'thickness node x-coordinate: {} m'.format(nozzle.wall.layer[i].thickness.nodes[0,:])
-        print 'thickness node local n-coordinate: {} m'.format(nozzle.wall.layer[i].thickness.nodes[1,:])
-        print '\n'
-    print '--- Baffles:'
-    print 'number: %i' % nozzle.baffles.n
-    print 'location (x-coordinate): {} m'.format(nozzle.baffles.location)
-    print 'thickness: {} m'.format(nozzle.baffles.thickness)
-    print 'height: {} m'.format(nozzle.baffles.height)
-    print ''
-    print '--- Stringers:'
-    print 'number: %i' % nozzle.stringers.n
-    print 'thickness: {} m'.format(nozzle.stringers.thickness)
-    print 'height: {} m'.format(nozzle.stringers.height)
-    print ''
+    #print '--- Wall:'
+    #print 'B-spline coefs (x-r coordinates): {}'.format(nozzle.wall.coefs)
+    #print 'B-spline knots: {}'.format(nozzle.wall.knots)
+    #print ''
+    #for i in range(len(nozzle.wall.layer)):
+    #    print '--- %s:' % nozzle.wall.layer[i].name
+    #    print 'material: %s' % nozzle.wall.layer[i].material.name
+    #    print 'thickness node x-coordinate: {} m'.format(nozzle.wall.layer[i].thickness.nodes[0,:])
+    #    print 'thickness node local n-coordinate: {} m'.format(nozzle.wall.layer[i].thickness.nodes[1,:])
+    #    print '\n'
+    #print '--- Baffles:'
+    #print 'number: %i' % nozzle.baffles.n
+    #print 'material: %s' % nozzle.baffles.material.name
+    #print 'location (x-coordinate): {} m'.format(nozzle.baffles.location)
+    #print 'thickness: {} m'.format(nozzle.baffles.thickness)
+    #print 'height: {} m'.format(nozzle.baffles.height)
+    #print ''
+    #print '--- Stringers:'
+    #print 'number: %i' % nozzle.stringers.n
+    #print 'material: %s' % nozzle.stringers.material.name
+    #print 'thickness: {} m'.format(nozzle.stringers.thickness)
+    #print 'height: {} m'.format(nozzle.stringers.height)
+    #print ''
     
     # aside: to easily calculate wall shape or thickness as a function of the
     # x-coordinate in an item's local coordinates, use the radius method
-    r_innerwall = nozzle.wall.geometry.radius(x) # returns shape of inner wall at x in r-coordinate
-    t_thermal_layer = nozzle.wall.geometry.radius(x) # returns thickness of thermal layer at x in local n-coordinate
+    #r_innerwall = nozzle.wall.geometry.radius(x) # returns shape of inner wall at x in r-coordinate
+    #t_thermal_layer = nozzle.wall.layer[0].thickness.radius(x) # returns thickness of thermal layer at x in local n-coordinate
     
     # Next, print all information related to materials
-    for k in nozzle.materials:
-        print '--- %s material:' % nozzle.materials[k].name
-        print 'type: %s' % nozzle.materials[k].type
-        print 'density: %10.4f kg/m^3' % nozzle.materials[k].getDensity()
-        if nozzle.materials[k].name == 'TI-HC' or nozzle.materials[k].name == 'GR-BMI':
-            print 'elastic modulus: {} Pa'.format(nozzle.materials[k].getElasticModulus())
-            print 'shear modulus: %e Pa' % nozzle.materials[k].getShearModulus()
-            print 'poisson ratio: %1.4f' % nozzle.materials[k].getPoissonRatio()
-        if nozzle.materials[k].name == 'GR-BMI':            
-            print 'mutual influence coefs: {}'.format(nozzle.materials[k].getMutualInfluenceCoefs())
-        print 'thermal conductivity: {} W/m-K'.format(nozzle.materials[k].getThermalConductivity())
-        if nozzle.materials[k].name == 'TI-HC' or nozzle.materials[k].name == 'GR-BMI':
-            print 'thermal expansion coef: {} 1/K'.format(nozzle.materials[k].getThermalExpansionCoef())
-        print ''
+    #for k in nozzle.materials:
+    #    print '--- %s material:' % nozzle.materials[k].name
+    #    print 'type: %s' % nozzle.materials[k].type
+    #    print 'density: %10.4f kg/m^3' % nozzle.materials[k].getDensity()
+    #    if nozzle.materials[k].name == 'TI-HC' or nozzle.materials[k].name == 'GR-BMI':
+    #        print 'elastic modulus: {} Pa'.format(nozzle.materials[k].getElasticModulus())
+    #        print 'shear modulus: %e Pa' % nozzle.materials[k].getShearModulus()
+    #        print 'poisson ratio: %1.4f' % nozzle.materials[k].getPoissonRatio()
+    #    if nozzle.materials[k].name == 'GR-BMI':            
+    #        print 'mutual influence coefs: {}'.format(nozzle.materials[k].getMutualInfluenceCoefs())
+    #    print 'thermal conductivity: {} W/m-K'.format(nozzle.materials[k].getThermalConductivity())
+    #    if nozzle.materials[k].name == 'TI-HC' or nozzle.materials[k].name == 'GR-BMI':
+    #        print 'thermal expansion coef: {} 1/K'.format(nozzle.materials[k].getThermalExpansionCoef())
+    #    print ''
         
     # So for example to obtain the Young's Moduli for the innermost Gr-BMI layer
-    [E1, E2] = nozzle.wall.layer[1].material.getElasticModulus()
+    #[E1, E2] = nozzle.wall.layer[1].material.getElasticModulus()
     # Example, obtain all 3 coefs of thermal expansion for outermost Gr-BMI layer
-    [alpha1, alpha2, alpha12] = nozzle.wall.layer[3].material.getThermalExpansionCoef()
+    #[alpha1, alpha2, alpha12] = nozzle.wall.layer[3].material.getThermalExpansionCoef()
     # Example, obtain thermal conductivities for innermost Gr-BMI layer (there
     # are 3 values: (1st in-plane direction, 2nd in-plane direction, out-of-plane direction))
-    [k1, k2, k3] = nozzle.wall.layer[1].material.getThermalConductivity()
-    
+    #[k1, k2, k3] = nozzle.wall.layer[1].material.getThermalConductivity()
     # End of example
-    
+
     SolExtract, Size, idHeader  = ExtractSolutionAtWall(nozzle);
-    
-    # --- Wall thicknesses
-    
-    xtab = np.linspace(0, nozzle.length, num=10);
-    for i in range(len(xtab)):
-        x = xtab[i];
-        #hl = nozzle.wall.thermal_layer.thickness.radius(x);
-        #hu = nozzle.wall.load_layer.thickness.radius(x);
 
-        hl = nozzle.wall.layer[0].thickness.radius(x);
-        hu = nozzle.wall.layer[1].thickness.radius(x);
+    # merge lists
+    vertices = sorted(list(set(list(nozzle.wall.layer[0].thickness.nodes[0,:])+list(nozzle.wall.layer[1].thickness.nodes[0,:])+
+                               list(nozzle.wall.layer[2].thickness.nodes[0,:])+list(nozzle.wall.layer[3].thickness.nodes[0,:])+
+                               list(nozzle.baffles.location))))
+    #for k in range(len(vertices)):
+    #    print ' k = %d, vertices[k] = %f' % (k, vertices[k])
 
-        #print "x = %lf lower thickness = %lf upper thickness = %lf " % (x, hl, hu);
+    points = sorted(list(set(vertices+[item[0] for item in SolExtract])))
+    #for k in range(len(points)):
+    #    print ' k = %d, points[k] = %f' % (k, points[k])
     
-    # --- Material properties
-    
-    # Thermal layer
-    k_axial  = nozzle.wall.thermal_layer.material.getThermalConductivity('axial');
-    k_radial = nozzle.wall.thermal_layer.material.getThermalConductivity('radial');
-		
-    Lbd_therm = (k_axial + k_radial)/2.;
-    
-    # Load layer
-    
-    # Young’s modulus of k­th material in axial direction. (float > 0)
-    #E_axial = nozzle.wall.load_layer.material.getElasticModulus('axial');
-    #E_radial = nozzle.wall.load_layer.material.getElasticModulus('radial');
-    E_axial = nozzle.wall.load_layer.material.getElasticModulus(1);
-    E_radial = nozzle.wall.load_layer.material.getElasticModulus(2);
-    Ek   = (E_axial + E_radial)/2.;     
-    # Poisson's ratio of kth material. (float < 0.5)
-    Nuk  = nozzle.wall.load_layer.material.getPoissonRatio();          
-    # Density of kth material. (float > 0)
-    Rhok = nozzle.wall.load_layer.material.getDensity();
-    # Shell thickness of kth material. (float > 0)             -> Victorien : ?
-    Tk   = 0.005;
-    # Coefficient of thermal expansion of k­th material. (float >= 0)  
-    #A_axial = nozzle.wall.load_layer.material.getThermalExpansionCoef('axial');
-    #A_radial = nozzle.wall.load_layer.material.getThermalExpansionCoef('radial');
-    A_axial = nozzle.wall.load_layer.material.getThermalExpansionCoef(1);
-    A_radial = nozzle.wall.load_layer.material.getThermalExpansionCoef(2);
-    Ak   = (A_axial + A_radial)/2.; 
-    # Reference temperature of k­th material. (float > 0) 
-    Rk   = nozzle.environment.T;
-    # Thermal conductivity of wall (W/m*K)
-    #k_axial = nozzle.wall.load_layer.material.getThermalConductivity('axial');
-    #k_radial = nozzle.wall.load_layer.material.getThermalConductivity('radial');
-    k_axial = nozzle.wall.load_layer.material.getThermalConductivity(1);
-    k_radial = nozzle.wall.load_layer.material.getThermalConductivity(2);
-    Lbd  = (k_axial + k_radial)/2.;     
-    
-    # Heat transfer coefficient to environment (W/m^2-K)         
-    Hk   = nozzle.environment.hInf;    
+    # Average thermal conductivity of load layer (W/m*K)
+    #[k11, k12, k13] = nozzle.wall.layer[1].material.getThermalConductivity();
+    #k2 = nozzle.wall.layer[2].material.getThermalConductivity();
+    #[k31, k32, k33] = nozzle.wall.layer[3].material.getThermalConductivity();
+    #Lbd = (k11+k12+k13+3*k2+k31+k32+k33)/9
     
     iPres = idHeader['Pressure'];
     iTemp = idHeader['Temperature'];
-
+    
     # --- Mesh parameters
-    Nn   = 21; # Number of nodes in longitudinal direction
-    Mn   = 21; # Number of nodes in circumferential direction 
+    lc   = 0.02; # Characteristic length (i.e. element size)
+    Ns   = max(2,nozzle.stringers.n); # number of panels (i.e. circumferential subdivisions of the mesh)
+    Mn   = max(2,(2*math.pi*nozzle.wall.geometry.radius(points[0])/Ns)/lc+1); # Number of nodes in circumferential direction per panel
     Tn   = 4;  # Number of nodes through thickness of thermal insulating layer
-
-    boundaryFlag = nozzle.boundaryFlag; # 0: inlet fixed, 1: baffles fixed, 2: both inlet and baffles fixed
-    if nozzle.thermalFlag == 1:
-        thermalFlag = 1;  # 0: structural analysis only, 1: both thermal and structural analyses
-    else: # only perform structural analysis
-        thermalFlag = 0;
     
     ## --- How to get x, y, P, T :
     #for i in range(0,Size[0]):
     #    print "VER %d : (x,y) = (%lf, %lf) , Pres = %lf, Temp = %lf" % (i, SolExtract[i][0], SolExtract[i][1], SolExtract[i][iPres], SolExtract[i][iTemp]);
+
+    boundaryFlag = 1 if len(nozzle.baffles.location) > 0 else 0; # 0: inlet fixed, 1: baffles fixed, 2: both inlet and baffles fixed
+    if nozzle.thermalFlag == 1:
+        thermalFlag = 1;  # 0: structural analysis only, 1: both thermal and structural analyses
+    else: # only perform structural analysis
+        thermalFlag = 0;
+
+    # XXX stringer height and thickness (currently assumed to be constant)
+    Ws = nozzle.stringers.height[0] if nozzle.stringers.n > 0 else 0;
+    Ts = nozzle.stringers.thickness[0] if nozzle.stringers.n > 0 else 0;
+
+    materialNames = [nozzle.materials[k].name for k in nozzle.materials]
+    # material ids of the thermal and load layers
+    M = [materialNames.index(nozzle.wall.layer[i].material.name) for i in range(len(nozzle.wall.layer))]
+    # material id of baffles
+    Mb = materialNames.index(nozzle.baffles.material.name) if len(nozzle.baffles.location) > 0 else -1
+    # material id of stringers
+    Ms = materialNames.index(nozzle.stringers.material.name) if nozzle.stringers.n > 0 else -1
     
     f1 = open("NOZZLE.txt", 'w');
-    print >> f1, "%d %d %d %f %d %d" % (Size[0], 2, 2, 0.02, boundaryFlag, thermalFlag);
-    for i in range(0,Size[0]):
-        print >> f1, "%lf %lf" % (SolExtract[i][0], SolExtract[i][1]);
-    print >> f1, "%d 0.0 -1 0 %lf %lf" % (0, nozzle.wall.load_layer.thickness.radius(0), nozzle.wall.thermal_layer.thickness.radius(0));
-    print >> f1, "%d 0.0 -1 0 %lf %lf" % (Size[0]-1, nozzle.wall.load_layer.thickness.radius(nozzle.length), nozzle.wall.thermal_layer.thickness.radius(nozzle.length));
-    print >> f1, "0 2 0.0 -1 %d %d 0 1 %d" % (Nn, Mn, Tn);
-    print >> f1, "%lf %lf %lf %lf %lf %lf %lf" % (Ek, Nuk, Rhok, Tk, Ak, Lbd, Hk); # material properties for the upper layer
-    print >> f1, "0 0 0 0 0 %lf 0" % (Lbd_therm); # material properties for the lower layer
+    print >> f1, "%d %d %d %f %d %d %d" % (len(points), len(vertices), len(nozzle.materials), lc, boundaryFlag, thermalFlag, 3);
+    # points
+    for i in range(len(points)):
+        print >> f1, "%lf %lf" % (points[i], nozzle.wall.geometry.radius(points[i]));
+    # vertices
+    for i in range(len(vertices)):  
+        Wb = nozzle.baffles.height[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # height of baffle
+        Nb = max((Wb-Ws)/lc+1,2); # number of nodes on radial edge of baffle (not including overlap with stringer)
+        Tb = nozzle.baffles.thickness[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # thickness of baffle
+        print >> f1, "%d %f %d %d %lf %lf %lf %lf %lf %lf" % (points.index(vertices[i]), Wb, Mb, Nb,
+                 nozzle.wall.layer[1].thickness.radius(vertices[i]), nozzle.wall.layer[2].thickness.radius(vertices[i]),
+                 nozzle.wall.layer[3].thickness.radius(vertices[i]), nozzle.wall.layer[0].thickness.radius(vertices[i]),
+                 Tb, Ts);
+    # panels
+    for i in range(1,len(vertices)):
+        Nn = max(2,(vertices[i]-vertices[i-1])/lc+1); # number of nodes on longitudial edge
+        Sn = max(Ws/lc+1,2); # number of nodes on radial edge of stringers
+        print >> f1, "%d %d %d %d %f %d %d %d %d %d %d" % (M[1], M[2], M[3], Ns, Ws, Ms, Nn, Mn, Sn, M[0], Tn);
+    # material properties
+    for k in nozzle.materials:
+      if nozzle.materials[k].type == 'ISOTROPIC':
+        if nozzle.materials[k].name == 'CMC':
+            print >> f1, "ISOTROPIC 0 0 %lf 0 %lf 0" % (nozzle.materials[k].getDensity(),
+                     nozzle.materials[k].getThermalConductivity())
+        else:
+            print >> f1, "ISOTROPIC %lf %lf %lf %lf %lf %lf" % (nozzle.materials[k].getElasticModulus(),
+                     nozzle.materials[k].getPoissonRatio(), nozzle.materials[k].getDensity(),
+                     nozzle.materials[k].getThermalExpansionCoef(), nozzle.materials[k].getThermalConductivity(),
+                     nozzle.environment.hInf);
+      else:
+        [E1, E2] = nozzle.materials[k].getElasticModulus()
+        [mu1, mu2] = nozzle.materials[k].getMutualInfluenceCoefs()
+        [alpha1, alpha2, alpha12] = nozzle.materials[k].getThermalExpansionCoef()
+        [k11, k12, k13] = nozzle.materials[k].getThermalConductivity();
+        print >> f1, "ANISOTROPIC %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf" % \
+                (E1, E2, nozzle.materials[k].getPoissonRatio(), nozzle.materials[k].getShearModulus(), mu1, mu2,
+                 nozzle.materials[k].getDensity(), alpha1, alpha2, alpha12, (k11+k12+k13)/3, nozzle.environment.hInf);
     f1.close();
-
+    
     f2 = open("BOUNDARY.txt", 'w');
     print >> f2, "%d" % (Size[0]);
     for i in range(0,Size[0]):
-        print >> f2, "%lf %lf %lf %lf" % (SolExtract[i][0], SolExtract[i][iPres], SolExtract[i][iTemp], Rk); # XXX
+        print >> f2, "%lf %lf %lf %lf" % (SolExtract[i][0], SolExtract[i][iPres], SolExtract[i][iTemp], nozzle.environment.T);
     f2.close();
-	
-	## --- How to get x, y, P, T :
-	#for i in range(0,Size[0]):
-	#	print "VER %d : (x,y) = (%lf, %lf) , Pres = %lf, Temp = %lf" % (i, SolExtract[i][0], SolExtract[i][1], SolExtract[i][iPres], SolExtract[i][iTemp]);
-	
-    print "ENTER GENERATE"
+    
     _nozzle_module.generate();       # generate the meshes for thermal and structural analyses
-		
-    print "EXIT GENERATE"
-		
+
     if thermalFlag > 0:
       os.system("aeros nozzle.aeroh"); # execute the thermal analysis
       _nozzle_module.convert();        # convert temperature output from thermal analysis to input for structural analysis

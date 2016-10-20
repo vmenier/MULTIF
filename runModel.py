@@ -47,7 +47,7 @@ def main():
 		sys.exit(0);
 	
 	nozzle = multif.nozzle.NozzleSetup( options.filename, options.flevel );
-	
+
 	if nozzle.method == 'NONIDEALNOZZLE' :
 		multif.LOWF.Run(nozzle);
 	elif nozzle.method == 'EULER' or nozzle.method == 'RANS':

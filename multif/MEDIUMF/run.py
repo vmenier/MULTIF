@@ -1,9 +1,12 @@
 from .. import SU2
 from meshgeneration import *
 from runSU2 import *
-from runAEROS import *
 from postprocessing import *
 
+#try:
+#	from runAEROS import *
+#else ImportError:
+#	pass;
 
 def CheckOptions (nozzle):
     
@@ -30,26 +33,36 @@ def Run( nozzle ):
     
     if nozzle.runDir != '':
         os.chdir(nozzle.runDir);
-        
-    if nozzle.thermalFlag == 1 and nozzle.structuralFlag == 0:
-        sys.stdout.write('\n Fluid and thermal analysis are currently '       \
-          'coupled in only 1 direction. Fluid --> thermal.\n\n');
     
     # --- Run CFD
     
     runSU2 (nozzle);
+	
+    # --- Run AEROS  
     
-    # --- Run AEROS
-    
-    if nozzle.structuralFlag == 1 or nozzle.thermalFlag == 1:
-        runAEROS (nozzle);
-    else: # skip structural and thermal analyses
-        pass
-    
+    nozzle.runAEROS = 0;
+    if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
+        nozzle.runAEROS = 1;
+	
+        try:
+		        from runAEROS import *
+		        print "SUCCESS IMPORTING AEROS"
+        except ImportError:
+		        nozzle.runAEROS = 0;
+		        pass;
+	
+    print "RUNAEROS = %d" % nozzle.runAEROS;
+	
+    if nozzle.runAEROS == 1:
+		    runAEROS (nozzle);
+    else :
+		    sys.stdout.write('  -- Info: Skip call to AEROS.\n');
+
     # --- Postprocessing
-    
+	
     PostProcessing(nozzle);
-    
+	
     sys.stdout.write("\n  -- Info : Result directory :  %s\n\n" % nozzle.runDir);
-    
-    
+	
+	
+

@@ -484,13 +484,13 @@ class Nozzle:
         
         nozzle = self;
 
-        if 'STRUCTURAL_BOUNDARY_CONDTION' in config:
-            nozzle.boundaryFlag = int(config['STRUCTURAL_BOUNDARY_CONDITION']);
-        else:
-            nozzle.boundaryFlag = 0; # inlet fixed
-            if output == 'verbose':
-                sys.stdout.write('Structural boundary condition not '         \
-                  'specified. Setting boundary condition to fixed inlet\n.');
+        #if 'STRUCTURAL_BOUNDARY_CONDTION' in config:
+        #    nozzle.boundaryFlag = int(config['STRUCTURAL_BOUNDARY_CONDITION']);
+        #else:
+        #    nozzle.boundaryFlag = 0; # inlet fixed
+        #    if output == 'verbose':
+        #        sys.stdout.write('Structural boundary condition not '         \
+        #          'specified. Setting boundary condition to fixed inlet\n.');
             
         if 'THERMAL_ANALYSIS' in config:
             nozzle.thermalFlag = int(config['THERMAL_ANALYSIS']);
@@ -854,10 +854,14 @@ class Nozzle:
                 break;
             i += 1
         
+        nozzle.wall.load_layer    = nozzle.wall.layer[1];
+        nozzle.wall.thermal_layer = nozzle.wall.layer[0];
+
         if output == 'verbose':
             sys.stdout.write('%d layers processed\n' % (i-1));
             sys.stdout.write('Setup Wall Layers complete\n');        
         #print nozzle.wall.layer[1].__dict__
+
 
         
     def SetupBaffles(self, config, output='verbose'):
