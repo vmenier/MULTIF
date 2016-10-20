@@ -82,7 +82,7 @@ def runAEROS ( nozzle ):
     # merge lists
     vertices = sorted(list(set(list(nozzle.wall.layer[0].thickness.nodes[0,:])+list(nozzle.wall.layer[1].thickness.nodes[0,:])+
                                list(nozzle.wall.layer[2].thickness.nodes[0,:])+list(nozzle.wall.layer[3].thickness.nodes[0,:])+
-                               list(nozzle.baffles.location))))
+                               list(nozzle.baffles.location)+list(nozzle.stringers.thickness.nodes[0,:]))))
     #for k in range(len(vertices)):
     #    print ' k = %d, vertices[k] = %f' % (k, vertices[k])
 
@@ -115,11 +115,8 @@ def runAEROS ( nozzle ):
     else: # only perform structural analysis
         thermalFlag = 0;
 
-    # XXX stringer height and thickness (currently assumed to be constant)
-    #Ws = nozzle.stringers.height[0] if nozzle.stringers.n > 0 else 0;
-    Ws= nozzle.stringers.thickness.radius(0) if nozzle.stringers.n > 0 else 0;
-    #Ts = nozzle.stringers.thickness[0] if nozzle.stringers.n > 0 else 0;
-    Ts = nozzle.stringers.thickness.radius(0) if nozzle.stringers.n > 0 else 0;
+    # XXX stringer height (currently assumed to be constant)
+    Ws = nozzle.stringers.thickness.radius(0) if nozzle.stringers.n > 0 else 0;
 
     materialNames = [nozzle.materials[k].name for k in nozzle.materials]
     # material ids of the thermal and load layers
@@ -139,6 +136,7 @@ def runAEROS ( nozzle ):
         Wb = nozzle.baffles.height[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # height of baffle
         Nb = max((Wb-Ws)/lc+1,2); # number of nodes on radial edge of baffle (not including overlap with stringer)
         Tb = nozzle.baffles.thickness[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # thickness of baffle
+        Ts = nozzle.stringers.thickness.radius(vertices[i]) if nozzle.stringers.n > 0 else 0; # thickness of stringers
         print >> f1, "%d %f %d %d %lf %lf %lf %lf %lf %lf" % (points.index(vertices[i]), Wb, Mb, Nb,
                  nozzle.wall.layer[1].thickness.radius(vertices[i]), nozzle.wall.layer[2].thickness.radius(vertices[i]),
                  nozzle.wall.layer[3].thickness.radius(vertices[i]), nozzle.wall.layer[0].thickness.radius(vertices[i]),
