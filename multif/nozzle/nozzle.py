@@ -301,7 +301,18 @@ class Nozzle:
                     nozzle.tolerance.setAbsTol(tol);
                     #nozzle.tolerance.exitTempPercentError = tol;
                 description = "ODE solver relative and absolute tolerance "   \
-                  "set to %le." % (tol);    
+                  "set to %le." % (tol);
+                  
+                if i == flevel:
+                    try:
+                        analysisType = cfgLvl[2];
+                    except:
+                        sys.stderr.write('\n ## WARNING : Analysis type '     \
+                          'could not be determined. THERMOSTRUCTURAL, '       \
+                          'THERMAL, or STRUCTURAL keyword must be provided '  \
+                          'in the model definition of fidelity level %d.\n\n' \
+                          % flevel);
+                        sys.exit(0);
 
             elif method == 'RANS' or method == 'EULER':
                 dim = cfgLvl[1];
@@ -324,7 +335,7 @@ class Nozzle:
                 description = "%s %s CFD simulation using the %s mesh level." \
                   % (dim, method, meshsize);
 
-                if i == flevel :
+                if i == flevel:
                     nozzle.meshsize = meshsize;
                     
                     nozzle.bl_ds        = 0.000007;
@@ -340,6 +351,18 @@ class Nozzle:
                         scaleMesh = 0.5;
 
                     nozzle.meshhl = scaleMesh*np.asarray([0.1, 0.07, 0.06, 0.006, 0.0108]);
+                    
+                if i == flevel:
+                    print 'hello!'
+                    try:
+                        analysisType = cfgLvl[3];
+                    except:
+                        sys.stderr.write('\n ## WARNING : Analysis type '     \
+                          'could not be determined. AEROTHERMOSTRUCTURAL, '   \
+                          'AEROTHERMAL, AEROSTRUCTURAL, or AERO keyword must' \
+                          ' be provided in the model definition of '          \
+                          'fidelity level %d.\n\n' % flevel);
+                        sys.exit(0);
 
             else :
                 sys.stderr.write("\n ## ERROR : Unknown governing method "    \
@@ -358,6 +381,26 @@ class Nozzle:
             else:
                 raise ValueError('keyword argument output can only be set '   \
                   'to "verbose" or "quiet" mode')
+                  
+        # Setup thermal and structural analysis
+        if analysisType == 'AEROTHERMOSTRUCTURAL':
+            nozzle.thermalFlag = 1;
+            nozzle.structuralFlag = 1;
+        elif analysisType == 'AEROTHERMAL':
+            nozzle.thermalFlag = 1;
+            nozzle.structuralFlag = 0;
+        elif analysisType == 'AEROSTRUCTURAL':
+            nozzle.thermalFlag = 0;
+            nozzle.structuralFlag = 1;
+        elif analysisType == 'AERO':
+            nozzle.thermalFlag = 0;
+            nozzle.structuralFlag = 0;
+        else:
+            sys.stderr.write('\n ## ERROR: AEROTHERMOSTRUCTURAL, '        \
+              'AEROTHERMAL, AEROSTRUCTURAL, or AERO must be '        \
+              'provided as a keyword for analyis '    \
+              'type. %s provided instead.\n\n' % analysisType);
+            sys.exit(0);                  
 
         if output == 'verbose':
             sys.stdout.write('-' * 90);
@@ -374,8 +417,9 @@ class Nozzle:
             sys.exit(0);
 
         if output == 'verbose':
-            sys.stdout.write('  -- Info : Fidelity level to be run : "        \
-              "%d\n\n' % flevel);
+            sys.stdout.write('  -- Info : Fidelity level to be run : '        \
+              '%d\n' % flevel);
+            sys.stdout.write('Analysis type is %s.\n\n' % analysisType);  
         elif output == 'quiet':
             pass
         else:
@@ -477,36 +521,7 @@ class Nozzle:
             nozzle.su2_convergence_order = 3;
             
         if output == 'verbose':
-            sys.stdout.write('Setup Mission complete\n');    
-            
-            
-    def SetupAnalyses(self, config, output='verbose'):   
-        
-        nozzle = self;
-
-        #if 'STRUCTURAL_BOUNDARY_CONDTION' in config:
-        #    nozzle.boundaryFlag = int(config['STRUCTURAL_BOUNDARY_CONDITION']);
-        #else:
-        #    nozzle.boundaryFlag = 0; # inlet fixed
-        #    if output == 'verbose':
-        #        sys.stdout.write('Structural boundary condition not '         \
-        #          'specified. Setting boundary condition to fixed inlet\n.');
-            
-        if 'THERMAL_ANALYSIS' in config:
-            nozzle.thermalFlag = int(config['THERMAL_ANALYSIS']);
-        else:
-            nozzle.thermalFlag = 1; # do thermal analysis
-            if output == 'verbose':
-                sys.stdout.write('Thermal analysis flag not set. Thermal '    \
-                  'analysis will be performed.\n.');
-                  
-        if 'STRUCTURAL_ANALYSIS' in config:
-            nozzle.structuralFlag = int(config['STRUCTURAL_ANALYSIS']);
-        else:
-            nozzle.structuralFlag = 1; # do structural analysis
-            if output == 'verbose':
-                sys.stdout.write('Structural analysis flag not set. '         \
-                  'structural analysis will be performed.\n.');               
+            sys.stdout.write('Setup Mission complete\n');
     
     
     def SetupBSplineCoefs(self, config, output='verbose'):
@@ -1519,7 +1534,7 @@ class Nozzle:
                         nozzle.Output_Tags.append(key);
                     else:
                         sys.stderr.write('\n ## ERROR : %s cannot be '        \
-                          'returned if STRUCTURAL_ANALYSIS= 0.\n\n');
+                          'returned if STRUCTURAL_ANALYSIS= 0.\n\n' % key);
                         sys.exit(0);                
                 elif( key == 'MAX_THERMAL_STRESS' ):
                     if nozzle.structuralFlag == 1 and nozzle.thermalFlag == 1:
@@ -1528,7 +1543,7 @@ class Nozzle:
                     else:
                         sys.stderr.write('\n ## ERROR : %s cannot be '        \
                           'returned if THERMAL_ANALYSIS= 0 or '               \
-                          'STRUCTURAL_ANALYSIS= 0.\n\n');
+                          'STRUCTURAL_ANALYSIS= 0.\n\n' % key);
                         sys.exit(0);                        
                 else :
                     str = '';
@@ -1799,10 +1814,6 @@ def NozzleSetup( config_name, flevel, output='verbose' ):
     # --- Set flight regime + fluid
     
     nozzle.SetupMission(config,output);
-    
-    # --- Set analyses
-    
-    nozzle.SetupAnalyses(config,output);
     
     # --- Setup inner wall & parameterization (B-spline)
     
