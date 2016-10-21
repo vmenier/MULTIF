@@ -719,47 +719,64 @@ def Quasi1D(nozzle,output='verbose'):
     #  nozzle.environment.P)*A[-1]
     
     if nozzle.structuralFlag == 1:
-        # Simplified stress calculation (calculate stresses IN LOAD LAYER ONLY)
-        # Assumptions: nozzle is a cylinder; nozzle length is not constrained;
-        #              thermal mismatch at interface of both material layers is 
-        #              neglected; steady state
+#        # Simplified stress calculation (calculate stresses IN LOAD LAYER ONLY)
+#        # Assumptions: nozzle is a cylinder; nozzle length is not constrained;
+#        #              thermal mismatch at interface of both material layers is 
+#        #              neglected; steady state
+#    
+#        # Determine hoop stress for outermost layer only
+#        stressHoop = P*(D/2.+tTempUpper)/nozzle.wall.layer[-1].thickness.radius(xPosition)
+#        
+#        # Determine thermal stress for outermost layer only
+#        ri = D/2. + tTempUpper - nozzle.wall.layer[-1].thickness.radius(xPosition) # inner radius
+#        ro = D/2. + tTempUpper # outer radius
+#        
+#        E1 = nozzle.wall.layer[-1].material.getElasticModulus(1)
+#        E2 = nozzle.wall.layer[-1].material.getElasticModulus(2)
+#        alpha1 = nozzle.wall.layer[-1].material.getThermalExpansionCoef(1)
+#        alpha2 = nozzle.wall.layer[-1].material.getThermalExpansionCoef(2)
+#        v = nozzle.wall.layer[-1].material.getPoissonRatio()
+#        
+#        stressThermalRadial = E1*alpha1*(Tinside-Toutside)/            \
+#          (2.*(1.-v))*(1./np.log(ro/ri))*(1. - 2.*ri**2./                        \
+#          (ro**2. - ri**2.)*np.log(ro/ri))
+#        stressThermalAxial = E2*alpha2*(Tinside-Toutside)/               \
+#          (2.*(1.-v))*(1./np.log(ro/ri))*(1. - 2.*ri**2./                        \
+#          (ro**2. - ri**2.)*np.log(ro/ri))      
+#        
+#        # THE EQUATIONS BELOW NEED TO BE CHECKED (ITEMS HAVE BEEN RENAMED)
+#        # Estimate vonMises, even though not really valid for composites
+#    #    stressVonMises = np.sqrt( (stressHoop+stressThermalAxial)**2 -           \
+#    #       stressHoop*stressThermalRadial + stressThermalRadial**2 )    
+#        stressMaxPrincipal = stressHoop + stressThermalAxial
+#        stressPrincipal = (stressMaxPrincipal, stressThermalRadial,              \
+#          np.zeros(xPosition.size))
+#          
+#        # Calculate cycles to failure, Nf
+#        Nf = nozzlemod.lifetime.estimate(Tinside,stressMaxPrincipal,1)
     
-        # Determine hoop stress for outermost layer only
-        stressHoop = P*(D/2.+tTempUpper)/nozzle.wall.layer[-1].thickness.radius(xPosition)
+        # --- Run AEROS
+        nozzle.wallResults = np.transpose(np.array([xPosition,Tinside,P]))
+        nozzle.runAEROS = 0;
+        if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
+            nozzle.runAEROS = 1;
+            
+            try:
+                from  multif.MEDIUMF.runAEROS import *
+                print 'SUCCESS IMPORTING AEROS'
+            except ImportError:
+                nozzle.runAEROS = 0
+                pass
+
+        print "RUNAEROS = %d" % nozzle.runAEROS;
         
-        # Determine thermal stress for outermost layer only
-        ri = D/2. + tTempUpper - nozzle.wall.layer[-1].thickness.radius(xPosition) # inner radius
-        ro = D/2. + tTempUpper # outer radius
-        
-        E1 = nozzle.wall.layer[-1].material.getElasticModulus(1)
-        E2 = nozzle.wall.layer[-1].material.getElasticModulus(2)
-        alpha1 = nozzle.wall.layer[-1].material.getThermalExpansionCoef(1)
-        alpha2 = nozzle.wall.layer[-1].material.getThermalExpansionCoef(2)
-        v = nozzle.wall.layer[-1].material.getPoissonRatio()
-        
-        stressThermalRadial = E1*alpha1*(Tinside-Toutside)/            \
-          (2.*(1.-v))*(1./np.log(ro/ri))*(1. - 2.*ri**2./                        \
-          (ro**2. - ri**2.)*np.log(ro/ri))
-        stressThermalAxial = E2*alpha2*(Tinside-Toutside)/               \
-          (2.*(1.-v))*(1./np.log(ro/ri))*(1. - 2.*ri**2./                        \
-          (ro**2. - ri**2.)*np.log(ro/ri))      
-        
-        # THE EQUATIONS BELOW NEED TO BE CHECKED (ITEMS HAVE BEEN RENAMED)
-        # Estimate vonMises, even though not really valid for composites
-    #    stressVonMises = np.sqrt( (stressHoop+stressThermalAxial)**2 -           \
-    #       stressHoop*stressThermalRadial + stressThermalRadial**2 )    
-        stressMaxPrincipal = stressHoop + stressThermalAxial
-        stressPrincipal = (stressMaxPrincipal, stressThermalRadial,              \
-          np.zeros(xPosition.size))
-          
-        # Calculate cycles to failure, Nf
-        Nf = nozzlemod.lifetime.estimate(Tinside,stressMaxPrincipal,1)
-        
-        stressTuple = (stressPrincipal, stressHoop, stressThermalRadial,         \
-          stressThermalAxial)
+        if nozzle.runAEROS == 1:
+            runAEROS(nozzle);
+        else :
+            sys.stdout.write('  -- Info: Skip call to AEROS.\n');        
+
     else: # do not perform structural analysis
-        Nf = 0
-        stressTuple = (0,0,0,0)
+        pass
     
     # Calculate volume of nozzle material (approximately using trap. integ.)
     #volume = nozzlemod.geometry.wallVolume(nozzle.wall.geometry,nozzle.wall.thickness)
@@ -771,27 +788,21 @@ def Quasi1D(nozzle,output='verbose'):
     flowTuple = (M, U, density, P, Pstag, T, Tstag, Re)
     heatTuple = (Tinside, Toutside, Cf, hf, QwFlux)
     geoTuple = (D, A, dAdx, minSlope, maxSlope)
-    performanceTuple= (volume, mass, netThrust, Nf, mdot, Pstag[-1]/Pstag[0], \
+    performanceTuple= (volume, mass, netThrust, mdot, Pstag[-1]/Pstag[0], \
       Tstag[-1]/Tstag[0], status)
-
     
-    return (xPosition, flowTuple, heatTuple, geoTuple, stressTuple,          \
-      performanceTuple)
+    return (xPosition, flowTuple, heatTuple, geoTuple, performanceTuple)
     
 # END OF analysis(nozzle,tol)
 
 def Run (nozzle,output='verbose'):
     
     xPosition, flowTuple, heatTuple,                                         \
-    geoTuple, stressTuple, performanceTuple = Quasi1D(nozzle,output);
+    geoTuple, performanceTuple = Quasi1D(nozzle,output);
      
     nozzle.thrust = performanceTuple[2];
     nozzle.mass = np.sum(performanceTuple[1]);
     nozzle.volume = np.sum(performanceTuple[0]);
-    # EQUATION FOR MECHANICAL STRESS NEEDS TO BE UPDATED TO BE CONSISTENT WITH
-    # MEDIUM FIDELITY
-    nozzle.max_mechanical_stress = np.max(stressTuple[1]) # hoop stress
-    nozzle.max_thermal_stress = np.max(np.hstack((stressTuple[2],stressTuple[3]))) # both thermal stresses
     
     # For testing purposes only; usually these do not need to be output
     #nozzle.xPosition = xPosition
@@ -799,6 +810,5 @@ def Run (nozzle,output='verbose'):
     #nozzle.heatTuple = heatTuple
     #nozzle.geoTuple = geoTuple
     #nozzle.performanceTuple = performanceTuple
-    #nozzle.stressTuple = stressTuple
     
     

@@ -77,7 +77,12 @@ def runAEROS ( nozzle ):
     #[k1, k2, k3] = nozzle.wall.layer[1].material.getThermalConductivity()
     # End of example
 
-    SolExtract, Size, idHeader  = ExtractSolutionAtWall(nozzle);
+    if nozzle.method == 'NONIDEALNOZZLE':
+        SolExtract = nozzle.wallResults;
+        Size = [x for x in nozzle.wallResults.shape];
+        idHeader = {'Temperature': 1, 'Pressure': 2};
+    else:
+        SolExtract, Size, idHeader  = ExtractSolutionAtWall(nozzle);
 
     # merge lists
     vertices = sorted(list(set(list(nozzle.wall.layer[0].thickness.nodes[0,:])+list(nozzle.wall.layer[1].thickness.nodes[0,:])+
