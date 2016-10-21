@@ -45,6 +45,8 @@ def runAEROS ( nozzle ):
     print 'material: %s' % nozzle.stringers.material.name
     print 'thickness node x-coordinate: {} m'.format(nozzle.stringers.thickness.nodes[0,:])
     print 'thickness node local n-coordinate: {} m'.format(nozzle.stringers.thickness.nodes[1,:])
+    print 'height node x-coordinate: {} m'.format(nozzle.stringers.height.nodes[0,:])
+    print 'height node local n-coordinate: {} m'.format(nozzle.stringers.height.nodes[1,:])    
     print '\n' 
     
     # aside: to easily calculate wall shape or thickness as a function of the

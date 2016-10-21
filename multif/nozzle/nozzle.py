@@ -52,7 +52,8 @@ class Nozzle:
     
                 if ( val > NbrDV or val < 0 ):
                     sys.stderr.write('  ## ERROR : Inconsistent design '     \
-                      'variables provided in %s (idx=%d).\n\n' % (key,val));
+                      'variables provided in %s (idx=%d). Check DV_LIST '    \
+                      'and %s_DV keyword specifications.\n\n' % (key,val));
                     sys.exit(0);
     
                 dvList.append(val-1);
@@ -97,10 +98,13 @@ class Nozzle:
                             'BAFFLES_HEIGHT']);
             dv_n.append([3*nozzle.baffles.n,nozzle.baffles.n,
                         nozzle.baffles.n,nozzle.baffles.n]);
-            dv_keys.append(['STRINGERS','STRINGERS_THICKNESS_LOCATIONS',
+            dv_keys.append(['STRINGERS','STRINGERS_BREAK_LOCATIONS',
+                            'STRINGERS_HEIGHT_VALUES',
                             'STRINGERS_THICKNESS_VALUES']);
-            dv_n.append([2*nozzle.stringers.n,nozzle.stringers.n,
-                        nozzle.stringers.n]);
+            dv_n.append([3*len(nozzle.stringers.thicknessNodes),
+                         len(nozzle.stringers.thicknessNodes),
+                         len(nozzle.stringers.thicknessNodes),
+                         len(nozzle.stringers.thicknessNodes)]);
             for k in nozzle.materials:
                 ltemp = [k, k + '_DENSITY', k + '_ELASTIC_MODULUS',
                          k + '_SHEAR_MODULUS', k + '_POISSON_RATIO',
@@ -126,6 +130,8 @@ class Nozzle:
             # Extract listed design variables
             hdl = config['DV_LIST'].strip('()');
             hdl = [x.strip() for x in hdl.split(",")];
+            
+            print hdl
 
             dv_keys_size = len(hdl)/2;
             
@@ -197,7 +203,7 @@ class Nozzle:
                     
                 if key == 'STRINGERS':
                     nozzle.stringers.dv = [];
-                    sizeTemp = nozzle.stringers.n*2; # number of DV for checking
+                    sizeTemp = len(nozzle.stringers.thicknessNodes)*3; # number of DV for checking
                     self.AssignListDV(config,nozzle.stringers.dv,'STRINGERS_DV',
                                       NbrDV,sizeTemp);
                     continue;
@@ -586,10 +592,10 @@ class Nozzle:
             sys.stdout.write('Setup B-Spline Coefs complete\n');        
         
     
-    def ParseThickness(self, config, key):
+    def ParseThickness(self, config, key, loc='_THICKNESS_LOCATIONS', val = '_THICKNESS_VALUES'):
         
-        loc_name = '%s_THICKNESS_LOCATIONS' % key;
-        val_name = '%s_THICKNESS_VALUES' % key;
+        loc_name = key + loc;
+        val_name = key + val;
         
         wall_keys = (loc_name, val_name);
         
@@ -915,11 +921,19 @@ class Nozzle:
         
         # Assign thickness distribution
         try:
-            nozzle.stringers.thicknessNodes = self.ParseThickness(config,'STRINGERS');
+            nozzle.stringers.thicknessNodes = self.ParseThickness(config,'STRINGERS',loc='_BREAK_LOCATIONS',val='_THICKNESS_VALUES');
         except:
             sys.stderr.write('\n ## ERROR : Thickness definition '   \
                  'could not be parsed for STRINGERS.\n\n');
-            sys.exit(0);            
+            sys.exit(0);
+        
+        # Assign height distribution
+        try:
+            nozzle.stringers.heightNodes = self.ParseThickness(config,'STRINGERS',loc='_BREAK_LOCATIONS',val='_HEIGHT_VALUES');
+        except:
+            sys.stderr.write('\n ## ERROR : Height definition '   \
+                 'could not be parsed for STRINGERS.\n\n');
+            sys.exit(0);             
 
         #info = config['STRINGERS_HEIGHT'].strip('()');
         #ltemp = [x.strip() for x in info.split(',')];        
@@ -983,6 +997,14 @@ class Nozzle:
             thicknessNodeArray[0][j] = nozzle.stringers.thicknessNodes[j][0]*nozzle.length;
             thicknessNodeArray[1][j] = nozzle.stringers.thicknessNodes[j][1];    
         nozzle.stringers.thickness = geometry.PiecewiseLinear(thicknessNodeArray);
+        
+        # --- Setup height distribution for stringers
+        tsize = len(nozzle.stringers.heightNodes);
+        thicknessNodeArray = np.zeros(shape=(2,tsize))
+        for j in range(tsize):
+            thicknessNodeArray[0][j] = nozzle.stringers.heightNodes[j][0]*nozzle.length;
+            thicknessNodeArray[1][j] = nozzle.stringers.heightNodes[j][1];    
+        nozzle.stringers.height = geometry.PiecewiseLinear(thicknessNodeArray);        
             
         # --- Rescale x-coordinates of baffles
             
@@ -1174,38 +1196,57 @@ class Nozzle:
                 continue;
                 
             if Tag == 'STRINGERS':
-                lsize = len(nozzle.stringers.thicknessNodes);
-                brk = np.max(nozzle.stringers.dv[:lsize])+1;
+                lsize = len(nozzle.stringers.dv)/3;
+                brk1 = np.max(nozzle.stringers.dv[:lsize])+1;
+                brk2 = np.max(nozzle.stringers.dv[lsize:2*lsize])+1;
                 for iCoord in range(len(nozzle.stringers.dv)):
                     id_dv = nozzle.DV_Head[iTag] + nozzle.stringers.dv[iCoord];  
                     # Update coordinate in thickness array if required
                     if id_dv < nozzle.DV_Head[iTag]:
                         pass
-                    elif id_dv < nozzle.DV_Head[iTag]+brk:
-                        prt_name.append('stringer thickness location #%d' % (iCoord+1));
+                    elif id_dv < nozzle.DV_Head[iTag]+brk1:
+                        prt_name.append('stringer break location #%d' % (iCoord+1));
                         prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodes[iCoord][0]);
                         prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
                         nozzle.stringers.thicknessNodes[iCoord][0] = nozzle.DV_List[id_dv];
+                        nozzle.stringers.heightNodes[iCoord][0] = nozzle.DV_List[id_dv];
                         NbrChanged = NbrChanged+1;
-                    else: # id_dv > nozzle.DV_Head[iTag]+brk
-                        prt_name.append('stringer thickness value #%d' % (iCoord+1-lsize));
+                    elif id_dv < nozzle.DV_Head[iTag] + brk2:
+                        prt_name.append('stringer height value #%d' % (iCoord+1-lsize));
                         prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodes[iCoord-lsize][1]);
                         prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                        nozzle.stringers.thicknessNodes[iCoord-lsize][1] = nozzle.DV_List[id_dv];
+                        nozzle.stringers.heightNodes[iCoord-lsize][1] = nozzle.DV_List[id_dv];
                         NbrChanged = NbrChanged+1;
-                continue;               
+                    else: # id_dv > nozzle.DV_Head[iTag]+brk
+                        prt_name.append('stringer thickness value #%d' % (iCoord+1-2*lsize));
+                        prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodes[iCoord-2*lsize][1]);
+                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                        nozzle.stringers.thicknessNodes[iCoord-2*lsize][1] = nozzle.DV_List[id_dv];
+                        NbrChanged = NbrChanged+1;
+                continue;    
                 
             # Update all layers with specific names, e.g. LAYER1_THICKNESS_VALUES
-            if Tag == 'STRINGERS_THICKNESS_LOCATIONS':
+            if Tag == 'STRINGERS_BREAK_LOCATIONS':
                 for iCoord in range(len(nozzle.stringers.thicknessNodes)):
                     id_dv = nozzle.DV_Head[iTag] + iCoord;
-                    prt_name.append('stringer thickness location #%d' % (iCoord+1));
+                    prt_name.append('stringer break location #%d' % (iCoord+1));
                     prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodes[iCoord][0]);
                     prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
                     nozzle.stringers.thicknessNodes[iCoord][0] = nozzle.DV_List[id_dv];
+                    nozzle.stringers.heightNodes[iCoord][0] = nozzle.DV_List[id_dv];
                     NbrChanged = NbrChanged+1;
                     continue;
             
+            if Tag == 'STRINGERS_HEIGHT_VALUES':
+                for iCoord in range(len(nozzle.stringers.heightNodes)):
+                    id_dv = nozzle.DV_Head[iTag] + iCoord;                  
+                    prt_name.append('stringer height value #%d' % (iCoord+1));
+                    prt_basval.append('%.4lf'% nozzle.stringers.heightNodes[iCoord][1]);
+                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                    nozzle.stringers.heightNodes[iCoord][1] = nozzle.DV_List[id_dv];
+                    NbrChanged = NbrChanged+1;
+                    continue;
+                    
             if Tag == 'STRINGERS_THICKNESS_VALUES':
                 for iCoord in range(len(nozzle.stringers.thicknessNodes)):
                     id_dv = nozzle.DV_Head[iTag] + iCoord;                  
@@ -1214,7 +1255,7 @@ class Nozzle:
                     prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
                     nozzle.stringers.thicknessNodes[iCoord][1] = nozzle.DV_List[id_dv];
                     NbrChanged = NbrChanged+1;
-                    continue;
+                    continue;                    
                         
             # Update all materials with non-specific names, e.g. MATERIAL1, etc.
             check = 0;
