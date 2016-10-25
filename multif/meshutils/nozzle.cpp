@@ -67,8 +67,8 @@ MOD_INIT(_nozzle_module)
 #include "Context.h"
 #include "gmshLevelset.h"
 
-struct VertexData { int p, mb; double wb; int nb; std::vector<double> t; double tt; double tb; double ts; };
-struct SegmentData { std::vector<int> m; int ns, ms; double ws; int nn, mn, sn; int mt, tn; };
+struct VertexData { int p, mb; double wb; int nb; std::vector<double> t; double tt, tb, ts, ws; };
+struct SegmentData { std::vector<int> m; int ns, ms, nn, mn, sn, mt, tn; };
 struct MaterialData
 {
   enum { ISOTROPIC=0, ANISOTROPIC } type;
@@ -457,10 +457,16 @@ int writeAEROS(GModel *g,
   fprintf(fp, "gdisplac 14 7 \"DISP\" 1\n");
   fprintf(fp, "stressvm 14 7 \"STRESS\" 1 lower\n");
   fprintf(fp, "stressvm 14 7 \"STRESS.1\" 1 NG 1 lower\n");
+  fprintf(fp, "stressvm 14 7 \"STRESS.2\" 1 NG 1 median\n");
+  fprintf(fp, "stressvm 14 7 \"STRESS.3\" 1 NG 1 upper\n");
   fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS\" 1 lower thermal\n");
   fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.1\" 1 NG 1 lower thermal\n");
+  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.2\" 1 NG 1 median thermal\n");
+  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.3\" 1 NG 1 upper thermal\n");
   fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS\" 1 lower mechanical\n");
   fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.1\" 1 NG 1 lower mechanical\n");
+  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.2\" 1 NG 1 median mechanical\n");
+  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.3\" 1 NG 1 upper mechanical\n");
   fprintf(fp, "*\n");
   fprintf(fp, "GROUPS\n");
   fprintf(fp, "N surface 1 1\n");
@@ -657,7 +663,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
   std::vector<std::pair<GEntity::GeomType,int> > surfaceTags;
   std::vector<std::pair<GEntity::GeomType,int> > boundaryTags;
 
-  double cth1, cth2, cth3, cth4;
+  double cth1, cth2, cth3, cth4, cth5, cth6;
 
   // loop over the segments
   for(std::vector<SegmentData>::const_iterator segmentIt = segments.begin(); segmentIt != segments.end(); ++segmentIt, ++vertexIt) {
@@ -673,7 +679,8 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
     double wb = vertexIt->wb;           // width of baffle
     int mb = vertexIt->mb;              // material id of baffle
     int nb = vertexIt->nb;              // number of transfinite points (radial edges of baffle)
-    double ws = segmentIt->ws;          // width of stiffeners
+    double ws1 = vertexIt->ws;          // width of stiffeners
+    double ws2 = (vertexIt+1)->ws;      // width of stiffeners
     int ms = segmentIt->ms;             // material id of stiffeners
     int nn = segmentIt->nn;             // number of transfinite points (longitudinal edges)
     int mn = segmentIt->mn;             // number of transfinite points (circumferential edges)
@@ -708,6 +715,19 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
     for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it)
       (*it)[1] += (cth3*t1/2 + (cth4*t2/2 - cth3*t1/2)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
     GEdge *edge4 = m->addBSpline(vertex7, vertex8, controlPoints);
+    // top of stiffeners
+    cth5 = (segmentIt == segments.begin()) ? dot(edge4->firstDer(0.).unit(),SVector3(1.,0.,0.)) : cth6;
+    cth6 = dot(edge3->firstDer(1.).unit(),SVector3(1.,0.,0.)); // cosine of angles between normals and y-axis
+    GVertex *vertex9, *vertex10; GEdge *edge11;
+    if(ws1 != 0) {
+      vertex9  = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+cth1*tt1+cth3*t1/2+cth5*ws1, (*pointIt1)[2], lc);
+      vertex10 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+cth2*tt2+cth4*t2/2+cth6*ws2, (*pointIt2)[2], lc);
+      for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it) {
+        (*it)[1] -= (cth3*t1/2 + (cth4*t2/2 - cth3*t1/2)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
+        (*it)[1] += (cth5*ws1 + (cth6*ws2 - cth5*ws1)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
+      }
+      edge11 = m->addBSpline(vertex9, vertex10, controlPoints);
+    }
 
     GEntity *region1, *region2, *region3, *face3;
     // loop over the panels
@@ -715,6 +735,21 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
       if(i > 0) {
         std::list<GEdge*> edges = face3->cast2Face()->edges();
         edge3 = *(++edges.begin()); // the second edge is the one we need to revolve/extrude!
+        if(ws1 != 0) {
+          double cth = std::cos(2*M_PI/ns), sth = std::sin(2*M_PI/ns);
+          // rotate end points
+          double x = vertex9->x(), y = vertex9->y(), z = vertex9->z();
+          vertex9  = m->addVertex(x, cth*y - sth*z, sth*y + cth*z, lc);
+          x = vertex10->x(), y = vertex10->y(), z = vertex10->z();
+          vertex10 = m->addVertex(x, cth*y - sth*z, sth*y + cth*z, lc);
+          // rotate control points
+          for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it) {
+            y = (*it)[1], z = (*it)[2];
+            (*it)[1] = cth*y - sth*z;
+            (*it)[2] = sth*y + cth*z;
+          }
+          edge11 = m->addBSpline(vertex9, vertex10, controlPoints);
+        }
       }
 
       // points defining radial unit vector
@@ -751,7 +786,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
 
       // baffle:
       if(wb > 0) {
-        if(ws == 0) { // no stiffeners
+        if(ws1 == 0) { // no stiffeners
           std::vector<double> p5(p4); p5[1] *= wb; p5[2] *= wb; // point defining extrusion vector
           GEntity *baffleEdge = m->extrude(edge3->getBeginVertex(), p3, p5);
           GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
@@ -775,7 +810,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
           baffleFace->addPhysicalEntity(mb+1);
         }
         else {
-          std::vector<double> p5(p4); p5[1] *= ws; p5[2] *= ws; // point defining 1st extrusion vector
+          std::vector<double> p5(p4); p5[1] *= ws1; p5[2] *= ws1; // point defining 1st extrusion vector
           GEntity *baffleEdge = m->extrude(edge3->getBeginVertex(), p3, p5);
           GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
           baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
@@ -791,7 +826,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
             }
             (*it)->meshAttributes.coeffTransfinite = 1.0;
             if(edgeIndex == 2) {
-              if(bf != 0 && ws == wb) { // then, this is the boundary
+              if(bf != 0 && ws1 == wb) { // then, this is the boundary
                 boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
                 boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
                 boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
@@ -801,8 +836,8 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
           }
           baffleFace->addPhysicalEntity(mb+1);
 
-          if(ws < wb) {
-            std::vector<double> p5(p4); p5[1] *= (wb-ws); p5[2] *= (wb-ws); // point defining 2nd extrusion vector
+          if(ws1 < wb) {
+            std::vector<double> p5(p4); p5[1] *= (wb-ws1); p5[2] *= (wb-ws1); // point defining 2nd extrusion vector
             GEntity *baffleEdge = m->extrude(edge5->getBeginVertex(), p3, p5);
             GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
             baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
@@ -824,22 +859,25 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
             }
             baffleFace->addPhysicalEntity(mb+1);
           }
-          else if(ws > wb) std::cerr << "error: stringer height is greater than baffle height\n"; 
+          else if(ws1 > wb) std::cerr << "error: stringer height is greater than baffle height\n"; 
         }
       }
 
       // stiffener:
-      if(ws > 0) {
-        std::vector<double> p6(p4); p6[1] *= ws; p6[2] *= ws; // point defining extrusion vector
-        GEntity *stiffenerFace = m->extrude(edge3, p3, p6);
+      if(ws1 > 0) {
+        GEdge *edge12 = m->addLine(edge3->getEndVertex(), edge11->getEndVertex());
+        GEdge *edge13 = m->addLine(edge11->getBeginVertex(), edge3->getBeginVertex());
+        std::vector<std::vector<GEdge*> > loop(1);
+        loop[0].push_back(edge3); loop[0].push_back(edge12); loop[0].push_back(edge11); loop[0].push_back(edge13);
+        GEntity *stiffenerFace = m->addPlanarFace(loop);
         stiffenerFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
         stiffenerFace->cast2Face()->meshAttributes.transfiniteArrangement = 2;
         std::list<GEdge*> edges = stiffenerFace->cast2Face()->edges();
         for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
           (*it)->meshAttributes.method = MESH_TRANSFINITE;
           switch(std::distance(edges.begin(),it)) {
-            case 0: case 2: (*it)->meshAttributes.nbPointsTransfinite = sn; break;
-            case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = nn; break;
+            case 0: case 2: (*it)->meshAttributes.nbPointsTransfinite = nn; break;
+            case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = sn; break;
           }
           (*it)->meshAttributes.coeffTransfinite = 1.0;
         }
@@ -856,7 +894,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
         double r = std::sqrt(p4[1]*p4[1]+p4[2]*p4[2]);
         p4[1] /= r; p4[2] /= r;
 
-        if(ws == 0) { // no stiffener
+        if(ws2 == 0) { // no stiffener
           std::vector<double> p5(p4); p5[1] *= wb; p5[2] *= wb; // point defining extrusion vector
           GEntity *baffleEdge = m->extrude(edge3->getEndVertex(), p3, p5);
           GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
@@ -880,7 +918,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
           baffleFace->addPhysicalEntity(mb+1);
         }
         else {
-          std::vector<double> p5(p4); p5[1] *= ws; p5[2] *= ws; // point defining 1st extrusion vector
+          std::vector<double> p5(p4); p5[1] *= ws2; p5[2] *= ws2; // point defining 1st extrusion vector
           GEntity *baffleEdge = m->extrude(edge3->getEndVertex(), p3, p5);
           GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
           baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
@@ -896,7 +934,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
             }
             (*it)->meshAttributes.coeffTransfinite = 1.0;
             if(edgeIndex == 2) {
-              if(bf !=0 && ws == wb) { // then, this is the boundary
+              if(bf !=0 && ws2 == wb) { // then, this is the boundary
                 boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
                 boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
                 boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
@@ -906,8 +944,8 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
           }
           baffleFace->addPhysicalEntity(mb+1);
 
-          if(ws < wb) {
-            std::vector<double> p5(p4); p5[1] *= (wb-ws); p5[2] *= (wb-ws); // point defining 2nd extrusion vector
+          if(ws2 < wb) {
+            std::vector<double> p5(p4); p5[1] *= (wb-ws2); p5[2] *= (wb-ws2); // point defining 2nd extrusion vector
             GEntity *baffleEdge = m->extrude(edge5->getBeginVertex(), p3, p5);
             GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
             baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
@@ -929,7 +967,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
             }
             baffleFace->addPhysicalEntity(mb+1);
           }
-          else if(ws > wb) std::cerr << "error: stringer height is greater than baffle height\n";
+          else if(ws2 > wb) std::cerr << "error: stringer height is greater than baffle height\n";
         }
       }
 
@@ -1148,13 +1186,13 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
   std::vector<VertexData> vertices(nv);
   for(int j=0; j<nv; ++j) {
     VertexData &v = vertices[j];
-    fin >> v.p >> v.wb >> v.mb >> v.nb; for(int k=0; k<nl; ++k) { double tk; fin >> tk; v.t.push_back(tk); } fin >> v.tt >> v.tb >> v.ts;
+    fin >> v.p >> v.wb >> v.mb >> v.nb; for(int k=0; k<nl; ++k) { double tk; fin >> tk; v.t.push_back(tk); } fin >> v.tt >> v.tb >> v.ts >> v.ws;
   }
 
   std::vector<SegmentData> segments(nv-1);
   for(int j=0; j<nv-1; ++j) {
     SegmentData &s = segments[j];
-    for(int k=0; k<nl; ++k) { int mk; fin >> mk; s.m.push_back(mk); } fin >> s.ns >> s.ws >> s.ms >> s.nn >> s.mn >> s.sn >> s.mt >> s.tn;
+    for(int k=0; k<nl; ++k) { int mk; fin >> mk; s.m.push_back(mk); } fin >> s.ns >> s.ms >> s.nn >> s.mn >> s.sn >> s.mt >> s.tn;
   }
 
   std::vector<MaterialData> materials(nm);
