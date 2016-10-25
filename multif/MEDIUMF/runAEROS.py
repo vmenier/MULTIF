@@ -89,7 +89,8 @@ def runAEROS ( nozzle ):
     # merge lists
     vertices = sorted(list(set(list(nozzle.wall.layer[0].thickness.nodes[0,:])+list(nozzle.wall.layer[1].thickness.nodes[0,:])+
                                list(nozzle.wall.layer[2].thickness.nodes[0,:])+list(nozzle.wall.layer[3].thickness.nodes[0,:])+
-                               list(nozzle.baffles.location)+list(nozzle.stringers.thickness.nodes[0,:]))))
+                               list(nozzle.baffles.location)+list(nozzle.stringers.thickness.nodes[0,:])+
+                               list(nozzle.stringers.height.nodes[0,:]))))
     #for k in range(len(vertices)):
     #    print ' k = %d, vertices[k] = %f' % (k, vertices[k])
 
@@ -111,6 +112,7 @@ def runAEROS ( nozzle ):
     Ns   = max(2,nozzle.stringers.n); # number of panels (i.e. circumferential subdivisions of the mesh)
     Mn   = max(2,(2*math.pi*nozzle.wall.geometry.radius(points[0])/Ns)/lc+1); # Number of nodes in circumferential direction per panel
     Tn   = 4;  # Number of nodes through thickness of thermal insulating layer
+    Sn   = max(nozzle.stringers.height.radius(0)/lc+1,2) if nozzle.stringers.n > 0 else 0; # number of nodes on radial edge of stringers
     
     ## --- How to get x, y, P, T :
     #for i in range(0,Size[0]):
@@ -121,9 +123,6 @@ def runAEROS ( nozzle ):
         thermalFlag = 1;  # 0: structural analysis only, 1: both thermal and structural analyses
     else: # only perform structural analysis
         thermalFlag = 0;
-
-    # XXX stringer height (currently assumed to be constant)
-    Ws = nozzle.stringers.thickness.radius(0) if nozzle.stringers.n > 0 else 0;
 
     materialNames = [nozzle.materials[k].name for k in nozzle.materials]
     # material ids of the thermal and load layers
@@ -141,18 +140,18 @@ def runAEROS ( nozzle ):
     # vertices
     for i in range(len(vertices)):  
         Wb = nozzle.baffles.height[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # height of baffle
+        Ws = nozzle.stringers.height.radius(vertices[i]) if nozzle.stringers.n > 0 else 0; # height of stringer
         Nb = max((Wb-Ws)/lc+1,2); # number of nodes on radial edge of baffle (not including overlap with stringer)
         Tb = nozzle.baffles.thickness[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # thickness of baffle
         Ts = nozzle.stringers.thickness.radius(vertices[i]) if nozzle.stringers.n > 0 else 0; # thickness of stringers
-        print >> f1, "%d %f %d %d %lf %lf %lf %lf %lf %lf" % (points.index(vertices[i]), Wb, Mb, Nb,
+        print >> f1, "%d %f %d %d %lf %lf %lf %lf %lf %lf %lf" % (points.index(vertices[i]), Wb, Mb, Nb,
                  nozzle.wall.layer[1].thickness.radius(vertices[i]), nozzle.wall.layer[2].thickness.radius(vertices[i]),
                  nozzle.wall.layer[3].thickness.radius(vertices[i]), nozzle.wall.layer[0].thickness.radius(vertices[i]),
-                 Tb, Ts);
+                 Tb, Ts, Ws);
     # panels
     for i in range(1,len(vertices)):
         Nn = max(2,(vertices[i]-vertices[i-1])/lc+1); # number of nodes on longitudial edge
-        Sn = max(Ws/lc+1,2); # number of nodes on radial edge of stringers
-        print >> f1, "%d %d %d %d %f %d %d %d %d %d %d" % (M[1], M[2], M[3], Ns, Ws, Ms, Nn, Mn, Sn, M[0], Tn);
+        print >> f1, "%d %d %d %d %d %d %d %d %d %d" % (M[1], M[2], M[3], Ns, Ms, Nn, Mn, Sn, M[0], Tn);
     # material properties
     for k in nozzle.materials:
       if nozzle.materials[k].type == 'ISOTROPIC':
