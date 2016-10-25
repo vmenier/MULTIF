@@ -784,7 +784,44 @@ class Nozzle:
                     name = info[0];
                     type_prop = info[1]; # ISOTROPIC or ANISOTROPIC
                     
-                    nozzle.materials[name] = material.Material(name,type_prop,'single');
+                    if type_prop == 'ISOTROPIC' or type_prop == 'ANISOTROPIC_SHELL':
+                        
+                        nozzle.materials[name] = material.Material(name,type_prop,'single');
+                        
+                    elif type_prop == 'FIXED_RATIO_PANEL':
+                        nozzle.materials[name] = material.Material(name,type_prop,'panel');
+                        keyLayers = 'MATERIAL' + str(i) + '_LAYERS';
+                        keyRatios = 'MATERIAL' + str(i) + '_THICKNESS_RATIOS';
+                        if keyLayers in config:
+                            layerNames = config[keyLayers].strip('()');
+                            layerNames = [x.strip() for x in layerNames.split(',')];
+                        else:
+                            sys.stderr.write('\n ## ERROR: %s not found in '  \
+                              'config file. Layer names must be defined.\n\n' \
+                              % keyLayers);
+                            sys.exit(0);
+                        if keyRatios in config:
+                            layerRatios = config[keyRatios].strip('()');
+                            layerRatios = [float(x.strip()) for x in layerRatios.split(',')];
+                        else:
+                            sys.stderr.write('\n ## ERROR: %s not found in '  \
+                              'config file. Ratios of layer thickness to '    \
+                              'total panel thickness must be defined.\n\n'    \
+                              % keyRatios);
+                            sys.exit(0);                            
+                        
+                        # Set panel layers and associate each layer with a pre-defined
+                        # material
+                        matAddress = list();
+                        for j in range(len(layerNames)):
+                            matAddress.append(nozzle.materials[layerNames[j]]);
+                        nozzle.materials[name].setPanelLayers(layerNames,layerRatios,matAddress);   
+                                         
+                    else:
+                        sys.stderr.write('\n ## ERROR : Only ISOTROPIC, '     \
+                          'ANISOTROPIC_SHELL, or FIXED_RATIO_PANEL materials are '  \
+                          'implemented. Received %s instead.\n\n' % type_prop);
+                        sys.exit(0);
                     
                     # Setup material keys
                     m_keys = ['_DENSITY','_ELASTIC_MODULUS','_SHEAR_MODULUS', 
@@ -1260,7 +1297,11 @@ class Nozzle:
             # Update all materials with non-specific names, e.g. MATERIAL1, etc.
             check = 0;
             for k in nozzle.materials:
-                id_dv = nozzle.DV_Head[iTag]
+                id_dv = nozzle.DV_Head[iTag];
+                
+                # Skip fixed_ratio_panel materials which use predefined materials
+                if nozzle.materials[k].type == 'FIXED_RATIO_PANEL':
+                    continue;
                 
                 if Tag == k: # Update material with non-specific names                
                     if NbrDV == 2: # update density and thermal conductivity

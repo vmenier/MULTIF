@@ -10,8 +10,16 @@ class AxisymmetricWall:
         if len(args) == 1:
             self.name = args[0]
         else:
-            self.name = 'NONDESCRIPT_WALL'
+            self.name = 'NONDESCRIPT_AXISYMMETRIC_WALL'
         self.param = 'NONE'
+        
+class Wall:
+    def __init__(self,*args):
+        if len(args) == 1:
+            self.name = args[0]
+        else:
+            self.name = 'NONDESCRIPT_WALL'
+        self.param = 'NONE'        
     
 class Baffles:
     def __init__(self,n):

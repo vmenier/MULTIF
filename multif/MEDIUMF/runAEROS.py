@@ -33,13 +33,18 @@ def runAEROS ( nozzle ):
     #    print 'thickness node x-coordinate: {} m'.format(nozzle.wall.layer[i].thickness.nodes[0,:])
     #    print 'thickness node local n-coordinate: {} m'.format(nozzle.wall.layer[i].thickness.nodes[1,:])
     #    print '\n'
-    #print '--- Baffles:'
-    #print 'number: %i' % nozzle.baffles.n
-    #print 'material: %s' % nozzle.baffles.material.name
-    #print 'location (x-coordinate): {} m'.format(nozzle.baffles.location)
-    #print 'thickness: {} m'.format(nozzle.baffles.thickness)
-    #print 'height: {} m'.format(nozzle.baffles.height)
-    #print ''
+    print '--- Baffles:'
+    print 'number: %i' % nozzle.baffles.n
+    print 'material: %s' % nozzle.baffles.material.name
+    print 'layer 1: %s (ratio: %f)' % (nozzle.baffles.material.layer[0].material.name,nozzle.baffles.material.layer[0].ratio)
+    print 'layer 2: %s (ratio: %f)' % (nozzle.baffles.material.layer[1].material.name,nozzle.baffles.material.layer[1].ratio)
+    print 'layer 3: %s (ratio: %f)' % (nozzle.baffles.material.layer[2].material.name,nozzle.baffles.material.layer[2].ratio)
+    print 'location (x-coordinate): {} m'.format(nozzle.baffles.location)
+    print 'thickness: {} m'.format(nozzle.baffles.thickness)
+    print 'height: {} m'.format(nozzle.baffles.height)
+    print '\nFor example to access material properties of layer in baffle:'
+    print 'elastic modulus layer 1: {} Pa'.format(nozzle.baffles.material.layer[0].material.getElasticModulus())
+    print ''
     print '--- Stringers:'
     print 'number: %i' % nozzle.stringers.n
     print 'material: %s' % nozzle.stringers.material.name
