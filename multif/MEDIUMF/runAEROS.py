@@ -192,49 +192,82 @@ def runAEROS ( nozzle ):
     os.system("aeros nozzle.aeros"); # execute the structural analysis
     
     AEROSPostProcessing ( nozzle );
+
+# Kreselmeier-Steinhauser function
+def ksFunction(x,p):
+    return (1./p)*np.log(np.sum(np.exp(p*x)));
+    
+# Modified P-norm function
+def pnFunction(x,p):
+    return ((1./len(x))*np.sum(np.power(x,p)))**(1./p)
     
 def AEROSPostProcessing ( nozzle ):
     
-        
-    # --- Open MECHANICAL_STRESS
+    # nozzle.stressComponentList:
+    # ['LOAD_LAYER_INSIDE', 'LOAD_LAYER_MIDDLE', 'LOAD_LAYER_OUTSIDE', 'STRINGERS', 'BAFFLE1', 'BAFFLE2', 'BAFFLE3', 'BAFFLE4']
+    # nozzle.tempComponentList:
+    #['THERMAL_LAYER', 'LOAD_LAYER_INSIDE', 'LOAD_LAYER_MIDDLE', 'LOAD_LAYER_OUTSIDE']
     
-    try:
-        fil = open("MECHANICAL_STRESS", "r" );
-    except IOError:
-        sys.stderr.write('\n ## ERROR : UNABLE TO OPEN MECHANICAL_STRESS FILE. RETURN 0.\n\n');
-        nozzle.max_mechanical_stress = 0;
-        return;
+#    # --- Open MECHANICAL_STRESS
+#    try:
+#        fil = open("MECHANICAL_STRESS", "r" );
+#    except IOError:
+#        sys.stderr.write('\n ## ERROR : UNABLE TO OPEN MECHANICAL_STRESS FILE. RETURN 0.\n\n');
+#        nozzle.max_mechanical_stress = 0;
+#        return;
+#    
+#    lines = [line.split() for line in fil];
+#    
+#    max_mech = 0.0;
+#    for i in range(2,len(lines)):
+#        max_mech = max(float(lines[i][0]), max_mech);
+#        
+#    nozzle.max_mechanical_stress = max_mech;
+#    
+#    fil.close();    
+#     
+#    # --- Open THERMAL_STRESS    
+#    try:
+#        fil = open("THERMAL_STRESS", "r" );
+#    except IOError:
+#        sys.stderr.write('\n ## ERROR : UNABLE TO OPEN THERMAL_STRESS FILE. RETURN 0.\n\n');
+#        nozzle.max_thermal_stress = 0;
+#        return;
+#    
+#    lines = [line.split() for line in fil];
+#    
+#    max_therm = 0.0;
+#    for i in range(2,len(lines)):
+#        max_therm = max(float(lines[i][0]), max_therm);
+#    
+#    nozzle.max_thermal_stress = max_therm;
+#    
+#    fil.close();
     
-    lines = [line.split() for line in fil];
+    # Read stresses from files
+    ks_param = 50.;
+    pn_param = 10.;
     
-    max_mech = 0.0;
-    for i in range(2,len(lines)):
-        max_mech = max(float(lines[i][0]), max_mech);
-        
-    nozzle.max_mechanical_stress = max_mech;
+    filename = 'MECHANICAL_STRESS.1';
+    data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+    stemp = np.mean(data[:,-1]);
+    nozzle.max_total_stress[0] = np.max(data[:,-1]);
+    nozzle.ks_total_stress[0] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+    nozzle.pn_total_stress[0] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
     
-    fil.close();
+    filename = 'MECHANICAL_STRESS.2';
+    data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+    stemp = np.mean(data[:,-1]);
+    nozzle.max_total_stress[1] = np.max(data[:,-1]);
+    nozzle.ks_total_stress[1] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+    nozzle.pn_total_stress[1] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;    
     
-    # --- Open THERMAL_STRESS
+    filename = 'MECHANICAL_STRESS.3';
+    data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+    stemp = np.mean(data[:,-1]);
+    nozzle.max_total_stress[2] = np.max(data[:,-1]);
+    nozzle.ks_total_stress[2] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+    nozzle.pn_total_stress[2] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;  
     
-    try:
-        fil = open("THERMAL_STRESS", "r" );
-    except IOError:
-        sys.stderr.write('\n ## ERROR : UNABLE TO OPEN THERMAL_STRESS FILE. RETURN 0.\n\n');
-        nozzle.max_thermal_stress = 0;
-        return;
-    
-    lines = [line.split() for line in fil];
-    
-    max_therm = 0.0;
-    for i in range(2,len(lines)):
-        max_therm = max(float(lines[i][0]), max_therm);
-    
-    nozzle.max_thermal_stress = max_therm;
-    
-    fil.close();
-    
-    
-    
-    
+    # Read temperatures from files
     
