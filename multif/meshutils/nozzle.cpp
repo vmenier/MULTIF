@@ -123,13 +123,34 @@ void writeFace(MElement *m, FILE *fp, int type)
   fprintf(fp, "\n");
 }
 
-void writeAttr(MElement *m, FILE *fp, int tag)
+void writeAttr(MElement *m, FILE *fp, double scalingFactor, int physicalTag, const std::vector<std::vector<double> > &points,
+               const std::vector<VertexData> &vertices, const std::vector<SegmentData> &segments) 
 {
-  fprintf(fp, "%-8d %-8d\n", m->getNum(), tag);
+  // find x-coordinate of element centroid
+  double x = 0;
+  for(int i = 0; i < m->getNumVertices(); i++) {
+    x += m->getVertexBDF(i)->x() * scalingFactor;
+  }
+  x /= m->getNumVertices();
+
+  // find the material id
+  Cmp cmp(points);
+  std::vector<VertexData>::const_iterator it = std::lower_bound(vertices.begin(), vertices.end(), x, cmp);
+  int materialId;
+  switch(physicalTag) {
+    case 0 : { // thermal layer
+      materialId = 1+(segments.begin()+std::distance(vertices.begin(),it-1))->mt;
+    } break;
+    case 1 : case 2 :  case 3 : { // load layer
+      materialId = 1+(segments.begin()+std::distance(vertices.begin(),it-1))->m[0];
+    } break;
+  } 
+
+  fprintf(fp, "%-8d %-8d\n", m->getNum(), materialId);
 }
 
 void writeMate(MElement *m, FILE *fp, double scalingFactor, const std::vector<BoundaryData> &boundaries,
-               bool b, const MaterialData &mat, const std::vector<std::vector<double> > &points,
+               int physicalTag, const std::vector<MaterialData> &materials, const std::vector<std::vector<double> > &points,
                const std::vector<VertexData> &vertices, const std::vector<SegmentData> &segments)
 {
   // find x-coordinate of triangle centroid
@@ -143,29 +164,50 @@ void writeMate(MElement *m, FILE *fp, double scalingFactor, const std::vector<Bo
   std::vector<BoundaryData>::const_iterator it = std::lower_bound(boundaries.begin(), boundaries.end(), x, cmp);
   double Taval = (it == boundaries.begin()) ? it->Ta : ((it-1)->Ta + (it->Ta - (it-1)->Ta)*(x - (it-1)->x)/(it->x - (it-1)->x));
 
-  if(b) { // main shell (layered composite, material properties defined elsewhere)
-    fprintf(fp, "%d 0 %g %g %g 0 0 %g 0 %g 0 %g 0 0 0\n",
-            m->getNum(), 0., 0., 0., 0., Taval, 0.);
-  }
-  else {
+  switch(physicalTag) {
 
-    double tval;
-    Cmp cmp(points);
-    std::vector<VertexData>::const_iterator it = std::lower_bound(vertices.begin(), vertices.end(), x, cmp);
-    if(it != vertices.begin() && std::abs(x - points[(it-1)->p][0]) < 1e-5) { // baffle 
-      tval = (it-1)->tb;
-    }
-    else if(it != vertices.end() && std::abs(x - points[it->p][0]) < 1e-5) { // baffle
-      tval = it->tb;
-    }
-    else {
-      // interpolate stiffener thickness from vertex data
-      tval = (it == vertices.begin()) ? it->ts
-           : ((it-1)->ts + (it->ts - (it-1)->ts)*(x - points[(it-1)->p][0])/(points[it->p][0] - points[(it-1)->p][0]));
-    }
+    case 0 : { // thermal layer
 
-    fprintf(fp, "%d 0 %g %g %g 0 0 %g 0 %g 0 %g 0 0 0\n",
-            m->getNum(), mat.E, mat.nu, mat.rho, tval, Taval, mat.w);
+    } break;
+
+    case 1 : case 2 : case 3 : { // load layer (layered composite, material properties defined elsewhere)
+      fprintf(fp, "%d 0 %g %g %g 0 0 %g 0 %g 0 %g 0 0 0\n",
+              m->getNum(), 0., 0., 0., 0., Taval, 0.);
+    } break;
+
+    case 4 : { // stringers
+      double tval; 
+      MaterialData mat;
+      Cmp cmp(points);
+      std::vector<VertexData>::const_iterator it = std::lower_bound(vertices.begin(), vertices.end(), x, cmp);
+
+      // interpolate stringer thickness from vertex data
+      tval = (it-1)->ts + (it->ts - (it-1)->ts)*(x - points[(it-1)->p][0])/(points[it->p][0] - points[(it-1)->p][0]);
+      mat = materials[(segments.begin()+std::distance(vertices.begin(),it-1))->ms];
+
+      fprintf(fp, "%d 0 %g %g %g 0 0 %g 0 %g 0 %g 0 0 0\n",
+              m->getNum(), mat.E, mat.nu, mat.rho, tval, Taval, mat.w);
+    } break;
+
+    default : { // baffles
+
+      double tval;
+      MaterialData mat;
+      Cmp cmp(points);
+      std::vector<VertexData>::const_iterator it = std::lower_bound(vertices.begin(), vertices.end(), x, cmp); // returns it such that it->p[0] >= x
+
+      if(it == vertices.begin()) {
+        tval = it->tb;
+        mat = materials[it->mb]; 
+      }
+      else {
+        tval = (it-1)->tb;
+        mat = materials[(it-1)->mb];
+      }
+
+      fprintf(fp, "%d 0 %g %g %g 0 0 %g 0 %g 0 %g 0 0 0\n",
+              m->getNum(), mat.E, mat.nu, mat.rho, tval, Taval, mat.w);
+    } break;
   }
 }
 
@@ -337,7 +379,7 @@ int writeAEROS(GModel *g,
   FILE *fp3 = Fopen("ATTRIBUTES.txt", "w");
   fprintf(fp3, "ATTRIBUTES\n");
   for(unsigned int i = 0; i < entities.size(); i++) {
-    bool b = (std::find(surfaceTags.begin(), surfaceTags.end(), std::make_pair(entities[i]->geomType(),entities[i]->tag())) != surfaceTags.end());
+    bool b = std::find(entities[i]->physicals.begin(), entities[i]->physicals.end(), 2) != entities[i]->physicals.end();
     for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
       MElement *m = entities[i]->getMeshElement(j);
       const char *str = m->getStringForBDF();
@@ -353,13 +395,12 @@ int writeAEROS(GModel *g,
   FILE *fp8 = Fopen("MATERIAL.txt", "w");
   fprintf(fp8, "MATERIALS\n");
   for(unsigned int i = 0; i < entities.size(); i++) {
-    bool b = (std::find(surfaceTags.begin(), surfaceTags.end(), std::make_pair(entities[i]->geomType(),entities[i]->tag())) != surfaceTags.end());
+    int physicalTag = entities[i]->physicals.empty() ? -1 : entities[i]->physicals[0];
     for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
       MElement *m = entities[i]->getMeshElement(j);
       const char *str = m->getStringForBDF();
       if(str && std::strcmp(str,"CTRIA3") == 0) {
-        const MaterialData &mat = materials[entities[i]->physicals[0]-1];
-        writeMate(m, fp8, scalingFactor, boundaries, b, mat, points, vertices, segments);
+        writeMate(m, fp8, scalingFactor, boundaries, physicalTag, materials, points, vertices, segments);
       }
     }
   }
@@ -369,7 +410,7 @@ int writeAEROS(GModel *g,
   FILE *fp9 = Fopen("COMPOSITE.txt", "w");
   fprintf(fp9, "COMPOSITE\n");
   for(unsigned int i = 0; i < entities.size(); i++) {
-    if(std::find(surfaceTags.begin(), surfaceTags.end(), std::make_pair(entities[i]->geomType(),entities[i]->tag())) != surfaceTags.end()) {
+    if(std::find(entities[i]->physicals.begin(), entities[i]->physicals.end(), 2) != entities[i]->physicals.end()) {
       for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
         MElement *m = entities[i]->getMeshElement(j);
         const char *str = m->getStringForBDF();
@@ -385,7 +426,7 @@ int writeAEROS(GModel *g,
   FILE *fp10 = Fopen("CFRAMES.txt", "w");
   fprintf(fp10, "CFRAMES\n");
   for(unsigned int i = 0; i < entities.size(); i++) {
-    if(std::find(surfaceTags.begin(), surfaceTags.end(), std::make_pair(entities[i]->geomType(),entities[i]->tag())) != surfaceTags.end()) {
+    if(std::find(entities[i]->physicals.begin(), entities[i]->physicals.end(), 2) != entities[i]->physicals.end()) {
       for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
         MElement *m = entities[i]->getMeshElement(j);
         const char *str = m->getStringForBDF();
@@ -408,11 +449,11 @@ int writeAEROS(GModel *g,
   }
   fclose(fp4);
 
-  // pressure (all the triangles on the nozzle surface)
+  // pressure (all the triangles on the mid-surface of the load layer)
   FILE *fp5 = Fopen("PRESSURES.txt", "w");
   fprintf(fp5, "PRESSURE\n");
   for(unsigned int i = 0; i < entities.size(); i++) {
-    if(std::find(surfaceTags.begin(), surfaceTags.end(), std::make_pair(entities[i]->geomType(),entities[i]->tag())) != surfaceTags.end()) {
+    if(std::find(entities[i]->physicals.begin(), entities[i]->physicals.end(), 2) != entities[i]->physicals.end()) {
       for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
         const char *str = entities[i]->getMeshElement(j)->getStringForBDF();
         if(str && std::strcmp(str,"CTRIA3") == 0)
@@ -422,7 +463,7 @@ int writeAEROS(GModel *g,
   }
   fclose(fp5);
 
-  // temperatures (all the nodes on the nozzle surface)
+  // temperatures (all the nodes on the mid-surface of the load layer)
   if(temp) {
     FILE *fp6 = Fopen("TEMPERATURES.txt", "w");
     fprintf(fp6, "TEMPERATURE\n");
@@ -435,15 +476,41 @@ int writeAEROS(GModel *g,
     fclose(fp6);
   }
 
-  // surface topology (all the triangles on the nozzle surface)
+  // surface topology (all the triangles on the mid-surface of the load layer)
   FILE *fp7 = Fopen("SURFACETOPO.txt", "w");
-  fprintf(fp7, "SURFACETOPO 1\n");
+  fprintf(fp7, "SURFACETOPO 2\n");
   for(unsigned int i = 0; i < entities.size(); i++) {
-    if(std::find(surfaceTags.begin(), surfaceTags.end(), std::make_pair(entities[i]->geomType(),entities[i]->tag())) != surfaceTags.end()) {
+    if(std::find(entities[i]->physicals.begin(), entities[i]->physicals.end(), 2) != entities[i]->physicals.end()) {
       for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
         const char *str = entities[i]->getMeshElement(j)->getStringForBDF();
         if(str && std::strcmp(str,"CTRIA3") == 0)
           writeFace(entities[i]->getMeshElement(j), fp7, 3);
+      }
+    }
+  }
+  // surface topology (all the triangles on the mid-surface of the stringers)
+  fprintf(fp7, "SURFACETOPO 4\n");
+  for(unsigned int i = 0; i < entities.size(); i++) {
+    if(std::find(entities[i]->physicals.begin(), entities[i]->physicals.end(), 4) != entities[i]->physicals.end()) {
+      for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
+        const char *str = entities[i]->getMeshElement(j)->getStringForBDF();
+        if(str && std::strcmp(str,"CTRIA3") == 0)
+          writeFace(entities[i]->getMeshElement(j), fp7, 3);
+      }
+    }
+  }
+  // surface topology (all the triangles on the mid-surface of the baffles)
+  int baffleCount = 0;
+  for(std::vector<VertexData>::const_iterator it = vertices.begin(); it != vertices.end(); ++it) if(it->wb > 0) baffleCount++;
+  for(int k = 0; k < baffleCount; ++k) {
+    fprintf(fp7, "SURFACETOPO %d\n", 5+k);
+    for(unsigned int i = 0; i < entities.size(); i++) {
+      if(std::find(entities[i]->physicals.begin(), entities[i]->physicals.end(), 5+k) != entities[i]->physicals.end()) {
+        for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
+          const char *str = entities[i]->getMeshElement(j)->getStringForBDF();
+          if(str && std::strcmp(str,"CTRIA3") == 0)
+            writeFace(entities[i]->getMeshElement(j), fp7, 3);
+        }
       }
     }
   }
@@ -455,21 +522,102 @@ int writeAEROS(GModel *g,
   fprintf(fp, "*\n");
   fprintf(fp, "OUTPUT\n");
   fprintf(fp, "gdisplac 14 7 \"DISP\" 1\n");
+
+  // von mises stress
   fprintf(fp, "stressvm 14 7 \"STRESS\" 1 lower\n");
-  fprintf(fp, "stressvm 14 7 \"STRESS.1\" 1 NG 1 lower\n");
-  fprintf(fp, "stressvm 14 7 \"STRESS.2\" 1 NG 1 median\n");
-  fprintf(fp, "stressvm 14 7 \"STRESS.3\" 1 NG 1 upper\n");
+  fprintf(fp, "stressvm 14 7 \"STRESS.1\" 1 NG 2 lower\n");
+  fprintf(fp, "stressvm 14 7 \"STRESS.2\" 1 NG 2 median\n");
+  fprintf(fp, "stressvm 14 7 \"STRESS.3\" 1 NG 2 upper\n");
+  fprintf(fp, "stressvm 14 7 \"STRESS.4\" 1 NG 4 median\n");
+  for(int k = 0; k < baffleCount; ++k) 
+    fprintf(fp, "stressvm 14 7 \"STRESS.%d\" 1 NG %d median\n", 5+k, 5+k);
   fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS\" 1 lower thermal\n");
-  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.1\" 1 NG 1 lower thermal\n");
-  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.2\" 1 NG 1 median thermal\n");
-  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.3\" 1 NG 1 upper thermal\n");
+  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.1\" 1 NG 2 lower thermal\n");
+  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.2\" 1 NG 2 median thermal\n");
+  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.3\" 1 NG 2 upper thermal\n");
+  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.4\" 1 NG 4 median thermal\n");
+  for(int k = 0; k < baffleCount; ++k)
+    fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.%d\" 1 NG %d median thermal\n", 5+k, 5+k);
   fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS\" 1 lower mechanical\n");
-  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.1\" 1 NG 1 lower mechanical\n");
-  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.2\" 1 NG 1 median mechanical\n");
-  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.3\" 1 NG 1 upper mechanical\n");
+  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.1\" 1 NG 2 lower mechanical\n");
+  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.2\" 1 NG 2 median mechanical\n");
+  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.3\" 1 NG 2 upper mechanical\n");
+  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.4\" 1 NG 4 median mechanical\n");
+  for(int k = 0; k < baffleCount; ++k)
+    fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.%d\" 1 NG %d median mechanical\n", 5+k, 5+k);
+  // 1st principal stress
+  fprintf(fp, "stressp1 14 7 \"STRESSP1\" 1 lower\n");
+  fprintf(fp, "stressp1 14 7 \"STRESSP1.1\" 1 NG 2 lower\n");
+  fprintf(fp, "stressp1 14 7 \"STRESSP1.2\" 1 NG 2 median\n");
+  fprintf(fp, "stressp1 14 7 \"STRESSP1.3\" 1 NG 2 upper\n");
+  fprintf(fp, "stressp1 14 7 \"STRESSP1.4\" 1 NG 4 median\n");
+  for(int k = 0; k < baffleCount; ++k)
+    fprintf(fp, "stressp1 14 7 \"STRESSP1.%d\" 1 NG %d median\n", 5+k, 5+k);
+  fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1\" 1 lower thermal\n");
+  fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.1\" 1 NG 2 lower thermal\n");
+  fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.2\" 1 NG 2 median thermal\n");
+  fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.3\" 1 NG 2 upper thermal\n");
+  fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.4\" 1 NG 4 median thermal\n");
+  for(int k = 0; k < baffleCount; ++k)
+    fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.%d\" 1 NG %d median thermal\n", 5+k, 5+k);
+  fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1\" 1 lower mechanical\n");
+  fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.1\" 1 NG 2 lower mechanical\n");
+  fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.2\" 1 NG 2 median mechanical\n");
+  fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.3\" 1 NG 2 upper mechanical\n");
+  fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.4\" 1 NG 4 median mechanical\n");
+  for(int k = 0; k < baffleCount; ++k)
+    fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.%d\" 1 NG %d median mechanical\n", 5+k, 5+k);
+  // 2nd principal stress
+  fprintf(fp, "stressp2 14 7 \"STRESSP2\" 1 lower\n");
+  fprintf(fp, "stressp2 14 7 \"STRESSP2.1\" 1 NG 2 lower\n");
+  fprintf(fp, "stressp2 14 7 \"STRESSP2.2\" 1 NG 2 median\n");
+  fprintf(fp, "stressp2 14 7 \"STRESSP2.3\" 1 NG 2 upper\n");
+  fprintf(fp, "stressp2 14 7 \"STRESSP2.4\" 1 NG 4 median\n");
+  for(int k = 0; k < baffleCount; ++k)
+    fprintf(fp, "stressp2 14 7 \"STRESSP2.%d\" 1 NG %d median\n", 5+k, 5+k);
+  fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2\" 1 lower thermal\n");
+  fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.1\" 1 NG 2 lower thermal\n");
+  fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.2\" 1 NG 2 median thermal\n");
+  fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.3\" 1 NG 2 upper thermal\n");
+  fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.4\" 1 NG 4 median thermal\n");
+  for(int k = 0; k < baffleCount; ++k)
+    fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.%d\" 1 NG %d median thermal\n", 5+k, 5+k);
+  fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2\" 1 lower mechanical\n");
+  fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.1\" 1 NG 2 lower mechanical\n");
+  fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.2\" 1 NG 2 median mechanical\n");
+  fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.3\" 1 NG 2 upper mechanical\n");
+  fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.4\" 1 NG 4 median mechanical\n");
+  for(int k = 0; k < baffleCount; ++k)
+    fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.%d\" 1 NG %d median mechanical\n", 5+k, 5+k);
+  // 3rd principal stress
+  fprintf(fp, "stressp3 14 7 \"STRESSP3\" 1 lower\n");
+  fprintf(fp, "stressp3 14 7 \"STRESSP3.1\" 1 NG 2 lower\n");
+  fprintf(fp, "stressp3 14 7 \"STRESSP3.2\" 1 NG 2 median\n");
+  fprintf(fp, "stressp3 14 7 \"STRESSP3.3\" 1 NG 2 upper\n");
+  fprintf(fp, "stressp3 14 7 \"STRESSP3.4\" 1 NG 4 median\n");
+  for(int k = 0; k < baffleCount; ++k)
+    fprintf(fp, "stressp3 14 7 \"STRESSP3.%d\" 1 NG %d median\n", 5+k, 5+k);
+  fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3\" 1 lower thermal\n");
+  fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.1\" 1 NG 2 lower thermal\n");
+  fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.2\" 1 NG 2 median thermal\n");
+  fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.3\" 1 NG 2 upper thermal\n");
+  fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.4\" 1 NG 4 median thermal\n");
+  for(int k = 0; k < baffleCount; ++k)
+    fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.%d\" 1 NG %d median thermal\n", 5+k, 5+k);
+  fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3\" 1 lower mechanical\n");
+  fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.1\" 1 NG 2 lower mechanical\n");
+  fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.2\" 1 NG 2 median mechanical\n");
+  fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.3\" 1 NG 2 upper mechanical\n");
+  fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.4\" 1 NG 4 median mechanical\n");
+  for(int k = 0; k < baffleCount; ++k)
+    fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.%d\" 1 NG %d median mechanical\n", 5+k, 5+k);
+
   fprintf(fp, "*\n");
   fprintf(fp, "GROUPS\n");
-  fprintf(fp, "N surface 1 1\n");
+  fprintf(fp, "N surface 2 2\n");
+  fprintf(fp, "N surface 4 4\n");
+  for(int k = 0; k < baffleCount; ++k)
+    fprintf(fp, "N surface %d %d\n", 5+k, 5+k);
   fprintf(fp, "*\n");
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "GEOMETRY.txt");
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "TOPOLOGY.txt");
@@ -489,11 +637,13 @@ int writeAEROS(GModel *g,
 }
 
 int writeAEROH(GModel *g,
+               const std::vector<std::vector<double> > &points,
+               const std::vector<VertexData> &vertices,
+               const std::vector<SegmentData> &segments,
                const std::vector<MaterialData> &materials,
                const std::vector<BoundaryData> &boundaries,
                const std::vector<std::pair<GEntity::GeomType,int> > &interiorBoundaryTags,
                const std::vector<std::pair<GEntity::GeomType,int> > &exteriorBoundaryTags,
-               const std::vector<std::pair<GEntity::GeomType,int> > &middleSurfaceTags,
                const std::string &name,
                int elementTagType=1, bool saveAll=false, double scalingFactor=1.0)
 {
@@ -543,8 +693,8 @@ int writeAEROH(GModel *g,
     for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
       const char *str = entities[i]->getMeshElement(j)->getStringForBDF();
       if(str && (std::strcmp(str,"CHEXA") == 0 || (b && std::strcmp(str,"CQUAD4") == 0))) {
-        int numPhys = entities[i]->physicals.size();
-        writeAttr(entities[i]->getMeshElement(j), fp3, numPhys ? entities[i]->physicals[0] : 0);
+        writeAttr(entities[i]->getMeshElement(j), fp3, scalingFactor, entities[i]->physicals[0], points, vertices,
+                  segments);
       }
     }
   }
@@ -589,12 +739,23 @@ int writeAEROH(GModel *g,
   }
   fclose(fp6);
 
-  // surface topology (all the triangles on the middle surface, used to ouput temperatures for structural model)
+  // surface topology (all the triangles on the mid-surface of the load layer, used to ouput temperatures for structural model
+  //                   also, all the quads on the upper and lower surfaces of the load layer)
   FILE *fp7 = Fopen("SURFACETOPO.txt.thermal", "w");
+
   fprintf(fp7, "SURFACETOPO 1\n");
   for(unsigned int i = 0; i < entities.size(); i++) {
-    if(std::find(middleSurfaceTags.begin(), middleSurfaceTags.end(),
-                 std::make_pair(entities[i]->geomType(),entities[i]->tag())) != middleSurfaceTags.end()) {
+    if(std::find(entities[i]->physicals.begin(), entities[i]->physicals.end(), 1) != entities[i]->physicals.end()) {
+      for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
+        const char *str = entities[i]->getMeshElement(j)->getStringForBDF();
+        if(str && std::strcmp(str,"CQUAD4") == 0)
+          writeFace(entities[i]->getMeshElement(j), fp7, 1);
+      }
+    }
+  }
+  fprintf(fp7, "SURFACETOPO 2\n");
+  for(unsigned int i = 0; i < entities.size(); i++) {
+    if(std::find(entities[i]->physicals.begin(), entities[i]->physicals.end(), 2) != entities[i]->physicals.end()) {
       for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
         const char *str = entities[i]->getMeshElement(j)->getStringForBDF();
         if(str && std::strcmp(str,"CTRIA3") == 0)
@@ -602,6 +763,17 @@ int writeAEROH(GModel *g,
       }
     }
   }
+  fprintf(fp7, "SURFACETOPO 3\n");
+  for(unsigned int i = 0; i < entities.size(); i++) {
+    if(std::find(entities[i]->physicals.begin(), entities[i]->physicals.end(), 3) != entities[i]->physicals.end()) {
+      for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
+        const char *str = entities[i]->getMeshElement(j)->getStringForBDF();
+        if(str && std::strcmp(str,"CQUAD4") == 0)
+          writeFace(entities[i]->getMeshElement(j), fp7, 1);
+      }
+    }
+  }
+
   fclose(fp7);
 
   // main file
@@ -611,9 +783,13 @@ int writeAEROH(GModel *g,
   fprintf(fp, "OUTPUT\n");
   fprintf(fp, "gtempera 22 15 \"TEMP\" 1\n");
   fprintf(fp, "gtempera 22 15 \"TEMP.1\" 1 NG 1\n");
+  fprintf(fp, "gtempera 22 15 \"TEMP.2\" 1 NG 2\n");
+  fprintf(fp, "gtempera 22 15 \"TEMP.3\" 1 NG 3\n");
   fprintf(fp, "*\n");
   fprintf(fp, "GROUPS\n");
   fprintf(fp, "N surface 1 1\n");
+  fprintf(fp, "N surface 2 2\n");
+  fprintf(fp, "N surface 3 3\n");
   fprintf(fp, "*\n");
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "GEOMETRY.txt.thermal");
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "TOPOLOGY.txt.thermal");
@@ -665,7 +841,13 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
 
   double cth1, cth2, cth3, cth4, cth5, cth6;
 
+  // count the number of baffles
+  int baffleCount = 0;
+  for(std::vector<VertexData>::const_iterator it = vertices.begin(); it != vertices.end(); ++it)
+    if(it->wb > 0) baffleCount++;
+
   // loop over the segments
+  int baffleIndex = 0;
   for(std::vector<SegmentData>::const_iterator segmentIt = segments.begin(); segmentIt != segments.end(); ++segmentIt, ++vertexIt) {
 
     std::vector<std::vector<double> >::const_iterator pointIt2 = points.begin()+(vertexIt+1)->p;
@@ -674,14 +856,11 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
     // inside of inner layer
     GEdge *edge1 = m->addBSpline(vertex1, vertex2, controlPoints); 
 
-    int mm = segmentIt->m[0];           // material id of first layer of main shell
     int ns = std::max(1,segmentIt->ns); // number of circumferential segments
     double wb = vertexIt->wb;           // width of baffle
-    int mb = vertexIt->mb;              // material id of baffle
     int nb = vertexIt->nb;              // number of transfinite points (radial edges of baffle)
     double ws1 = vertexIt->ws;          // width of stiffeners
     double ws2 = (vertexIt+1)->ws;      // width of stiffeners
-    int ms = segmentIt->ms;             // material id of stiffeners
     int nn = segmentIt->nn;             // number of transfinite points (longitudinal edges)
     int mn = segmentIt->mn;             // number of transfinite points (circumferential edges)
     int sn = segmentIt->sn;             // number of transfinite points (radial edges of stiffener)
@@ -690,7 +869,6 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
     double tt1 = vertexIt->tt;          // thickness of inner thermal insulating layer
     double tt2 = (vertexIt+1)->tt;      // thickness of inner thermal insulating layer
     int tn = segmentIt->tn;             // number of transfinite points through thickness of insulating layer in thermal mesh
-    int mt = segmentIt->mt;             // material id of insulating layer
     double angle = 2*M_PI/ns;
 
     // outside of inner layer / inside of outer layer
@@ -781,7 +959,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
           boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
         }
       }
-      face3->addPhysicalEntity(mm+1);
+      face3->addPhysicalEntity(2);
       surfaceTags.push_back(std::make_pair(face3->geomType(),face3->tag()));
 
       // baffle:
@@ -807,7 +985,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
               boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
             }
           }
-          baffleFace->addPhysicalEntity(mb+1);
+          baffleFace->addPhysicalEntity(5+baffleIndex);
         }
         else {
           std::vector<double> p5(p4); p5[1] *= ws1; p5[2] *= ws1; // point defining 1st extrusion vector
@@ -834,7 +1012,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
               else edge5 = *it;
             }
           }
-          baffleFace->addPhysicalEntity(mb+1);
+          baffleFace->addPhysicalEntity(5+baffleIndex);
 
           if(ws1 < wb) {
             std::vector<double> p5(p4); p5[1] *= (wb-ws1); p5[2] *= (wb-ws1); // point defining 2nd extrusion vector
@@ -857,7 +1035,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
                 boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
               }
             }
-            baffleFace->addPhysicalEntity(mb+1);
+            baffleFace->addPhysicalEntity(5+baffleIndex);
           }
           else if(ws1 > wb) std::cerr << "error: stringer height is greater than baffle height\n"; 
         }
@@ -881,13 +1059,13 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
           }
           (*it)->meshAttributes.coeffTransfinite = 1.0;
         }
-        stiffenerFace->addPhysicalEntity(ms+1);
+        stiffenerFace->addPhysicalEntity(4);
       }
 
       // final baffle:
       if((vertexIt+1)->wb > 0 && segmentIt+1 == segments.end()) {
+        int baffleIndex2 = (wb > 0) ? baffleIndex+1 : baffleIndex;
         double wb = (vertexIt+1)->wb; // width of baffle
-        int mb = (vertexIt+1)->mb;    // material id of baffle
         std::vector<double> p3(3), p4(3);
         p3[0] = edge3->getEndVertex()->x(); p3[1] = p3[2] = 0;
         p4[0] = p3[0]; p4[1] = edge3->getEndVertex()->y(); p4[2] = edge3->getEndVertex()->z();
@@ -915,7 +1093,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
               boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
             }
           }
-          baffleFace->addPhysicalEntity(mb+1);
+          baffleFace->addPhysicalEntity(5+baffleIndex2);
         }
         else {
           std::vector<double> p5(p4); p5[1] *= ws2; p5[2] *= ws2; // point defining 1st extrusion vector
@@ -942,7 +1120,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
               else edge5 = *it;
             }
           }
-          baffleFace->addPhysicalEntity(mb+1);
+          baffleFace->addPhysicalEntity(5+baffleIndex2);
 
           if(ws2 < wb) {
             std::vector<double> p5(p4); p5[1] *= (wb-ws2); p5[2] *= (wb-ws2); // point defining 2nd extrusion vector
@@ -965,7 +1143,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
                 boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
               }
             }
-            baffleFace->addPhysicalEntity(mb+1);
+            baffleFace->addPhysicalEntity(5+baffleIndex2);
           }
           else if(ws2 > wb) std::cerr << "error: stringer height is greater than baffle height\n";
         }
@@ -1025,10 +1203,16 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
               interiorBoundaryTags.push_back(std::make_pair((*it2)->geomType(),(*it2)->tag()));
             }
           }
-          if(faceIndex == 0) interiorBoundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
+          if(faceIndex == 0) {
+            interiorBoundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
+            (*it)->addPhysicalEntity(0);
+          }
+          if(faceIndex == 2) {
+            (*it)->addPhysicalEntity(1);
+          }
         }
   
-        region1->addPhysicalEntity(mt+1);
+        region1->addPhysicalEntity(0);
       }
   
       // thermal model inside half of outer layer
@@ -1081,7 +1265,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
           }
         }
   
-        region2->addPhysicalEntity(mm+1);
+        region2->addPhysicalEntity(1);
       }
 
       // thermal model outside half of outer layer
@@ -1140,17 +1324,18 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
           }
           if(faceIndex == 2) {
             exteriorBoundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
-            (*it)->addPhysicalEntity(mm+1);
+            (*it)->addPhysicalEntity(3);
           }
         }
   
-        region3->addPhysicalEntity(mm+1);
+        region3->addPhysicalEntity(3);
       }
 
     }
 
     pointIt1 = pointIt2;
     vertex1 = vertex2;
+    if(wb > 0) baffleIndex++;
   }
 
   //m->writeGEO("nozzle.geo");
@@ -1162,7 +1347,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
 
   m->writeMSH("nozzle.msh");
   writeAEROS(m, points, vertices, segments, materials, boundaries, surfaceTags, boundaryTags, "nozzle.aeros", 2, false, 1.0, (tf==0));
-  if(tf != 0) writeAEROH(m, materials, boundaries, interiorBoundaryTags, exteriorBoundaryTags, surfaceTags, "nozzle.aeroh", 2);
+  if(tf != 0) writeAEROH(m, points, vertices, segments, materials, boundaries, interiorBoundaryTags, exteriorBoundaryTags, "nozzle.aeroh", 2);
 
   delete m;
 
@@ -1232,7 +1417,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
 
 static PyObject *nozzle_convert(PyObject *self, PyObject *args)
 {
-  std::ifstream in("TEMP.1");
+  std::ifstream in("TEMP.2");
   std::ofstream out("TEMPERATURES.txt");
 
   std::string s;
