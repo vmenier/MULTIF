@@ -1631,6 +1631,9 @@ class Nozzle:
                        'PN_TOTAL_STRESS', 'MAX_TOTAL_STRESS',
                        'MAX_THERMAL_STRESS','KS_TEMPERATURE',
                        'PN_TEMPERATURE','MAX_TEMPERATURE');
+            
+            for key in dv_keys:
+                nozzle.GetOutput[key] = 0;
 
             hdl = config['OUTPUT_FUNCTIONS'].strip('()');
             hdl = hdl.split(",");

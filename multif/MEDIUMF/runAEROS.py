@@ -248,21 +248,21 @@ def AEROSPostProcessing ( nozzle ):
     ks_param = 50.;
     pn_param = 10.;
     
-    filename = 'MECHANICAL_STRESS.1';
+    filename = 'STRESS.1';
     data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
     stemp = np.mean(data[:,-1]);
     nozzle.max_total_stress[0] = np.max(data[:,-1]);
     nozzle.ks_total_stress[0] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
     nozzle.pn_total_stress[0] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
     
-    filename = 'MECHANICAL_STRESS.2';
+    filename = 'STRESS.2';
     data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
     stemp = np.mean(data[:,-1]);
     nozzle.max_total_stress[1] = np.max(data[:,-1]);
     nozzle.ks_total_stress[1] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
     nozzle.pn_total_stress[1] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;    
     
-    filename = 'MECHANICAL_STRESS.3';
+    filename = 'STRESS.3';
     data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
     stemp = np.mean(data[:,-1]);
     nozzle.max_total_stress[2] = np.max(data[:,-1]);
