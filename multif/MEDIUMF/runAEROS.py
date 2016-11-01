@@ -191,6 +191,8 @@ def runAEROS ( nozzle ):
       _nozzle_module.convert();        # convert temperature output from thermal analysis to input for structural analysis
     os.system("aeros nozzle.aeros"); # execute the structural analysis
     
+    nozzle.wallTemp = SolExtract[:,iTemp];
+    
     AEROSPostProcessing ( nozzle );
 
 # Kreselmeier-Steinhauser function
@@ -244,10 +246,11 @@ def AEROSPostProcessing ( nozzle ):
 #    
 #    fil.close();
     
-    # Read stresses from files
+    # ---- Read stresses from files
     ks_param = 50.;
     pn_param = 10.;
     
+    # Inner load layer
     filename = 'STRESS.1';
     data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
     stemp = np.mean(data[:,-1]);
@@ -255,6 +258,7 @@ def AEROSPostProcessing ( nozzle ):
     nozzle.ks_total_stress[0] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
     nozzle.pn_total_stress[0] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
     
+    # Middle load layer
     filename = 'STRESS.2';
     data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
     stemp = np.mean(data[:,-1]);
@@ -262,6 +266,7 @@ def AEROSPostProcessing ( nozzle ):
     nozzle.ks_total_stress[1] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
     nozzle.pn_total_stress[1] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;    
     
+    # Upper load layer
     filename = 'STRESS.3';
     data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
     stemp = np.mean(data[:,-1]);
@@ -269,5 +274,52 @@ def AEROSPostProcessing ( nozzle ):
     nozzle.ks_total_stress[2] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
     nozzle.pn_total_stress[2] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;  
     
-    # Read temperatures from files
+    # Stringers
+    filename = 'STRESS.4';
+    data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+    stemp = np.mean(data[:,-1]);
+    nozzle.max_total_stress[3] = np.max(data[:,-1]);
+    nozzle.ks_total_stress[3] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+    nozzle.pn_total_stress[3] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+
+    # Each baffle
+    for i in range(5,nozzle.baffles.n+5):
+        filename = 'STRESS.' + str(i);
+        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+        stemp = np.mean(data[:,-1]);
+        nozzle.max_total_stress[i-1] = np.max(data[:,-1]);
+        nozzle.ks_total_stress[i-1] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+        nozzle.pn_total_stress[i-1] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;        
+
+    # ---- Read temperatures from files
     
+    # Thermal layer
+    data = nozzle.wallTemp;
+    nozzle.max_temperature[0] = np.max(data);
+    stemp = np.mean(data);
+    nozzle.ks_temperature[0] = ksFunction(data/stemp,ks_param)*stemp;
+    nozzle.pn_temperature[0] = pnFunction(data/stemp,pn_param)*stemp;
+
+    # Inner load layer
+    filename = 'TEMP.1';
+    data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+    stemp = np.mean(data[:,-1]);
+    nozzle.max_temperature[1] = np.max(data[:,-1]);
+    nozzle.ks_temperature[1] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+    nozzle.pn_temperature[1] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+    
+    # Inner load layer
+    filename = 'TEMP.2';
+    data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+    stemp = np.mean(data[:,-1]);
+    nozzle.max_temperature[2] = np.max(data[:,-1]);
+    nozzle.ks_temperature[2] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+    nozzle.pn_temperature[2] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+
+    # Inner load layer
+    filename = 'TEMP.3';
+    data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+    stemp = np.mean(data[:,-1]);
+    nozzle.max_temperature[3] = np.max(data[:,-1]);
+    nozzle.ks_temperature[3] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+    nozzle.pn_temperature[3] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;    
