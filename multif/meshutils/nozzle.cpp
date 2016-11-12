@@ -86,8 +86,9 @@ inline bool cmp(const BoundaryData &a, const double &b) { return a.x < b; }
 
 struct Cmp {
   const std::vector<std::vector<double> > &points;
-  Cmp(const std::vector<std::vector<double> > &p) : points(p) {}
-  bool operator()(const VertexData &a, const double &b) { return points[a.p][0] < b; }
+  double tol;
+  Cmp(const std::vector<std::vector<double> > &p, double t = std::numeric_limits<double>::epsilon()) : points(p), tol(t) {}
+  bool operator()(const VertexData &a, const double &b) { return points[a.p][0] < (b+tol); }
 };
 
 void writeNode(MVertex *m, FILE *fp, double scalingFactor)
@@ -489,13 +490,16 @@ int writeAEROS(GModel *g,
     }
   }
   // surface topology (all the triangles on the mid-surface of the stringers)
-  fprintf(fp7, "SURFACETOPO 4\n");
+  int stringerCount = 0;
   for(unsigned int i = 0; i < entities.size(); i++) {
     if(std::find(entities[i]->physicals.begin(), entities[i]->physicals.end(), 4) != entities[i]->physicals.end()) {
       for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
         const char *str = entities[i]->getMeshElement(j)->getStringForBDF();
-        if(str && std::strcmp(str,"CTRIA3") == 0)
+        if(str && std::strcmp(str,"CTRIA3") == 0) {
+          if(stringerCount == 0) fprintf(fp7, "SURFACETOPO 4\n");
           writeFace(entities[i]->getMeshElement(j), fp7, 3);
+          stringerCount++;
+        }
       }
     }
   }
@@ -528,21 +532,24 @@ int writeAEROS(GModel *g,
   fprintf(fp, "stressvm 14 7 \"STRESS.1\" 1 NG 2 lower\n");
   fprintf(fp, "stressvm 14 7 \"STRESS.2\" 1 NG 2 median\n");
   fprintf(fp, "stressvm 14 7 \"STRESS.3\" 1 NG 2 upper\n");
-  fprintf(fp, "stressvm 14 7 \"STRESS.4\" 1 NG 4 median\n");
+  if(stringerCount > 0)
+    fprintf(fp, "stressvm 14 7 \"STRESS.4\" 1 NG 4 median\n");
   for(int k = 0; k < baffleCount; ++k) 
     fprintf(fp, "stressvm 14 7 \"STRESS.%d\" 1 NG %d median\n", 5+k, 5+k);
   fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS\" 1 lower thermal\n");
   fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.1\" 1 NG 2 lower thermal\n");
   fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.2\" 1 NG 2 median thermal\n");
   fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.3\" 1 NG 2 upper thermal\n");
-  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.4\" 1 NG 4 median thermal\n");
+  if(stringerCount > 0)
+    fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.4\" 1 NG 4 median thermal\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.%d\" 1 NG %d median thermal\n", 5+k, 5+k);
   fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS\" 1 lower mechanical\n");
   fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.1\" 1 NG 2 lower mechanical\n");
   fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.2\" 1 NG 2 median mechanical\n");
   fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.3\" 1 NG 2 upper mechanical\n");
-  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.4\" 1 NG 4 median mechanical\n");
+  if(stringerCount > 0)
+    fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.4\" 1 NG 4 median mechanical\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.%d\" 1 NG %d median mechanical\n", 5+k, 5+k);
   // 1st principal stress
@@ -550,21 +557,24 @@ int writeAEROS(GModel *g,
   fprintf(fp, "stressp1 14 7 \"STRESSP1.1\" 1 NG 2 lower\n");
   fprintf(fp, "stressp1 14 7 \"STRESSP1.2\" 1 NG 2 median\n");
   fprintf(fp, "stressp1 14 7 \"STRESSP1.3\" 1 NG 2 upper\n");
-  fprintf(fp, "stressp1 14 7 \"STRESSP1.4\" 1 NG 4 median\n");
+  if(stringerCount > 0)
+    fprintf(fp, "stressp1 14 7 \"STRESSP1.4\" 1 NG 4 median\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressp1 14 7 \"STRESSP1.%d\" 1 NG %d median\n", 5+k, 5+k);
   fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1\" 1 lower thermal\n");
   fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.1\" 1 NG 2 lower thermal\n");
   fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.2\" 1 NG 2 median thermal\n");
   fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.3\" 1 NG 2 upper thermal\n");
-  fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.4\" 1 NG 4 median thermal\n");
+  if(stringerCount > 0)
+    fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.4\" 1 NG 4 median thermal\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.%d\" 1 NG %d median thermal\n", 5+k, 5+k);
   fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1\" 1 lower mechanical\n");
   fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.1\" 1 NG 2 lower mechanical\n");
   fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.2\" 1 NG 2 median mechanical\n");
   fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.3\" 1 NG 2 upper mechanical\n");
-  fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.4\" 1 NG 4 median mechanical\n");
+  if(stringerCount > 0)
+    fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.4\" 1 NG 4 median mechanical\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.%d\" 1 NG %d median mechanical\n", 5+k, 5+k);
   // 2nd principal stress
@@ -572,21 +582,24 @@ int writeAEROS(GModel *g,
   fprintf(fp, "stressp2 14 7 \"STRESSP2.1\" 1 NG 2 lower\n");
   fprintf(fp, "stressp2 14 7 \"STRESSP2.2\" 1 NG 2 median\n");
   fprintf(fp, "stressp2 14 7 \"STRESSP2.3\" 1 NG 2 upper\n");
-  fprintf(fp, "stressp2 14 7 \"STRESSP2.4\" 1 NG 4 median\n");
+  if(stringerCount > 0)
+    fprintf(fp, "stressp2 14 7 \"STRESSP2.4\" 1 NG 4 median\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressp2 14 7 \"STRESSP2.%d\" 1 NG %d median\n", 5+k, 5+k);
   fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2\" 1 lower thermal\n");
   fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.1\" 1 NG 2 lower thermal\n");
   fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.2\" 1 NG 2 median thermal\n");
   fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.3\" 1 NG 2 upper thermal\n");
-  fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.4\" 1 NG 4 median thermal\n");
+  if(stringerCount > 0)
+    fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.4\" 1 NG 4 median thermal\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.%d\" 1 NG %d median thermal\n", 5+k, 5+k);
   fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2\" 1 lower mechanical\n");
   fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.1\" 1 NG 2 lower mechanical\n");
   fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.2\" 1 NG 2 median mechanical\n");
   fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.3\" 1 NG 2 upper mechanical\n");
-  fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.4\" 1 NG 4 median mechanical\n");
+  if(stringerCount > 0)
+    fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.4\" 1 NG 4 median mechanical\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.%d\" 1 NG %d median mechanical\n", 5+k, 5+k);
   // 3rd principal stress
@@ -594,28 +607,32 @@ int writeAEROS(GModel *g,
   fprintf(fp, "stressp3 14 7 \"STRESSP3.1\" 1 NG 2 lower\n");
   fprintf(fp, "stressp3 14 7 \"STRESSP3.2\" 1 NG 2 median\n");
   fprintf(fp, "stressp3 14 7 \"STRESSP3.3\" 1 NG 2 upper\n");
-  fprintf(fp, "stressp3 14 7 \"STRESSP3.4\" 1 NG 4 median\n");
+  if(stringerCount > 0)
+    fprintf(fp, "stressp3 14 7 \"STRESSP3.4\" 1 NG 4 median\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressp3 14 7 \"STRESSP3.%d\" 1 NG %d median\n", 5+k, 5+k);
   fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3\" 1 lower thermal\n");
   fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.1\" 1 NG 2 lower thermal\n");
   fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.2\" 1 NG 2 median thermal\n");
   fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.3\" 1 NG 2 upper thermal\n");
-  fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.4\" 1 NG 4 median thermal\n");
+  if(stringerCount > 0)
+    fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.4\" 1 NG 4 median thermal\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.%d\" 1 NG %d median thermal\n", 5+k, 5+k);
   fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3\" 1 lower mechanical\n");
   fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.1\" 1 NG 2 lower mechanical\n");
   fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.2\" 1 NG 2 median mechanical\n");
   fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.3\" 1 NG 2 upper mechanical\n");
-  fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.4\" 1 NG 4 median mechanical\n");
+  if(stringerCount > 0)
+    fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.4\" 1 NG 4 median mechanical\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.%d\" 1 NG %d median mechanical\n", 5+k, 5+k);
 
   fprintf(fp, "*\n");
   fprintf(fp, "GROUPS\n");
   fprintf(fp, "N surface 2 2\n");
-  fprintf(fp, "N surface 4 4\n");
+  if(stringerCount > 0)
+    fprintf(fp, "N surface 4 4\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "N surface %d %d\n", 5+k, 5+k);
   fprintf(fp, "*\n");
