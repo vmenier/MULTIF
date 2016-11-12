@@ -1026,6 +1026,17 @@ class Nozzle:
                 thicknessNodeArray[0][j] = nozzle.wall.layer[i].thicknessNodes[j][0]*nozzle.length;
                 thicknessNodeArray[1][j] = nozzle.wall.layer[i].thicknessNodes[j][1];
             nozzle.wall.layer[i].thickness = geometry.PiecewiseLinear(thicknessNodeArray);
+
+        # --- Setup exterior wall        
+        nozzle.exterior = component.AxisymmetricWall('exterior');
+        
+        # Determine *approx* height of nozzle exit at outside of outermost layer
+        exitHeight = nozzle.wall.geometry.radius(nozzle.length);
+        for i in range(len(nozzle.wall.layer)):
+            exitHeight += nozzle.wall.layer[i].thickness.radius(nozzle.length);
+        shapeDefinition = np.array([[0., 0.1548, nozzle.length],
+                                    [0.4244, 0.4244, exitHeight + 0.012]]);
+        nozzle.exterior.geometry = geometry.PiecewiseLinear(shapeDefinition);
             
         # --- Setup thickness distribution for stringers
         tsize = len(nozzle.stringers.thicknessNodes);
@@ -1043,12 +1054,23 @@ class Nozzle:
             thicknessNodeArray[1][j] = nozzle.stringers.heightNodes[j][1];    
         nozzle.stringers.height = geometry.PiecewiseLinear(thicknessNodeArray);        
             
-        # --- Rescale x-coordinates of baffles
-            
-        nozzle.baffles.location = [x*nozzle.length for x in nozzle.baffles.location];
+        # --- Rescale x-coordinates of baffles            
+        nozzle.baffles.location = [q*nozzle.length for q in nozzle.baffles.location];
+        
+        # --- Update height of baffles to coincide with exterior wall shape
+        n = 10000 # 1e4
+        x = np.linspace(0,nozzle.length,n)
+        for i in range(len(nozzle.baffles.location)):
+            loc = nozzle.baffles.location[i];
+            rList = geometry.layerCoordinatesInGlobalFrame(nozzle,x);
+            # inner baffle radius is outside radius of outermost layer
+            innerBaffleRadius = np.interp(loc,x,rList[-1]);
+            outerBaffleRadius = nozzle.exterior.geometry.radius(loc);
+            nozzle.baffles.height[i] = outerBaffleRadius - innerBaffleRadius;      
             
         if output == 'verbose':
             sys.stdout.write('Setup Wall complete\n');
+
 
     def ParseDV (self, config, output='verbose'):
         
@@ -2010,6 +2032,7 @@ def NozzleSetup( config_name, flevel, output='verbose' ):
     nozzle.SetupBSplineCoefs(config,output);
     
     # --- Setup materials
+    
     nozzle.SetupMaterials(config,output);
     
     # --- Setup wall layer thickness(es) and material(s)
@@ -2017,9 +2040,11 @@ def NozzleSetup( config_name, flevel, output='verbose' ):
     nozzle.SetupWallLayers(config,output);
     
     # --- Setup baffles
+    
     nozzle.SetupBaffles(config,output);
     
     # --- Setup stringers
+    
     nozzle.SetupStringers(config,output);
     
     # --- Setup DV definition
@@ -2038,7 +2063,7 @@ def NozzleSetup( config_name, flevel, output='verbose' ):
     
     # --- Computer inner wall's B-spline and thermal and load layer thicknesses
     #     B-spline coefs, and thickness node arrays may have been updated by
-    #     the design variables input file
+    #     the design variables input file; update exterior geometry & baffles
     
     nozzle.SetupWall(config,output);
     
