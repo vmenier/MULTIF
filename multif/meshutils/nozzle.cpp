@@ -67,8 +67,8 @@ MOD_INIT(_nozzle_module)
 #include "Context.h"
 #include "gmshLevelset.h"
 
-struct VertexData { int p, mb; double wb; int nb; std::vector<double> t; double tt, tb, ts, ws; };
-struct SegmentData { std::vector<int> m; int ns, ms, nn, mn, sn, mt, tn; };
+struct VertexData { int p, mb; double wb; int nb; std::vector<double> t, tt; double tb, ts, ws; };
+struct SegmentData { std::vector<int> m; int ns, ms, nn, mn, sn; std::vector<int> mt, tn; };
 struct MaterialData
 {
   enum { ISOTROPIC=0, ANISOTROPIC } type;
@@ -139,8 +139,11 @@ void writeAttr(MElement *m, FILE *fp, double scalingFactor, int physicalTag, con
   std::vector<VertexData>::const_iterator it = std::lower_bound(vertices.begin(), vertices.end(), x, cmp);
   int materialId;
   switch(physicalTag) {
-    case 0 : { // thermal layer
-      materialId = 1+(segments.begin()+std::distance(vertices.begin(),it-1))->mt;
+    case 0 : { // thermal inner layer
+      materialId = 1+(segments.begin()+std::distance(vertices.begin(),it-1))->mt[0];
+    } break;
+    case 999 : { // thermal outer layer
+      materialId = 1+(segments.begin()+std::distance(vertices.begin(),it-1))->mt[1];
     } break;
     case 1 : case 2 :  case 3 : { // load layer
       materialId = 1+(segments.begin()+std::distance(vertices.begin(),it-1))->m[0];
@@ -883,18 +886,30 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
     int sn = segmentIt->sn;             // number of transfinite points (radial edges of stiffener)
     double t1 = std::accumulate(vertexIt->t.begin(), vertexIt->t.end(), 0.);         // total thickness of outer structural layer
     double t2 = std::accumulate((vertexIt+1)->t.begin(), (vertexIt+1)->t.end(), 0.); // total thickness of outer structural layer
-    double tt1 = vertexIt->tt;          // thickness of inner thermal insulating layer
-    double tt2 = (vertexIt+1)->tt;      // thickness of inner thermal insulating layer
-    int tn = segmentIt->tn;             // number of transfinite points through thickness of insulating layer in thermal mesh
+    double tt1 = vertexIt->tt[0];       // thickness of inner thermal insulating layer
+    double tt2 = (vertexIt+1)->tt[0];   // total thickness of inner thermal insulating layer
+    int tn_inner = segmentIt->tn[0];    // number of transfinite points through thickness of inner part of insulating layer in thermal mesh
+    int tn_outer = segmentIt->tn[1];    // number of transfinite points through thickness of outer part of insulating layer in thermal mesh
     double angle = 2*M_PI/ns;
 
-    // outside of inner layer / inside of outer layer
+    // middle of inner layer
     cth1 = (segmentIt == segments.begin()) ? dot(edge1->firstDer(0.).unit(),SVector3(1.,0.,0.)) : cth2;
     cth2 = dot(edge1->firstDer(1.).unit(),SVector3(1.,0.,0.)); // cosine of angles between normals and y-axis
+    std::vector<GEdge*> middleInnerLayer;
+    for(unsigned int k=0; k<vertexIt->tt.size()-1; ++k ) {
+      GVertex *vertex3 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+cth1*tt1, (*pointIt1)[2], lc);
+      GVertex *vertex4 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+cth2*tt2, (*pointIt2)[2], lc);
+      for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it)
+        (*it)[1] += (cth1*vertexIt->tt[k] + (cth2*(vertexIt+1)->tt[k] - cth1*vertexIt->tt[k])*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
+      middleInnerLayer.push_back(m->addBSpline(vertex3, vertex4, controlPoints));
+      tt1 += vertexIt->tt[k+1];
+      tt2 += (vertexIt+1)->tt[k+1];
+    }
+    // outside of inner layer / inside of outer layer
     GVertex *vertex3 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+cth1*tt1, (*pointIt1)[2], lc);
     GVertex *vertex4 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+cth2*tt2, (*pointIt2)[2], lc);
     for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it) 
-      (*it)[1] += (cth1*tt1 + (cth2*tt2 - cth1*tt1)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
+      (*it)[1] += (cth1*vertexIt->tt.back() + (cth2*(vertexIt+1)->tt.back() - cth1*vertexIt->tt.back())*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
     GEdge *edge2 = m->addBSpline(vertex3, vertex4, controlPoints);
     // middle of outer layer
     cth3 = (segmentIt == segments.begin()) ? dot(edge2->firstDer(0.).unit(),SVector3(1.,0.,0.)) : cth4;
@@ -924,7 +939,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
       edge11 = m->addBSpline(vertex9, vertex10, controlPoints);
     }
 
-    GEntity *region1, *region2, *region3, *face3;
+    GEntity *region1, *region2, *region3, *region4, *face3;
     // loop over the panels
     for(int i=0; i<ns; ++i) {
       if(i > 0) {
@@ -957,7 +972,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
       // main shell:
       face3 = m->revolve(edge3, p1, p2, angle);
       face3->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
-      face3->cast2Face()->meshAttributes.transfiniteArrangement = 2;
+      face3->cast2Face()->meshAttributes.transfiniteArrangement = 1;
       std::list<GEdge*> edges = face3->cast2Face()->edges();
       for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
         (*it)->meshAttributes.method = MESH_TRANSFINITE;
@@ -986,7 +1001,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
           GEntity *baffleEdge = m->extrude(edge3->getBeginVertex(), p3, p5);
           GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
           baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
-          baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 2;
+          baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 1;
           std::list<GEdge*> edges = baffleFace->cast2Face()->edges();
           for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
             (*it)->meshAttributes.method = MESH_TRANSFINITE;
@@ -1009,7 +1024,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
           GEntity *baffleEdge = m->extrude(edge3->getBeginVertex(), p3, p5);
           GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
           baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
-          baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 2;
+          baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 1;
           std::list<GEdge*> edges = baffleFace->cast2Face()->edges();
           GEdge* edge5;
           for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
@@ -1036,7 +1051,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
             GEntity *baffleEdge = m->extrude(edge5->getBeginVertex(), p3, p5);
             GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
             baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
-            baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 2;
+            baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 1;
             std::list<GEdge*> edges = baffleFace->cast2Face()->edges();
             for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
               (*it)->meshAttributes.method = MESH_TRANSFINITE;
@@ -1066,7 +1081,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
         loop[0].push_back(edge3); loop[0].push_back(edge12); loop[0].push_back(edge11); loop[0].push_back(edge13);
         GEntity *stiffenerFace = m->addPlanarFace(loop);
         stiffenerFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
-        stiffenerFace->cast2Face()->meshAttributes.transfiniteArrangement = 2;
+        stiffenerFace->cast2Face()->meshAttributes.transfiniteArrangement = 1;
         std::list<GEdge*> edges = stiffenerFace->cast2Face()->edges();
         for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
           (*it)->meshAttributes.method = MESH_TRANSFINITE;
@@ -1094,7 +1109,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
           GEntity *baffleEdge = m->extrude(edge3->getEndVertex(), p3, p5);
           GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
           baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
-          baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 2;
+          baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 1;
           std::list<GEdge*> edges = baffleFace->cast2Face()->edges();
           for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
             (*it)->meshAttributes.method = MESH_TRANSFINITE;
@@ -1117,7 +1132,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
           GEntity *baffleEdge = m->extrude(edge3->getEndVertex(), p3, p5);
           GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
           baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
-          baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 2;
+          baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 1;
           std::list<GEdge*> edges = baffleFace->cast2Face()->edges();
           GEdge *edge5;
           for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
@@ -1144,7 +1159,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
             GEntity *baffleEdge = m->extrude(edge5->getBeginVertex(), p3, p5);
             GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
             baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
-            baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 2;
+            baffleFace->cast2Face()->meshAttributes.transfiniteArrangement = 1;
             std::list<GEdge*> edges = baffleFace->cast2Face()->edges();
             for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
               (*it)->meshAttributes.method = MESH_TRANSFINITE;
@@ -1166,8 +1181,9 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
         }
       }
 
-      // thermal model inner layer:
+      // thermal model inside half of inner layer:
       if(tf != 0) {
+        GEdge *edge2 = middleInnerLayer.front();
         if(i==0) {
           GEdge *edge5 = m->addLine(edge1->getEndVertex(), edge2->getEndVertex());
           GEdge *edge6 = m->addLine(edge2->getBeginVertex(), edge1->getBeginVertex());
@@ -1203,13 +1219,13 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
             else if(faceIndex == 1 || faceIndex == 3) {
               switch(edgeIndex) {
                 case 0: case 2: (*it2)->meshAttributes.nbPointsTransfinite = mn; break;
-                case 1: case 3: (*it2)->meshAttributes.nbPointsTransfinite = tn; break;
+                case 1: case 3: (*it2)->meshAttributes.nbPointsTransfinite = tn_inner; break;
               }
             }
             else if(faceIndex == 4 || faceIndex == 5) {
               switch(edgeIndex) {
                 case 0: case 2: (*it2)->meshAttributes.nbPointsTransfinite = nn; break;
-                case 1: case 3: (*it2)->meshAttributes.nbPointsTransfinite = tn; break;
+                case 1: case 3: (*it2)->meshAttributes.nbPointsTransfinite = tn_inner; break;
               }
             }
             (*it2)->meshAttributes.coeffTransfinite = 1.0;
@@ -1224,21 +1240,19 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
             interiorBoundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
             (*it)->addPhysicalEntity(0);
           }
-          if(faceIndex == 2) {
-            (*it)->addPhysicalEntity(1);
-          }
         }
   
         region1->addPhysicalEntity(0);
       }
-  
-      // thermal model inside half of outer layer
+
+      // thermal model outside half of inner layer:
       if(tf != 0) {
+        GEdge *edge1 = middleInnerLayer.front();
         if(i==0) {
-          GEdge *edge7 = m->addLine(edge2->getEndVertex(), edge3->getEndVertex());
-          GEdge *edge8 = m->addLine(edge3->getBeginVertex(), edge2->getBeginVertex());
+          GEdge *edge5 = m->addLine(edge1->getEndVertex(), edge2->getEndVertex());
+          GEdge *edge6 = m->addLine(edge2->getBeginVertex(), edge1->getBeginVertex());
           std::vector<std::vector<GEdge*> > edges(1);
-          edges[0].push_back(edge2); edges[0].push_back(edge7); edges[0].push_back(edge3); edges[0].push_back(edge8);
+          edges[0].push_back(edge1); edges[0].push_back(edge5); edges[0].push_back(edge2); edges[0].push_back(edge6);
           GFace *solidFace = m->addPlanarFace(edges);
           region2 = m->revolve(solidFace, p1, p2, angle);
         }
@@ -1269,29 +1283,32 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
             else if(faceIndex == 1 || faceIndex == 3) {
               switch(edgeIndex) {
                 case 0: case 2: (*it2)->meshAttributes.nbPointsTransfinite = mn; break;
-                case 1: case 3: (*it2)->meshAttributes.nbPointsTransfinite = 2; break; // XXX
+                case 1: case 3: (*it2)->meshAttributes.nbPointsTransfinite = tn_outer; break;
               }
             }
             else if(faceIndex == 4 || faceIndex == 5) {
               switch(edgeIndex) {
                 case 0: case 2: (*it2)->meshAttributes.nbPointsTransfinite = nn; break;
-                case 1: case 3: (*it2)->meshAttributes.nbPointsTransfinite = 2; break; // XXX
+                case 1: case 3: (*it2)->meshAttributes.nbPointsTransfinite = tn_outer; break;
               }
             }
             (*it2)->meshAttributes.coeffTransfinite = 1.0;
           }
+          if(faceIndex == 2) { // note: faceIndex 2 is outside, faceIndex 0 is inside
+            (*it)->addPhysicalEntity(1);
+          }
         }
   
-        region2->addPhysicalEntity(1);
+        region2->addPhysicalEntity(999);
       }
-
-      // thermal model outside half of outer layer
+  
+      // thermal model inside half of outer layer
       if(tf != 0) {
         if(i==0) {
-          GEdge *edge9 = m->addLine(edge3->getEndVertex(), edge4->getEndVertex());
-          GEdge *edge10 = m->addLine(edge4->getBeginVertex(), edge3->getBeginVertex());
+          GEdge *edge7 = m->addLine(edge2->getEndVertex(), edge3->getEndVertex());
+          GEdge *edge8 = m->addLine(edge3->getBeginVertex(), edge2->getBeginVertex());
           std::vector<std::vector<GEdge*> > edges(1);
-          edges[0].push_back(edge3); edges[0].push_back(edge9); edges[0].push_back(edge4); edges[0].push_back(edge10);
+          edges[0].push_back(edge2); edges[0].push_back(edge7); edges[0].push_back(edge3); edges[0].push_back(edge8);
           GFace *solidFace = m->addPlanarFace(edges);
           region3 = m->revolve(solidFace, p1, p2, angle);
         }
@@ -1332,6 +1349,59 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
               }
             }
             (*it2)->meshAttributes.coeffTransfinite = 1.0;
+          }
+        }
+  
+        region3->addPhysicalEntity(1);
+      }
+
+      // thermal model outside half of outer layer
+      if(tf != 0) {
+        if(i==0) {
+          GEdge *edge9 = m->addLine(edge3->getEndVertex(), edge4->getEndVertex());
+          GEdge *edge10 = m->addLine(edge4->getBeginVertex(), edge3->getBeginVertex());
+          std::vector<std::vector<GEdge*> > edges(1);
+          edges[0].push_back(edge3); edges[0].push_back(edge9); edges[0].push_back(edge4); edges[0].push_back(edge10);
+          GFace *solidFace = m->addPlanarFace(edges);
+          region4 = m->revolve(solidFace, p1, p2, angle);
+        }
+        else {
+          std::list<GFace*> faces = region4->cast2Region()->faces();
+          GFace *solidFace = faces.back();
+          region4 = m->revolve(solidFace, p1, p2, angle);
+        }
+
+        region4->cast2Region()->meshAttributes.method = MESH_TRANSFINITE;
+        region4->cast2Region()->meshAttributes.recombine3D = 1;
+  
+        std::list<GFace*> faces = region4->cast2Region()->faces();
+        for(std::list<GFace*>::iterator it = faces.begin(); it != faces.end(); ++ it) {
+          (*it)->meshAttributes.method = MESH_TRANSFINITE;
+          (*it)->meshAttributes.recombine = 1;
+          int faceIndex = std::distance(faces.begin(),it);
+          std::list<GEdge*> edges = (*it)->edges();
+          for(std::list<GEdge*>::iterator it2 = edges.begin(); it2 != edges.end(); ++ it2) {
+            (*it2)->meshAttributes.method = MESH_TRANSFINITE;
+            int edgeIndex = std::distance(edges.begin(),it2);
+            if(faceIndex == 0 || faceIndex == 2) {
+              switch(edgeIndex) {
+                case 0: case 2: (*it2)->meshAttributes.nbPointsTransfinite = mn; break;
+                case 1: case 3: (*it2)->meshAttributes.nbPointsTransfinite = nn; break;
+              }
+            }
+            else if(faceIndex == 1 || faceIndex == 3) {
+              switch(edgeIndex) {
+                case 0: case 2: (*it2)->meshAttributes.nbPointsTransfinite = mn; break;
+                case 1: case 3: (*it2)->meshAttributes.nbPointsTransfinite = 2; break; // XXX
+              }
+            }
+            else if(faceIndex == 4 || faceIndex == 5) {
+              switch(edgeIndex) {
+                case 0: case 2: (*it2)->meshAttributes.nbPointsTransfinite = nn; break;
+                case 1: case 3: (*it2)->meshAttributes.nbPointsTransfinite = 2; break; // XXX
+              }
+            }
+            (*it2)->meshAttributes.coeffTransfinite = 1.0;
   
             if(faceIndex == 2) { // note: faceIndex 2 is outside, faceIndex 0 is inside
               exteriorBoundaryTags.push_back(std::make_pair((*it2)->getBeginVertex()->geomType(),(*it2)->getBeginVertex()->tag()));
@@ -1345,7 +1415,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
           }
         }
   
-        region3->addPhysicalEntity(3);
+        region4->addPhysicalEntity(3);
       }
 
     }
@@ -1375,8 +1445,8 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
 {
   std::ifstream fin("NOZZLE.txt");
 
-  int np, nv, nm; double lc; int bf, tf, nl;
-  fin >> np >> nv >> nm >> lc >> bf >> tf >> nl;
+  int np, nv, nm; double lc; int bf, tf, nl, nlt;
+  fin >> np >> nv >> nm >> lc >> bf >> tf >> nl >> nlt;
   
   std::vector<std::vector<double> > points;
   for(int i=0; i<np; ++i) {
@@ -1388,13 +1458,19 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
   std::vector<VertexData> vertices(nv);
   for(int j=0; j<nv; ++j) {
     VertexData &v = vertices[j];
-    fin >> v.p >> v.wb >> v.mb >> v.nb; for(int k=0; k<nl; ++k) { double tk; fin >> tk; v.t.push_back(tk); } fin >> v.tt >> v.tb >> v.ts >> v.ws;
+    fin >> v.p >> v.wb >> v.mb >> v.nb;
+    for(int k=0; k<nl; ++k) { double tk; fin >> tk; v.t.push_back(tk); }
+    for(int k=0; k<nlt; ++k) { double tt; fin >> tt; v.tt.push_back(tt); }
+    fin >> v.tb >> v.ts >> v.ws;
   }
 
   std::vector<SegmentData> segments(nv-1);
   for(int j=0; j<nv-1; ++j) {
     SegmentData &s = segments[j];
-    for(int k=0; k<nl; ++k) { int mk; fin >> mk; s.m.push_back(mk); } fin >> s.ns >> s.ms >> s.nn >> s.mn >> s.sn >> s.mt >> s.tn;
+    for(int k=0; k<nl; ++k) { int mk; fin >> mk; s.m.push_back(mk); }
+    fin >> s.ns >> s.ms >> s.nn >> s.mn >> s.sn;
+    for(int k=0; k<nlt; ++k) { int mt; fin >> mt; s.mt.push_back(mt); }
+    for(int k=0; k<nlt; ++k) { int tn; fin >> tn; s.tn.push_back(tn); }
   }
 
   std::vector<MaterialData> materials(nm);

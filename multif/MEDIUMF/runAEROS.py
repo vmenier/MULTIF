@@ -116,7 +116,8 @@ def runAEROS ( nozzle ):
     lc   = 0.02; # Characteristic length (i.e. element size)
     Ns   = max(2,nozzle.stringers.n); # number of panels (i.e. circumferential subdivisions of the mesh)
     Mn   = max(2,(2*math.pi*nozzle.wall.geometry.radius(points[0])/Ns)/lc+1); # Number of nodes in circumferential direction per panel
-    Tn   = 4;  # Number of nodes through thickness of thermal insulating layer
+    Tn1  = 4;  # Number of nodes through thickness of thermal insulating layer
+    Tn2  = 2;  # Number of nodes through thickness of gap between thermal and load layers
     Sn   = max(nozzle.stringers.height.radius(0)/lc+1,2) if nozzle.stringers.n > 0 else 0; # number of nodes on radial edge of stringers
     
     ## --- How to get x, y, P, T :
@@ -136,9 +137,11 @@ def runAEROS ( nozzle ):
     Mb = materialNames.index(nozzle.baffles.material.name) if len(nozzle.baffles.location) > 0 else -1
     # material id of stringers
     Ms = materialNames.index(nozzle.stringers.material.name) if nozzle.stringers.n > 0 else -1
+    # XXX material id of air in the gap between thermal and load layers
+    Mg = materialNames.index(nozzle.wall.layer[0].material.name)
     
     f1 = open("NOZZLE.txt", 'w');
-    print >> f1, "%d %d %d %f %d %d %d" % (len(points), len(vertices), len(nozzle.materials), lc, boundaryFlag, thermalFlag, 3);
+    print >> f1, "%d %d %d %f %d %d %d %d" % (len(points), len(vertices), len(nozzle.materials), lc, boundaryFlag, thermalFlag, 3, 2);
     # points
     for i in range(len(points)):
         print >> f1, "%lf %lf" % (points[i], nozzle.wall.geometry.radius(points[i]));
@@ -147,20 +150,21 @@ def runAEROS ( nozzle ):
         Wb = nozzle.baffles.height[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # height of baffle
         Ws = nozzle.stringers.height.radius(vertices[i]) if nozzle.stringers.n > 0 else 0; # height of stringer
         Nb = max((Wb-Ws)/lc+1,2); # number of nodes on radial edge of baffle (not including overlap with stringer)
+        Tg = 0.005 # XXX thickness of gap between thermal and load layers
         Tb = nozzle.baffles.thickness[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # thickness of baffle
         Ts = nozzle.stringers.thickness.radius(vertices[i]) if nozzle.stringers.n > 0 else 0; # thickness of stringers
-        print >> f1, "%d %f %d %d %lf %lf %lf %lf %lf %lf %lf" % (points.index(vertices[i]), Wb, Mb, Nb,
+        print >> f1, "%d %f %d %d %lf %lf %lf %lf %lf %lf %lf %lf" % (points.index(vertices[i]), Wb, Mb, Nb,
                  nozzle.wall.layer[1].thickness.radius(vertices[i]), nozzle.wall.layer[2].thickness.radius(vertices[i]),
                  nozzle.wall.layer[3].thickness.radius(vertices[i]), nozzle.wall.layer[0].thickness.radius(vertices[i]),
-                 Tb, Ts, Ws);
+                 Tg, Tb, Ts, Ws);
     # panels
     for i in range(1,len(vertices)):
         Nn = max(2,(vertices[i]-vertices[i-1])/lc+1); # number of nodes on longitudial edge
-        print >> f1, "%d %d %d %d %d %d %d %d %d %d" % (M[1], M[2], M[3], Ns, Ms, Nn, Mn, Sn, M[0], Tn);
+        print >> f1, "%d %d %d %d %d %d %d %d %d %d %d %d" % (M[1], M[2], M[3], Ns, Ms, Nn, Mn, Sn, M[0], Mg, Tn1, Tn2);
     # material properties
     for k in nozzle.materials:
       if nozzle.materials[k].type == 'ISOTROPIC':
-        if nozzle.materials[k].name == 'CMC':
+        if nozzle.materials[k].name == 'CMC': # XXX also include AIR here
             print >> f1, "ISOTROPIC 0 0 %lf 0 %lf 0" % (nozzle.materials[k].getDensity(),
                      nozzle.materials[k].getThermalConductivity())
         else:
