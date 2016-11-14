@@ -51,6 +51,7 @@ MOD_INIT(_nozzle_module)
 #include <iomanip>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <list>
 #include <numeric>
 #include <set>
