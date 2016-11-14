@@ -956,9 +956,37 @@ class Nozzle:
         nozzle.stringers = component.Stringers(n);
         nozzle.stringers.material = nozzle.materials[material];
         
+        if ( 'STRINGERS_BREAK_LOCATIONS' not in config or 
+             config['STRINGERS_BREAK_LOCATIONS'] == 'BAFFLES_LOCATION' ):
+                 if output == 'verbose':
+                     sys.stdout.write('Stringer break locations will be set' \
+                       ' from baffle locations\n');
+                 key = '';
+                 k_loc = 'BAFFLES_LOCATION';
+                 if ( 'STRINGERS_HEIGHT_VALUES' not in config or
+                     config['STRINGERS_HEIGHT_VALUES'] == 'BAFFLES_HEIGHT' ):
+                         if output == 'verbose':
+                             sys.stdout.write('Stringer heights will be set'  \
+                               ' from baffle heights\n');
+                         h_val = 'BAFFLES_HEIGHT';
+                 else:
+                     h_val = 'STRINGERS_HEIGHT_VALUES';
+                 t_val = 'STRINGERS_THICKNESS_VALUES';
+        else:
+            if ( 'STRINGERS_HEIGHT_VALUES' not in config or
+                config['STRINGERS_HEIGHT_VALUES'] == 'BAFFLES_HEIGHT' ):
+                    sys.stderr.write('\n ## ERROR: Stringer height values '   \
+                      'cannot be set to baffle height values if stringers '   \
+                      'break locations are not set to baffles location.\n\n')
+                    sys.exit(0);
+            key = 'STRINGERS';
+            k_loc = '_BREAK_LOCATIONS';
+            t_val = '_THICKNESS_VALUES';
+            h_val = '_HEIGHT_VALUES';
+        
         # Assign thickness distribution
         try:
-            nozzle.stringers.thicknessNodes = self.ParseThickness(config,'STRINGERS',loc='_BREAK_LOCATIONS',val='_THICKNESS_VALUES');
+            nozzle.stringers.thicknessNodes = self.ParseThickness(config,key,loc=k_loc,val=t_val);
         except:
             sys.stderr.write('\n ## ERROR : Thickness definition '   \
                  'could not be parsed for STRINGERS.\n\n');
@@ -966,7 +994,7 @@ class Nozzle:
         
         # Assign height distribution
         try:
-            nozzle.stringers.heightNodes = self.ParseThickness(config,'STRINGERS',loc='_BREAK_LOCATIONS',val='_HEIGHT_VALUES');
+            nozzle.stringers.heightNodes = self.ParseThickness(config,key,loc=k_loc,val=h_val);
         except:
             sys.stderr.write('\n ## ERROR : Height definition '   \
                  'could not be parsed for STRINGERS.\n\n');
@@ -1037,7 +1065,7 @@ class Nozzle:
         shapeDefinition = np.array([[0., 0.1548, nozzle.length],
                                     [0.4244, 0.4244, exitHeight + 0.012]]);
         nozzle.exterior.geometry = geometry.PiecewiseLinear(shapeDefinition);
-            
+          
         # --- Setup thickness distribution for stringers
         tsize = len(nozzle.stringers.thicknessNodes);
         thicknessNodeArray = np.zeros(shape=(2,tsize))
@@ -1054,20 +1082,49 @@ class Nozzle:
             thicknessNodeArray[1][j] = nozzle.stringers.heightNodes[j][1];    
         nozzle.stringers.height = geometry.PiecewiseLinear(thicknessNodeArray);        
             
-        # --- Rescale x-coordinates of baffles            
+        # --- Rescale x-coordinates of baffles
         nozzle.baffles.location = [q*nozzle.length for q in nozzle.baffles.location];
         
         # --- Update height of baffles to coincide with exterior wall shape
         n = 10000 # 1e4
         x = np.linspace(0,nozzle.length,n)
+        rList = geometry.layerCoordinatesInGlobalFrame(nozzle,x);
         for i in range(len(nozzle.baffles.location)):
             loc = nozzle.baffles.location[i];
-            rList = geometry.layerCoordinatesInGlobalFrame(nozzle,x);
             # inner baffle radius is outside radius of outermost layer
-            innerBaffleRadius = np.interp(loc,x,rList[-1]);
+            if nozzle.stringers.n > 0:
+                innerBaffleRadius = np.interp(loc,x,rList[-2]);
+            else:
+                innerBaffleRadius = np.interp(loc,x,rList[-1]);
             outerBaffleRadius = nozzle.exterior.geometry.radius(loc);
-            nozzle.baffles.height[i] = outerBaffleRadius - innerBaffleRadius;      
+            nozzle.baffles.height[i] = outerBaffleRadius - innerBaffleRadius;
+            sys.stdout.write('Baffle %i height resized to %f\n' % 
+              (i+1,nozzle.baffles.height[i]));
             
+        # --- If stringers are dependent on baffles, re-update stringers
+        if ( 'STRINGERS_HEIGHT_VALUES' not in config or
+            config['STRINGERS_HEIGHT_VALUES'] == 'BAFFLES_HEIGHT' ):  
+                for i in range(len(nozzle.stringers.heightNodes)):
+                    nozzle.stringers.heightNodes[i][1] = nozzle.baffles.height[i];
+       
+        # --- Setup height distribution for stringers
+        tsize = len(nozzle.stringers.heightNodes);
+        thicknessNodeArray = np.zeros(shape=(2,tsize))
+        for j in range(tsize):
+            thicknessNodeArray[0][j] = nozzle.stringers.heightNodes[j][0]*nozzle.length;
+            thicknessNodeArray[1][j] = nozzle.stringers.heightNodes[j][1];    
+        nozzle.stringers.height = geometry.PiecewiseLinear(thicknessNodeArray);        
+        
+        # --- Check that stringer heights are not above baffle heights
+        for i in range(len(nozzle.baffles.location)):
+            baffleLocation = nozzle.baffles.location[i];
+            baffleHeight = nozzle.baffles.height[i];
+            stringerHeight = nozzle.stringers.height.radius(baffleLocation);
+            if stringerHeight > baffleHeight:
+                sys.stderr.write('\n ## ERROR: Stringers must have heights'  \
+                  ' that remain below the baffle height.\n\n');
+                sys.exit(0);
+
         if output == 'verbose':
             sys.stdout.write('Setup Wall complete\n');
 
@@ -1210,6 +1267,15 @@ class Nozzle:
                         prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
                         nozzle.baffles.location[iCoord] = nozzle.DV_List[id_dv];
                         NbrChanged = NbrChanged+1;
+                        # If stringer location dependent on baffle location
+                        if ('STRINGERS_BREAK_LOCATIONS' not in config or 
+                            config['STRINGERS_BREAK_LOCATIONS'] == 'BAFFLES_LOCATION'):
+                                prt_name.append('stringer location #%d' % (iCoord+1));
+                                prt_basval.append('%.4lf'% nozzle.baffles.location[iCoord]);
+                                prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                                nozzle.stringers.thicknessNodes[iCoord][0] = nozzle.DV_List[id_dv];
+                                nozzle.stringers.heightNodes[iCoord][0] = nozzle.DV_List[id_dv];                        
+                                NbrChanged = NbrChanged+1;
                     elif id_dv < nozzle.DV_Head[iTag] + brk2:
                         prt_name.append('baffle thickness #%d' % (iCoord+1-lsize));
                         prt_basval.append('%.4lf'% nozzle.baffles.thickness[iCoord-lsize]);
@@ -1221,7 +1287,15 @@ class Nozzle:
                         prt_basval.append('%.4lf'% nozzle.baffles.height[iCoord-2*lsize]);
                         prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
                         nozzle.baffles.height[iCoord-2*lsize] = nozzle.DV_List[id_dv];
-                        NbrChanged = NbrChanged+1;                        
+                        NbrChanged = NbrChanged+1;   
+                        # If stringer height depends on baffle height
+                        if ('STRINGERS_HEIGHT_VALUES' not in config or 
+                            config['STRINGERS_HEIGHT_VALUES'] == 'BAFFLES_HEIGHT'):
+                                prt_name.append('stringer height #%d' % (iCoord+1-2*lsize));
+                                prt_basval.append('%.4lf'% nozzle.baffles.height[iCoord-2*lsize]);
+                                prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                                nozzle.stringers.heightNodes[iCoord-2*lsize][1] = nozzle.DV_List[id_dv];                     
+                                NbrChanged = NbrChanged+1;                        
                 continue;
                 
             if Tag == 'BAFFLES_LOCATION':
@@ -1232,6 +1306,15 @@ class Nozzle:
                     prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
                     nozzle.baffles.location[iCoord] = nozzle.DV_List[id_dv];
                     NbrChanged = NbrChanged+1;
+                    # If stringer location dependent on baffle location
+                    if ('STRINGERS_BREAK_LOCATIONS' not in config or 
+                        config['STRINGERS_BREAK_LOCATIONS'] == 'BAFFLES_LOCATION'):
+                            prt_name.append('stringer location #%d' % (iCoord+1));
+                            prt_basval.append('%.4lf'% nozzle.baffles.location[iCoord]);
+                            prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                            nozzle.stringers.thicknessNodes[iCoord][0] = nozzle.DV_List[id_dv];
+                            nozzle.stringers.heightNodes[iCoord][0] = nozzle.DV_List[id_dv];                        
+                            NbrChanged = NbrChanged+1;                    
                 continue;
                
             if Tag == 'BAFFLES_HEIGHT':
@@ -1242,6 +1325,14 @@ class Nozzle:
                     prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
                     nozzle.baffles.height[iCoord] = nozzle.DV_List[id_dv];
                     NbrChanged = NbrChanged+1;
+                    # If stringer height depends on baffle height
+                    if ('STRINGERS_HEIGHT_VALUES' not in config or 
+                        config['STRINGERS_HEIGHT_VALUES'] == 'BAFFLES_HEIGHT'):
+                            prt_name.append('stringer height #%d' % (iCoord+1));
+                            prt_basval.append('%.4lf'% nozzle.baffles.height[iCoord]);
+                            prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                            nozzle.stringers.heightNodes[iCoord][1] = nozzle.DV_List[id_dv];                     
+                            NbrChanged = NbrChanged+1;
                 continue;
             
             if Tag == 'BAFFLES_THICKNESS':

@@ -447,13 +447,18 @@ def localToGlobalCoordConversion(x,rLower,nUpper,drdxLower):
     return rUpper
 
 # Calculate the (x,r) coordinates for the inside wall shape, as well each layer
-# thickness given vector x for interpolation. As x decreases in length and the 
-# number of layers increases, this function will degrade in accuracy due to
-# approximations of gradients and function values.
+# thickness and the stringers (if any) given vector x for interpolation. As x 
+# decreases in length and the number of layers increases, this function will 
+# degrade in accuracy due to approximations of gradients and function values. 
+# The flag specifies whether stringers should be included.
 def layerCoordinatesInGlobalFrame(nozzle,x):
 
     rList = list()
-    for i in range(len(nozzle.wall.layer)):
+    if nozzle.stringers.n > 0:
+        N = len(nozzle.wall.layer) + 1
+    else:
+        N = len(nozzle.wall.layer)
+    for i in range(N):
         if i == 0:
             lower = nozzle.wall.geometry # original normal coordinates (x-r)
             rLower = lower.radius(x)
@@ -469,7 +474,10 @@ def layerCoordinatesInGlobalFrame(nozzle,x):
             drdxTemp = np.hstack((drdxTemp[0],drdxTemp,drdxTemp[-1]))
             drdxLower = np.interp(x,xTemp,drdxTemp)
         
-        upper = nozzle.wall.layer[i].thickness
+        if i < len(nozzle.wall.layer): # wall layer
+            upper = nozzle.wall.layer[i].thickness
+        else: # stringers
+            upper = nozzle.stringers.height
         nUpper = upper.radius(x)
     
         rUpper = localToGlobalCoordConversion(x,rLower,nUpper,drdxLower)
@@ -477,7 +485,9 @@ def layerCoordinatesInGlobalFrame(nozzle,x):
         
     return rList
 
-# Calculate and return volume and mass of nozzle given fully parameterized
+    
+# Calculate and return volume and mass of nozzle and structure (stringers &
+# baffles) given fully parameterized
 # nozzle. Assumes piecewise-linear layer thickness definitions. On the baseline
 # geometry, using n = 1e4 results in ~0.02% error in gradients with respect
 # to some inner wall B-spline coefficients (compared to the derivatives
@@ -503,15 +513,18 @@ def calcVolumeAndMass(nozzle):
             x = np.hstack((x[:-1],[xHit[i],xHit[i+1]]))
         else:
             x = np.hstack((x[:-1],xTemp))
+    # Obtain radii of layers & stringers
     radiusList = layerCoordinatesInGlobalFrame(nozzle,x)
     
-    # Now calculate volume and mass
+    # Now calculate volume and mass for nozzle layers
+    # Accurate so long as layer is thin! (better approximates composite manufacturing)
     s = list()
     V = list()
     for i in range(len(nozzle.wall.layer)):
         midpoint = (radiusList[i+1] + radiusList[i])/2
         ds = np.sqrt( (midpoint[1:] - midpoint[:-1])**2 + (x[1:] - x[:-1])**2 )
-        xMid = x[1:] - x[:-1]
+        #xMid = x[1:] - x[:-1]
+        xMid = (x[1:] + x[:-1])/2
         mMid = np.interp(xMid,x,midpoint)
         dV = 2*np.pi*mMid*nozzle.wall.layer[i].thickness.radius(xMid)*ds
         #print 'Minimum ds is %e' % min(ds)
@@ -521,6 +534,29 @@ def calcVolumeAndMass(nozzle):
     m = list()
     for i in range(len(nozzle.wall.layer)):
         m.append(nozzle.wall.layer[i].material.getDensity()*V[i])
+
+    # Calculate volume and mass for stringers
+    if nozzle.stringers.n > 0:
+        deltaR = radiusList[-1] - radiusList[-2]
+        xMid = (x[1:] + x[:-1])/2
+        dr = np.interp(xMid,x,deltaR)
+        dw = nozzle.stringers.thickness.radius(xMid)
+        dx = x[1:] - x[:-1]
+        dV = dr*dw*dx
+        V.append(nozzle.stringers.n*np.sum(dV))
+        m.append(V[-1]*nozzle.stringers.material.getDensity())
+    
+    # Calculate volume and mass for baffles
+    for i in range(nozzle.baffles.n):
+        # baffles connect to outside of nozzle wall
+        if nozzle.stringers.n > 0: # stringer radius is returned
+            rInner = np.interp(nozzle.baffles.location[i],x,radiusList[-2])
+        else: # no stringer radius is returned; last entry is last layer
+            rInner = np.interp(nozzle.baffles.location[i],x,radiusList[-1])
+        rOuter = rInner + nozzle.baffles.height[i]
+        V.append(np.pi*(rOuter**2 - rInner**2)*nozzle.baffles.thickness[i])
+        # All baffles have the same fixed ratio panel material
+        m.append(V[-1]*nozzle.baffles.material.getDensity())
     
     return V, m
 
