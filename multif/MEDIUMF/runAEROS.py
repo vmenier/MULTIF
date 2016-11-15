@@ -33,26 +33,26 @@ def runAEROS ( nozzle ):
     #    print 'thickness node x-coordinate: {} m'.format(nozzle.wall.layer[i].thickness.nodes[0,:])
     #    print 'thickness node local n-coordinate: {} m'.format(nozzle.wall.layer[i].thickness.nodes[1,:])
     #    print '\n'
-    print '--- Baffles:'
-    print 'number: %i' % nozzle.baffles.n
-    print 'material: %s' % nozzle.baffles.material.name
-    print 'layer 1: %s (ratio: %f)' % (nozzle.baffles.material.layer[0].material.name,nozzle.baffles.material.layer[0].ratio)
-    print 'layer 3: %s (ratio: %f)' % (nozzle.baffles.material.layer[1].material.name,nozzle.baffles.material.layer[1].ratio)
-    print 'layer 4: %s (ratio: %f)' % (nozzle.baffles.material.layer[2].material.name,nozzle.baffles.material.layer[2].ratio)
-    print 'location (x-coordinate): {} m'.format(nozzle.baffles.location)
-    print 'thickness: {} m'.format(nozzle.baffles.thickness)
-    print 'height: {} m'.format(nozzle.baffles.height)
-    print '\nFor example to access material properties of layer in baffle:'
-    print 'elastic modulus layer 1: {} Pa'.format(nozzle.baffles.material.layer[0].material.getElasticModulus())
-    print ''
-    print '--- Stringers:'
-    print 'number: %i' % nozzle.stringers.n
-    print 'material: %s' % nozzle.stringers.material.name
-    print 'thickness node x-coordinate: {} m'.format(nozzle.stringers.thickness.nodes[0,:])
-    print 'thickness node local n-coordinate: {} m'.format(nozzle.stringers.thickness.nodes[1,:])
-    print 'height node x-coordinate: {} m'.format(nozzle.stringers.height.nodes[0,:])
-    print 'height node local n-coordinate: {} m'.format(nozzle.stringers.height.nodes[1,:])    
-    print '\n' 
+    #print '--- Baffles:'
+    #print 'number: %i' % nozzle.baffles.n
+    #print 'material: %s' % nozzle.baffles.material.name
+    #print 'layer 1: %s (ratio: %f)' % (nozzle.baffles.material.layer[0].material.name,nozzle.baffles.material.layer[0].ratio)
+    #print 'layer 3: %s (ratio: %f)' % (nozzle.baffles.material.layer[1].material.name,nozzle.baffles.material.layer[1].ratio)
+    #print 'layer 4: %s (ratio: %f)' % (nozzle.baffles.material.layer[2].material.name,nozzle.baffles.material.layer[2].ratio)
+    #print 'location (x-coordinate): {} m'.format(nozzle.baffles.location)
+    #print 'thickness: {} m'.format(nozzle.baffles.thickness)
+    #print 'height: {} m'.format(nozzle.baffles.height)
+    #print '\nFor example to access material properties of layer in baffle:'
+    #print 'elastic modulus layer 1: {} Pa'.format(nozzle.baffles.material.layer[0].material.getElasticModulus())
+    #print ''
+    #print '--- Stringers:'
+    #print 'number: %i' % nozzle.stringers.n
+    #print 'material: %s' % nozzle.stringers.material.name
+    #print 'thickness node x-coordinate: {} m'.format(nozzle.stringers.thickness.nodes[0,:])
+    #print 'thickness node local n-coordinate: {} m'.format(nozzle.stringers.thickness.nodes[1,:])
+    #print 'height node x-coordinate: {} m'.format(nozzle.stringers.height.nodes[0,:])
+    #print 'height node local n-coordinate: {} m'.format(nozzle.stringers.height.nodes[1,:])    
+    #print '\n' 
     
     # aside: to easily calculate wall shape or thickness as a function of the
     # x-coordinate in an item's local coordinates, use the radius method
@@ -136,13 +136,11 @@ def runAEROS ( nozzle ):
     for i in range(len(nozzle.wall.layer)):
         if i != 1: # skip the air gap layer
             M.append(materialNames.index(nozzle.wall.layer[i].material.name));
-    #M = [materialNames.index(nozzle.wall.layer[i].material.name) for i in range(len(nozzle.wall.layer))]
+    M = [materialNames.index(nozzle.wall.layer[i].material.name) for i in range(len(nozzle.wall.layer))]
     # material id of baffles
     Mb = materialNames.index(nozzle.baffles.material.name) if len(nozzle.baffles.location) > 0 else -1
     # material id of stringers
     Ms = materialNames.index(nozzle.stringers.material.name) if nozzle.stringers.n > 0 else -1
-    # material id of air in the gap between thermal and load layers
-    Mg = materialNames.index(nozzle.wall.layer[1].material.name)
     
     f1 = open("NOZZLE.txt", 'w');
     print >> f1, "%d %d %d %f %d %d %d %d" % (len(points), len(vertices), len(nozzle.materials), lc, boundaryFlag, thermalFlag, 3, 2);
@@ -164,14 +162,14 @@ def runAEROS ( nozzle ):
     # panels
     for i in range(1,len(vertices)):
         Nn = max(2,(vertices[i]-vertices[i-1])/lc+1); # number of nodes on longitudial edge
-        print >> f1, "%d %d %d %d %d %d %d %d %d %d %d %d" % (M[1], M[2], M[3], Ns, Ms, Nn, Mn, Sn, M[0], Mg, Tn1, Tn2);
+        print >> f1, "%d %d %d %d %d %d %d %d %d %d %d %d" % (M[2], M[3], M[4], Ns, Ms, Nn, Mn, Sn, M[0], M[1], Tn1, Tn2);
     # material properties
     for k in nozzle.materials:
       if nozzle.materials[k].type == 'ISOTROPIC':
         if nozzle.materials[k].name == 'CMC':
             print >> f1, "ISOTROPIC 0 0 %lf 0 %lf 0" % (nozzle.materials[k].getDensity(),
                      nozzle.materials[k].getThermalConductivity())                     
-        if nozzle.materials[k].name == 'AIR':
+        elif nozzle.materials[k].name == 'AIR':
             print >> f1, "ISOTROPIC 0 0 %lf 0 %lf 0" % (nozzle.materials[k].getDensity(),
                      nozzle.materials[k].getThermalConductivity())   
         else:
