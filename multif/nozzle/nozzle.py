@@ -458,42 +458,52 @@ class Nozzle:
         
           mission_id = int(config["MISSION"]);
 
-          if(mission_id == 1): # static sea-level thrust case
-              altitude = 0.
-              mach     = 0.01
-              inletTs  = 888.3658
-              inletPs  = 3.0550e5
-          elif(mission_id == 2): # intermediate case
-              altitude = 15000.
-              mach     = 0.5
-              inletTs  = 942.9857
-              inletPs  = 2.3227e5
-          elif(mission_id == 3): # high speed, high altitude case
-              altitude = 35000.
-              mach     = 0.9
-              inletTs  = 1021.5
-              inletPs  = 1.44925e5
-          elif(mission_id == 4): # case with shock in nozzle
-              altitude = 0.
-              mach     = 0.01
-              inletTs  = 900.
-              inletPs  = 1.3e5
-          elif(mission_id == 5): # subsonic flow
-              altitude = 0.
-              mach     = 0.01
-              inletTs  = 900.
-              inletPs  = 1.1e5
-          else : 
-              sys.stderr.write('\n ## ERROR : UNKNOWN MISSION ID %d !! '     \
-                               '\n\n' % mission);
-              sys.exit(0);
+          if(mission_id == 0): # standard top-of-climb, 40,000 ft case
+              altitude = 40000. # ft
+              mach     = 0.511
+              inletTs  = 955.0 # K
+              inletPs  = 97585. # Pa
+          else:
+              sys.stdout.write('\n ## WARNING : Previously available '        \
+                'missions (1 through 5) are available for backwards '         \
+                'compatability, but you should be using MISSION= 0 which '    \
+                'corresponds to the conditions at max climb rate.\n\n');
+              if(mission_id == 1): # static sea-level thrust case
+                  altitude = 0.
+                  mach     = 0.01
+                  inletTs  = 888.3658
+                  inletPs  = 3.0550e5
+              elif(mission_id == 2): # intermediate case
+                  altitude = 15000.
+                  mach     = 0.5
+                  inletTs  = 942.9857
+                  inletPs  = 2.3227e5
+              elif(mission_id == 3): # high speed, high altitude case
+                  altitude = 35000.
+                  mach     = 0.9
+                  inletTs  = 1021.5
+                  inletPs  = 1.44925e5
+              elif(mission_id == 4): # case with shock in nozzle
+                  altitude = 0.
+                  mach     = 0.01
+                  inletTs  = 900.
+                  inletPs  = 1.3e5
+              elif(mission_id == 5): # subsonic flow
+                  altitude = 0.
+                  mach     = 0.01
+                  inletTs  = 900.
+                  inletPs  = 1.1e5
+              else : 
+                  sys.stderr.write('\n ## ERROR : UNKNOWN MISSION ID %d !! '     \
+                                   '\n\n' % mission);
+                  sys.exit(0);
  
         else: # user must specify altitude, mach, inletTs, and inletPs
           
           if( ('INLET_PSTAG' in config) and ('INLET_TSTAG' in config) 
           and ('ALTITUDE' in config) and ('MACH' in config)):
           
-            mission_id = 0; # to denote custom mission
+            mission_id = -1; # to denote custom mission
             altitude = float(config['ALTITUDE']);
             mach = float(config['MACH']);
             inletTs = float(config['INLET_TSTAG']);
@@ -516,7 +526,12 @@ class Nozzle:
             hInf = float(config['HEAT_XFER_COEF_TO_ENV'].strip('()'));
         else:
             hInf = 7.2; # W/m^2/K
-        nozzle.environment = environment.Environment(altitude,hInf);
+        if mission_id == 0: # set pressure/temp manually so exact pressure and temp are known
+            nozzle.environment = environment.Environment(altitude,hInf);
+            nozzle.environment.setPressure(18754.);
+            nozzle.environment.setTemperature(216.7);
+        else:
+            nozzle.environment = environment.Environment(altitude,hInf);
 
         # --- Setup fluid
 
