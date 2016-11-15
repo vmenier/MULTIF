@@ -87,13 +87,18 @@ class Nozzle:
             dv_keys.append(['WALL']);
             dv_n.append([len(nozzle.wall.coefs)])
             for i in range(len(nozzle.wall.layer)): # assume piecewise linear
-                ltemp = [nozzle.wall.layer[i].name, 
-                         nozzle.wall.layer[i].name + '_THICKNESS_LOCATIONS', 
-                         nozzle.wall.layer[i].name + '_THICKNESS_VALUES'];
-                dv_keys.append(ltemp);
-                dv_n.append([2*len(nozzle.wall.layer[i].thicknessNodes),
-                             len(nozzle.wall.layer[i].thicknessNodes),
-                             len(nozzle.wall.layer[i].thicknessNodes)]);
+                if nozzle.wall.layer[i].param == 'PIECEWISE_LINEAR':
+                    ltemp = [nozzle.wall.layer[i].name, 
+                             nozzle.wall.layer[i].name + '_THICKNESS_LOCATIONS', 
+                             nozzle.wall.layer[i].name + '_THICKNESS_VALUES'];
+                    dv_keys.append(ltemp);
+                    dv_n.append([2*len(nozzle.wall.layer[i].thicknessNodes),
+                                 len(nozzle.wall.layer[i].thicknessNodes),
+                                 len(nozzle.wall.layer[i].thicknessNodes)]);
+                elif nozzle.wall.layer[i].param == 'CONSTANT':
+                    ltemp = [nozzle.wall.layer[i].name + '_THICKNESS'];
+                    dv_keys.append(ltemp);
+                    dv_n.append([1]);
             dv_keys.append(['BAFFLES','BAFFLES_LOCATION','BAFFLES_THICKNESS',
                             'BAFFLES_HEIGHT']);
             dv_n.append([3*nozzle.baffles.n,nozzle.baffles.n,
@@ -759,11 +764,14 @@ class Nozzle:
                     layer.thicknessNodes = [[0.0,0.004], [1.0, 0.004]];                      
                 else: # just assume a layer 1 cm thick
                     layer.thicknessNodes = [[0.0,0.01], [1.0, 0.01]];  
-                    
+        
+        elif layer.param == 'CONSTANT': # implement as piecewise linear
+            t_value = float(config[layer.formalName + '_THICKNESS']);
+            layer.thicknessNodes = [[0.0,t_value], [1.0, t_value]];
         else:
             sys.stderr.write('\n ## ERROR: Parameterization %s '     \
-            'is not valid for %s. Only PIECEWISE_LINEAR is '    \
-            'accepted\n' % (layer.param, layer.name));
+            'is not valid for %s. Only PIECEWISE_LINEAR or '    \
+            'CONSTANT is accepted\n' % (layer.param, layer.name));
             sys.exit(0);
             
     def SetupMaterials(self, config,output='verbose'):
@@ -919,7 +927,6 @@ class Nozzle:
             sys.stdout.write('%d layers processed\n' % (i-1));
             sys.stdout.write('Setup Wall Layers complete\n');        
         #print nozzle.wall.layer[1].__dict__
-
 
         
     def SetupBaffles(self, config, output='verbose'):
@@ -1228,7 +1235,7 @@ class Nozzle:
             if check == 1:
                 continue;
                 
-            # Update all layers with specific names, e.g. LAYER1_THICKNESS_VALUES
+            # Update all piecewise-linear layers with specific names, e.g. LAYER1_THICKNESS_VALUES
             check = 0;
             for j in range(len(nozzle.wall.layer)):
                 if Tag == nozzle.wall.layer[j].name + '_THICKNESS_LOCATIONS':
@@ -1250,8 +1257,23 @@ class Nozzle:
                         NbrChanged = NbrChanged+1;
                     check = 1;
             if check == 1:
-                continue;            
-                       
+                continue;    
+                
+            # Update all constant layers with specific names, e.g. LAYER1_THICKNESS
+            check = 0;
+            for j in range(len(nozzle.wall.layer)):
+                if Tag == nozzle.wall.layer[j].name + '_THICKNESS':
+                    id_dv = nozzle.DV_Head[iTag];
+                    prt_name.append('%s thickness' % nozzle.wall.layer[j].name);
+                    prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodes[0][1]);
+                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                    nozzle.wall.layer[j].thicknessNodes[0][1] = nozzle.DV_List[id_dv];
+                    nozzle.wall.layer[j].thicknessNodes[1][1] = nozzle.DV_List[id_dv];
+                    NbrChanged = NbrChanged+1;
+                    check = 1;
+            if check == 1:
+                continue;
+
             if Tag == 'BAFFLES':
                 lsize = len(nozzle.baffles.dv)/3;
                 brk1 = np.max(nozzle.baffles.dv[:lsize])+1;
@@ -1706,10 +1728,7 @@ class Nozzle:
         nozzle.tempComponentList = list();
         # Add elements to stress component list
         for i in range(len(nozzle.wall.layer)):
-            if nozzle.wall.layer[i].name == 'THERMAL_LAYER':
-                pass; # stress is not calculated in thermal layer
-            else:
-                nozzle.stressComponentList.append(nozzle.wall.layer[i].name);
+            nozzle.stressComponentList.append(nozzle.wall.layer[i].name);
         nozzle.stressComponentList.append('STRINGERS');
         for i in range(nozzle.baffles.n):
             nozzle.stressComponentList.append('BAFFLE' + str(i+1));
@@ -1736,7 +1755,7 @@ class Nozzle:
         for i in range(len(nozzle.tempComponentList)):
             nozzle.ks_temperature.append(-1);
             nozzle.pn_temperature.append(-1);
-            nozzle.max_temperature.append(-1);       
+            nozzle.max_temperature.append(-1);     
         
         if 'OUTPUT_FUNCTIONS' in config:
 
@@ -1855,7 +1874,7 @@ class Nozzle:
                 fil.write('%0.16f\n' % nozzle.thrust);
                 if output == 'verbose':
                     sys.stdout.write('      Thrust = %0.16f\n' % nozzle.thrust);                    
-
+                    
             if tag == 'KS_TOTAL_STRESS':
                 for j in range(len(nozzle.stressComponentList)):
                     fil.write('%0.16f ks_total_stress (%s)\n' % (nozzle.ks_total_stress[j],nozzle.stressComponentList[j]));
