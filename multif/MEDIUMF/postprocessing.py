@@ -82,8 +82,9 @@ def ExtractSolutionAtExit ( nozzle ):
 	
 	OutResult = np.reshape(Result,(NbrRes, ResSiz));
 	
+	Out_sort = OutResult[OutResult[:,1].argsort()]
 	
-	return OutResult, pyInfo, pyHeader;
+	return Out_sort, pyInfo, pyHeader;
 	
 
 def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
@@ -148,9 +149,12 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
 		Mach = SolExtract[iVer][2+iMach];
 		Temp = SolExtract[iVer][2+iTem];
 		
+		
 		U = rhoU/rho;
 		
 		dy = y - SolExtract[iVer-1][1];
+		
+		print "%lf %lf %lf %lf %lf %lf" % (y, rho, rhoU, Pres, Mach, Temp);
 				
 		Thrust = Thrust + dy*(rhoU*(U-U0)+Pres-P0);
 		
