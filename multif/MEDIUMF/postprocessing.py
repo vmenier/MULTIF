@@ -34,10 +34,12 @@ def PostProcessing (nozzle):
     if nozzle.GetOutput['THRUST'] == 1:            
         nozzle.thrust = ComputeThrust ( nozzle, SolExtract, Size, Header );
         
-    if nozzle.GetOutput['VOLUME'] == 1 or nozzle.GetOutput['MASS'] == 1:
+    if nozzle.GetOutput['VOLUME'] == 1 or nozzle.GetOutput['MASS'] == 1 or nozzle.GetOutput['MASS_WALL_ONLY'] == 1:
          volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle);
          nozzle.volume = np.sum(volume);
          nozzle.mass = np.sum(mass);
+         n_layers = len(nozzle.wall.layer);
+         nozzle.mass_wall_only = np.sum(mass[:n_layers]);
          
 
 def CheckConvergence ( nozzle ) :

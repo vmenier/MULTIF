@@ -804,6 +804,10 @@ def Run (nozzle,output='verbose'):
     nozzle.volume = np.sum(performanceTuple[0]);
     nozzle.thrust = performanceTuple[2];
     
+    if nozzle.GetOutput['MASS_WALL_ONLY'] == 1:
+        n_layers = len(nozzle.wall.layer);
+        nozzle.mass_wall_only = np.sum(performanceTuple[1][:n_layers]);
+    
     # For testing purposes only; usually these do not need to be output
     #nozzle.xPosition = xPosition
     #nozzle.flowTuple = flowTuple

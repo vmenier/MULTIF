@@ -1753,6 +1753,7 @@ class Nozzle:
         
         # --- Initialize outputs
         nozzle.mass = -1;
+        nozzle.mass_wall_only = -1;
         nozzle.volume = -1;
         nozzle.thrust = -1;
         nozzle.ks_total_stress = list();
@@ -1774,7 +1775,7 @@ class Nozzle:
         
         if 'OUTPUT_FUNCTIONS' in config:
 
-            dv_keys = ('MASS', 'VOLUME', 'THRUST', 'KS_TOTAL_STRESS',
+            dv_keys = ('MASS', 'MASS_WALL_ONLY', 'VOLUME', 'THRUST', 'KS_TOTAL_STRESS',
                        'PN_TOTAL_STRESS', 'MAX_TOTAL_STRESS',
                        'MAX_THERMAL_STRESS','KS_TEMPERATURE',
                        'PN_TEMPERATURE','MAX_TEMPERATURE');
@@ -1789,7 +1790,7 @@ class Nozzle:
                 
                 key = hdl[i].strip();
                         
-                if( key == 'VOLUME' or key == 'MASS' or key == 'THRUST' ):
+                if( key == 'VOLUME' or key == 'MASS' or key == 'MASS_WALL_ONLY' or key == 'THRUST' ):
                     nozzle.GetOutput[key] = 1;
                     nozzle.Output_Tags.append(key);                    
                 elif( key == 'KS_TOTAL_STRESS' or key == 'PN_TOTAL_STRESS' or
@@ -1880,6 +1881,11 @@ class Nozzle:
                 if output == 'verbose':
                     sys.stdout.write('      Mass = %0.16f\n' % nozzle.mass);
                     
+            if tag == 'MASS_WALL_ONLY':
+                fil.write('%0.16f\n' % nozzle.mass_wall_only);
+                if output == 'verbose':
+                    sys.stdout.write('      Wall Mass = %0.16f\n' % nozzle.mass_wall_only);
+                    
             if tag == 'VOLUME':
                 fil.write('%0.16f\n' % nozzle.volume);
                 if output == 'verbose':
@@ -1958,6 +1964,11 @@ class Nozzle:
                 fil.write('%0.16f\n' % nozzle.mass);
                 if output == 'verbose':
                     sys.stdout.write('      Mass = %0.16f\n' % nozzle.mass);
+                    
+            if tag == 'MASS_WALL_ONLY':
+                fil.write('%0.16f\n' % nozzle.mass_wall_only);
+                if output == 'verbose':
+                    sys.stdout.write('      Wall Mass = %0.16f\n' % nozzle.mass_wall_only);                    
                     
             if tag == 'VOLUME':
                 fil.write('%0.16f\n' % nozzle.volume);
