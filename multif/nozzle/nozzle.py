@@ -1572,8 +1572,8 @@ class Nozzle:
                     if NbrDV == 1:
                         prt_name.append('%s elastic modulus' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].getElasticModulus());
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);
-                        nozzle.materials[k].setElasticModulus(nozzle.DV_List[id_dv+1]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                        nozzle.materials[k].setElasticModulus(nozzle.DV_List[id_dv]);
                         NbrChanged = NbrChanged + 1;
                     elif NbrDV == 2:
                         ltemp = nozzle.materials[k].getElasticModulus();
