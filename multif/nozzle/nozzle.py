@@ -1760,11 +1760,13 @@ class Nozzle:
         nozzle.pn_total_stress = list();
         nozzle.max_total_stress = list();
         nozzle.max_thermal_stress = list();
+        nozzle.max_mechanical_stress = list();
         for i in range(len(nozzle.stressComponentList)):
             nozzle.ks_total_stress.append(-1);
             nozzle.pn_total_stress.append(-1);
             nozzle.max_total_stress.append(-1);
             nozzle.max_thermal_stress.append(-1);
+            nozzle.max_mechanical_stress.append(-1);
         nozzle.ks_temperature = list();
         nozzle.pn_temperature = list();
         nozzle.max_temperature = list();
@@ -1774,14 +1776,33 @@ class Nozzle:
             nozzle.max_temperature.append(-1);     
         
         if 'OUTPUT_FUNCTIONS' in config:
-
-            dv_keys = ('MASS', 'MASS_WALL_ONLY', 'VOLUME', 'THRUST', 'KS_TOTAL_STRESS',
-                       'PN_TOTAL_STRESS', 'MAX_TOTAL_STRESS',
-                       'MAX_THERMAL_STRESS','KS_TEMPERATURE',
-                       'PN_TEMPERATURE','MAX_TEMPERATURE');
             
+            # Possible output functions
+            dv_scalar = ['MASS', 'MASS_WALL_ONLY', 'VOLUME', 'THRUST'];
+            dv_stress = ['KS_TOTAL_STRESS', 'PN_TOTAL_STRESS', 
+                         'MAX_TOTAL_STRESS', 'MAX_MECHANICAL_STRESS',
+                         'MAX_THERMAL_STRESS'];
+            dv_temp = ['KS_TEMPERATURE','PN_TEMPERATURE','MAX_TEMPERATURE'];
+            dv_keys = dv_scalar + dv_stress + dv_temp;
+            
+            # Stress and temperature outputs can have prefixes appended to them
+            stress_prefix = [];
+            temp_prefix = [];
+            for i in range(len(nozzle.wall.layer)):
+                stress_prefix.append(nozzle.wall.layer[i].name);
+                temp_prefix.append(nozzle.wall.layer[i].name);
+            if nozzle.stringers.n > 0:
+                stress_prefix.append('STRINGERS');
+            for i in range(nozzle.baffles.n):
+                stress_prefix.append('BAFFLE' + str(i+1));
+                
             for key in dv_keys:
-                nozzle.GetOutput[key] = 0;
+                if key in dv_scalar:
+                    nozzle.GetOutput[key] = 0;
+                elif key in dv_stress:
+                    nozzle.GetOutput[key] = [0]*len(stress_prefix);
+                elif key in dv_temp:
+                    nozzle.GetOutput[key] = [0]*len(temp_prefix);
 
             hdl = config['OUTPUT_FUNCTIONS'].strip('()');
             hdl = hdl.split(",");
@@ -1790,45 +1811,62 @@ class Nozzle:
                 
                 key = hdl[i].strip();
                         
-                if( key == 'VOLUME' or key == 'MASS' or key == 'MASS_WALL_ONLY' or key == 'THRUST' ):
+                if( key in dv_scalar ):
                     nozzle.GetOutput[key] = 1;
-                    nozzle.Output_Tags.append(key);                    
-                elif( key == 'KS_TOTAL_STRESS' or key == 'PN_TOTAL_STRESS' or
-                  key == 'MAX_TOTAL_STRESS' ):
-                    if nozzle.structuralFlag == 1:
-                        nozzle.GetOutput[key] = 1;
-                        nozzle.Output_Tags.append(key);
-                    else:
-                        sys.stderr.write('\n ## ERROR : %s cannot be '        \
-                          'returned if STRUCTURAL_ANALYSIS= 0.\n\n' % key);
-                        sys.exit(0);                
+                    nozzle.Output_Tags.append(key);                                  
                 elif( key == 'MAX_THERMAL_STRESS' ):
                     if nozzle.structuralFlag == 1 and nozzle.thermalFlag == 1:
-                        nozzle.GetOutput[key] = 1;
+                        nozzle.GetOutput[key] = [1]*len(stress_prefix);
                         nozzle.Output_Tags.append(key);
                     else:
                         sys.stderr.write('\n ## ERROR : %s cannot be '        \
                           'returned if THERMAL_ANALYSIS= 0 or '               \
                           'STRUCTURAL_ANALYSIS= 0.\n\n' % key);
                         sys.exit(0);  
-                elif( key == 'KS_TEMPERATURE' or key == 'PN_TEMPERATURE' or 
-                  key == 'MAX_TEMPERATURE'):
+                elif( key in dv_stress ):
+                    if nozzle.structuralFlag == 1:
+                        nozzle.GetOutput[key] = [1]*len(stress_prefix);
+                        nozzle.Output_Tags.append(key);
+                    else:
+                        sys.stderr.write('\n ## ERROR : %s cannot be '        \
+                          'returned if STRUCTURAL_ANALYSIS= 0.\n\n' % key);
+                        sys.exit(0);                          
+                elif( key in dv_temp):
                     if nozzle.thermalFlag == 1:
-                        nozzle.GetOutput[key] = 1;
+                        nozzle.GetOutput[key] = [1]*len(temp_prefix);
                         nozzle.Output_Tags.append(key);
                     else:
                         sys.stderr.write('\n ## ERROR : %s cannot be '        \
                           'returned if THERMAL_ANALYSIS= 0\n\n' % key);                      
-                else:
-                    string = '';
-                    for k in dv_keys :
-                        string = "%s %s " % (string,k);
-                    sys.stderr.write('\n ## ERROR : Unknown output '          \
-                      'function name : %s\n' % key);
-                    sys.stderr.write('             Expected = %s\n\n' % string);
-                    sys.exit(0);
+                else: # cycle through all possible more specific names for stress and temp
+                    # check stress first         
+                    assigned = 0;
+                    for prefix in stress_prefix:
+                        for k in dv_stress:
+                            if key == prefix + '_' + k:
+                                nozzle.GetOutput[k][stress_prefix.index(prefix)] = 1;
+                                nozzle.Output_Tags.append(key);
+                                assigned = 1;
+                                continue;
+                    for prefix in temp_prefix:
+                        for k in dv_temp:
+                            if key == prefix + '_' + k:
+                                nozzle.GetOutput[k][temp_prefix.index(prefix)] = 1;
+                                nozzle.Output_Tags.append(key);
+                                assigned = 1;
+                                continue;
+                    if assigned == 0:
+                        string = '';
+                        for k in dv_keys :
+                            string = "%s %s " % (string,k);
+                        sys.stderr.write('\n ## ERROR : Unknown output '          \
+                          'function name : %s\n' % key);
+                        sys.stderr.write('             Expected = %s\n\n' % string);
+                        sys.exit(0);
                 
             # for i in keys
+        print nozzle.GetOutput
+        print nozzle.Output_Tags
         
         if len(nozzle.Output_Tags) == 0 :
             sys.stderr.write("\n  ## Error : No output function was given.\n\n");
@@ -1871,72 +1909,127 @@ class Nozzle:
         else:
             raise ValueError('keyword argument output can only be set to '    \
               '"verbose" or "quiet" mode')
+              
+        # Stress and temperature outputs can have prefixes appended to them
+        stress_prefix = [];
+        temp_prefix = [];
+        for i in range(len(nozzle.wall.layer)):
+            stress_prefix.append(nozzle.wall.layer[i].name);
+            temp_prefix.append(nozzle.wall.layer[i].name);
+        if nozzle.stringers.n > 0:
+            stress_prefix.append('STRINGERS');
+        for i in range(nozzle.baffles.n):
+            stress_prefix.append('BAFFLE' + str(i+1));              
 
         for i in range(0, len(nozzle.Output_Tags)):
           
             tag = nozzle.Output_Tags[i];
 
+            tag = nozzle.Output_Tags[i];
+    
             if tag == 'MASS':
                 fil.write('%0.16f\n' % nozzle.mass);
                 if output == 'verbose':
                     sys.stdout.write('      Mass = %0.16f\n' % nozzle.mass);
                     
-            if tag == 'MASS_WALL_ONLY':
+            elif tag == 'MASS_WALL_ONLY':
                 fil.write('%0.16f\n' % nozzle.mass_wall_only);
                 if output == 'verbose':
-                    sys.stdout.write('      Wall Mass = %0.16f\n' % nozzle.mass_wall_only);
+                    sys.stdout.write('      Wall Mass = %0.16f\n' % nozzle.mass_wall_only);                    
                     
-            if tag == 'VOLUME':
+            elif tag == 'VOLUME':
                 fil.write('%0.16f\n' % nozzle.volume);
                 if output == 'verbose':
                     sys.stdout.write('      Volume = %0.16f\n' % nozzle.volume);
                     
-            if tag == 'THRUST':
+            elif tag == 'THRUST':
                 fil.write('%0.16f\n' % nozzle.thrust);
                 if output == 'verbose':
-                    sys.stdout.write('      Thrust = %0.16f\n' % nozzle.thrust);                    
-                    
-            if tag == 'KS_TOTAL_STRESS':
+                    sys.stdout.write('      Thrust = %0.16f\n' % nozzle.thrust);  
+                                
+            elif tag == 'KS_TOTAL_STRESS':
                 for j in range(len(nozzle.stressComponentList)):
                     fil.write('%0.16f ks_total_stress (%s)\n' % (nozzle.ks_total_stress[j],nozzle.stressComponentList[j]));
                     if output == 'verbose':
                         sys.stdout.write('      KS total stress (%s) = %0.16f\n' % (nozzle.stressComponentList[j],nozzle.ks_total_stress[j]));
 
-            if tag == 'PN_TOTAL_STRESS':
+            elif tag == 'PN_TOTAL_STRESS':
                 for j in range(len(nozzle.stressComponentList)):
                     fil.write('%0.16f pn_total_stress (%s)\n' % (nozzle.pn_total_stress[j],nozzle.stressComponentList[j]));
                     if output == 'verbose':
                         sys.stdout.write('      PN total stress (%s) = %0.16f\n' % (nozzle.stressComponentList[j],nozzle.pn_total_stress[j]));
                     
-            if tag == 'MAX_TOTAL_STRESS':
+            elif tag == 'MAX_TOTAL_STRESS':
                 for j in range(len(nozzle.stressComponentList)):
                     fil.write('%0.16f max_total_stress (%s)\n' % (nozzle.max_total_stress[j],nozzle.stressComponentList[j]));
                     if output == 'verbose':
                         sys.stdout.write('      max total stress (%s) = %0.16f\n' % (nozzle.stressComponentList[j],nozzle.max_total_stress[j]));
                     
-            if tag == 'MAX_THERMAL_STRESS':
+            elif tag == 'MAX_THERMAL_STRESS':
                 for j in range(len(nozzle.stressComponentList)):
                     fil.write('%0.16f max_thermal_stress (%s)\n' % (nozzle.max_thermal_stress[j],nozzle.stressComponentList[j]));
                     if output == 'verbose':
                         sys.stdout.write('      max thermal stress (%s) = %0.16f\n' % (nozzle.stressComponentList[j],nozzle.max_thermal_stress[j]));
                     
-            if tag == 'KS_TEMPERATURE':
+            elif tag == 'MAX_MECHANICAL_STRESS':
+                for j in range(len(nozzle.stressComponentList)):
+                    fil.write('%0.16f max_mechanical_stress (%s)\n' % (nozzle.max_mechanical_stress[j],nozzle.stressComponentList[j]));
+                    if output == 'verbose':
+                        sys.stdout.write('      max mechanical stress (%s) = %0.16f\n' % (nozzle.stressComponentList[j],nozzle.max_mechanical_stress[j]));
+
+            elif tag == 'KS_TEMPERATURE':
                 for j in range(len(nozzle.tempComponentList)):
                     fil.write('%0.16f ks_temperature (%s)\n' % (nozzle.ks_temperature[j],nozzle.tempComponentList[j]));
                     if output == 'verbose':
                         sys.stdout.write('      KS temperature (%s) = %0.16f\n' % (nozzle.tempComponentList[j],nozzle.ks_temperature[j]));
 
-            if tag == 'PN_TEMPERATURE':
+            elif tag == 'PN_TEMPERATURE':
                 for j in range(len(nozzle.tempComponentList)):
                     fil.write('%0.16f pn_temperature (%s)\n' % (nozzle.pn_temperature[j],nozzle.tempComponentList[j]));
                     if output == 'verbose':
                         sys.stdout.write('      PN temperature (%s) = %0.16f\n' % (nozzle.tempComponentList[j],nozzle.pn_temperature[j]));
                     
-            if tag == 'MAX_TEMPERATURE':
+            elif tag == 'MAX_TEMPERATURE':
                 for j in range(len(nozzle.tempComponentList)):
                     fil.write('%0.16f max_temperature (%s)\n' % (nozzle.max_temperature[j],nozzle.tempComponentList[j]));
                     if output == 'verbose':
                         sys.stdout.write('      max temperature (%s) = %0.16f\n' % (nozzle.tempComponentList[j],nozzle.max_temperature[j]));
+                    
+            else:
+                # Cycle through all possible specific stress outputs
+                for prefix in stress_prefix:
+                    j = stress_prefix.index(prefix);
+                    if tag == prefix + '_KS_TOTAL_STRESS':
+                        fil.write('%0.16f ks_total_stress (%s)\n' % (nozzle.ks_total_stress[j],stress_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      KS total stress (%s) = %0.16f\n' % (stress_prefix[j],nozzle.ks_total_stress[j]));
+                    elif tag == prefix + '_PN_TOTAL_STRESS':
+                        fil.write('%0.16f pn_total_stress (%s)\n' % (nozzle.pn_total_stress[j],stress_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      PN total stress (%s) = %0.16f\n' % (stress_prefix[j],nozzle.pn_total_stress[j]));
+                    elif tag == prefix + '_MAX_TOTAL_STRESS':
+                        fil.write('%0.16f max_total_stress (%s)\n' % (nozzle.max_total_stress[j],stress_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      max total stress (%s) = %0.16f\n' % (stress_prefix[j],nozzle.max_total_stress[j]));
+                    elif tag == prefix + '_MAX_THERMAL_STRESS':
+                        fil.write('%0.16f max_thermal_stress (%s)\n' % (nozzle.max_thermal_stress[j],stress_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      max thermal stress (%s) = %0.16f\n' % (stress_prefix[j],nozzle.max_thermal_stress[j]));
+                # Cycle through all possible specific temperature outputs
+                for prefix in temp_prefix:
+                    j = temp_prefix.index(prefix);
+                    if tag == prefix + '_KS_TEMPERATURE':
+                        fil.write('%0.16f ks_temperature (%s)\n' % (nozzle.ks_temperature[j],temp_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      KS temperature (%s) = %0.16f\n' % (temp_prefix[j],nozzle.ks_temperature[j]));
+                    elif tag == prefix + '_PN_TEMPERATURE':
+                        fil.write('%0.16f pn_temperature (%s)\n' % (nozzle.pn_temperature[j],temp_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      PN temperature (%s) = %0.16f\n' % (temp_prefix[j],nozzle.pn_temperature[j]));
+                    elif tag == prefix + '_MAX_TEMPERATURE':
+                        fil.write('%0.16f max_temperature (%s)\n' % (nozzle.max_temperature[j],temp_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      max temperature (%s) = %0.16f\n' % (temp_prefix[j],nozzle.max_temperature[j]));
       
         if output == 'verbose':
             sys.stdout.write('\n');
@@ -1955,8 +2048,19 @@ class Nozzle:
             sys.exit(0);
     
         sys.stdout.write('  -- Info : Output functions file : %s\n' % filename);
-    
-        for i in range(0, len(nozzle.Output_Tags)):
+
+        # Stress and temperature outputs can have prefixes appended to them
+        stress_prefix = [];
+        temp_prefix = [];
+        for i in range(len(nozzle.wall.layer)):
+            stress_prefix.append(nozzle.wall.layer[i].name);
+            temp_prefix.append(nozzle.wall.layer[i].name);
+        if nozzle.stringers.n > 0:
+            stress_prefix.append('STRINGERS');
+        for i in range(nozzle.baffles.n):
+            stress_prefix.append('BAFFLE' + str(i+1));
+               
+        for i in range(len(nozzle.Output_Tags)):
     
             tag = nozzle.Output_Tags[i];
     
@@ -1965,62 +2069,104 @@ class Nozzle:
                 if output == 'verbose':
                     sys.stdout.write('      Mass = %0.16f\n' % nozzle.mass);
                     
-            if tag == 'MASS_WALL_ONLY':
+            elif tag == 'MASS_WALL_ONLY':
                 fil.write('%0.16f\n' % nozzle.mass_wall_only);
                 if output == 'verbose':
                     sys.stdout.write('      Wall Mass = %0.16f\n' % nozzle.mass_wall_only);                    
                     
-            if tag == 'VOLUME':
+            elif tag == 'VOLUME':
                 fil.write('%0.16f\n' % nozzle.volume);
                 if output == 'verbose':
                     sys.stdout.write('      Volume = %0.16f\n' % nozzle.volume);
                     
-            if tag == 'THRUST':
+            elif tag == 'THRUST':
                 fil.write('%0.16f\n' % nozzle.thrust);
                 if output == 'verbose':
-                    sys.stdout.write('      Thrust = %0.16f\n' % nozzle.thrust);                    
-
-            if tag == 'KS_TOTAL_STRESS':
+                    sys.stdout.write('      Thrust = %0.16f\n' % nozzle.thrust);  
+                                
+            elif tag == 'KS_TOTAL_STRESS':
                 for j in range(len(nozzle.stressComponentList)):
                     fil.write('%0.16f ks_total_stress (%s)\n' % (nozzle.ks_total_stress[j],nozzle.stressComponentList[j]));
                     if output == 'verbose':
                         sys.stdout.write('      KS total stress (%s) = %0.16f\n' % (nozzle.stressComponentList[j],nozzle.ks_total_stress[j]));
 
-            if tag == 'PN_TOTAL_STRESS':
+            elif tag == 'PN_TOTAL_STRESS':
                 for j in range(len(nozzle.stressComponentList)):
                     fil.write('%0.16f pn_total_stress (%s)\n' % (nozzle.pn_total_stress[j],nozzle.stressComponentList[j]));
                     if output == 'verbose':
                         sys.stdout.write('      PN total stress (%s) = %0.16f\n' % (nozzle.stressComponentList[j],nozzle.pn_total_stress[j]));
                     
-            if tag == 'MAX_TOTAL_STRESS':
+            elif tag == 'MAX_TOTAL_STRESS':
                 for j in range(len(nozzle.stressComponentList)):
                     fil.write('%0.16f max_total_stress (%s)\n' % (nozzle.max_total_stress[j],nozzle.stressComponentList[j]));
                     if output == 'verbose':
                         sys.stdout.write('      max total stress (%s) = %0.16f\n' % (nozzle.stressComponentList[j],nozzle.max_total_stress[j]));
                     
-            if tag == 'MAX_THERMAL_STRESS':
+            elif tag == 'MAX_MECHANICAL_STRESS':
+                for j in range(len(nozzle.stressComponentList)):
+                    fil.write('%0.16f max_mechanical_stress (%s)\n' % (nozzle.max_mechanical_stress[j],nozzle.stressComponentList[j]));
+                    if output == 'verbose':
+                        sys.stdout.write('      max mechanical stress (%s) = %0.16f\n' % (nozzle.stressComponentList[j],nozzle.max_mechanical_stress[j]));
+
+            elif tag == 'MAX_THERMAL_STRESS':
                 for j in range(len(nozzle.stressComponentList)):
                     fil.write('%0.16f max_thermal_stress (%s)\n' % (nozzle.max_thermal_stress[j],nozzle.stressComponentList[j]));
                     if output == 'verbose':
                         sys.stdout.write('      max thermal stress (%s) = %0.16f\n' % (nozzle.stressComponentList[j],nozzle.max_thermal_stress[j]));
                     
-            if tag == 'KS_TEMPERATURE':
+            elif tag == 'KS_TEMPERATURE':
                 for j in range(len(nozzle.tempComponentList)):
                     fil.write('%0.16f ks_temperature (%s)\n' % (nozzle.ks_temperature[j],nozzle.tempComponentList[j]));
                     if output == 'verbose':
                         sys.stdout.write('      KS temperature (%s) = %0.16f\n' % (nozzle.tempComponentList[j],nozzle.ks_temperature[j]));
 
-            if tag == 'PN_TEMPERATURE':
+            elif tag == 'PN_TEMPERATURE':
                 for j in range(len(nozzle.tempComponentList)):
                     fil.write('%0.16f pn_temperature (%s)\n' % (nozzle.pn_temperature[j],nozzle.tempComponentList[j]));
                     if output == 'verbose':
                         sys.stdout.write('      PN temperature (%s) = %0.16f\n' % (nozzle.tempComponentList[j],nozzle.pn_temperature[j]));
                     
-            if tag == 'MAX_TEMPERATURE':
+            elif tag == 'MAX_TEMPERATURE':
                 for j in range(len(nozzle.tempComponentList)):
                     fil.write('%0.16f max_temperature (%s)\n' % (nozzle.max_temperature[j],nozzle.tempComponentList[j]));
                     if output == 'verbose':
                         sys.stdout.write('      max temperature (%s) = %0.16f\n' % (nozzle.tempComponentList[j],nozzle.max_temperature[j]));
+                    
+            else:
+                # Cycle through all possible specific stress outputs
+                for prefix in stress_prefix:
+                    j = stress_prefix.index(prefix);
+                    if tag == prefix + '_KS_TOTAL_STRESS':
+                        fil.write('%0.16f ks_total_stress (%s)\n' % (nozzle.ks_total_stress[j],stress_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      KS total stress (%s) = %0.16f\n' % (stress_prefix[j],nozzle.ks_total_stress[j]));
+                    elif tag == prefix + '_PN_TOTAL_STRESS':
+                        fil.write('%0.16f pn_total_stress (%s)\n' % (nozzle.pn_total_stress[j],stress_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      PN total stress (%s) = %0.16f\n' % (stress_prefix[j],nozzle.pn_total_stress[j]));
+                    elif tag == prefix + '_MAX_TOTAL_STRESS':
+                        fil.write('%0.16f max_total_stress (%s)\n' % (nozzle.max_total_stress[j],stress_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      max total stress (%s) = %0.16f\n' % (stress_prefix[j],nozzle.max_total_stress[j]));
+                    elif tag == prefix + '_MAX_THERMAL_STRESS':
+                        fil.write('%0.16f max_thermal_stress (%s)\n' % (nozzle.max_thermal_stress[j],stress_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      max thermal stress (%s) = %0.16f\n' % (stress_prefix[j],nozzle.max_thermal_stress[j]));
+                # Cycle through all possible specific temperature outputs
+                for prefix in temp_prefix:
+                    j = temp_prefix.index(prefix);
+                    if tag == prefix + '_KS_TEMPERATURE':
+                        fil.write('%0.16f ks_temperature (%s)\n' % (nozzle.ks_temperature[j],temp_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      KS temperature (%s) = %0.16f\n' % (temp_prefix[j],nozzle.ks_temperature[j]));
+                    elif tag == prefix + '_PN_TEMPERATURE':
+                        fil.write('%0.16f pn_temperature (%s)\n' % (nozzle.pn_temperature[j],temp_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      PN temperature (%s) = %0.16f\n' % (temp_prefix[j],nozzle.pn_temperature[j]));
+                    elif tag == prefix + '_MAX_TEMPERATURE':
+                        fil.write('%0.16f max_temperature (%s)\n' % (nozzle.max_temperature[j],temp_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      max temperature (%s) = %0.16f\n' % (temp_prefix[j],nozzle.max_temperature[j]));
                     
         sys.stdout.write('\n');
         fil.close();

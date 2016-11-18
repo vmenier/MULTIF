@@ -255,80 +255,176 @@ def AEROSPostProcessing ( nozzle ):
 #    
 #    fil.close();
     
-    # ---- Read stresses from files
+    # ---- KS and modified P-norm parameters
     ks_param = 50.;
     pn_param = 10.;
     
-    # Inner load layer
-    filename = 'STRESS.1';
-    data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-    stemp = np.mean(data[:,-1]);
-    nozzle.max_total_stress[2] = np.max(data[:,-1]);
-    nozzle.ks_total_stress[2] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-    nozzle.pn_total_stress[2] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
-    
-    # Middle load layer
-    filename = 'STRESS.2';
-    data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-    stemp = np.mean(data[:,-1]);
-    nozzle.max_total_stress[3] = np.max(data[:,-1]);
-    nozzle.ks_total_stress[3] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-    nozzle.pn_total_stress[3] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;    
-    
-    # Upper load layer
-    filename = 'STRESS.3';
-    data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-    stemp = np.mean(data[:,-1]);
-    nozzle.max_total_stress[4] = np.max(data[:,-1]);
-    nozzle.ks_total_stress[4] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-    nozzle.pn_total_stress[4] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;  
-    
-    # Stringers
-    filename = 'STRESS.4';
-    data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-    stemp = np.mean(data[:,-1]);
-    nozzle.max_total_stress[5] = np.max(data[:,-1]);
-    nozzle.ks_total_stress[5] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-    nozzle.pn_total_stress[5] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
-
-    # Each baffle
-    for i in range(7,nozzle.baffles.n+7):
-        filename = 'STRESS.' + str(i-2);
+    # ---- Load and assign total stress results if necessary
+    if ( sum(nozzle.GetOutput['MAX_TOTAL_STRESS']) > 0 or 
+         sum(nozzle.GetOutput['KS_TOTAL_STRESS']) > 0 or
+         sum(nozzle.GetOutput['PN_TOTAL_STRESS']) > 0 ):
+        
+        # Inner load layer
+        filename = 'STRESS.1';
         data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
         stemp = np.mean(data[:,-1]);
-        nozzle.max_total_stress[i-1] = np.max(data[:,-1]);
-        nozzle.ks_total_stress[i-1] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-        nozzle.pn_total_stress[i-1] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;  
-
-    # ---- Read temperatures from files
+        nozzle.max_total_stress[2] = np.max(data[:,-1]);
+        nozzle.ks_total_stress[2] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+        nozzle.pn_total_stress[2] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+        
+        # Middle load layer
+        filename = 'STRESS.2';
+        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+        stemp = np.mean(data[:,-1]);
+        nozzle.max_total_stress[3] = np.max(data[:,-1]);
+        nozzle.ks_total_stress[3] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+        nozzle.pn_total_stress[3] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;    
+        
+        # Upper load layer
+        filename = 'STRESS.3';
+        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+        stemp = np.mean(data[:,-1]);
+        nozzle.max_total_stress[4] = np.max(data[:,-1]);
+        nozzle.ks_total_stress[4] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+        nozzle.pn_total_stress[4] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;  
+        
+        # Stringers
+        filename = 'STRESS.4';
+        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+        stemp = np.mean(data[:,-1]);
+        nozzle.max_total_stress[5] = np.max(data[:,-1]);
+        nozzle.ks_total_stress[5] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+        nozzle.pn_total_stress[5] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
     
-    # Thermal layer
-    data = nozzle.wallTemp;
-    nozzle.max_temperature[0] = np.max(data);
-    stemp = np.mean(data);
-    nozzle.ks_temperature[0] = ksFunction(data/stemp,ks_param)*stemp;
-    nozzle.pn_temperature[0] = pnFunction(data/stemp,pn_param)*stemp;
-
-    # Inner load layer
-    filename = 'TEMP.1';
-    data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-    stemp = np.mean(data[:,-1]);
-    nozzle.max_temperature[2] = np.max(data[:,-1]);
-    nozzle.ks_temperature[2] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-    nozzle.pn_temperature[2] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+        # Each baffle
+        for i in range(7,nozzle.baffles.n+7):
+            filename = 'STRESS.' + str(i-2);
+            data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+            stemp = np.mean(data[:,-1]);
+            nozzle.max_total_stress[i-1] = np.max(data[:,-1]);
+            nozzle.ks_total_stress[i-1] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+            nozzle.pn_total_stress[i-1] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
     
-    # Inner load layer
-    filename = 'TEMP.2';
-    data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-    stemp = np.mean(data[:,-1]);
-    nozzle.max_temperature[3] = np.max(data[:,-1]);
-    nozzle.ks_temperature[3] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-    nozzle.pn_temperature[3] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+    # ---- Load and assign mechanical stress results if necessary
+    if sum(nozzle.GetOutput['MAX_MECHANICAL_STRESS']) > 0:
+        
+        # Inner load layer
+        filename = 'MECHANICAL_STRESS.1';
+        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+        stemp = np.mean(data[:,-1]);
+        nozzle.max_mechanical_stress[2] = np.max(data[:,-1]);
+        #nozzle.ks_mechanical_stress[2] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+        #nozzle.pn_mechanical_stress[2] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+        
+        # Middle load layer
+        filename = 'MECHANICAL_STRESS.2';
+        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+        stemp = np.mean(data[:,-1]);
+        nozzle.max_mechanical_stress[3] = np.max(data[:,-1]);
+        #nozzle.ks_mechanical_stress[3] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+        #nozzle.pn_mechanical_stress[3] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;    
+        
+        # Upper load layer
+        filename = 'MECHANICAL_STRESS.3';
+        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+        stemp = np.mean(data[:,-1]);
+        nozzle.max_mechanical_stress[4] = np.max(data[:,-1]);
+        #nozzle.ks_mechanical_stress[4] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+        #nozzle.pn_mechanical_stress[4] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;  
+        
+        # Stringers
+        filename = 'MECHANICAL_STRESS.4';
+        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+        stemp = np.mean(data[:,-1]);
+        nozzle.max_mechanical_stress[5] = np.max(data[:,-1]);
+        #nozzle.ks_mechanical_stress[5] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+        #nozzle.pn_mechanical_stress[5] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+    
+        # Each baffle
+        for i in range(7,nozzle.baffles.n+7):
+            filename = 'MECHANICAL_STRESS.' + str(i-2);
+            data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+            stemp = np.mean(data[:,-1]);
+            nozzle.max_mechanical_stress[i-1] = np.max(data[:,-1]);
+            #nozzle.ks_mechanical_stress[i-1] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+            #nozzle.pn_mechanical_stress[i-1] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+    
+    # ---- Load and assign thermal stress results if necessary
+    if sum(nozzle.GetOutput['MAX_THERMAL_STRESS']) > 0:
+        
+        # Inner load layer
+        filename = 'THERMAL_STRESS.1';
+        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+        stemp = np.mean(data[:,-1]);
+        nozzle.max_thermal_stress[2] = np.max(data[:,-1]);
+        #nozzle.ks_thermal_stress[2] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+        #nozzle.pn_thermal_stress[2] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+        
+        # Middle load layer
+        filename = 'THERMAL_STRESS.2';
+        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+        stemp = np.mean(data[:,-1]);
+        nozzle.max_thermal_stress[3] = np.max(data[:,-1]);
+        #nozzle.ks_thermal_stress[3] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+        #nozzle.pn_thermal_stress[3] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;    
+        
+        # Upper load layer
+        filename = 'THERMAL_STRESS.3';
+        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+        stemp = np.mean(data[:,-1]);
+        nozzle.max_thermal_stress[4] = np.max(data[:,-1]);
+        #nozzle.ks_thermal_stress[4] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+        #nozzle.pn_thermal_stress[4] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;  
+        
+        # Stringers
+        filename = 'THERMAL_STRESS.4';
+        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+        stemp = np.mean(data[:,-1]);
+        nozzle.max_thermal_stress[5] = np.max(data[:,-1]);
+        #nozzle.ks_thermal_stress[5] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+        #nozzle.pn_thermal_stress[5] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+    
+        # Each baffle
+        for i in range(7,nozzle.baffles.n+7):
+            filename = 'THERMAL_STRESS.' + str(i-2);
+            data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+            stemp = np.mean(data[:,-1]);
+            nozzle.max_thermal_stress[i-1] = np.max(data[:,-1]);
+            #nozzle.ks_thermal_stress[i-1] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+            #nozzle.pn_thermal_stress[i-1] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
 
-    # Inner load layer
-    filename = 'TEMP.3';
-    data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-    stemp = np.mean(data[:,-1]);
-    nozzle.max_temperature[4] = np.max(data[:,-1]);
-    nozzle.ks_temperature[4] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-    nozzle.pn_temperature[4] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;    
+    # ---- Load and assign temperature results if necessary
+    if ( sum(nozzle.GetOutput['MAX_TEMPERATURE']) > 0 or 
+         sum(nozzle.GetOutput['KS_TEMPERATURE']) > 0 or
+         sum(nozzle.GetOutput['PN_TEMPERATURE']) > 0 ):    
+
+        # Thermal layer
+        data = nozzle.wallTemp;
+        nozzle.max_temperature[0] = np.max(data);
+        stemp = np.mean(data);
+        nozzle.ks_temperature[0] = ksFunction(data/stemp,ks_param)*stemp;
+        nozzle.pn_temperature[0] = pnFunction(data/stemp,pn_param)*stemp;
+    
+        # Inner load layer
+        filename = 'TEMP.1';
+        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+        stemp = np.mean(data[:,-1]);
+        nozzle.max_temperature[2] = np.max(data[:,-1]);
+        nozzle.ks_temperature[2] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+        nozzle.pn_temperature[2] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+        
+        # Inner load layer
+        filename = 'TEMP.2';
+        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+        stemp = np.mean(data[:,-1]);
+        nozzle.max_temperature[3] = np.max(data[:,-1]);
+        nozzle.ks_temperature[3] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+        nozzle.pn_temperature[3] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+    
+        # Inner load layer
+        filename = 'TEMP.3';
+        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+        stemp = np.mean(data[:,-1]);
+        nozzle.max_temperature[4] = np.max(data[:,-1]);
+        nozzle.ks_temperature[4] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+        nozzle.pn_temperature[4] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;    
