@@ -211,6 +211,45 @@ def ksFunction(x,p):
 # Modified P-norm function
 def pnFunction(x,p):
     return ((1./len(x))*np.sum(np.power(x,p)))**(1./p)
+
+# Assign failure criteria based on stresses
+def assignStressAndFailureCriteria(nozzle, filename, failureCriteriaIndex, material):
+
+    # Read stress data
+    data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+    stress = data[:,-1];
+
+    # KS and PN params for stresses
+    ks_param1 = 50.;
+    pn_param1 = 10.;
+    # KS and PN params for failure criteria
+    ks_param2 = 50.;
+    pn_param2 = 10.;    
+    i = failureCriteriaIndex;
+    
+    # First assign stresses
+    stemp = np.mean(stress);
+    nozzle.max_total_stress[i] = np.max(stress);
+    nozzle.ks_total_stress[i] = ksFunction(stress/stemp,ks_param1)*stemp;
+    nozzle.pn_total_stress[i] = pnFunction(stress/stemp,pn_param1)*stemp;
+    
+    # Next, assign failure criteria
+    if material.failureType == 'VON_MISES':
+        # Von Mises is read in through the STRESS files
+        yieldStress = material.yieldStress;
+        nozzle.max_failure_criteria[i] = np.max(stress/yieldStress);
+        nozzle.ks_failure_criteria[i] = ksFunction(stress/yieldStress,ks_param2);
+        nozzle.pn_failure_criteria[i] = pnFunction(stress/yieldStress,pn_param2);
+    elif material.failureType == 'PRINCIPLE_FAILURE_STRAIN':
+        sys.stderr.write('\n ## ERROR: NOT IMPLEMENTED: principle failure strain failure type\n\n');
+        sys.exit(0);
+    elif material.failureType == 'LOCAL_FAILURE_STRAIN':
+        sys.stderr.write('\n ## ERROR: NOT IMPLEMENTED: local failure strain failure type\n\n');
+        sys.exit(0);            
+    else:
+        sys.stderr.write('\n ## ERROR: failure type not accepted for layer 2.\n\n');
+        sys.exit(0);
+    return 0;
     
 def AEROSPostProcessing ( nozzle ):
     
@@ -259,51 +298,31 @@ def AEROSPostProcessing ( nozzle ):
     ks_param = 50.;
     pn_param = 10.;
     
-    # ---- Load and assign total stress results if necessary
+    # ---- Load and assign total stress results if necessary, AND
+    # ---- Load and assign failure criteria results if necessary  
     if ( sum(nozzle.GetOutput['MAX_TOTAL_STRESS']) > 0 or 
          sum(nozzle.GetOutput['KS_TOTAL_STRESS']) > 0 or
-         sum(nozzle.GetOutput['PN_TOTAL_STRESS']) > 0 ):
+         sum(nozzle.GetOutput['PN_TOTAL_STRESS']) > 0 or
+         sum( nozzle.GetOutput['MAX_FAILURE_CRITERIA']) > 0 or
+         sum( nozzle.GetOutput['KS_FAILURE_CRITERIA']) > 0 or
+         sum( nozzle.GetOutput['PN_FAILURE_CRITERIA']) > 0):
         
         # Inner load layer
-        filename = 'STRESS.1';
-        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-        stemp = np.mean(data[:,-1]);
-        nozzle.max_total_stress[2] = np.max(data[:,-1]);
-        nozzle.ks_total_stress[2] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-        nozzle.pn_total_stress[2] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+        assignStressAndFailureCriteria(nozzle, 'STRESS.1', 2, nozzle.wall.layer[2].material);
         
         # Middle load layer
-        filename = 'STRESS.2';
-        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-        stemp = np.mean(data[:,-1]);
-        nozzle.max_total_stress[3] = np.max(data[:,-1]);
-        nozzle.ks_total_stress[3] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-        nozzle.pn_total_stress[3] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;    
+        assignStressAndFailureCriteria(nozzle, 'STRESS.2', 3, nozzle.wall.layer[3].material);
         
-        # Upper load layer
-        filename = 'STRESS.3';
-        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-        stemp = np.mean(data[:,-1]);
-        nozzle.max_total_stress[4] = np.max(data[:,-1]);
-        nozzle.ks_total_stress[4] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-        nozzle.pn_total_stress[4] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;  
+        # Upper load layer 
+        assignStressAndFailureCriteria(nozzle, 'STRESS.3', 4, nozzle.wall.layer[4].material);
         
         # Stringers
-        filename = 'STRESS.4';
-        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-        stemp = np.mean(data[:,-1]);
-        nozzle.max_total_stress[5] = np.max(data[:,-1]);
-        nozzle.ks_total_stress[5] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-        nozzle.pn_total_stress[5] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+        assignStressAndFailureCriteria(nozzle, 'STRESS.4', 5, nozzle.stringers.material);
     
         # Each baffle
         for i in range(7,nozzle.baffles.n+7):
             filename = 'STRESS.' + str(i-2);
-            data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-            stemp = np.mean(data[:,-1]);
-            nozzle.max_total_stress[i-1] = np.max(data[:,-1]);
-            nozzle.ks_total_stress[i-1] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-            nozzle.pn_total_stress[i-1] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+            assignStressAndFailureCriteria(nozzle, filename, i-1, nozzle.baffles.material);
     
     # ---- Load and assign mechanical stress results if necessary
     if sum(nozzle.GetOutput['MAX_MECHANICAL_STRESS']) > 0:

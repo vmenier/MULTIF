@@ -248,6 +248,41 @@ class Material:
                 raise RuntimeError('Anisotropic panel material must have 6'  \
                       'values provided for thermal expansion coef')
         return 0
+        
+    def setFailureType(self,failureType,var):
+        self.failureType = failureType;
+        if failureType == 'PRINCIPLE_FAILURE_STRAIN':            
+            if isinstance(var,float):
+                self.failureStrain = [var,-var]
+            elif len(var) == 2:
+                self.failureStrain = var
+            elif len(var) == 5:
+                self.failureStrain = var # order: direction 1 tension, direction 1 compression, direction 2 tension, direction 2 compression, direction 12 shear
+            else:
+                raise ValueError('1, 2, or 5 values must be provided for '   \
+                  'local failure strain failure criterion')
+        elif failureType == 'LOCAL_FAILURE_STRAIN':
+            if isinstance(var,float):
+                self.failureStrain = [var,-var]
+            elif len(var) == 2:
+                self.failureStrain = var
+            elif len(var) == 5:
+                self.failureStrain = var # order: direction 1 tension, direction 1 compression, direction 2 tension, direction 2 compression, direction 12 shear
+            else:
+                raise ValueError('1, 2, or 5 values must be provided for '   \
+                  'local failure strain failure criterion')
+        elif failureType == 'VON_MISES':
+            if isinstance(var,float):
+                self.yieldStress = var
+            #elif len(var) == 2:
+            #    self.yieldStress = var
+            else:
+                raise ValueError('1 value must be provided for yield'  \
+                  ' stress for Von Mises failure criterion')
+        else:
+            raise ValueError('%s not accepted as a failure type. Only '      \
+              'PRINCIPLE_FAILURE_STRAIN, LOCAL_FAILURE_STRAIN, and '         \
+              'VON_MISES are accepted.' % failureType)
      
     # Calculate (if necessary) and return density
     def getDensity(self,*args):
