@@ -960,30 +960,30 @@ int writeAEROS2(GModel *g,
   // von mises stress
   fprintf(fp, "stressvm 14 7 \"STRESS.cmc\" 1\n");
   fprintf(fp, "stressvm 14 7 \"STRESS.0\" 1 NG 1\n");
-  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS\" 1 thermal\n");
+  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.cmc\" 1 thermal\n");
   fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.0\" 1 NG 1 thermal\n");
-  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS\" 1 mechanical\n");
+  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.cmc\" 1 mechanical\n");
   fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.0\" 1 NG 1 mechanical\n");
   // 1st principal stress
-  fprintf(fp, "stressp1 14 7 \"STRESSP1\" 1 lower\n");
+  fprintf(fp, "stressp1 14 7 \"STRESSP1.cmc\" 1 lower\n");
   fprintf(fp, "stressp1 14 7 \"STRESSP1.0\" 1 NG 1 lower\n");
-  fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1\" 1 thermal\n");
+  fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.cmc\" 1 thermal\n");
   fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.0\" 1 NG 1 thermal\n");
-  fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1\" 1 mechanical\n");
+  fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.cmc\" 1 mechanical\n");
   fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.0\" 1 NG 1 mechanical\n");
   // 2nd principal stress
-  fprintf(fp, "stressp2 14 7 \"STRESSP2\" 1 lower\n");
+  fprintf(fp, "stressp2 14 7 \"STRESSP2.cmc\" 1 lower\n");
   fprintf(fp, "stressp2 14 7 \"STRESSP2.0\" 1 NG 1 lower\n");
-  fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2\" 1 thermal\n");
+  fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.cmc\" 1 thermal\n");
   fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.0\" 1 NG 1 thermal\n");
-  fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2\" 1 mechanical\n");
+  fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.cmc\" 1 mechanical\n");
   fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.0\" 1 NG 1 mechanical\n");
   // 3rd principal stress
-  fprintf(fp, "stressp3 14 7 \"STRESSP3\" 1 lower\n");
+  fprintf(fp, "stressp3 14 7 \"STRESSP3.cmc\" 1 lower\n");
   fprintf(fp, "stressp3 14 7 \"STRESSP3.0\" 1 NG 1 lower\n");
-  fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3\" 1 thermal\n");
+  fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.cmc\" 1 thermal\n");
   fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.0\" 1 NG 1 thermal\n");
-  fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3\" 1 mechanical\n");
+  fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.cmc\" 1 mechanical\n");
   fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.0\" 1 NG 1 mechanical\n");
 
   fprintf(fp, "*\n");
