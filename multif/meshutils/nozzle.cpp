@@ -797,12 +797,33 @@ int writeAEROH(GModel *g,
 
   fclose(fp7);
 
+  // set of nodes used to define group 4
+  std::set<int> s;
+  for(unsigned int i = 0; i < entities.size(); i++) {
+    int physicalTag = entities[i]->physicals.empty() ? -1 : entities[i]->physicals[0];
+    if(physicalTag == 0) {
+      for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
+        MElement *m = entities[i]->getMeshElement(j);
+        const char *str = m->getStringForBDF();
+        if(str && std::strcmp(str,"CHEXA") == 0) {
+          for(int k = 0; k < m->getNumVertices(); ++k) {
+            int index = m->getVertexBDF(k)->getIndex();
+            if(s.find(index) == s.end()) {
+              s.insert(index);
+            }
+          }
+        }
+      }
+    }
+  }
+
   // main file
   fprintf(fp, "STATICS\n");
   fprintf(fp, "sparse\n");
   fprintf(fp, "*\n");
   fprintf(fp, "OUTPUT\n");
   fprintf(fp, "gtempera 22 15 \"TEMP\" 1\n");
+  fprintf(fp, "gtempera 22 15 \"TEMP.0\" 1 NG 4\n");
   fprintf(fp, "gtempera 22 15 \"TEMP.1\" 1 NG 1\n");
   fprintf(fp, "gtempera 22 15 \"TEMP.2\" 1 NG 2\n");
   fprintf(fp, "gtempera 22 15 \"TEMP.3\" 1 NG 3\n");
@@ -811,6 +832,7 @@ int writeAEROH(GModel *g,
   fprintf(fp, "N surface 1 1\n");
   fprintf(fp, "N surface 2 2\n");
   fprintf(fp, "N surface 3 3\n");
+  for(std::set<int>::iterator it = s.begin(); it != s.end(); ++it) fprintf(fp, "N %d 4\n", *it);
   fprintf(fp, "*\n");
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "GEOMETRY.txt.thermal");
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "TOPOLOGY.txt.thermal");
@@ -819,6 +841,162 @@ int writeAEROH(GModel *g,
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "TEMPERATURES.txt.thermal");
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "CONVECTION.txt.thermal");
   fprintf(fp, "INCLUDE \"%s\"\n*\n", "SURFACETOPO.txt.thermal");
+  fprintf(fp, "END\n");
+
+  fclose(fp);
+
+  return 1;
+}
+
+int writeAEROS2(GModel *g,
+                const std::vector<std::vector<double> > &points,
+                const std::vector<VertexData> &vertices,
+                const std::vector<SegmentData> &segments,
+                const std::vector<MaterialData> &materials,
+                const std::vector<BoundaryData> &boundaries,
+                const std::vector<std::pair<GEntity::GeomType,int> > &boundaryTags,
+                const std::string &name,
+                int elementTagType=1, bool saveAll=false, double scalingFactor=1.0)
+{
+  FILE *fp = Fopen(name.c_str(), "w");
+  if(!fp){
+    Msg::Error("Unable to open file '%s'", name.c_str());
+    return 0;
+  }
+
+  if(g->noPhysicalGroups()) saveAll = true;
+
+  g->indexMeshVertices(saveAll);
+
+  std::vector<GEntity*> entities;
+  g->getEntities(entities);
+
+  // nodes
+  std::set<int> s;
+  FILE *fp1 = Fopen("GEOMETRY.txt.cmc", "w");
+  fprintf(fp1, "NODES\n");
+  for(unsigned int i = 0; i < entities.size(); i++) {
+    int physicalTag = entities[i]->physicals.empty() ? -1 : entities[i]->physicals[0];
+    if(physicalTag == 0) {
+      for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
+        MElement *m = entities[i]->getMeshElement(j);
+        const char *str = m->getStringForBDF();
+        if(str && std::strcmp(str,"CHEXA") == 0) {
+          for(int k = 0; k < m->getNumVertices(); ++k) {
+            int index = m->getVertexBDF(k)->getIndex();
+            if(s.find(index) == s.end()) {
+              writeNode(m->getVertexBDF(k), fp1, scalingFactor);
+              s.insert(index);
+            }
+          }
+        }
+      }
+    }
+  }
+  fclose(fp1);
+
+  // elements (all cmc hexas)
+  FILE *fp2 = Fopen("TOPOLOGY.txt.cmc", "w");
+  fprintf(fp2, "TOPOLOGY\n");
+  for(unsigned int i = 0; i < entities.size(); i++) {
+    int physicalTag = entities[i]->physicals.empty() ? -1 : entities[i]->physicals[0];
+    if(physicalTag == 0) {
+      for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
+        MElement *m = entities[i]->getMeshElement(j);
+        const char *str = m->getStringForBDF();
+        if(str && std::strcmp(str,"CHEXA") == 0) {
+          writeElem(m, fp2, 17);
+        }
+      }
+    }
+  }
+  fclose(fp2);
+
+  // attributes
+  FILE *fp3 = Fopen("ATTRIBUTES.txt.cmc", "w");
+  fprintf(fp3, "ATTRIBUTES\n");
+  for(unsigned int i = 0; i < entities.size(); i++) {
+    int physicalTag = entities[i]->physicals.empty() ? -1 : entities[i]->physicals[0];
+    if(physicalTag == 0) {
+      for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
+        MElement *m = entities[i]->getMeshElement(j);
+        const char *str = m->getStringForBDF();
+        if(str && std::strcmp(str,"CHEXA") == 0) {
+          writeAttr(m, fp3, scalingFactor, physicalTag, points, vertices,
+                    segments);
+        }
+      }
+    }
+  }
+  fclose(fp3);
+
+  // material properties
+  std::ofstream fout("MATERIAL.txt.cmc");
+  fout << "MATERIALS\n";
+  for(std::vector<MaterialData>::const_iterator it = materials.begin(); it != materials.end(); ++it) {
+    fout << std::distance(materials.begin(),it)+1 << " 0 " << it->E << " " << it->nu << " " << it->rho
+         << " 0 0 0 0 " << boundaries.begin()->Ta << " 0 " << it->w << " 0 0 0\n"; // XXX
+  }
+  fout.close();
+
+  // displacement (all nodes on the boundary edges)
+  FILE *fp4 = Fopen("DISPLACEMENTS.txt.cmc", "w");
+  fprintf(fp4, "DISPLACEMENTS\n");
+  for(unsigned int i = 0; i < entities.size(); i++) {
+    if(std::find(boundaryTags.begin(), boundaryTags.end(), std::make_pair(entities[i]->geomType(),entities[i]->tag())) != boundaryTags.end()) {
+      for(unsigned int j = 0; j < entities[i]->mesh_vertices.size(); j++)
+        writeDisp(entities[i]->mesh_vertices[j], fp4, scalingFactor);
+    }
+  }
+  fclose(fp4);
+
+  // main file
+  fprintf(fp, "STATICS\n");
+  fprintf(fp, "sparse\n");
+  fprintf(fp, "*\n");
+  fprintf(fp, "OUTPUT\n");
+  fprintf(fp, "gdisplac 14 7 \"DISP.cmc\" 1\n");
+
+  // von mises stress
+  fprintf(fp, "stressvm 14 7 \"STRESS.cmc\" 1\n");
+  fprintf(fp, "stressvm 14 7 \"STRESS.0\" 1 NG 1\n");
+  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.cmc\" 1 thermal\n");
+  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.0\" 1 NG 1 thermal\n");
+  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.cmc\" 1 mechanical\n");
+  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.0\" 1 NG 1 mechanical\n");
+  // 1st principal stress
+  fprintf(fp, "stressp1 14 7 \"STRESSP1.cmc\" 1 lower\n");
+  fprintf(fp, "stressp1 14 7 \"STRESSP1.0\" 1 NG 1 lower\n");
+  fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.cmc\" 1 thermal\n");
+  fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.0\" 1 NG 1 thermal\n");
+  fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.cmc\" 1 mechanical\n");
+  fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.0\" 1 NG 1 mechanical\n");
+  // 2nd principal stress
+  fprintf(fp, "stressp2 14 7 \"STRESSP2.cmc\" 1 lower\n");
+  fprintf(fp, "stressp2 14 7 \"STRESSP2.0\" 1 NG 1 lower\n");
+  fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.cmc\" 1 thermal\n");
+  fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.0\" 1 NG 1 thermal\n");
+  fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.cmc\" 1 mechanical\n");
+  fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.0\" 1 NG 1 mechanical\n");
+  // 3rd principal stress
+  fprintf(fp, "stressp3 14 7 \"STRESSP3.cmc\" 1 lower\n");
+  fprintf(fp, "stressp3 14 7 \"STRESSP3.0\" 1 NG 1 lower\n");
+  fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.cmc\" 1 thermal\n");
+  fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.0\" 1 NG 1 thermal\n");
+  fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.cmc\" 1 mechanical\n");
+  fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.0\" 1 NG 1 mechanical\n");
+
+  fprintf(fp, "*\n");
+  fprintf(fp, "GROUPS\n");
+  for(std::set<int>::iterator it = s.begin(); it != s.end(); ++it) fprintf(fp, "N %d 1\n", *it);
+  fprintf(fp, "*\n");
+  fprintf(fp, "INCLUDE \"%s\"\n*\n", "GEOMETRY.txt.cmc");
+  fprintf(fp, "INCLUDE \"%s\"\n*\n", "TOPOLOGY.txt.cmc");
+  fprintf(fp, "INCLUDE \"%s\"\n*\n", "ATTRIBUTES.txt.cmc");
+  fprintf(fp, "INCLUDE \"%s\"\n*\n", "MATERIAL.txt.cmc");
+  fprintf(fp, "INCLUDE \"%s\"\n*\n", "DISPLACEMENTS.txt.cmc");
+  fprintf(fp, "INCLUDE \"%s\"\n*\n", "TEMPERATURES.txt.cmc");
+  
   fprintf(fp, "END\n");
 
   fclose(fp);
@@ -859,6 +1037,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
   std::vector<std::pair<GEntity::GeomType,int> > interiorBoundaryTags;
   std::vector<std::pair<GEntity::GeomType,int> > surfaceTags;
   std::vector<std::pair<GEntity::GeomType,int> > boundaryTags;
+  std::vector<std::pair<GEntity::GeomType,int> > cmcBoundaryTags;
 
   double cth1, cth2, cth3, cth4, cth5, cth6;
 
@@ -1236,10 +1415,18 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
               interiorBoundaryTags.push_back(std::make_pair((*it2)->getEndVertex()->geomType(),(*it2)->getEndVertex()->tag()));
               interiorBoundaryTags.push_back(std::make_pair((*it2)->geomType(),(*it2)->tag()));
             }
+            if(segmentIt == segments.begin() && faceIndex == 3) {
+              cmcBoundaryTags.push_back(std::make_pair((*it2)->getBeginVertex()->geomType(),(*it2)->getBeginVertex()->tag()));
+              cmcBoundaryTags.push_back(std::make_pair((*it2)->getEndVertex()->geomType(),(*it2)->getEndVertex()->tag()));
+              cmcBoundaryTags.push_back(std::make_pair((*it2)->geomType(),(*it2)->tag()));
+            }
           }
           if(faceIndex == 0) {
             interiorBoundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
             (*it)->addPhysicalEntity(0);
+          }
+          if(segmentIt == segments.begin() && faceIndex == 3) {
+            cmcBoundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
           }
         }
   
@@ -1435,7 +1622,10 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
 
   m->writeMSH("nozzle.msh");
   writeAEROS(m, points, vertices, segments, materials, boundaries, surfaceTags, boundaryTags, "nozzle.aeros", 2, false, 1.0, (tf==0));
-  if(tf != 0) writeAEROH(m, points, vertices, segments, materials, boundaries, interiorBoundaryTags, exteriorBoundaryTags, "nozzle.aeroh", 2);
+  if(tf != 0) {
+    writeAEROH(m, points, vertices, segments, materials, boundaries, interiorBoundaryTags, exteriorBoundaryTags, "nozzle.aeroh", 2);
+    writeAEROS2(m, points, vertices, segments, materials, boundaries, cmcBoundaryTags, "nozzle.aeros.cmc", 2);
+  }
 
   delete m;
 
@@ -1511,7 +1701,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
 
 static PyObject *nozzle_convert(PyObject *self, PyObject *args)
 {
-  std::ifstream in("TEMP.2");
+  {std::ifstream in("TEMP.2");
   std::ofstream out("TEMPERATURES.txt");
 
   std::string s;
@@ -1527,7 +1717,25 @@ static PyObject *nozzle_convert(PyObject *self, PyObject *args)
   }
 
   in.close();
-  out.close();
+  out.close();}
+
+  {std::ifstream in("TEMP.0");
+  std::ofstream out("TEMPERATURES.txt.cmc");
+
+  std::string s;
+  getline(in,s);
+  getline(in,s);
+  getline(in,s);
+
+  int node; double x,y,z,t;
+  out << "TEMPERATURE\n";
+  while (!in.eof()) {
+    in >> node >> x >> y >> z >> t;
+    out << std::left << std::setw(8) << node << " " << std::setprecision(15) << t << std::endl;
+  }
+
+  in.close();
+  out.close();}
 
   Py_RETURN_NONE;
 }

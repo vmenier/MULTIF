@@ -167,8 +167,9 @@ def runAEROS ( nozzle ):
     for k in nozzle.materials:
       if nozzle.materials[k].type == 'ISOTROPIC':
         if nozzle.materials[k].name == 'CMC':
-            print >> f1, "ISOTROPIC 0 0 %lf 0 %lf 0" % (nozzle.materials[k].getDensity(),
-                     nozzle.materials[k].getThermalConductivity())                     
+            print >> f1, "ISOTROPIC %lf %lf %lf %lf %lf 0" % (nozzle.materials[k].getElasticModulus(),
+                     nozzle.materials[k].getPoissonRatio(), nozzle.materials[k].getDensity(),
+                     nozzle.materials[k].getThermalExpansionCoef(), nozzle.materials[k].getThermalConductivity())
         elif nozzle.materials[k].name == 'AIR':
             print >> f1, "ISOTROPIC 0 0 %lf 0 %lf 0" % (nozzle.materials[k].getDensity(),
                      nozzle.materials[k].getThermalConductivity())   
@@ -199,6 +200,7 @@ def runAEROS ( nozzle ):
       os.system("aeros nozzle.aeroh"); # execute the thermal analysis
       _nozzle_module.convert();        # convert temperature output from thermal analysis to input for structural analysis
     os.system("aeros nozzle.aeros"); # execute the structural analysis
+    os.system("aeros nozzle.aeros.cmc"); # execute the structural analysis of the cmc layer
     
     nozzle.wallTemp = SolExtract[:,iTemp];
     
