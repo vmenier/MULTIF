@@ -308,6 +308,9 @@ def AEROSPostProcessing ( nozzle ):
          sum( nozzle.GetOutput['MAX_FAILURE_CRITERIA']) > 0 or
          sum( nozzle.GetOutput['KS_FAILURE_CRITERIA']) > 0 or
          sum( nozzle.GetOutput['PN_FAILURE_CRITERIA']) > 0):
+             
+        # Thermal layer
+        assignStressAndFailureCriteria(nozzle, 'STRESS.0', 0, nozzle.wall.layer[0].material);
         
         # Inner load layer
         assignStressAndFailureCriteria(nozzle, 'STRESS.1', 2, nozzle.wall.layer[2].material);
@@ -328,6 +331,15 @@ def AEROSPostProcessing ( nozzle ):
     
     # ---- Load and assign mechanical stress results if necessary
     if sum(nozzle.GetOutput['MAX_MECHANICAL_STRESS']) > 0:
+        
+        # Thermal layer
+        filename = 'MECHANICAL_STRESS.0';
+        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+        stemp = np.mean(data[:,-1]);
+        nozzle.max_mechanical_stress[0] = np.max(data[:,-1]);
+        #nozzle.ks_mechanical_stress[0] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+        #nozzle.pn_mechanical_stress[0] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+        
         
         # Inner load layer
         filename = 'MECHANICAL_STRESS.1';
@@ -373,6 +385,14 @@ def AEROSPostProcessing ( nozzle ):
     # ---- Load and assign thermal stress results if necessary
     if sum(nozzle.GetOutput['MAX_THERMAL_STRESS']) > 0:
         
+        # Thermal layer
+        filename = 'THERMAL_STRESS.0';
+        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+        stemp = np.mean(data[:,-1]);
+        nozzle.max_thermal_stress[0] = np.max(data[:,-1]);
+        #nozzle.ks_mechanical_stress[0] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
+        #nozzle.pn_mechanical_stress[0] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+
         # Inner load layer
         filename = 'THERMAL_STRESS.1';
         data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
