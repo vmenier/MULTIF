@@ -83,6 +83,19 @@ def runAEROS ( nozzle ):
     # are 3 values: (1st in-plane direction, 2nd in-plane direction, out-of-plane direction))
     #[k1, k2, k3] = nozzle.wall.layer[1].material.getThermalConductivity()
     # End of example
+        
+    for i in range(len(nozzle.wall.layer)):
+        if nozzle.wall.layer[i].name == 'AIR_GAP':
+            continue;
+        else:
+            print nozzle.wall.layer[i].name;
+            print nozzle.wall.layer[i].material.name;
+            print nozzle.wall.layer[i].material.getDensity();
+            print nozzle.wall.layer[i].material.getElasticModulus();
+            print nozzle.wall.layer[i].material.getShearModulus();
+            print nozzle.wall.layer[i].material.getPoissonRatio();
+            print nozzle.wall.layer[i].material.getThermalConductivity();
+            print nozzle.wall.layer[i].material.getThermalExpansionCoef();
 
     if nozzle.method == 'NONIDEALNOZZLE':
         SolExtract = nozzle.wallResults;
@@ -167,14 +180,14 @@ def runAEROS ( nozzle ):
     for k in nozzle.materials:
       if nozzle.materials[k].type == 'ISOTROPIC':
         if nozzle.materials[k].name == 'CMC':
-            print >> f1, "ISOTROPIC %lf %lf %lf %lf %lf 0" % (nozzle.materials[k].getElasticModulus(),
+            print >> f1, "ISOTROPIC %lf %lf %lf %0.12f %lf 0" % (nozzle.materials[k].getElasticModulus(),
                      nozzle.materials[k].getPoissonRatio(), nozzle.materials[k].getDensity(),
                      nozzle.materials[k].getThermalExpansionCoef(), nozzle.materials[k].getThermalConductivity())
         elif nozzle.materials[k].name == 'AIR':
             print >> f1, "ISOTROPIC 0 0 %lf 0 %lf 0" % (nozzle.materials[k].getDensity(),
                      nozzle.materials[k].getThermalConductivity())   
         else:
-            print >> f1, "ISOTROPIC %lf %lf %lf %lf %lf %lf" % (nozzle.materials[k].getElasticModulus(),
+            print >> f1, "ISOTROPIC %lf %lf %lf %0.12f %lf %lf" % (nozzle.materials[k].getElasticModulus(),
                      nozzle.materials[k].getPoissonRatio(), nozzle.materials[k].getDensity(),
                      nozzle.materials[k].getThermalExpansionCoef(), nozzle.materials[k].getThermalConductivity(),
                      nozzle.environment.hInf);
@@ -183,7 +196,7 @@ def runAEROS ( nozzle ):
         [mu1, mu2] = nozzle.materials[k].getMutualInfluenceCoefs()
         [alpha1, alpha2, alpha12] = nozzle.materials[k].getThermalExpansionCoef()
         [k11, k12, k13] = nozzle.materials[k].getThermalConductivity();
-        print >> f1, "ANISOTROPIC %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf" % \
+        print >> f1, "ANISOTROPIC %lf %lf %lf %lf %lf %lf %lf %0.12f %0.12f %0.12f %lf %lf" % \
                 (E1, E2, nozzle.materials[k].getPoissonRatio(), nozzle.materials[k].getShearModulus(), mu1, mu2,
                  nozzle.materials[k].getDensity(), alpha1, alpha2, alpha12, (k11+k12+k13)/3, nozzle.environment.hInf);
     f1.close();
