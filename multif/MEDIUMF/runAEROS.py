@@ -131,6 +131,7 @@ def runAEROS ( nozzle ):
     Mn   = max(2,(2*math.pi*nozzle.wall.geometry.radius(points[0])/Ns)/lc+1); # Number of nodes in circumferential direction per panel
     Tn1  = 4;  # Number of nodes through thickness of thermal insulating layer
     Tn2  = 2;  # Number of nodes through thickness of gap between thermal and load layers
+    Ln   = 2;  # Number of nodes through each half of the thickness of the load layer (thermal model)
     Sn   = max(nozzle.stringers.height.radius(0)/lc+1,2) if nozzle.stringers.n > 0 else 0; # number of nodes on radial edge of stringers
     
     ## --- How to get x, y, P, T :
@@ -142,6 +143,7 @@ def runAEROS ( nozzle ):
         thermalFlag = 1;  # 0: structural analysis only, 1: both thermal and structural analyses
     else: # only perform structural analysis
         thermalFlag = 0;
+    linearFlag = 1; # 0: nonlinear structural analysis, 1: linear structural analysis
 
     materialNames = [nozzle.materials[k].name for k in nozzle.materials]
     # material ids of the thermal and load layers
@@ -156,7 +158,7 @@ def runAEROS ( nozzle ):
     Ms = materialNames.index(nozzle.stringers.material.name) if nozzle.stringers.n > 0 else -1
     
     f1 = open("NOZZLE.txt", 'w');
-    print >> f1, "%d %d %d %f %d %d %d %d" % (len(points), len(vertices), len(nozzle.materials), lc, boundaryFlag, thermalFlag, 3, 2);
+    print >> f1, "%d %d %d %f %d %d %d %d %d" % (len(points), len(vertices), len(nozzle.materials), lc, boundaryFlag, thermalFlag, 3, 2, linearFlag);
     # points
     for i in range(len(points)):
         print >> f1, "%lf %lf" % (points[i], nozzle.wall.geometry.radius(points[i]));
@@ -175,7 +177,7 @@ def runAEROS ( nozzle ):
     # panels
     for i in range(1,len(vertices)):
         Nn = max(2,(vertices[i]-vertices[i-1])/lc+1); # number of nodes on longitudial edge
-        print >> f1, "%d %d %d %d %d %d %d %d %d %d %d %d" % (M[2], M[3], M[4], Ns, Ms, Nn, Mn, Sn, M[0], M[1], Tn1, Tn2);
+        print >> f1, "%d %d %d %d %d %d %d %d %d %d %d %d %d" % (M[2], M[3], M[4], Ns, Ms, Nn, Mn, Sn, M[0], M[1], Tn1, Tn2, Ln);
     # material properties
     for k in nozzle.materials:
       if nozzle.materials[k].type == 'ISOTROPIC':

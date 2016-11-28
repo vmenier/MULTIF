@@ -69,7 +69,7 @@ MOD_INIT(_nozzle_module)
 #include "gmshLevelset.h"
 
 struct VertexData { int p, mb; double wb; int nb; std::vector<double> t, tt; double tb, ts, ws; };
-struct SegmentData { std::vector<int> m; int ns, ms, nn, mn, sn; std::vector<int> mt, tn; };
+struct SegmentData { std::vector<int> m; int ns, ms, nn, mn, sn; std::vector<int> mt, tn; int ln; };
 struct MaterialData
 {
   enum { ISOTROPIC=0, ANISOTROPIC } type;
@@ -332,7 +332,7 @@ int writeAEROS(GModel *g,
                const std::vector<BoundaryData> &boundaries,
                const std::vector<std::pair<GEntity::GeomType,int> > &surfaceTags,
                const std::vector<std::pair<GEntity::GeomType,int> > &boundaryTags,
-               const std::string &name,
+               int lf, const std::string &name,
                int elementTagType=1, bool saveAll=false, double scalingFactor=1.0, bool temp=false)
 {
   FILE *fp = Fopen(name.c_str(), "w");
@@ -528,6 +528,10 @@ int writeAEROS(GModel *g,
   fprintf(fp, "STATICS\n");
   fprintf(fp, "sparse\n");
   fprintf(fp, "*\n");
+  if(lf == 0) {
+    fprintf(fp, "NONLINEAR\n");
+    fprintf(fp, "*\n");
+  }
   fprintf(fp, "OUTPUT\n");
   fprintf(fp, "gdisplac 14 7 \"DISP\" 1\n");
 
@@ -540,22 +544,24 @@ int writeAEROS(GModel *g,
     fprintf(fp, "stressvm 14 7 \"STRESS.4\" 1 NG 4 median\n");
   for(int k = 0; k < baffleCount; ++k) 
     fprintf(fp, "stressvm 14 7 \"STRESS.%d\" 1 NG %d median\n", 5+k, 5+k);
-  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS\" 1 lower thermal\n");
-  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.1\" 1 NG 2 lower thermal\n");
-  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.2\" 1 NG 2 median thermal\n");
-  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.3\" 1 NG 2 upper thermal\n");
-  if(stringerCount > 0)
-    fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.4\" 1 NG 4 median thermal\n");
-  for(int k = 0; k < baffleCount; ++k)
-    fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.%d\" 1 NG %d median thermal\n", 5+k, 5+k);
-  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS\" 1 lower mechanical\n");
-  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.1\" 1 NG 2 lower mechanical\n");
-  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.2\" 1 NG 2 median mechanical\n");
-  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.3\" 1 NG 2 upper mechanical\n");
-  if(stringerCount > 0)
-    fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.4\" 1 NG 4 median mechanical\n");
-  for(int k = 0; k < baffleCount; ++k)
-    fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.%d\" 1 NG %d median mechanical\n", 5+k, 5+k);
+  if(lf == 1) {
+    fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS\" 1 lower thermal\n");
+    fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.1\" 1 NG 2 lower thermal\n");
+    fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.2\" 1 NG 2 median thermal\n");
+    fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.3\" 1 NG 2 upper thermal\n");
+    if(stringerCount > 0)
+      fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.4\" 1 NG 4 median thermal\n");
+    for(int k = 0; k < baffleCount; ++k)
+      fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.%d\" 1 NG %d median thermal\n", 5+k, 5+k);
+    fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS\" 1 lower mechanical\n");
+    fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.1\" 1 NG 2 lower mechanical\n");
+    fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.2\" 1 NG 2 median mechanical\n");
+    fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.3\" 1 NG 2 upper mechanical\n");
+    if(stringerCount > 0)
+      fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.4\" 1 NG 4 median mechanical\n");
+    for(int k = 0; k < baffleCount; ++k)
+      fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.%d\" 1 NG %d median mechanical\n", 5+k, 5+k);
+  }
   // 1st principal stress
   fprintf(fp, "stressp1 14 7 \"STRESSP1\" 1 lower\n");
   fprintf(fp, "stressp1 14 7 \"STRESSP1.1\" 1 NG 2 lower\n");
@@ -565,22 +571,24 @@ int writeAEROS(GModel *g,
     fprintf(fp, "stressp1 14 7 \"STRESSP1.4\" 1 NG 4 median\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressp1 14 7 \"STRESSP1.%d\" 1 NG %d median\n", 5+k, 5+k);
-  fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1\" 1 lower thermal\n");
-  fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.1\" 1 NG 2 lower thermal\n");
-  fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.2\" 1 NG 2 median thermal\n");
-  fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.3\" 1 NG 2 upper thermal\n");
-  if(stringerCount > 0)
-    fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.4\" 1 NG 4 median thermal\n");
-  for(int k = 0; k < baffleCount; ++k)
-    fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.%d\" 1 NG %d median thermal\n", 5+k, 5+k);
-  fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1\" 1 lower mechanical\n");
-  fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.1\" 1 NG 2 lower mechanical\n");
-  fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.2\" 1 NG 2 median mechanical\n");
-  fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.3\" 1 NG 2 upper mechanical\n");
-  if(stringerCount > 0)
-    fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.4\" 1 NG 4 median mechanical\n");
-  for(int k = 0; k < baffleCount; ++k)
-    fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.%d\" 1 NG %d median mechanical\n", 5+k, 5+k);
+  if(lf == 1) {
+    fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1\" 1 lower thermal\n");
+    fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.1\" 1 NG 2 lower thermal\n");
+    fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.2\" 1 NG 2 median thermal\n");
+    fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.3\" 1 NG 2 upper thermal\n");
+    if(stringerCount > 0)
+      fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.4\" 1 NG 4 median thermal\n");
+    for(int k = 0; k < baffleCount; ++k)
+      fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.%d\" 1 NG %d median thermal\n", 5+k, 5+k);
+    fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1\" 1 lower mechanical\n");
+    fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.1\" 1 NG 2 lower mechanical\n");
+    fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.2\" 1 NG 2 median mechanical\n");
+    fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.3\" 1 NG 2 upper mechanical\n");
+    if(stringerCount > 0)
+      fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.4\" 1 NG 4 median mechanical\n");
+    for(int k = 0; k < baffleCount; ++k)
+      fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.%d\" 1 NG %d median mechanical\n", 5+k, 5+k);
+  }
   // 2nd principal stress
   fprintf(fp, "stressp2 14 7 \"STRESSP2\" 1 lower\n");
   fprintf(fp, "stressp2 14 7 \"STRESSP2.1\" 1 NG 2 lower\n");
@@ -590,22 +598,24 @@ int writeAEROS(GModel *g,
     fprintf(fp, "stressp2 14 7 \"STRESSP2.4\" 1 NG 4 median\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressp2 14 7 \"STRESSP2.%d\" 1 NG %d median\n", 5+k, 5+k);
-  fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2\" 1 lower thermal\n");
-  fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.1\" 1 NG 2 lower thermal\n");
-  fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.2\" 1 NG 2 median thermal\n");
-  fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.3\" 1 NG 2 upper thermal\n");
-  if(stringerCount > 0)
-    fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.4\" 1 NG 4 median thermal\n");
-  for(int k = 0; k < baffleCount; ++k)
-    fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.%d\" 1 NG %d median thermal\n", 5+k, 5+k);
-  fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2\" 1 lower mechanical\n");
-  fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.1\" 1 NG 2 lower mechanical\n");
-  fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.2\" 1 NG 2 median mechanical\n");
-  fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.3\" 1 NG 2 upper mechanical\n");
-  if(stringerCount > 0)
-    fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.4\" 1 NG 4 median mechanical\n");
-  for(int k = 0; k < baffleCount; ++k)
-    fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.%d\" 1 NG %d median mechanical\n", 5+k, 5+k);
+  if(lf == 1) {
+    fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2\" 1 lower thermal\n");
+    fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.1\" 1 NG 2 lower thermal\n");
+    fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.2\" 1 NG 2 median thermal\n");
+    fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.3\" 1 NG 2 upper thermal\n");
+    if(stringerCount > 0)
+      fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.4\" 1 NG 4 median thermal\n");
+    for(int k = 0; k < baffleCount; ++k)
+      fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.%d\" 1 NG %d median thermal\n", 5+k, 5+k);
+    fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2\" 1 lower mechanical\n");
+    fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.1\" 1 NG 2 lower mechanical\n");
+    fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.2\" 1 NG 2 median mechanical\n");
+    fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.3\" 1 NG 2 upper mechanical\n");
+    if(stringerCount > 0)
+      fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.4\" 1 NG 4 median mechanical\n");
+    for(int k = 0; k < baffleCount; ++k)
+      fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.%d\" 1 NG %d median mechanical\n", 5+k, 5+k);
+  }
   // 3rd principal stress
   fprintf(fp, "stressp3 14 7 \"STRESSP3\" 1 lower\n");
   fprintf(fp, "stressp3 14 7 \"STRESSP3.1\" 1 NG 2 lower\n");
@@ -615,22 +625,24 @@ int writeAEROS(GModel *g,
     fprintf(fp, "stressp3 14 7 \"STRESSP3.4\" 1 NG 4 median\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressp3 14 7 \"STRESSP3.%d\" 1 NG %d median\n", 5+k, 5+k);
-  fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3\" 1 lower thermal\n");
-  fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.1\" 1 NG 2 lower thermal\n");
-  fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.2\" 1 NG 2 median thermal\n");
-  fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.3\" 1 NG 2 upper thermal\n");
-  if(stringerCount > 0)
-    fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.4\" 1 NG 4 median thermal\n");
-  for(int k = 0; k < baffleCount; ++k)
-    fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.%d\" 1 NG %d median thermal\n", 5+k, 5+k);
-  fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3\" 1 lower mechanical\n");
-  fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.1\" 1 NG 2 lower mechanical\n");
-  fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.2\" 1 NG 2 median mechanical\n");
-  fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.3\" 1 NG 2 upper mechanical\n");
-  if(stringerCount > 0)
-    fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.4\" 1 NG 4 median mechanical\n");
-  for(int k = 0; k < baffleCount; ++k)
-    fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.%d\" 1 NG %d median mechanical\n", 5+k, 5+k);
+  if(lf == 1) {
+    fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3\" 1 lower thermal\n");
+    fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.1\" 1 NG 2 lower thermal\n");
+    fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.2\" 1 NG 2 median thermal\n");
+    fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.3\" 1 NG 2 upper thermal\n");
+    if(stringerCount > 0)
+      fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.4\" 1 NG 4 median thermal\n");
+    for(int k = 0; k < baffleCount; ++k)
+      fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.%d\" 1 NG %d median thermal\n", 5+k, 5+k);
+    fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3\" 1 lower mechanical\n");
+    fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.1\" 1 NG 2 lower mechanical\n");
+    fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.2\" 1 NG 2 median mechanical\n");
+    fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.3\" 1 NG 2 upper mechanical\n");
+    if(stringerCount > 0)
+      fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.4\" 1 NG 4 median mechanical\n");
+    for(int k = 0; k < baffleCount; ++k)
+      fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.%d\" 1 NG %d median mechanical\n", 5+k, 5+k);
+  }
 
   fprintf(fp, "*\n");
   fprintf(fp, "GROUPS\n");
@@ -855,7 +867,7 @@ int writeAEROS2(GModel *g,
                 const std::vector<MaterialData> &materials,
                 const std::vector<BoundaryData> &boundaries,
                 const std::vector<std::pair<GEntity::GeomType,int> > &boundaryTags,
-                const std::string &name,
+                int lf, const std::string &name,
                 int elementTagType=1, bool saveAll=false, double scalingFactor=1.0)
 {
   FILE *fp = Fopen(name.c_str(), "w");
@@ -954,37 +966,49 @@ int writeAEROS2(GModel *g,
   fprintf(fp, "STATICS\n");
   fprintf(fp, "sparse\n");
   fprintf(fp, "*\n");
+  if(lf == 0) {
+    fprintf(fp, "NONLINEAR\n");
+    fprintf(fp, "*\n");
+  }
   fprintf(fp, "OUTPUT\n");
   fprintf(fp, "gdisplac 14 7 \"DISP.cmc\" 1\n");
 
   // von mises stress
   fprintf(fp, "stressvm 14 7 \"STRESS.cmc\" 1\n");
   fprintf(fp, "stressvm 14 7 \"STRESS.0\" 1 NG 1\n");
-  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.cmc\" 1 thermal\n");
-  fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.0\" 1 NG 1 thermal\n");
-  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.cmc\" 1 mechanical\n");
-  fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.0\" 1 NG 1 mechanical\n");
+  if(lf == 1) {
+    fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.cmc\" 1 thermal\n");
+    fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.0\" 1 NG 1 thermal\n");
+    fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.cmc\" 1 mechanical\n");
+    fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.0\" 1 NG 1 mechanical\n");
+  }
   // 1st principal stress
   fprintf(fp, "stressp1 14 7 \"STRESSP1.cmc\" 1 lower\n");
   fprintf(fp, "stressp1 14 7 \"STRESSP1.0\" 1 NG 1 lower\n");
-  fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.cmc\" 1 thermal\n");
-  fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.0\" 1 NG 1 thermal\n");
-  fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.cmc\" 1 mechanical\n");
-  fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.0\" 1 NG 1 mechanical\n");
+  if(lf == 1) {
+    fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.cmc\" 1 thermal\n");
+    fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.0\" 1 NG 1 thermal\n");
+    fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.cmc\" 1 mechanical\n");
+    fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.0\" 1 NG 1 mechanical\n");
+  }
   // 2nd principal stress
   fprintf(fp, "stressp2 14 7 \"STRESSP2.cmc\" 1 lower\n");
   fprintf(fp, "stressp2 14 7 \"STRESSP2.0\" 1 NG 1 lower\n");
-  fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.cmc\" 1 thermal\n");
-  fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.0\" 1 NG 1 thermal\n");
-  fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.cmc\" 1 mechanical\n");
-  fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.0\" 1 NG 1 mechanical\n");
+  if(lf == 1) {
+    fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.cmc\" 1 thermal\n");
+    fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.0\" 1 NG 1 thermal\n");
+    fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.cmc\" 1 mechanical\n");
+    fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.0\" 1 NG 1 mechanical\n");
+  }
   // 3rd principal stress
   fprintf(fp, "stressp3 14 7 \"STRESSP3.cmc\" 1 lower\n");
   fprintf(fp, "stressp3 14 7 \"STRESSP3.0\" 1 NG 1 lower\n");
-  fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.cmc\" 1 thermal\n");
-  fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.0\" 1 NG 1 thermal\n");
-  fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.cmc\" 1 mechanical\n");
-  fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.0\" 1 NG 1 mechanical\n");
+  if(lf == 1) {
+    fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.cmc\" 1 thermal\n");
+    fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.0\" 1 NG 1 thermal\n");
+    fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.cmc\" 1 mechanical\n");
+    fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.0\" 1 NG 1 mechanical\n");
+  }
 
   fprintf(fp, "*\n");
   fprintf(fp, "GROUPS\n");
@@ -1009,7 +1033,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
                     const std::vector<SegmentData> &segments,
                     const std::vector<MaterialData> &materials,
                     const std::vector<BoundaryData> &boundaries,
-                    double lc, int bf, int tf)
+                    double lc, int bf, int tf, int lf)
 {
   // bf = 0: constrain inner wall inlet edge
   // bf = 1: constrain baffle outer edges
@@ -1017,6 +1041,9 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
 
   // tf = 0: generate mesh for structural model only
   // tf = 1: generate mesh for both structural and thermal models
+
+  // lf = 0: nonlinear structural model
+  // lf = 1: linear structural model
 
   GmshInitialize();
   GModel *m = new GModel();
@@ -1070,6 +1097,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
     double tt2 = (vertexIt+1)->tt[0];   // total thickness of inner thermal insulating layer
     int tn_inner = segmentIt->tn[0];    // number of transfinite points through thickness of inner part of insulating layer in thermal mesh
     int tn_outer = segmentIt->tn[1];    // number of transfinite points through thickness of outer part of insulating layer in thermal mesh
+    int ln = segmentIt->ln;             // number of transfinite points through each half of the thickness of the load layer in thermal mesh
     double angle = 2*M_PI/ns;
 
     // middle of inner layer
@@ -1527,13 +1555,13 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
             else if(faceIndex == 1 || faceIndex == 3) {
               switch(edgeIndex) {
                 case 0: case 2: (*it2)->meshAttributes.nbPointsTransfinite = mn; break;
-                case 1: case 3: (*it2)->meshAttributes.nbPointsTransfinite = 2; break; // XXX
+                case 1: case 3: (*it2)->meshAttributes.nbPointsTransfinite = ln; break;
               }
             }
             else if(faceIndex == 4 || faceIndex == 5) {
               switch(edgeIndex) {
                 case 0: case 2: (*it2)->meshAttributes.nbPointsTransfinite = nn; break;
-                case 1: case 3: (*it2)->meshAttributes.nbPointsTransfinite = 2; break; // XXX
+                case 1: case 3: (*it2)->meshAttributes.nbPointsTransfinite = ln; break;
               }
             }
             (*it2)->meshAttributes.coeffTransfinite = 1.0;
@@ -1580,13 +1608,13 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
             else if(faceIndex == 1 || faceIndex == 3) {
               switch(edgeIndex) {
                 case 0: case 2: (*it2)->meshAttributes.nbPointsTransfinite = mn; break;
-                case 1: case 3: (*it2)->meshAttributes.nbPointsTransfinite = 2; break; // XXX
+                case 1: case 3: (*it2)->meshAttributes.nbPointsTransfinite = ln; break;
               }
             }
             else if(faceIndex == 4 || faceIndex == 5) {
               switch(edgeIndex) {
                 case 0: case 2: (*it2)->meshAttributes.nbPointsTransfinite = nn; break;
-                case 1: case 3: (*it2)->meshAttributes.nbPointsTransfinite = 2; break; // XXX
+                case 1: case 3: (*it2)->meshAttributes.nbPointsTransfinite = ln; break;
               }
             }
             (*it2)->meshAttributes.coeffTransfinite = 1.0;
@@ -1621,10 +1649,10 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
   m->removeDuplicateMeshVertices(tolerance);
 
   m->writeMSH("nozzle.msh");
-  writeAEROS(m, points, vertices, segments, materials, boundaries, surfaceTags, boundaryTags, "nozzle.aeros", 2, false, 1.0, (tf==0));
+  writeAEROS(m, points, vertices, segments, materials, boundaries, surfaceTags, boundaryTags, lf, "nozzle.aeros", 2, false, 1.0, (tf==0));
   if(tf != 0) {
     writeAEROH(m, points, vertices, segments, materials, boundaries, interiorBoundaryTags, exteriorBoundaryTags, "nozzle.aeroh", 2);
-    writeAEROS2(m, points, vertices, segments, materials, boundaries, cmcBoundaryTags, "nozzle.aeros.cmc", 2);
+    writeAEROS2(m, points, vertices, segments, materials, boundaries, cmcBoundaryTags, lf, "nozzle.aeros.cmc", 2);
   }
 
   delete m;
@@ -1636,8 +1664,8 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
 {
   std::ifstream fin("NOZZLE.txt");
 
-  int np, nv, nm; double lc; int bf, tf, nl, nlt;
-  fin >> np >> nv >> nm >> lc >> bf >> tf >> nl >> nlt;
+  int np, nv, nm; double lc; int bf, tf, nl, nlt, lf;
+  fin >> np >> nv >> nm >> lc >> bf >> tf >> nl >> nlt >> lf;
   
   std::vector<std::vector<double> > points;
   for(int i=0; i<np; ++i) {
@@ -1662,6 +1690,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
     fin >> s.ns >> s.ms >> s.nn >> s.mn >> s.sn;
     for(int k=0; k<nlt; ++k) { int mt; fin >> mt; s.mt.push_back(mt); }
     for(int k=0; k<nlt; ++k) { int tn; fin >> tn; s.tn.push_back(tn); }
+    fin >> s.ln;
   }
 
   std::vector<MaterialData> materials(nm);
@@ -1694,7 +1723,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
 
   fin2.close();
 
-  generateNozzle(points, vertices, segments, materials, boundaries, lc, bf, tf);
+  generateNozzle(points, vertices, segments, materials, boundaries, lc, bf, tf, lf);
 
   Py_RETURN_NONE;
 }
