@@ -85,7 +85,9 @@ class Nozzle:
             dv_keys = list();
             dv_n = list(); # record allowable number of dv for each key
             dv_keys.append(['WALL']);
-            dv_n.append([len(nozzle.wall.coefs)])
+            dv_n.append([len(nozzle.wall.coefs)]);
+            dv_keys.append(['WALL_CENTERLINE']);
+            dv_n.append([len(nozzle.wall.centerline.coefs)]);
             for i in range(len(nozzle.wall.layer)): # assume piecewise linear
                 if nozzle.wall.layer[i].param == 'PIECEWISE_LINEAR':
                     ltemp = [nozzle.wall.layer[i].name, 
@@ -367,7 +369,6 @@ class Nozzle:
                     nozzle.meshhl = scaleMesh*np.asarray([0.1, 0.07, 0.06, 0.006, 0.0108]);
                     
                 if i == flevel:
-                    print 'hello!'
                     try:
                         analysisType = cfgLvl[3];
                     except:

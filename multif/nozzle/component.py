@@ -13,6 +13,14 @@ class AxisymmetricWall:
             self.name = 'NONDESCRIPT_AXISYMMETRIC_WALL'
         self.param = 'NONE'
         
+class NonaxisymmetricWall:
+    def __init__(self,*args):
+        if len(args) == 1:
+            self.name = args[0]
+        else:
+            self.name = 'NONDESCRIPT_NONAXISYMMETRIC_WALL'
+        self.param = 'NONE'
+        
 class Wall:
     def __init__(self,*args):
         if len(args) == 1:
