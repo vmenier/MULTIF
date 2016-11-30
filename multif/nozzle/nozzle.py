@@ -120,10 +120,11 @@ class Nozzle:
                          k + '_THERMAL_EXPANSION_COEF',
                          k + '_PRINCIPLE_FAILURE_STRAIN',
                          k + '_LOCAL_FAILURE_STRAIN',
-                         k + '_YIELD_STRESS']
+                         k + '_YIELD_STRESS',
+                         k + '_MAX_SERVICE_TEMPERATURE']
                 dv_keys.append(ltemp);
                 if nozzle.materials[k].type == 'ISOTROPIC':
-                    dv_n.append([[2,5],1,1,0,1,0,1,1,[1,2],[1,2],1]);
+                    dv_n.append([[2,5],1,1,0,1,0,1,1,[1,2],[1,2],1,1]);
                 else: # ANISOTROPIC_SHELL
                     dv_n.append([12,1,2,1,1,2,2,3,5,5,2])                
             dv_keys.append(['INLET_PSTAG']);
@@ -529,7 +530,7 @@ class Nozzle:
         if 'HEAT_XFER_COEF_TO_ENV' in config:
             hInf = float(config['HEAT_XFER_COEF_TO_ENV'].strip('()'));
         else:
-            hInf = 7.2; # W/m^2/K
+            hInf = 12.62; # W/m^2/K
         if mission_id == 0: # set pressure/temp manually so exact pressure and temp are known
             nozzle.environment = environment.Environment(altitude,hInf);
             nozzle.environment.setPressure(18754.);
@@ -686,7 +687,9 @@ class Nozzle:
             
         # Setup material keys
         material_keys = ['_DENSITY','_ELASTIC_MODULUS','_POISSON_RATIO',
-                         '_THERMAL_CONDUCTIVITY','_THERMAL_EXPANSION_COEF'];  
+                         '_THERMAL_CONDUCTIVITY','_THERMAL_EXPANSION_COEF',
+                         '_YIELD_STRESS','_PRINCIPLE_FAILURE_STRAIN',
+                         '_LOCAL_FAILURE_STRAIN','_MAX_SERVICE_TEMPERATURE'];  
         for i in range(len(material_keys)):
             material_keys[i] = name + material_keys[i];
         material_keys = tuple(material_keys)
@@ -731,7 +734,7 @@ class Nozzle:
             
             var = config[key].strip('()');
             var = var.split(',');
-            if len(var) == 2:
+            if len(var) >= 2:
                 var = [float(i) for i in var]
             elif len(var) == 1:
                 var = float(var[0]);
@@ -750,6 +753,12 @@ class Nozzle:
                 layer.material.setThermalConductivity(var);
             elif key == name + '_THERMAL_EXPANSION_COEF':
                 layer.material.setThermalExpansionCoef(var);
+            elif ( key == name + '_YIELD_STRESS' or
+                   key == name + '_PRINCIPLE_FAILURE_STRAIN' or
+                   key == name + '_LOCAL_FAILURE_STRAIN'):
+                layer.material.setFailureType(var); 
+            elif key == name + '_MAX_SERVICE_TEMPERATURE':
+                layer.material.setMaxServiceTemperature(var);
             else:
                 sys.stderr.write('\n ## ERROR: Key %s could not implemented' \
                 ' for %s layer' % (key,name));
@@ -857,7 +866,8 @@ class Nozzle:
                               '_THERMAL_EXPANSION_COEF',
                               '_PRINCIPLE_FAILURE_STRAIN',
                               '_LOCAL_FAILURE_STRAIN',
-                              '_YIELD_STRESS'];
+                              '_YIELD_STRESS',
+                              '_MAX_SERVICE_TEMPERATURE'];
                     for j in range(len(m_keys)):
                         m_keys[j] = key + m_keys[j];
                     m_keys = tuple(m_keys)
@@ -902,6 +912,8 @@ class Nozzle:
                             nozzle.materials[name].setFailureType('LOCAL_FAILURE_STRAIN',var);
                         elif k == key + '_YIELD_STRESS':
                             nozzle.materials[name].setFailureType('VON_MISES',var);
+                        elif k == key + '_MAX_SERVICE_TEMPERATURE':
+                            nozzle.materials[name].setMaxServiceTemperature(var);
                         else:
                             sys.stderr.write('\n ## ERROR: Key %s could not implemented' \
                             ' for %s material\n\n' % (k,name));
@@ -1481,7 +1493,7 @@ class Nozzle:
                         
                         NbrChanged = NbrChanged+2;
                         
-                    elif NbrDV == 5:
+                    elif NbrDV == 7:
                         
                         prt_name.append('%s density' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].getDensity());
@@ -1508,9 +1520,19 @@ class Nozzle:
                         prt_newval.append('%.2le'% nozzle.DV_List[id_dv+4]);
                         nozzle.materials[k].setThermalExpansionCoef(nozzle.DV_List[id_dv+4]);
                         
-                        NbrChanged = NbrChanged+5;
+                        prt_name.append('%s failure limit' % k);
+                        prt_basval.append('%.2le' % nozzle.materials[k].getFailureLimit());
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+5]);
+                        nozzle.materials[k].setFailureType(nozzle.materials[k].failureType,nozzle.DV_List[id_dv+5]);
+
+                        prt_name.append('%s max service temperature' % k);
+                        prt_basval.append('%.2le' % nozzle.materials[k].Tmax);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+6]);
+                        nozzle.materials[k].setMaxServiceTemperature(nozzle.DV_List[id_dv+6]);                        
                         
-                    elif NbrDV == 12:
+                        NbrChanged = NbrChanged+7;
+                        
+                    elif NbrDV == 15: # XXX This needs to be updated
                         
                         prt_name.append('%s density' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].getDensity());
@@ -1760,6 +1782,13 @@ class Nozzle:
                         nozzle.materials[k].setFailureType('VON_MISES',nozzle.DV_List[id_dv:id_dv+2]);
                         NbrChanged = NbrChanged + 2;
                         check = 1;                
+                elif Tag == k + '_MAX_SERVICE_TEMPERATURE':
+                    prt_name.append('%s max service temp' % k);
+                    prt_basval.append('%.2le' % nozzle.materials[k].Tmax);
+                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                    nozzle.materials[k].setMaxServiceTemperature(nozzle.DV_List[id_dv]);
+                    NbrChanged = NbrChanged + 1;
+                    check = 1;            
             if check == 1:
                 continue;
 
@@ -1881,10 +1910,16 @@ class Nozzle:
         nozzle.ks_temperature = list();
         nozzle.pn_temperature = list();
         nozzle.max_temperature = list();
+        nozzle.ks_temp_ratio = list();
+        nozzle.pn_temp_ratio = list();
+        nozzle.max_temp_ratio = list();
         for i in range(len(nozzle.tempComponentList)):
             nozzle.ks_temperature.append(-1);
             nozzle.pn_temperature.append(-1);
-            nozzle.max_temperature.append(-1);     
+            nozzle.max_temperature.append(-1); 
+            nozzle.ks_temp_ratio.append(-1);
+            nozzle.pn_temp_ratio.append(-1);
+            nozzle.max_temp_ratio.append(-1);
         
         if 'OUTPUT_FUNCTIONS' in config:
             
@@ -1896,7 +1931,8 @@ class Nozzle:
             dv_failure = ['MAX_FAILURE_CRITERIA', 'KS_FAILURE_CRITERIA',
                           'PN_FAILURE_CRITERIA'];
             dv_temp = ['KS_TEMPERATURE','PN_TEMPERATURE','MAX_TEMPERATURE'];
-            dv_keys = dv_scalar + dv_stress + dv_failure + dv_temp;
+            dv_tempRatio = ['KS_TEMP_RATIO','PN_TEMP_RATIO','MAX_TEMP_RATIO'];
+            dv_keys = dv_scalar + dv_stress + dv_failure + dv_temp + dv_tempRatio;
             
             # Stress and temperature outputs can have prefixes appended to them
             stress_prefix = [];
@@ -1917,6 +1953,8 @@ class Nozzle:
                 elif key in dv_failure:
                     nozzle.GetOutput[key] = [0]*len(stress_prefix);
                 elif key in dv_temp:
+                    nozzle.GetOutput[key] = [0]*len(temp_prefix);
+                elif key in dv_tempRatio:
                     nozzle.GetOutput[key] = [0]*len(temp_prefix);
 
             hdl = config['OUTPUT_FUNCTIONS'].strip('()');
@@ -1960,7 +1998,14 @@ class Nozzle:
                         nozzle.Output_Tags.append(key);
                     else:
                         sys.stderr.write('\n ## ERROR : %s cannot be '        \
-                          'returned if THERMAL_ANALYSIS= 0\n\n' % key);                      
+                          'returned if THERMAL_ANALYSIS= 0\n\n' % key);  
+                elif( key in dv_tempRatio):
+                    if nozzle.thermalFlag == 1:
+                        nozzle.GetOutput[key] = [1]*len(temp_prefix);
+                        nozzle.Output_Tags.append(key);
+                    else:
+                        sys.stderr.write('\n ## ERROR : %s cannot be '        \
+                          'returned if THERMAL_ANALYSIS= 0\n\n' % key);                           
                 else: # cycle through all possible more specific names for stress and temp
                     # check stress first         
                     assigned = 0;
@@ -1980,6 +2025,13 @@ class Nozzle:
                                 continue;                                
                     for prefix in temp_prefix:
                         for k in dv_temp:
+                            if key == prefix + '_' + k:
+                                nozzle.GetOutput[k][temp_prefix.index(prefix)] = 1;
+                                nozzle.Output_Tags.append(key);
+                                assigned = 1;
+                                continue;
+                    for prefix in temp_prefix:
+                        for k in dv_tempRatio:
                             if key == prefix + '_' + k:
                                 nozzle.GetOutput[k][temp_prefix.index(prefix)] = 1;
                                 nozzle.Output_Tags.append(key);
@@ -2140,6 +2192,24 @@ class Nozzle:
                     fil.write('%0.16f max_temperature (%s)\n' % (nozzle.max_temperature[j],nozzle.tempComponentList[j]));
                     if output == 'verbose':
                         sys.stdout.write('      max temperature (%s) = %0.16f\n' % (nozzle.tempComponentList[j],nozzle.max_temperature[j]));
+
+            elif tag == 'KS_TEMP_RATIO':
+                for j in range(len(nozzle.tempComponentList)):
+                    fil.write('%0.16f ks_temp_ratio (%s)\n' % (nozzle.ks_temp_ratio[j],nozzle.tempComponentList[j]));
+                    if output == 'verbose':
+                        sys.stdout.write('      KS temp ratio (%s) = %0.16f\n' % (nozzle.tempComponentList[j],nozzle.ks_temp_ratio[j]));
+
+            elif tag == 'PN_TEMP_RATIO':
+                for j in range(len(nozzle.tempComponentList)):
+                    fil.write('%0.16f pn_temp_ratio (%s)\n' % (nozzle.pn_temp_ratio[j],nozzle.tempComponentList[j]));
+                    if output == 'verbose':
+                        sys.stdout.write('      PN temp ratio (%s) = %0.16f\n' % (nozzle.tempComponentList[j],nozzle.pn_temp_ratio[j]));
+                    
+            elif tag == 'MAX_TEMP_RATIO':
+                for j in range(len(nozzle.tempComponentList)):
+                    fil.write('%0.16f max_temp_ratio (%s)\n' % (nozzle.max_temp_ratio[j],nozzle.tempComponentList[j]));
+                    if output == 'verbose':
+                        sys.stdout.write('      max temp ratio (%s) = %0.16f\n' % (nozzle.tempComponentList[j],nozzle.max_temp_ratio[j]));
                     
             else:
                 # Cycle through all possible specific stress outputs
@@ -2191,6 +2261,21 @@ class Nozzle:
                         fil.write('%0.16f max_temperature (%s)\n' % (nozzle.max_temperature[j],temp_prefix[j]));
                         if output == 'verbose':
                             sys.stdout.write('      max temperature (%s) = %0.16f\n' % (temp_prefix[j],nozzle.max_temperature[j]));
+                # Cycle through all possible specific temperature ratio outputs
+                for prefix in temp_prefix:
+                    j = temp_prefix.index(prefix);
+                    if tag == prefix + '_KS_TEMP_RATIO':
+                        fil.write('%0.16f ks_temp_ratio (%s)\n' % (nozzle.ks_temp_ratio[j],temp_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      KS temp ratio (%s) = %0.16f\n' % (temp_prefix[j],nozzle.ks_temp_ratio[j]));
+                    elif tag == prefix + '_PN_TEMP_RATIO':
+                        fil.write('%0.16f pn_temp_ratio (%s)\n' % (nozzle.pn_temp_ratio[j],temp_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      PN temp ratio (%s) = %0.16f\n' % (temp_prefix[j],nozzle.pn_temp_ratio[j]));
+                    elif tag == prefix + '_MAX_TEMP_RATIO':
+                        fil.write('%0.16f max_temp_ratio (%s)\n' % (nozzle.max_temp_ratio[j],temp_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      max temp ratio (%s) = %0.16f\n' % (temp_prefix[j],nozzle.max_temp_[j]));                            
       
         if output == 'verbose':
             sys.stdout.write('\n');
@@ -2310,6 +2395,24 @@ class Nozzle:
                     fil.write('%0.16f max_temperature (%s)\n' % (nozzle.max_temperature[j],nozzle.tempComponentList[j]));
                     if output == 'verbose':
                         sys.stdout.write('      max temperature (%s) = %0.16f\n' % (nozzle.tempComponentList[j],nozzle.max_temperature[j]));
+
+            elif tag == 'KS_TEMP_RATIO':
+                for j in range(len(nozzle.tempComponentList)):
+                    fil.write('%0.16f ks_temp_ratio (%s)\n' % (nozzle.ks_temp_ratio[j],nozzle.tempComponentList[j]));
+                    if output == 'verbose':
+                        sys.stdout.write('      KS temp ratio (%s) = %0.16f\n' % (nozzle.tempComponentList[j],nozzle.ks_temp_ratio[j]));
+
+            elif tag == 'PN_TEMP_RATIO':
+                for j in range(len(nozzle.tempComponentList)):
+                    fil.write('%0.16f pn_temp_ratio (%s)\n' % (nozzle.pn_temp_ratio[j],nozzle.tempComponentList[j]));
+                    if output == 'verbose':
+                        sys.stdout.write('      PN temp ratio (%s) = %0.16f\n' % (nozzle.tempComponentList[j],nozzle.pn_temp_ratio[j]));
+                    
+            elif tag == 'MAX_TEMP_RATIO':
+                for j in range(len(nozzle.tempComponentList)):
+                    fil.write('%0.16f max_temp_ratio (%s)\n' % (nozzle.max_temp_ratio[j],nozzle.tempComponentList[j]));
+                    if output == 'verbose':
+                        sys.stdout.write('      max temp ratio (%s) = %0.16f\n' % (nozzle.tempComponentList[j],nozzle.max_temp_ratio[j]));
                     
             else:
                 # Cycle through all possible specific stress outputs
@@ -2361,7 +2464,22 @@ class Nozzle:
                         fil.write('%0.16f max_temperature (%s)\n' % (nozzle.max_temperature[j],temp_prefix[j]));
                         if output == 'verbose':
                             sys.stdout.write('      max temperature (%s) = %0.16f\n' % (temp_prefix[j],nozzle.max_temperature[j]));
-                    
+                # Cycle through all possible specific temperature ratio outputs
+                for prefix in temp_prefix:
+                    j = temp_prefix.index(prefix);
+                    if tag == prefix + '_KS_TEMP_RATIO':
+                        fil.write('%0.16f ks_temp_ratio (%s)\n' % (nozzle.ks_temp_ratio[j],temp_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      KS temp ratio (%s) = %0.16f\n' % (temp_prefix[j],nozzle.ks_temp_ratio[j]));
+                    elif tag == prefix + '_PN_TEMP_RATIO':
+                        fil.write('%0.16f pn_temp_ratio (%s)\n' % (nozzle.pn_temp_ratio[j],temp_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      PN temp ratio (%s) = %0.16f\n' % (temp_prefix[j],nozzle.pn_temp_ratio[j]));
+                    elif tag == prefix + '_MAX_TEMP_RATIO':
+                        fil.write('%0.16f max_temp_ratio (%s)\n' % (nozzle.max_temp_ratio[j],temp_prefix[j]));
+                        if output == 'verbose':
+                            sys.stdout.write('      max temp ratio (%s) = %0.16f\n' % (temp_prefix[j],nozzle.max_temp_[j]));       
+                            
         sys.stdout.write('\n');
         fil.close();
         

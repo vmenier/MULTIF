@@ -283,6 +283,22 @@ class Material:
             raise ValueError('%s not accepted as a failure type. Only '      \
               'PRINCIPLE_FAILURE_STRAIN, LOCAL_FAILURE_STRAIN, and '         \
               'VON_MISES are accepted.' % failureType)
+              
+    def setMaxServiceTemperature(self,T):
+        if self.panel == 0: # single material
+            try:
+                self.Tmax = float(T)
+            except:
+                raise RuntimeError('Single material must only have 1 value ' \
+                      'provided for max service temperature')
+        else: # panel material
+            try:
+                self.TmaxSurface = float(T[0])
+                self.TmaxMiddle = float(T[1])
+            except:
+                raise RuntimeError('Panel structure material must have 2 '   \
+                      'values provided for density')
+        return 0              
      
     # Calculate (if necessary) and return density
     def getDensity(self,*args):
@@ -592,3 +608,32 @@ class Material:
                 raise RuntimeError('Panel material thermal exp. coef. '      \
                       'takes 3 inputs: numpy 1-D array x, thickness dist. '  \
                       'tSurface, and thickness dist. tMiddle')  
+                      
+    def getFailureLimit(self,direction=0,*args):
+        if self.failureType == 'PRINCIPLE_FAILURE_STRAIN':
+            if self.type == 'ISOTROPIC':
+                return self.failureStrain[0];
+            elif len(self.failureStrain) == 2:
+                return self.failureStrain
+            elif len(self.failureStrain) == 5:
+                return self.failureStrain # order: direction 1 tension, direction 1 compression, direction 2 tension, direction 2 compression, direction 12 shear
+            else:
+                raise ValueError('1, 2, or 5 values must be provided for '   \
+                  'local failure strain failure criterion')
+        elif self.failureType == 'LOCAL_FAILURE_STRAIN':
+            if self.type == 'ISOTROPIC':
+                return self.failureStrain[0]
+            elif len(self.failureStrain) == 2:
+                return self.failureStrain
+            elif len(self.failureStrain) == 5:
+                return self.failureStrain # order: direction 1 tension, direction 1 compression, direction 2 tension, direction 2 compression, direction 12 shear
+            else:
+                raise ValueError('1, 2, or 5 values must be provided for '   \
+                  'local failure strain failure criterion')
+        elif self.failureType == 'VON_MISES':
+            return self.yieldStress
+        else:
+            raise ValueError('%s not accepted as a failure type. Only '      \
+              'PRINCIPLE_FAILURE_STRAIN, LOCAL_FAILURE_STRAIN, and '         \
+              'VON_MISES are accepted.' % self.failureType)                      
+                      

@@ -449,38 +449,55 @@ def AEROSPostProcessing ( nozzle ):
             #nozzle.ks_thermal_stress[i-1] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
             #nozzle.pn_thermal_stress[i-1] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
 
-    # ---- Load and assign temperature results if necessary
+    # ---- Load and assign temperature results if necessary, AND
+    # load and assign temperature ratio results if necessary
     if ( sum(nozzle.GetOutput['MAX_TEMPERATURE']) > 0 or 
          sum(nozzle.GetOutput['KS_TEMPERATURE']) > 0 or
-         sum(nozzle.GetOutput['PN_TEMPERATURE']) > 0 ):    
+         sum(nozzle.GetOutput['PN_TEMPERATURE']) > 0 or
+         sum(nozzle.GetOutput['MAX_TEMP_RATIO']) > 0 or
+         sum(nozzle.GetOutput['KS_TEMP_RATIO']) > 0 or
+         sum(nozzle.GetOutput['PN_TEMP_RATIO']) > 0):    
 
         # Thermal layer
         data = nozzle.wallTemp;
         nozzle.max_temperature[0] = np.max(data);
+        nozzle.max_temp_ratio[0] = nozzle.max_temperature[0]/nozzle.wall.layer[0].material.Tmax;
         stemp = np.mean(data);
         nozzle.ks_temperature[0] = ksFunction(data/stemp,ks_param)*stemp;
         nozzle.pn_temperature[0] = pnFunction(data/stemp,pn_param)*stemp;
+        nozzle.ks_temp_ratio[0] = ksFunction(data/nozzle.wall.layer[0].material.Tmax,ks_param);
+        nozzle.pn_temp_ratio[0] = pnFunction(data/nozzle.wall.layer[0].material.Tmax,pn_param);
     
         # Inner load layer
         filename = 'TEMP.1';
         data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
         stemp = np.mean(data[:,-1]);
         nozzle.max_temperature[2] = np.max(data[:,-1]);
+        nozzle.max_temp_ratio[2] = nozzle.max_temperature[2]/nozzle.wall.layer[2].material.Tmax;        
         nozzle.ks_temperature[2] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
         nozzle.pn_temperature[2] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+        nozzle.ks_temp_ratio[2] = ksFunction(data[:,-1]/nozzle.wall.layer[2].material.Tmax,ks_param);
+        nozzle.pn_temp_ratio[2] = pnFunction(data[:,-1]/nozzle.wall.layer[2].material.Tmax,pn_param);
         
         # Inner load layer
         filename = 'TEMP.2';
         data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
         stemp = np.mean(data[:,-1]);
         nozzle.max_temperature[3] = np.max(data[:,-1]);
+        nozzle.max_temp_ratio[3] = nozzle.max_temperature[3]/nozzle.wall.layer[3].material.Tmax;
         nozzle.ks_temperature[3] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
         nozzle.pn_temperature[3] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
-    
+        nozzle.ks_temp_ratio[3] = ksFunction(data[:,-1]/nozzle.wall.layer[3].material.Tmax,ks_param);
+        nozzle.pn_temp_ratio[3] = pnFunction(data[:,-1]/nozzle.wall.layer[3].material.Tmax,pn_param);
+        
         # Inner load layer
         filename = 'TEMP.3';
         data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
         stemp = np.mean(data[:,-1]);
         nozzle.max_temperature[4] = np.max(data[:,-1]);
+        nozzle.max_temp_ratio[4] = nozzle.max_temperature[4]/nozzle.wall.layer[4].material.Tmax;
         nozzle.ks_temperature[4] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
         nozzle.pn_temperature[4] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;    
+        nozzle.ks_temp_ratio[4] = ksFunction(data[:,-1]/nozzle.wall.layer[4].material.Tmax,ks_param);
+        nozzle.pn_temp_ratio[4] = pnFunction(data[:,-1]/nozzle.wall.layer[4].material.Tmax,pn_param);
+        
