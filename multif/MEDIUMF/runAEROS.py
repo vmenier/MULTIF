@@ -83,19 +83,6 @@ def runAEROS ( nozzle ):
     # are 3 values: (1st in-plane direction, 2nd in-plane direction, out-of-plane direction))
     #[k1, k2, k3] = nozzle.wall.layer[1].material.getThermalConductivity()
     # End of example
-        
-    for i in range(len(nozzle.wall.layer)):
-        if nozzle.wall.layer[i].name == 'AIR_GAP':
-            continue;
-        else:
-            print nozzle.wall.layer[i].name;
-            print nozzle.wall.layer[i].material.name;
-            print nozzle.wall.layer[i].material.getDensity();
-            print nozzle.wall.layer[i].material.getElasticModulus();
-            print nozzle.wall.layer[i].material.getShearModulus();
-            print nozzle.wall.layer[i].material.getPoissonRatio();
-            print nozzle.wall.layer[i].material.getThermalConductivity();
-            print nozzle.wall.layer[i].material.getThermalExpansionCoef();
 
     if nozzle.method == 'NONIDEALNOZZLE':
         SolExtract = nozzle.wallResults;
