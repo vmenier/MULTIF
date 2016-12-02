@@ -555,7 +555,7 @@ Baffle height & m & N/A & N/A & N/A \\ \hline
 
 \begin{mdframed}
 \textbf{Choice of Mass Constraint:}  
-Total mass of the baseline (nominal) nozzle and surrounding structure is 118.7496823248592932 kg. A 20\% weight reduction is considered excellent, although the reduction can perhaps be greater. Thus $M_{req}$ is taken to be 95 kg.
+Total mass of the baseline (nominal) nozzle and surrounding structure is 118.74968232... kg. A 20\% weight reduction is considered excellent, although the reduction can perhaps be greater. Thus $M_{req}$ is taken to be 95 kg.
 \end{mdframed}
 
 \begin{multicols}{2}
@@ -789,7 +789,7 @@ For the nozzle baffles, a symmetric panel material with fixed layer ratios is as
 
 The above expressions for nodal thermal and structural failure are agglomerated to make solution of the optimization problem tractable. By default in \texttt{MULTI-F}, Kresselmeier-Steinhauser (KS) functions (see \ref{eq:ks_function} use $p = 50$ and modified P-norm (PN) functions (see \ref{eq:pn_function}) use $p = 10$.
 
-In general, the KS-function overapproximates the constraint and the PN-function underapproximates the constraint. It is currently recommended that the KS-function is used for stress failure criteria and the PN-function is used for temperatures.
+In general, the KS-function overapproximates the constraint and the PN-function underapproximates the constraint. It is currently recommended that the PN-function is used for agglomerating stress failure criteria and temperature ratios (temperatures normalized by the maximum service temperature of a material) since the PN-function approaches the value of the maximum when the maximum is close to 1.
 
 \subsubsection{Linear Constraints}
 
@@ -855,7 +855,7 @@ The Kresselmeier-Steinhauser function (KS-function) is a constraint agglomeratio
 g(z) = \frac{1}{p} \textrm{log} \left( \sum_i^N e^{pz_i} \right)
 \end{equation}
 
-where $p$ is a constant usually chosen to be {\color{red}how big?}, $z$ is vector of $N$ constraint values. For $\leq$ constraints, the KS-function overapproximates the constraints, that is, it is conservative.
+where $p$ is a constant usually chosen to be around 50, $z$ is vector of $N$ constraint values. For $\leq$ constraints, the KS-function overapproximates the constraints. As $p$ increases, the KS-function approaches the value $\textrm{max}(z)$. Based on preliminary analysis with different values of $p$ for the KS-function (30, 40, 50, and 60), it appears that the KS-function is too conservative, at least for normalized stress failure criteria and normalized temperatures used in constraints.
 
 \subsection{Modified P-norm Function}
 
@@ -863,10 +863,10 @@ The modified P-norm function (PN-function) is a constraint agglomeration functio
 
 \begin{equation}
 \label{eq:pn_function}
-g(z) = \frac{1}{N} \sum_i^N \left( z_i^p \right)^{\frac{1}{p}}
+g(z) = \left( \frac{1}{N} \sum_i^N z_i^p \right)^{\frac{1}{p}}
 \end{equation}
 
-where $p$ is a constant usually chosen to be around 8 and $z$ is a vector of $N$ constraint values. For $\leq$ constaints, the modified P-norm function underapproximates the constraints, that is, it is relaxes the constraints.
+where $p$ is a constant usually chosen to be around 8 and $z$ is a vector of $N$ constraint values. For $\leq$ constaints, the modified P-norm function underapproximates the constraints. As $p$ increases, the PN-function approaches the value $\textrm{max}(z)$, however numerical difficulties ensue with too large a value of $p$. For values of $z$ around 1, the P-norm function appears approach the value $\textrm{max}(z)$, thus for normalized stress failure criteria and normalized temperatures used in constraints it appears to be a good option.
 
 
 
