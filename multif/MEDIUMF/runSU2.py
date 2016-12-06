@@ -208,7 +208,7 @@ def SetupConfig (solver_options):
 	# --- Local relaxation / CFL
 	#     Note: these options are only available in a custom version of su2:
 	#     				https://github.com/vmenier/SU2/tree/darpa
-	if (LocalRelax == 'YES') :
+	if (LocalRelax == 'YES' and method == 'EULER') :
 		config.RELAXATION_LOCAL= 'YES';
 		config.CFL_ADAPT_LOCAL= 'YES';
 		config.HARD_LIMITING_PARAM= '(0.15, 1e-5)';
