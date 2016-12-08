@@ -46,10 +46,6 @@ def main():
 	
 	nozzle.meshhl = [0.1, 0.07, 0.06, 0.006, 0.0108];
 	
-	#nozzle.bl_ds        = Decimal(config.BLDS);
-	#nozzle.bl_ratio     = Decimal(config.BLRATIO); 
-	#nozzle.bl_thickness = Decimal(config.BLTHICKNESS);
-	
 	nozzle.bl_ds        = Decimal(config.BLDS);
 	nozzle.bl_ratio     = Decimal(config.BLRATIO); 
 	nozzle.bl_thickness = Decimal(config.BLTHICKNESS);
