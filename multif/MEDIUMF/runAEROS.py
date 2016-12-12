@@ -96,6 +96,18 @@ def runAEROS ( nozzle ):
                                list(nozzle.wall.layer[3].thickness.nodes[0,:])+list(nozzle.wall.layer[4].thickness.nodes[0,:])+
                                list(nozzle.baffles.location)+list(nozzle.stringers.thickness.nodes[0,:])+
                                list(nozzle.stringers.height.nodes[0,:]))))
+    
+    # remove vertices that are too close together (except for one of them)
+    duplicate = 1;
+    while duplicate == 1:
+        duplicate = 0;
+        for i in range(len(vertices)-1):
+            vDiff = vertices[i+1]-vertices[i];
+            if vDiff < 1e-7:
+                vertices.remove(vertices[i+1]);
+                duplicate = 1;
+                break;
+    print vertices                      
     #for k in range(len(vertices)):
     #    print ' k = %d, vertices[k] = %f' % (k, vertices[k])
 
@@ -148,19 +160,24 @@ def runAEROS ( nozzle ):
     print >> f1, "%d %d %d %f %d %d %d %d %d" % (len(points), len(vertices), len(nozzle.materials), lc, boundaryFlag, thermalFlag, 3, 2, linearFlag);
     # points
     for i in range(len(points)):
-        print >> f1, "%lf %lf" % (points[i], nozzle.wall.geometry.radius(points[i]));
+        print >> f1, "%0.16f %0.16f" % (points[i], nozzle.wall.geometry.radius(points[i]));
     # vertices
     for i in range(len(vertices)):  
-        Wb = nozzle.baffles.height[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # height of baffle
+        #Wb = nozzle.baffles.height[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # height of baffle
+        WbIndex = np.argmin(np.abs([nozzle.baffles.location[q]-vertices[i] for q in range(len(nozzle.baffles.location))])) # location of height of baffle
+        WbValue = np.min(np.abs([nozzle.baffles.location[q]-vertices[i] for q in range(len(nozzle.baffles.location))])) # value of difference 
+        Wb = nozzle.baffles.height[WbIndex] if WbValue < 1e-7 else 0 # height of baffle
         Ws = nozzle.stringers.height.radius(vertices[i]) if nozzle.stringers.n > 0 else 0; # height of stringer
         Nb = max((Wb-Ws)/lc+1,2); # number of nodes on radial edge of baffle (not including overlap with stringer)
         Tg = nozzle.wall.layer[1].thickness.radius(0.) # thickness of gap between thermal and load layers
-        Tb = nozzle.baffles.thickness[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # thickness of baffle
+        #Tb = nozzle.baffles.thickness[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # thickness of baffle
+        Tb = nozzle.baffles.thickness[WbIndex] if WbValue < 1e-7 else 0 # thickness of baffles
         Ts = nozzle.stringers.thickness.radius(vertices[i]) if nozzle.stringers.n > 0 else 0; # thickness of stringers
-        print >> f1, "%d %f %d %d %lf %lf %lf %lf %lf %lf %lf %lf" % (points.index(vertices[i]), Wb, Mb, Nb,
+        print >> f1, "%d %0.16f %d %d %0.16f %0.16f %0.16f %0.16f %0.16f %0.16f %0.16f %0.16f" % (points.index(vertices[i]), Wb, Mb, Nb,
                  nozzle.wall.layer[2].thickness.radius(vertices[i]), nozzle.wall.layer[3].thickness.radius(vertices[i]),
                  nozzle.wall.layer[4].thickness.radius(vertices[i]), nozzle.wall.layer[0].thickness.radius(vertices[i]),
                  Tg, Tb, Ts, Ws);
+                 
     # panels
     for i in range(1,len(vertices)):
         Nn = max(2,(vertices[i]-vertices[i-1])/lc+1); # number of nodes on longitudial edge
@@ -193,7 +210,7 @@ def runAEROS ( nozzle ):
     f2 = open("BOUNDARY.txt", 'w');
     print >> f2, "%d" % (Size[0]);
     for i in range(0,Size[0]):
-        print >> f2, "%lf %lf %lf %lf" % (SolExtract[i][0], SolExtract[i][iPres], SolExtract[i][iTemp], nozzle.environment.T);
+        print >> f2, "%0.8f %0.8f %0.8f %0.8f" % (SolExtract[i][0], SolExtract[i][iPres], SolExtract[i][iTemp], nozzle.environment.T);
     f2.close();
     
     _nozzle_module.generate();       # generate the meshes for thermal and structural analyses
