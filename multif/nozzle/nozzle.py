@@ -5,7 +5,7 @@
 
 R. Fenrich & V. Menier, July 2016
 
-"""
+""" 
 
 import os, time, sys, shutil, copy
 from optparse import OptionParser
@@ -264,9 +264,15 @@ class Nozzle:
 
         NbrFidLev = len(fidelity_tags);
 
+        analysisType = -1;
+
         if NbrFidLev < 1 :
             sys.stdout.write("  ## ERROR : No fidelity level was defined.\n");
             sys.exit(0);
+
+        if flevel >= NbrFidLev:
+          print "\n  ## ERROR : Fidelity level %d not defined.\n" % flevel;
+          sys.exit(0)					
 
         if output == 'verbose':
           sys.stdout.write('\n%d fidelity level(s) defined. Summary :\n'      \
@@ -355,7 +361,7 @@ class Nozzle:
                     
                     nozzle.bl_ds        = 0.000007;
                     nozzle.bl_ratio     = 1.3; 
-                    nozzle.bl_thickness = 0.1;
+                    nozzle.bl_thickness = 0.02;
 
                     scaleMesh = 1.0;
                     if meshsize == 'COARSE':
@@ -1104,12 +1110,12 @@ class Nozzle:
         nozzle.exterior = component.AxisymmetricWall('exterior');
         
         # Determine *approx* height of nozzle exit at outside of outermost layer
-#        exitHeight = nozzle.wall.geometry.radius(nozzle.length);
-#        for i in range(len(nozzle.wall.layer)):
-#            exitHeight += nozzle.wall.layer[i].thickness.radius(nozzle.length);
-#        shapeDefinition = np.array([[0., 0.1548, nozzle.length],
-#                                    [0.4244, 0.4244, exitHeight + 0.012]]);
-#        nozzle.exterior.geometry = geometry.PiecewiseLinear(shapeDefinition);      
+        exitHeight = nozzle.wall.geometry.radius(nozzle.length);
+        for i in range(len(nozzle.wall.layer)):
+            exitHeight += nozzle.wall.layer[i].thickness.radius(nozzle.length);
+        shapeDefinition = np.array([[0., 0.1548, nozzle.length],
+                                    [0.4244, 0.4244, exitHeight + 0.012]]);
+        nozzle.exterior.geometry = geometry.PiecewiseLinear(shapeDefinition);      
           
         # --- Setup thickness distribution for stringers
         tsize = len(nozzle.stringers.thicknessNodes);
