@@ -2,8 +2,6 @@
 
 import os, time, sys, shutil, copy
 
-
-
 from optparse import OptionParser
 import textwrap
 
@@ -51,8 +49,11 @@ def main():
 	if nozzle.method == 'NONIDEALNOZZLE' :
 		multif.LOWF.Run(nozzle);
 	elif nozzle.method == 'EULER' or nozzle.method == 'RANS':
-		multif.MEDIUMF.Run(nozzle);
-		
+		if nozzle.Dim == '2D':
+			multif.MEDIUMF.Run(nozzle);
+		elif nozzle.Dim == '3D':
+			multif.HIGHF.Run(nozzle);
+			
 	# --- Output functions 
 	
 	#nozzle.WriteOutputFunctions_Plain ();

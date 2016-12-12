@@ -3,6 +3,8 @@ import numpy as np
 #import matplotlib.pyplot as plt
 from scipy.interpolate import splev, splrep
 from scipy import interpolate as itp
+import subprocess
+
 
 def WriteGeo(FilNam, Ver, Spl, Lin, Loo, Phy, Siz, Bak, dim):
 	
@@ -1252,10 +1254,10 @@ def HF_DefineCAD (FilNam, x_inp, fr1, fr2, fz, sizes, params):
 	Loo.append([OutLid[27], OutLid[28], OutLid[29], OutLid[30]]);
 	Phy.append([len(Loo)-1]);
 	
-	# -- Exit plane (NOT physical)
-	
-	Loo.append([SavSpl[NbrSec-1][0],SavSpl[NbrSec-1][1],SavSpl[NbrSec-1][2],-OutLid[35]]);
-	SavExi = len(Loo)-1;
+	## -- Exit plane (NOT physical)
+	#
+	#Loo.append([SavSpl[NbrSec-1][0],SavSpl[NbrSec-1][1],SavSpl[NbrSec-1][2],-OutLid[35]]);
+	#SavExi = len(Loo)-1;
 	
 	# ---------------------------------
 	# --- Define background sizefields
@@ -1275,17 +1277,91 @@ def HF_DefineCAD (FilNam, x_inp, fr1, fr2, fz, sizes, params):
 	# --- Write nozzle exit plane (for thrust computation)
 	# ---------------------------------
 	
-
-	savLoo = Loo[SavExi];
+	#savLoo = Loo[SavExi];
 	Loo = [0];
-	Loo.append(savLoo);
+	#Loo.append(savLoo);
+	Loo.append([SavSpl[NbrSec-1][0],SavSpl[NbrSec-1][1],SavSpl[NbrSec-1][2],-OutLid[35]]);
 	
 	Phy = [0];
 	Phy.append([1]);   # Physical groups
 	
-	
-	from os.path import basename
-	ExiNam = "%s_exit.geo" % (basename(FilNam));
+	ExiNam = "%s_exit.geo" %  os.path.splitext(os.path.basename(FilNam))[0]
 	WriteGeo(ExiNam, Ver, Spl, Lin, Loo, Phy, Siz, Bak, 3)
+	
+def HF_GenerateMesh(nozzle):
+	
+	params = np.zeros(100)
+	params[0] = -0.0739843; # z crd of the cut at the throat
+	params[1] = -0.458624;  # z crd of the flat exit (bottom of the shovel)
+	params[2] = -0.15;      # z coordinate of the top of the shovel
+	params[3] = 2.0;        # x_throat 
+	params[4] = 4.0;        # x_exit 
+	#params[5] = 10;   		  # xmax
+	params[5] = 7;   		   # xmax
+	params[6] = 8;    		  # ymax
+	params[7] = 10;   		  # zmax
+	params[8] = 0.04;       # thickness of shovel + exit
+	
+	# --- Size parameters : 
+	# 		- inside nozzle
+	# 		- surface aircraft
+	# 		- farfield
+	# 		- (box) plume region
+	# 		- (box) aircraft vicinity
+	#sizes = [0.02, 0.1, 1,  0.03, 0.08 ];
+	#sizes = [0.035, 0.1, 1,  0.06, 0.1 ];
+	sizes = [0.035, 0.2, 1,  0.09, 0.15 ];
+	
+	
+	# --- Parse centerline bspline
+	
+	inpBsp = np.loadtxt('inputbspline.dat');
+	
+	k = 3;
+	Nbc = len(inpBsp)/2;
+	[t,c] = np.split(inpBsp,2)
+	tck = [t,c,3];
+	
+	def fz(x):
+		return splev(x, tck)
+	
+	# --- Get cross sections definition
+	
+	inpData = np.loadtxt('inputsection.dat');
+	NbrSec = len(inpData);
+	
+	x  = inpData[:,0];
+	r1 = inpData[:,1];
+	r2 = inpData[:,2];
+	
+	tck1 = splrep(x, r1, xb=x[0], xe=x[-1], k=3, s=0);
+	def fr1(x):
+		return splev(x, tck1);
+		
+	tck2 = splrep(x, r2, xb=x[0], xe=x[-1], k=3, s=0);
+	def fr2(x):
+		return splev(x, tck2);
+	
+	cadNam     = "nozzle.geo";
+	cadExitNam = "nozzle_exit.geo";
+	
+	HF_DefineCAD(cadNam,x,fr1,fr2, fz, sizes, params);
+	
+	gmsh_executable = 'gmsh';
+	try :
+		cmd = [gmsh_executable, '-3', cadNam, '-o', nozzle.mesh_name];
+		out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=None)
+	except:
+		raise;
+		
+		
+	try :
+		cmd = [gmsh_executable, '-2', cadExitNam, '-o', nozzle.exit_mesh_name];
+		out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=None)
+	except:
+		raise;
+	
+
+	
 	
 	

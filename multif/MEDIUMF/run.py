@@ -36,29 +36,29 @@ def Run( nozzle ):
         os.chdir(nozzle.runDir);
     
     # --- Run CFD
-    
-    runSU2 (nozzle);
-	
-    # --- Run AEROS  
-    
-    nozzle.runAEROS = 0;
-    if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
-        nozzle.runAEROS = 1;
-	
-        try:
-		        from runAEROS import *
-		        print "SUCCESS IMPORTING AEROS"
-        except ImportError:
-		        nozzle.runAEROS = 0;
-		        pass;
-	
-    print "RUNAEROS = %d" % nozzle.runAEROS;
-	
-    if nozzle.runAEROS == 1:
-		    runAEROS (nozzle);
-    else :
-		    sys.stdout.write('  -- Info: Skip call to AEROS.\n');
-
+    #
+    #runSU2 (nozzle);
+	  #
+    ## --- Run AEROS  
+    #
+    #nozzle.runAEROS = 0;
+    #if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
+    #    nozzle.runAEROS = 1;
+	  #
+    #    try:
+		#        from runAEROS import *
+		#        print "SUCCESS IMPORTING AEROS"
+    #    except ImportError:
+		#        nozzle.runAEROS = 0;
+		#        pass;
+	  #
+    #print "RUNAEROS = %d" % nozzle.runAEROS;
+	  #
+    #if nozzle.runAEROS == 1:
+		#    runAEROS (nozzle);
+    #else :
+		#    sys.stdout.write('  -- Info: Skip call to AEROS.\n');
+    #
     # --- Postprocessing
 	
     PostProcessing(nozzle);

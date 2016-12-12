@@ -73,7 +73,9 @@ def ExtractSolutionAtExit ( nozzle ):
 	pyInfo   = [];
 	pyHeader = [];
 	
-	pyBox = [nozzle.length,nozzle.length,0,nozzle.height+1e-20];
+	#pyBox = [nozzle.length,nozzle.length,0,nozzle.height+1e-20];
+	
+	pyBox = [4.0,4.0,0,0.45];
 	
 	_meshutils_module.py_ExtractAlongLine (mesh_name, restart_name, pyBox, pyResult, pyInfo, pyHeader);
 	
@@ -151,12 +153,11 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
 		Mach = SolExtract[iVer][2+iMach];
 		Temp = SolExtract[iVer][2+iTem];
 		
-		
 		U = rhoU/rho;
 		
 		dy = y - SolExtract[iVer-1][1];
 		
-		print "%lf %lf %lf %lf %lf %lf" % (y, rho, rhoU, Pres, Mach, Temp);
+		#print "%lf %lf %lf %lf %lf %lf" % (y, rho, rhoU, Pres, Mach, Temp);
 				
 		Thrust = Thrust + dy*(rhoU*(U-U0)+Pres-P0);
 		

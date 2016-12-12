@@ -57,6 +57,9 @@ def SetupConfig (solver_options):
 	InletPstag = solver_options.InletPstag;
 	InletTstag = solver_options.InletTstag;
 	
+	Pt = solver_options.Pt;
+	Tt = solver_options.Tt;
+	
 	LocalRelax = solver_options.LocalRelax;
 	
 	NbrIte = solver_options.NbrIte;
@@ -85,7 +88,7 @@ def SetupConfig (solver_options):
 		# --- Numerical method
 
 		config.NUM_METHOD_GRAD= 'WEIGHTED_LEAST_SQUARES';
-		config.CFL_NUMBER= '25';
+		config.CFL_NUMBER= '5';
 		config.CFL_ADAPT= 'NO';
 		config.MAX_DELTA_TIME= '1E6';
 		config.LINEAR_SOLVER= 'FGMRES';
@@ -146,8 +149,8 @@ def SetupConfig (solver_options):
 		config.MARKER_EULER= '( PhysicalSurface1, PhysicalSurface2, PhysicalSurface3, PhysicalSurface4, \
 		PhysicalSurface5, PhysicalSurface6, PhysicalSurface7, PhysicalSurface8, PhysicalSurface9, PhysicalSurface10, \
 		PhysicalSurface11, PhysicalSurface12, PhysicalSurface13, PhysicalSurface14 )';
-		config.MARKER_INLET= '( PhysicalSurface15, %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag);
-		config.MARKER_FAR= '( PhysicalSurface17, PhysicalSurface18, PhysicalSurface21 )';
+		config.MARKER_INLET= '( PhysicalSurface16, %lf, %lf, 1.0, 0.0, 0.0 , PhysicalSurface15, %lf, %lf, 1.0, 0.0, 0.0 )' % (Tt, Pt, InletTstag,InletPstag);
+		config.MARKER_FAR= '(  PhysicalSurface17, PhysicalSurface18, PhysicalSurface21 )';
 		config.MARKER_SYM= '( PhysicalSurface19, PhysicalSurface20 )';
 		config.MARKER_OUTLET= '( PhysicalSurface22, %lf)' % (Pres);
 		
@@ -235,7 +238,7 @@ def SetupConfig (solver_options):
 
 
 	
-def runSU2 ( nozzle ):
+def HF_runSU2 ( nozzle ):
 	
 	solver_options = Solver_Options();
 	
@@ -280,13 +283,12 @@ def runSU2 ( nozzle ):
 	U      = M*c                                                       # velocity
 	Rey    = rho*U*D/mu;                                               # Reynolds number
 	
+	solver_options.Pt = Ps + 0.5*rho*U*U;
+	solver_options.Tt = Ts*(1.+0.5*(gam-1.)*M*M);
+	
+	
 	solver_options.Reynolds_length = D;
 	solver_options.Reynolds        = Rey;
-	
-	#print "Rey %lf mu %lf rho %lf  T %lf  P %lf  D %lf" % (Rey, mu, rho, Ts, Ps,  D)
-	#sys.exit(1)
-		
-	GenerateNozzleMesh(nozzle);
 	
 	config = SetupConfig(solver_options);
 	

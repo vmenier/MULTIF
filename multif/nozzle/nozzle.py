@@ -2488,6 +2488,10 @@ def NozzleSetup( config_name, flevel, output='verbose' ):
 
     nozzle.mesh_name    =  'nozzle.su2'; #tempfile.mkstemp(suffix='.su2');
     nozzle.restart_name =  'nozzle.dat'; #tempfile.mkstemp(suffix='.dat');
+    nozzle.exit_mesh_name = 'nozzle_exit.su2'
+    
+    nozzle.SU2Version = 'NOT OK';
+    nozzle.LocalRelax = 'NO';
     
     if 'TEMP_RUN_DIR' in config:
         if config['TEMP_RUN_DIR'] == 'YES':

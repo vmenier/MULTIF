@@ -57,7 +57,6 @@ int py_MeshPrepro2D( char *InpNam, char *OutNam )
   if ( ptr != NULL )
     BasNam[ptr-BasNam]='\0';
   
-	printf("BASNAM = %s\n", BasNam);
 
 	strcpy(mshopt->OutNam,BasNam);	
 	
@@ -312,16 +311,12 @@ void py_ExtractAlongLine (char *MshNam, char *SolNam, PyObject *pyBox,  PyObject
 		PyList_Append(pyResult, PyFloat_FromDouble(result[i]));
 	}
 	
-	
 	PyList_Append(PyInfo, PyInt_FromLong(NbrRes));
 	PyList_Append(PyInfo, PyInt_FromLong(Siz));
-	
 	
 	for (i=0; i<Msh->SolSiz; i++){
 		PyList_Append(pyHeader, PyString_FromString(Msh->SolTag[i]));
 	}
-	
-	
 	
 	if (result)
 		free(result);

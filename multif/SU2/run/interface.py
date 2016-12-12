@@ -314,11 +314,11 @@ def run_command( Command ):
         raise SystemExit , message
     elif return_code > 0:
         message = "Path = %s\nCommand = %s\nSU2 process returned error '%s'\n%s" % (os.path.abspath(','),Command,return_code,message)
-        if return_code in return_code_map.keys():
-            exception = return_code_map[return_code]
-        else:
-            exception = RuntimeError
-        raise exception , message
+        #if return_code in return_code_map.keys():
+        #    exception = return_code_map[return_code]
+        #else:
+        #    exception = RuntimeError
+        #raise exception , message
     else:
         sys.stdout.write(message)
             
