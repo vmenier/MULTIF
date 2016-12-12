@@ -819,12 +819,12 @@ void WriteSU2Mesh(char *nam, Mesh *Msh)
 
 	if ( Msh->Dim == 2 ){
   	for (iVer=1; iVer<=Msh->NbrVer; iVer++) {
-    	fprintf(OutFil, "%le %le %d \n", Msh->Ver[iVer][0], Msh->Ver[iVer][1], iVer-1);
+    	fprintf(OutFil, "%.16le %.16le %d \n", Msh->Ver[iVer][0], Msh->Ver[iVer][1], iVer-1);
 		}
   }
 	else {
 		for (iVer=1; iVer<=Msh->NbrVer; iVer++) {
-    	fprintf(OutFil, "%le %le %le %d \n", Msh->Ver[iVer][0], Msh->Ver[iVer][1], Msh->Ver[iVer][2], iVer-1);
+    	fprintf(OutFil, "%.16le %.16le %.16le %d \n", Msh->Ver[iVer][0], Msh->Ver[iVer][1], Msh->Ver[iVer][2], iVer-1);
 		}
 	}
 

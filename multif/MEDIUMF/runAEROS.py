@@ -24,8 +24,8 @@ def runAEROS ( nozzle ):
     
     # First print all information related to geometry
     #print '--- Wall:'
-    #print 'B-spline coefs (x-r coordinates): {}'.format(nozzle.wall.coefs)
-    #print 'B-spline knots: {}'.format(nozzle.wall.knots)
+    #print 'B-spline coefs (x-r coordinates): {:{prec}}'.format(nozzle.wall.coefs,prec=16)
+    #print 'B-spline knots: {:{prec}}'.format(nozzle.wall.knots,prec=16)
     #print ''
     #for i in range(len(nozzle.wall.layer)):
     #    print '--- %s:' % nozzle.wall.layer[i].name
@@ -136,7 +136,7 @@ def runAEROS ( nozzle ):
     
     ## --- How to get x, y, P, T :
     #for i in range(0,Size[0]):
-    #    print "VER %d : (x,y) = (%lf, %lf) , Pres = %lf, Temp = %lf" % (i, SolExtract[i][0], SolExtract[i][1], SolExtract[i][iPres], SolExtract[i][iTemp]);
+    #    print "VER %d : (x,y) = (%.*lf, %.*lf) , Pres = %lf, Temp = %lf" % (i, 16, SolExtract[i][0], 16, SolExtract[i][1], SolExtract[i][iPres], SolExtract[i][iTemp]);
 
     boundaryFlag = 1 if len(nozzle.baffles.location) > 0 else 0; # 0: inlet fixed, 1: baffles fixed, 2: both inlet and baffles fixed
     if nozzle.thermalFlag == 1:
@@ -161,7 +161,7 @@ def runAEROS ( nozzle ):
     print >> f1, "%d %d %d %f %d %d %d %d %d" % (len(points), len(vertices), len(nozzle.materials), lc, boundaryFlag, thermalFlag, 3, 2, linearFlag);
     # points
     for i in range(len(points)):
-        print >> f1, "%lf %lf" % (points[i], nozzle.wall.geometry.radius(points[i]));
+        print >> f1, "%.*lf %.*lf %.*lf" % (16, points[i], 16, nozzle.wall.geometry.radius(points[i]), 16, nozzle.wall.geometry.radiusGradient(points[i]));
     # vertices
     for i in range(len(vertices)):  
         Wb = nozzle.baffles.height[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # height of baffle

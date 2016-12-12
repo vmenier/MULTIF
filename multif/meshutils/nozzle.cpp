@@ -1066,7 +1066,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
   std::vector<std::pair<GEntity::GeomType,int> > boundaryTags;
   std::vector<std::pair<GEntity::GeomType,int> > cmcBoundaryTags;
 
-  double cth1, cth2, cth3, cth4, cth5, cth6;
+  double cth1, cth2;
 
   // count the number of baffles
   int baffleCount = 0;
@@ -1081,7 +1081,16 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
     GVertex *vertex2 = m->addVertex((*pointIt2)[0], (*pointIt2)[1], (*pointIt2)[2], lc);
     std::vector<std::vector<double> > controlPoints(pointIt1+1, pointIt2);
     // inside of inner layer
-    GEdge *edge1 = m->addBSpline(vertex1, vertex2, controlPoints); 
+    GEdge *edge1;
+    try {
+      edge1 = controlPoints.empty() ? m->addLine(vertex1, vertex2) :  m->addBSpline(vertex1, vertex2, controlPoints); 
+    }
+    catch(...) {
+      std::cerr << "Warning : mesh generation failed in segment " << std::distance(segments.begin(),segmentIt)
+                << ", x = [" << vertex1->x() << "," << vertex2->x() << "]\n";
+      pointIt1 = pointIt2; vertex1 = vertex2;
+      continue;
+    } 
 
     int ns = std::max(1,segmentIt->ns); // number of circumferential segments
     double wb = vertexIt->wb;           // width of baffle
@@ -1094,57 +1103,63 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
     double t1 = std::accumulate(vertexIt->t.begin(), vertexIt->t.end(), 0.);         // total thickness of outer structural layer
     double t2 = std::accumulate((vertexIt+1)->t.begin(), (vertexIt+1)->t.end(), 0.); // total thickness of outer structural layer
     double tt1 = vertexIt->tt[0];       // thickness of inner thermal insulating layer
-    double tt2 = (vertexIt+1)->tt[0];   // total thickness of inner thermal insulating layer
+    double tt2 = (vertexIt+1)->tt[0];   // thickness of inner thermal insulating layer
     int tn_inner = segmentIt->tn[0];    // number of transfinite points through thickness of inner part of insulating layer in thermal mesh
     int tn_outer = segmentIt->tn[1];    // number of transfinite points through thickness of outer part of insulating layer in thermal mesh
     int ln = segmentIt->ln;             // number of transfinite points through each half of the thickness of the load layer in thermal mesh
     double angle = 2*M_PI/ns;
 
     // middle of inner layer
-    cth1 = (segmentIt == segments.begin()) ? dot(edge1->firstDer(0.).unit(),SVector3(1.,0.,0.)) : cth2;
-    cth2 = dot(edge1->firstDer(1.).unit(),SVector3(1.,0.,0.)); // cosine of angles between normals and y-axis
+    cth1 = 1/sqrt(1+(*pointIt1)[3]*(*pointIt1)[3]); // cosine of angle between normal and y-axis 
+    cth2 = 1/sqrt(1+(*pointIt2)[3]*(*pointIt2)[3]); // cosine of angle between normal and y-axis
     std::vector<GEdge*> middleInnerLayer;
     for(unsigned int k=0; k<vertexIt->tt.size()-1; ++k ) {
-      GVertex *vertex3 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+cth1*tt1, (*pointIt1)[2], lc);
-      GVertex *vertex4 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+cth2*tt2, (*pointIt2)[2], lc);
-      for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it)
-        (*it)[1] += (cth1*vertexIt->tt[k] + (cth2*(vertexIt+1)->tt[k] - cth1*vertexIt->tt[k])*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
-      middleInnerLayer.push_back(m->addBSpline(vertex3, vertex4, controlPoints));
+      GVertex *vertex3 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+tt1/cth1, (*pointIt1)[2], lc);
+      GVertex *vertex4 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+tt2/cth2, (*pointIt2)[2], lc);
+      for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it) {
+        double cth = 1/sqrt(1+(*it)[3]*(*it)[3]); // cosine of angle between normal and y-axis
+        // interpolate thickness: t = tL + (tR-tL)*(x-xL)/(xR-xL)
+        (*it)[1] += (vertexIt->tt[k] + ((vertexIt+1)->tt[k] - vertexIt->tt[k])*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]))/cth;
+      }
+      middleInnerLayer.push_back(controlPoints.empty() ? m->addLine(vertex3, vertex4) : m->addBSpline(vertex3, vertex4, controlPoints));
       tt1 += vertexIt->tt[k+1];
       tt2 += (vertexIt+1)->tt[k+1];
     }
     // outside of inner layer / inside of outer layer
-    GVertex *vertex3 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+cth1*tt1, (*pointIt1)[2], lc);
-    GVertex *vertex4 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+cth2*tt2, (*pointIt2)[2], lc);
-    for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it) 
-      (*it)[1] += (cth1*vertexIt->tt.back() + (cth2*(vertexIt+1)->tt.back() - cth1*vertexIt->tt.back())*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
-    GEdge *edge2 = m->addBSpline(vertex3, vertex4, controlPoints);
+    GVertex *vertex3 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+tt1/cth1, (*pointIt1)[2], lc);
+    GVertex *vertex4 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+tt2/cth2, (*pointIt2)[2], lc);
+    for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it) {
+      double cth = 1/sqrt(1+(*it)[3]*(*it)[3]); // cosine of angle between normal and y-axis
+      (*it)[1] += (vertexIt->tt.back() + ((vertexIt+1)->tt.back() - vertexIt->tt.back())*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]))/cth;
+    }
+    GEdge *edge2 = controlPoints.empty() ? m->addLine(vertex3, vertex4) : m->addBSpline(vertex3, vertex4, controlPoints);
     // middle of outer layer
-    cth3 = (segmentIt == segments.begin()) ? dot(edge2->firstDer(0.).unit(),SVector3(1.,0.,0.)) : cth4;
-    cth4 = dot(edge2->firstDer(1.).unit(),SVector3(1.,0.,0.)); // cosine of angles between normals and y-axis
-    GVertex *vertex5 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+cth1*tt1+cth3*t1/2, (*pointIt1)[2], lc);
-    GVertex *vertex6 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+cth2*tt2+cth4*t2/2, (*pointIt2)[2], lc);
-    for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it)
-      (*it)[1] += (cth3*t1/2 + (cth4*t2/2 - cth3*t1/2)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
-    GEdge *edge3 = m->addBSpline(vertex5, vertex6, controlPoints);
+    GVertex *vertex5 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+(tt1+t1/2)/cth1, (*pointIt1)[2], lc);
+    GVertex *vertex6 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+(tt2+t2/2)/cth2, (*pointIt2)[2], lc);
+    for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it) {
+      double cth = 1/sqrt(1+(*it)[3]*(*it)[3]); // cosine of angle between normal and y-axis
+      (*it)[1] += (t1/2 + (t2/2 - t1/2)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]))/cth;
+    }
+    GEdge *edge3 = controlPoints.empty() ? m->addLine(vertex5, vertex6) : m->addBSpline(vertex5, vertex6, controlPoints);
     // outside of outer layer
-    GVertex *vertex7 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+cth1*tt1+cth3*t1, (*pointIt1)[2], lc);
-    GVertex *vertex8 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+cth2*tt2+cth4*t2, (*pointIt2)[2], lc);
-    for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it)
-      (*it)[1] += (cth3*t1/2 + (cth4*t2/2 - cth3*t1/2)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
-    GEdge *edge4 = m->addBSpline(vertex7, vertex8, controlPoints);
+    GVertex *vertex7 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+(tt1+t1)/cth1, (*pointIt1)[2], lc);
+    GVertex *vertex8 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+(tt2+t2)/cth2, (*pointIt2)[2], lc);
+    for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it) {
+      double cth = 1/sqrt(1+(*it)[3]*(*it)[3]); // cosine of angle between normal and y-axis
+      (*it)[1] += (t1/2 + (t2/2 - t1/2)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]))/cth;
+    }
+    GEdge *edge4 = controlPoints.empty() ? m->addLine(vertex7, vertex8) : m->addBSpline(vertex7, vertex8, controlPoints);
     // top of stiffeners
-    cth5 = (segmentIt == segments.begin()) ? dot(edge4->firstDer(0.).unit(),SVector3(1.,0.,0.)) : cth6;
-    cth6 = dot(edge3->firstDer(1.).unit(),SVector3(1.,0.,0.)); // cosine of angles between normals and y-axis
     GVertex *vertex9, *vertex10; GEdge *edge11;
     if(ws1 != 0) {
-      vertex9  = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+cth1*tt1+cth3*t1/2+cth5*ws1, (*pointIt1)[2], lc);
-      vertex10 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+cth2*tt2+cth4*t2/2+cth6*ws2, (*pointIt2)[2], lc);
+      vertex9  = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+(tt1+t1/2)/cth1+ws1, (*pointIt1)[2], lc);
+      vertex10 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+(tt2+t2/2)/cth2+ws2, (*pointIt2)[2], lc);
       for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it) {
-        (*it)[1] -= (cth3*t1/2 + (cth4*t2/2 - cth3*t1/2)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
-        (*it)[1] += (cth5*ws1 + (cth6*ws2 - cth5*ws1)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
+        double cth = 1/sqrt(1+(*it)[3]*(*it)[3]); // cosine of angle between normal and y-axis
+        (*it)[1] -= (t1/2 + (t2/2 - t1/2)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]))/cth;
+        (*it)[1] += (ws1 + (ws2 - ws1)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
       }
-      edge11 = m->addBSpline(vertex9, vertex10, controlPoints);
+      edge11 = controlPoints.empty() ? m->addLine(vertex9, vertex10) : m->addBSpline(vertex9, vertex10, controlPoints);
     }
 
     GEntity *region1, *region2, *region3, *region4, *face3;
@@ -1166,7 +1181,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
             (*it)[1] = cth*y - sth*z;
             (*it)[2] = sth*y + cth*z;
           }
-          edge11 = m->addBSpline(vertex9, vertex10, controlPoints);
+          edge11 = controlPoints.empty() ? m->addLine(vertex9, vertex10) : m->addBSpline(vertex9, vertex10, controlPoints);
         }
       }
 
@@ -1669,8 +1684,8 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
   
   std::vector<std::vector<double> > points;
   for(int i=0; i<np; ++i) {
-    std::vector<double> xyz(3);
-    fin >> xyz[0] >> xyz[1]; xyz[2] = 0;
+    std::vector<double> xyz(4);
+    fin >> xyz[0] >> xyz[1] >> xyz[3]; xyz[2] = 0;
     points.push_back(xyz);
   }
 
