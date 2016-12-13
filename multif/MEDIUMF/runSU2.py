@@ -133,9 +133,9 @@ def SetupConfig (solver_options):
 	# --- Boundary conditions
 	
 	if method == 'EULER':
-		config.MARKER_EULER= '( PhysicalLine6 )';
+		config.MARKER_EULER= '( PhysicalLine6, PhysicalLine7 )';
 	elif method == 'RANS':
-		config.MARKER_HEATFLUX= '( PhysicalLine6, 0.0 )';
+		config.MARKER_HEATFLUX= '( PhysicalLine6, 0.0, PhysicalLine7, 0.0 )';
 	config.MARKER_INLET= '( PhysicalLine1, %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag);
 	config.MARKER_FAR= '( PhysicalLine5, PhysicalLine4 )';
 	config.MARKER_SYM= '( PhysicalLine2 )';

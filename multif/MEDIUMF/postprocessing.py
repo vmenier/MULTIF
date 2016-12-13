@@ -173,7 +173,7 @@ def ExtractSolutionAtWall (nozzle):
     pyInfo   = [];
     pyHeader = [];
     
-    pyRef = [12];
+    pyRef = [7];
     
     _meshutils_module.py_ExtractAtRef (mesh_name, restart_name, pyRef, pyResult, pyInfo, pyHeader);
     
