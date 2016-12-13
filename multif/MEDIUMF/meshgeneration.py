@@ -180,7 +180,8 @@ def NozzleGeoFile(FilNam, Mesh_options):
   fil.write("Physical Line(3) = {3,4,5};\n");
   fil.write("Physical Line(4) = {6};\n");
   fil.write("Physical Line(5) = {7,8};\n");
-  fil.write("Physical Line(6) = {9,11,12};\n");
+  fil.write("Physical Line(6) = {9,11};\n");
+	fil.write("Physical Line(7) = {12};\n");
   fil.write("Physical Surface(1) = {14};\n");
     
   hl1 = hl[0];
