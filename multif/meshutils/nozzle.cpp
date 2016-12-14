@@ -207,6 +207,12 @@ void writeMate(MElement *m, FILE *fp, double scalingFactor, const std::vector<Bo
       }
       else {
         tval = (it-1)->tb;
+        int discount = 2;
+        while(tval==0) { // Check for zero baffle thickness (occurs if baffle vertex is skipped since it is followed by a vertex that is too close)     
+        	tval = (it-discount)->tb;
+        	discount += 1;
+        	if(discount > 5) {break;}
+        }
         mat = materials[(it-1)->mb];
       }
 
@@ -1075,7 +1081,10 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
 
   // loop over the segments
   int baffleIndex = 0;
+  int baffleInfo = 0;
   for(std::vector<SegmentData>::const_iterator segmentIt = segments.begin(); segmentIt != segments.end(); ++segmentIt, ++vertexIt) {
+  
+  	//if(skipFlag == 1) { skipFlag = 0; continue; }
 
     std::vector<std::vector<double> >::const_iterator pointIt2 = points.begin()+(vertexIt+1)->p;
     GVertex *vertex2 = m->addVertex((*pointIt2)[0], (*pointIt2)[1], (*pointIt2)[2], lc);
@@ -1088,12 +1097,21 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
     catch(...) {
       std::cerr << "Warning : mesh generation failed in segment " << std::distance(segments.begin(),segmentIt)
                 << ", x = [" << vertex1->x() << "," << vertex2->x() << "]\n";
+      if(vertexIt->wb > 0) { // if vertex corresponds to baffle, keep track of where baffle info is
+				baffleInfo += 1;
+      }
       pointIt1 = pointIt2; vertex1 = vertex2;
       continue;
     } 
 
     int ns = std::max(1,segmentIt->ns); // number of circumferential segments
-    double wb = vertexIt->wb;           // width of baffle
+    double wb = 0;
+    if(baffleInfo) { // baffle data from previous vertex should be used
+    	wb = (vertexIt-baffleInfo)->wb;
+    	baffleInfo = 0;
+    } else {
+    	wb = vertexIt->wb;                // width of baffle
+    }
     int nb = vertexIt->nb;              // number of transfinite points (radial edges of baffle)
     double ws1 = vertexIt->ws;          // width of stiffeners
     double ws2 = (vertexIt+1)->ws;      // width of stiffeners
