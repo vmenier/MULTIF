@@ -3,10 +3,15 @@ from meshgeneration import *
 from runSU2 import *
 from postprocessing import *
 
+try:
+    from runAEROS import *
+except ImportError:
+    print 'Error importing all functions from runAEROS.\n'
+
 #try:
-#	from runAEROS import *
+#    from runAEROS import *
 #else ImportError:
-#	pass;
+#    pass;
 
 def CheckOptions (nozzle):
     
@@ -20,7 +25,7 @@ def CheckOptions (nozzle):
     #    sys.exit(0);
     
 
-def Run( nozzle ):
+def Run( nozzle, output = 'verbose' ):
     
     # --- Check SU2 version
     
@@ -38,32 +43,35 @@ def Run( nozzle ):
     # --- Run CFD
     
     runSU2 (nozzle);
-	
+    
     # --- Run AEROS  
     
     nozzle.runAEROS = 0;
     if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
         nozzle.runAEROS = 1;
-	
-        try:
-		        from runAEROS import *
-		        print "SUCCESS IMPORTING AEROS"
-        except ImportError:
-		        nozzle.runAEROS = 0;
-		        pass;
-	
-    print "RUNAEROS = %d" % nozzle.runAEROS;
-	
+    
+#        try:
+#            #from runAEROS import *
+#            if output == 'verbose':      
+#                print "SUCCESS IMPORTING AEROS"
+#        except ImportError:
+#                nozzle.runAEROS = 0;
+#                pass;
+    
+    if output == 'verbose':
+        print "RUNAEROS = %d" % nozzle.runAEROS;
+    
     if nozzle.runAEROS == 1:
-		    runAEROS (nozzle);
+        runAEROS (nozzle);
     else :
-		    sys.stdout.write('  -- Info: Skip call to AEROS.\n');
+        sys.stdout.write('  -- Info: Skip call to AEROS.\n');
 
     # --- Postprocessing
-	
+    
     PostProcessing(nozzle);
-	
-    sys.stdout.write("\n  -- Info : Result directory :  %s\n\n" % nozzle.runDir);
-	
-	
+    
+    if output == 'verbose':
+        sys.stdout.write("\n  -- Info : Result directory :  %s\n\n" % nozzle.runDir);
+    
+    
 

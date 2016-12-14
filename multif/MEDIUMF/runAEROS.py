@@ -83,19 +83,6 @@ def runAEROS ( nozzle ):
     # are 3 values: (1st in-plane direction, 2nd in-plane direction, out-of-plane direction))
     #[k1, k2, k3] = nozzle.wall.layer[1].material.getThermalConductivity()
     # End of example
-        
-    for i in range(len(nozzle.wall.layer)):
-        if nozzle.wall.layer[i].name == 'AIR_GAP':
-            continue;
-        else:
-            print nozzle.wall.layer[i].name;
-            print nozzle.wall.layer[i].material.name;
-            print nozzle.wall.layer[i].material.getDensity();
-            print nozzle.wall.layer[i].material.getElasticModulus();
-            print nozzle.wall.layer[i].material.getShearModulus();
-            print nozzle.wall.layer[i].material.getPoissonRatio();
-            print nozzle.wall.layer[i].material.getThermalConductivity();
-            print nozzle.wall.layer[i].material.getThermalExpansionCoef();
 
     if nozzle.method == 'NONIDEALNOZZLE':
         SolExtract = nozzle.wallResults;
@@ -109,6 +96,18 @@ def runAEROS ( nozzle ):
                                list(nozzle.wall.layer[3].thickness.nodes[0,:])+list(nozzle.wall.layer[4].thickness.nodes[0,:])+
                                list(nozzle.baffles.location)+list(nozzle.stringers.thickness.nodes[0,:])+
                                list(nozzle.stringers.height.nodes[0,:]))))
+    
+    # remove vertices that are too close together (except for one of them)
+#    duplicate = 1;
+#    while duplicate == 1:
+#        duplicate = 0;
+#        for i in range(len(vertices)-1):
+#            vDiff = vertices[i+1]-vertices[i];
+#            if vDiff < 1e-7:
+#                vertices.remove(vertices[i+1]);
+#                duplicate = 1;
+#                break;
+#    print vertices                      
     #for k in range(len(vertices)):
     #    print ' k = %d, vertices[k] = %f' % (k, vertices[k])
 
@@ -162,18 +161,24 @@ def runAEROS ( nozzle ):
     # points
     for i in range(len(points)):
         print >> f1, "%.*lf %.*lf %.*lf" % (16, points[i], 16, nozzle.wall.geometry.radius(points[i]), 16, nozzle.wall.geometry.radiusGradient(points[i]));
+        
     # vertices
     for i in range(len(vertices)):  
         Wb = nozzle.baffles.height[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # height of baffle
+        #WbIndex = np.argmin(np.abs([nozzle.baffles.location[q]-vertices[i] for q in range(len(nozzle.baffles.location))])) # location of height of baffle
+        #WbValue = np.min(np.abs([nozzle.baffles.location[q]-vertices[i] for q in range(len(nozzle.baffles.location))])) # value of difference 
+        #Wb = nozzle.baffles.height[WbIndex] if WbValue < 1e-7 else 0 # height of baffle
         Ws = nozzle.stringers.height.radius(vertices[i]) if nozzle.stringers.n > 0 else 0; # height of stringer
         Nb = max((Wb-Ws)/lc+1,2); # number of nodes on radial edge of baffle (not including overlap with stringer)
         Tg = nozzle.wall.layer[1].thickness.radius(0.) # thickness of gap between thermal and load layers
         Tb = nozzle.baffles.thickness[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # thickness of baffle
+        #Tb = nozzle.baffles.thickness[WbIndex] if WbValue < 1e-7 else 0 # thickness of baffles
         Ts = nozzle.stringers.thickness.radius(vertices[i]) if nozzle.stringers.n > 0 else 0; # thickness of stringers
-        print >> f1, "%d %f %d %d %lf %lf %lf %lf %lf %lf %lf %lf" % (points.index(vertices[i]), Wb, Mb, Nb,
+        print >> f1, "%d %0.16f %d %d %0.16f %0.16f %0.16f %0.16f %0.16f %0.16f %0.16f %0.16f" % (points.index(vertices[i]), Wb, Mb, Nb,
                  nozzle.wall.layer[2].thickness.radius(vertices[i]), nozzle.wall.layer[3].thickness.radius(vertices[i]),
                  nozzle.wall.layer[4].thickness.radius(vertices[i]), nozzle.wall.layer[0].thickness.radius(vertices[i]),
                  Tg, Tb, Ts, Ws);
+                 
     # panels
     for i in range(1,len(vertices)):
         Nn = max(2,(vertices[i]-vertices[i-1])/lc+1); # number of nodes on longitudial edge
@@ -206,7 +211,7 @@ def runAEROS ( nozzle ):
     f2 = open("BOUNDARY.txt", 'w');
     print >> f2, "%d" % (Size[0]);
     for i in range(0,Size[0]):
-        print >> f2, "%lf %lf %lf %lf" % (SolExtract[i][0], SolExtract[i][iPres], SolExtract[i][iTemp], nozzle.environment.T);
+        print >> f2, "%0.8f %0.8f %0.8f %0.8f" % (SolExtract[i][0], SolExtract[i][iPres], SolExtract[i][iTemp], nozzle.environment.T);
     f2.close();
     
     _nozzle_module.generate();       # generate the meshes for thermal and structural analyses
@@ -449,38 +454,55 @@ def AEROSPostProcessing ( nozzle ):
             #nozzle.ks_thermal_stress[i-1] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
             #nozzle.pn_thermal_stress[i-1] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
 
-    # ---- Load and assign temperature results if necessary
+    # ---- Load and assign temperature results if necessary, AND
+    # load and assign temperature ratio results if necessary
     if ( sum(nozzle.GetOutput['MAX_TEMPERATURE']) > 0 or 
          sum(nozzle.GetOutput['KS_TEMPERATURE']) > 0 or
-         sum(nozzle.GetOutput['PN_TEMPERATURE']) > 0 ):    
+         sum(nozzle.GetOutput['PN_TEMPERATURE']) > 0 or
+         sum(nozzle.GetOutput['MAX_TEMP_RATIO']) > 0 or
+         sum(nozzle.GetOutput['KS_TEMP_RATIO']) > 0 or
+         sum(nozzle.GetOutput['PN_TEMP_RATIO']) > 0):    
 
         # Thermal layer
         data = nozzle.wallTemp;
         nozzle.max_temperature[0] = np.max(data);
+        nozzle.max_temp_ratio[0] = nozzle.max_temperature[0]/nozzle.wall.layer[0].material.Tmax;
         stemp = np.mean(data);
         nozzle.ks_temperature[0] = ksFunction(data/stemp,ks_param)*stemp;
         nozzle.pn_temperature[0] = pnFunction(data/stemp,pn_param)*stemp;
+        nozzle.ks_temp_ratio[0] = ksFunction(data/nozzle.wall.layer[0].material.Tmax,ks_param);
+        nozzle.pn_temp_ratio[0] = pnFunction(data/nozzle.wall.layer[0].material.Tmax,pn_param);
     
         # Inner load layer
         filename = 'TEMP.1';
         data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
         stemp = np.mean(data[:,-1]);
         nozzle.max_temperature[2] = np.max(data[:,-1]);
+        nozzle.max_temp_ratio[2] = nozzle.max_temperature[2]/nozzle.wall.layer[2].material.Tmax;        
         nozzle.ks_temperature[2] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
         nozzle.pn_temperature[2] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
+        nozzle.ks_temp_ratio[2] = ksFunction(data[:,-1]/nozzle.wall.layer[2].material.Tmax,ks_param);
+        nozzle.pn_temp_ratio[2] = pnFunction(data[:,-1]/nozzle.wall.layer[2].material.Tmax,pn_param);
         
         # Inner load layer
         filename = 'TEMP.2';
         data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
         stemp = np.mean(data[:,-1]);
         nozzle.max_temperature[3] = np.max(data[:,-1]);
+        nozzle.max_temp_ratio[3] = nozzle.max_temperature[3]/nozzle.wall.layer[3].material.Tmax;
         nozzle.ks_temperature[3] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
         nozzle.pn_temperature[3] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
-    
+        nozzle.ks_temp_ratio[3] = ksFunction(data[:,-1]/nozzle.wall.layer[3].material.Tmax,ks_param);
+        nozzle.pn_temp_ratio[3] = pnFunction(data[:,-1]/nozzle.wall.layer[3].material.Tmax,pn_param);
+        
         # Inner load layer
         filename = 'TEMP.3';
         data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
         stemp = np.mean(data[:,-1]);
         nozzle.max_temperature[4] = np.max(data[:,-1]);
+        nozzle.max_temp_ratio[4] = nozzle.max_temperature[4]/nozzle.wall.layer[4].material.Tmax;
         nozzle.ks_temperature[4] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
         nozzle.pn_temperature[4] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;    
+        nozzle.ks_temp_ratio[4] = ksFunction(data[:,-1]/nozzle.wall.layer[4].material.Tmax,ks_param);
+        nozzle.pn_temp_ratio[4] = pnFunction(data[:,-1]/nozzle.wall.layer[4].material.Tmax,pn_param);
+        

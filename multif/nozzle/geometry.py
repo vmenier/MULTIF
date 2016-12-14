@@ -422,8 +422,114 @@ def localToGlobalCoordConversion(x,rLower,nUpper,drdxLower):
 
     theta = np.arctan2(drdxLower,1)
     
+    # Check theta for discontinuities and smooth out if necessary
+    thetaSlope = (theta[1:] - theta[0:-1])/(x[1:] - x[0:-1])
+    
+    slopeLimit = 300.
+    neighborhood = 2 # look for large slopes within this neighborhood of steps
+    indPos = -100 # count index of first large positive slope
+    indPosCount = 0 # count number of steps of large positive slope after first
+    indNeg = -100 # count index of first large negative slope
+    indNegCount = 0 # count number of steps of large negative slope after first
+    for i in range(len(thetaSlope)):
+        if thetaSlope[i] > slopeLimit:
+            if i < indPos + indPosCount + 1 + neighborhood: # point follows previous large positive slopes w/i a neighborhood
+                indPosCount += i - indPos
+            else: # point is the first of its large positive slope type
+                indPos = i
+                indPosCount = 0
+        if thetaSlope[i] < -slopeLimit:
+            if i < indNeg + indNegCount + 1 + neighborhood: # point follows previous large negative slopes w/i a neighborhood
+                indNegCount += i - indNeg
+            else: # point is the first of its large negative slope type
+                indNeg = i
+                indNegCount = 0
+        # At a distance from steep phenomena, check for spike, and then replace with linear interpolation
+        if i == max(indPos + indPosCount + 1 + neighborhood, indNeg + indNegCount + 1 + neighborhood):
+            # positive spike
+            if indNeg > indPos and indNeg - indPos - indPosCount <= neighborhood:
+                #print 'found positive spike'
+                s = indPos
+                e = indNeg + indNegCount + 1
+                theta[s:e] = np.interp(x[s:e],[x[s],x[e]],[theta[s],theta[e]])
+            elif indPos > indNeg and indPos - indNeg - indNegCount <= neighborhood:
+                #print 'found negative spike'
+                s = indNeg
+                e = indPos + indPosCount + 1
+                theta[s:e] = np.interp(x[s:e],[x[s],x[e]],[theta[s],theta[e]])
+    
     xTransform = x - nUpper*np.sin(theta)
     rTransform = rLower + nUpper*np.cos(theta)
+
+    # Clean up transformed coordinates if necessary (remove overlap caused by 
+    # 'kinks' in the shape)
+    searchComplete = 0
+    xa = np.max(xTransform)+1.
+    while not searchComplete:
+        decFlag = 0
+        sitFlag = 0
+        xa = np.max(xTransform)+1.
+        for i in range(1,len(xTransform)):
+            xDiff = xTransform[i] - xTransform[i-1]
+            if xDiff < 0 and decFlag == 0: # i.e. x starts to decrease
+                xa = xTransform[i-1] # point where x starts to decrease
+                ra = rTransform[i-1] # radius where x starts to decrease
+                ia = i-1
+                decFlag = 1 # flag we are in a decreasing x portion of the shape
+            elif decFlag == 1 and xDiff >= 0: # i.e. x starts to increase after having decreased
+                xb = xTransform[i-1] # point where x starts to increase after decreasing
+                rb = rTransform[i-1]
+                ib = i-1
+                decFlag = 2 # flag we are in an increasing portion of the shape after having been in a decreasing portion
+            
+            if xTransform[i] > xa: # just cut out offending kink entirely
+                xTransform = np.hstack((xTransform[0:ia+1],xTransform[i:]))
+                rTransform = np.hstack((rTransform[0:ia+1],rTransform[i:]))
+                #print 'remedied basic kink'
+                break                 
+                
+            if decFlag == 2:
+                xcp = xTransform[i]
+                rcp = rTransform[i]
+                icp = i
+                rI = np.interp(xcp,xTransform[0:ia+1],rTransform[0:ia+1])
+                rII = np.interp(xcp,xTransform[ia:ib+1],rTransform[ia:ib+1]) 
+                if rI > rcp and rcp > rII: # situation 3 before crossover
+                    sitFlag = 3
+                elif rII > rcp and rcp > rI: # situation 4 before crossover
+                    sitFlag = 4
+                elif rcp > rI and rI > rII and sitFlag == 3: # situation 3 after crossover
+                    x4 = xcp; r4 = rcp
+                    x3 = xTransform[i-1]; r3 = xTransform[i-1]
+                    x1 = x3; x2 = x4;
+                    r1 = np.interp(x1,xTransform[0:ia+1],rTransform[0:ia+1])
+                    r2 = np.interp(x2,xTransform[0:ia+1],rTransform[0:ia+1])
+                    m1 = (r2-r1)/(x2-x1); m2 = (r4-r3)/(x4-x3)
+                    xi = (m1*x1 - m2*x3 + r3 - r1)/(m1 - m2)
+                    ri = m1*(xi-x1) + r1                    
+                    ii = len([q for q in xTransform[0:ia+1] if q < xi]) - 1
+                    xTransform = np.hstack((xTransform[0:ii+1],xi,xTransform[icp:]))
+                    rTransform = np.hstack((rTransform[0:ii+1],ri,rTransform[icp:]))
+                    #print 'found intersection xi for situation 3'
+                    break
+                elif rII > rI and rI > rcp and sitFlag == 4: # situation 4 after crossover
+                    x4 = xcp; r4 = rcp
+                    x3 = xTransform[i-1]; r3 = xTransform[i-1]
+                    x1 = x3; x2 = x4;
+                    r1 = np.interp(x1,xTransform[0:ia+1],rTransform[0:ia+1])
+                    r2 = np.interp(x2,xTransform[0:ia+1],rTransform[0:ia+1])
+                    m1 = (r2-r1)/(x2-x1); m2 = (r4-r3)/(x4-x3)
+                    xi = (m1*x1 - m2*x3 + r3 - r1)/(m1 - m2)
+                    ri = m1*(xi-x1) + r1                    
+                    ii = len([q for q in xTransform[0:ia+1] if q < xi]) - 1
+                    xTransform = np.hstack((xTransform[0:ii+1],xi,xTransform[icp:]))
+                    rTransform = np.hstack((rTransform[0:ii+1],ri,rTransform[icp:]))
+                    #print 'found intersection xi for situation 4'
+                    break      
+
+            if i == len(xTransform)-1:
+                searchComplete = 1
+
     # Ensure bounds are right for linear extrapolation if necessary
     if xTransform[0] > x[0]:
         xStart = x[0] - xTransform[0]

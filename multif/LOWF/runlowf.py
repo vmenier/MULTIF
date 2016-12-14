@@ -763,12 +763,14 @@ def Quasi1D(nozzle,output='verbose'):
             
             try:
                 from  multif.MEDIUMF.runAEROS import *
-                print 'SUCCESS IMPORTING AEROS'
+                if output == 'verbose':
+                    print 'SUCCESS IMPORTING AEROS'
             except ImportError:
                 nozzle.runAEROS = 0
                 pass
-
-        print "RUNAEROS = %d" % nozzle.runAEROS;
+                
+        if output == 'verbose':
+            print "RUNAEROS = %d" % nozzle.runAEROS;
         
         if nozzle.runAEROS == 1:
             runAEROS(nozzle);
