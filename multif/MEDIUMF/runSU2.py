@@ -235,7 +235,7 @@ def runSU2 ( nozzle ):
 	solver_options.LocalRelax = nozzle.LocalRelax;
 	
 	if nozzle.method == 'EULER':
-		solver_options.NbrIte = 300;
+		solver_options.NbrIte = 1000;
 	else:
 		solver_options.NbrIte = 2000;
 		

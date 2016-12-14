@@ -553,7 +553,7 @@ class Nozzle:
         if 'SU2_CONVERGENCE_ORDER' in config:
             nozzle.su2_convergence_order = config['SU2_CONVERGENCE_ORDER'];
         else:
-            nozzle.su2_convergence_order = 3;
+            nozzle.su2_convergence_order = 5;
             
         if output == 'verbose':
             sys.stdout.write('Setup Mission complete\n');
@@ -1070,7 +1070,7 @@ class Nozzle:
             x    = [];
             y    = [];
 
-            nx = 100;
+            nx = 500;
             _meshutils_module.py_BSplineGeo3 (knots, coefs, x, y, nx);
 
             nozzle.xwall = x;
