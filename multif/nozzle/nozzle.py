@@ -2431,98 +2431,98 @@ class Nozzle:
                                 
             elif tag == 'KS_TOTAL_STRESS':
                 for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f ks_total_stress\n' % nozzle.ks_total_stress[j]);
+                    fil.write('%0.16f ks_total_stress_%s\n' % (nozzle.ks_total_stress[j],nozzle.stressComponentList[j]));
                     prt_item.append('ks total stress');
                     prt_comp.append('%s' % nozzle.stressComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.ks_total_stress[j]);
                     
             elif tag == 'PN_TOTAL_STRESS':
                 for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f pn_total_stress\n' % nozzle.pn_total_stress[j]);
+                    fil.write('%0.16f pn_total_stress_%s\n' % (nozzle.pn_total_stress[j],nozzle.stressComponentList[j]));
                     prt_item.append('pn total stress');
                     prt_comp.append('%s' % nozzle.stressComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.pn_total_stress[j]);
                     
             elif tag == 'MAX_TOTAL_STRESS':
                 for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f max_total_stress=\n' % nozzle.max_total_stress[j]);
+                    fil.write('%0.16f max_total_stress_%s\n' % (nozzle.max_total_stress[j],nozzle.stressComponentList[j]));
                     prt_item.append('max total stress');
                     prt_comp.append('%s' % nozzle.stressComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.max_total_stress[j]);
                     
             elif tag == 'MAX_THERMAL_STRESS':
                 for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f max_thermal_stress\n' % nozzle.max_thermal_stress[j]);
+                    fil.write('%0.16f max_thermal_stress_%s\n' % (nozzle.max_thermal_stress[j],nozzle.stressComponentList[j]));
                     prt_item.append('max thermal stress');
                     prt_comp.append('%s' % nozzle.stressComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.max_thermal_stress[j]);
                     
             elif tag == 'MAX_MECHANICAL_STRESS':
                 for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f max_mechanical_stress\n' % nozzle.max_mechanical_stress[j]);
+                    fil.write('%0.16f max_mechanical_stress_%s\n' % (nozzle.max_mechanical_stress[j],nozzle.stressComponentList[j]));
                     prt_item.append('max mechanical stress');
                     prt_comp.append('%s' % nozzle.stressComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.max_mechanical_stress[j]);
                     
             elif tag == 'KS_FAILURE_CRITERIA':
                 for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f ks_failure_criteria\n' % nozzle.ks_failure_criteria[j]);
+                    fil.write('%0.16f ks_failure_criteria_%s\n' % (nozzle.ks_failure_criteria[j],nozzle.stressComponentList[j]));
                     prt_item.append('ks failure criteria');
                     prt_comp.append('%s' % nozzle.stressComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.ks_failure_criteria[j]);
                     
             elif tag == 'PN_FAILURE_CRITERIA':
                 for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f pn_failure_criteria\n' % nozzle.pn_failure_criteria[j]);
+                    fil.write('%0.16f pn_failure_criteria_%s\n' % (nozzle.pn_failure_criteria[j],nozzle.stressComponentList[j]));
                     prt_item.append('pn failure criteria');
                     prt_comp.append('%s' % nozzle.stressComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.pn_failure_criteria[j]);
                     
             elif tag == 'MAX_FAILURE_CRITERIA':
                 for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f max_failure_criteria\n' % nozzle.max_failure_criteria[j]);
+                    fil.write('%0.16f max_failure_criteria_%s\n' % (nozzle.max_failure_criteria[j],nozzle.stressComponentList[j]));
                     prt_item.append('max failure criteria');
                     prt_comp.append('%s' % nozzle.stressComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.max_failure_criteria[j]);
                     
             elif tag == 'KS_TEMPERATURE':
                 for j in range(len(nozzle.tempComponentList)):
-                    fil.write('%0.16f ks_temperature\n' % nozzle.ks_temperature[j]);
+                    fil.write('%0.16f ks_temperature_%s\n' % (nozzle.ks_temperature[j],nozzle.tempComponentList[j]));
                     prt_item.append('ks temperature');
                     prt_comp.append('%s' % nozzle.tempComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.ks_temperature[j]);
                     
             elif tag == 'PN_TEMPERATURE':
                 for j in range(len(nozzle.tempComponentList)):
-                    fil.write('%0.16f pn_temperature\n' % nozzle.pn_temperature[j]);
+                    fil.write('%0.16f pn_temperature_%s\n' % (nozzle.pn_temperature[j],nozzle.tempComponentList[j]));
                     prt_item.append('pn temperature');
                     prt_comp.append('%s' % nozzle.tempComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.pn_temperature[j]);
                     
             elif tag == 'MAX_TEMPERATURE':
                 for j in range(len(nozzle.tempComponentList)):
-                    fil.write('%0.16f max_temperature\n' % nozzle.max_temperature[j]);
+                    fil.write('%0.16f max_temperature_%s\n' % (nozzle.max_temperature[j],nozzle.tempComponentList[j]));
                     prt_item.append('max temperature');
                     prt_comp.append('%s' % nozzle.tempComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.max_temperature[j]);  
                     
             elif tag == 'KS_TEMP_RATIO':
                 for j in range(len(nozzle.tempComponentList)):
-                    fil.write('%0.16f ks_temp_ratio\n' % nozzle.ks_temp_ratio[j]);
+                    fil.write('%0.16f ks_temp_ratio_%s\n' % (nozzle.ks_temp_ratio[j],nozzle.tempComponentList[j]));
                     prt_item.append('ks temp ratio');
                     prt_comp.append('%s' % nozzle.tempComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.ks_temp_ratio[j]);                    
 
             elif tag == 'PN_TEMP_RATIO':
                 for j in range(len(nozzle.tempComponentList)):
-                    fil.write('%0.16f pn_temp_ratio\n' % nozzle.pn_temp_ratio[j]);
+                    fil.write('%0.16f pn_temp_ratio_%s\n' % (nozzle.pn_temp_ratio[j],nozzle.tempComponentList[j]));
                     prt_item.append('pn temp ratio');
                     prt_comp.append('%s' % nozzle.tempComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.pn_temp_ratio[j]);
                     
             elif tag == 'MAX_TEMP_RATIO':
                 for j in range(len(nozzle.tempComponentList)):
-                    fil.write('%0.16f max_temp_ratio\n' % nozzle.max_temp_ratio[j]);
+                    fil.write('%0.16f max_temp_ratio_%s\n' % (nozzle.max_temp_ratio[j],nozzle.tempComponentList[j]));
                     prt_item.append('max temp ratio');
                     prt_comp.append('%s' % nozzle.tempComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.max_temp_ratio[j]);
@@ -2532,22 +2532,22 @@ class Nozzle:
                 for prefix in stress_prefix:
                     j = stress_prefix.index(prefix);
                     if tag == prefix + '_KS_TOTAL_STRESS':
-                        fil.write('%0.16f ks_total_stress\n' % nozzle.ks_total_stress[j]);
+                        fil.write('%0.16f ks_total_stress_%s\n' % (nozzle.ks_total_stress[j],prefix));
                         prt_item.append('ks total stress');
                         prt_comp.append('%s' % stress_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.ks_total_stress[j]);
                     elif tag == prefix + '_PN_TOTAL_STRESS':
-                        fil.write('%0.16f pn_total_stress\n' % nozzle.pn_total_stress[j]);
+                        fil.write('%0.16f pn_total_stress_%s\n' % (nozzle.pn_total_stress[j],prefix));
                         prt_item.append('pn total stress');
                         prt_comp.append('%s' % stress_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.pn_total_stress[j]);
                     elif tag == prefix + '_MAX_TOTAL_STRESS':
-                        fil.write('%0.16f max_total_stress\n' % nozzle.max_total_stress[j]);
+                        fil.write('%0.16f max_total_stress_%s\n' % (nozzle.max_total_stress[j],prefix));
                         prt_item.append('max total stress');
                         prt_comp.append('%s' % stress_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.max_total_stress[j]);
                     elif tag == prefix + '_MAX_THERMAL_STRESS':
-                        fil.write('%0.16f max_thermal_stress\n' % nozzle.max_thermal_stress[j]);
+                        fil.write('%0.16f max_thermal_stress_%s\n' % (nozzle.max_thermal_stress[j],prefix));
                         prt_item.append('max thermal stress');
                         prt_comp.append('%s' % stress_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.max_thermal_stress[j]);
@@ -2555,17 +2555,17 @@ class Nozzle:
                 for prefix in stress_prefix:
                     j = stress_prefix.index(prefix);
                     if tag == prefix + '_KS_FAILURE_CRITERIA':
-                        fil.write('%0.16f ks_failure_criteria\n' % nozzle.ks_failure_criteria[j]);
+                        fil.write('%0.16f ks_failure_criteria_%s\n' % (nozzle.ks_failure_criteria[j],prefix));
                         prt_item.append('ks failure criteria');
                         prt_comp.append('%s' % stress_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.ks_failure_criteria[j]);
                     elif tag == prefix + '_PN_FAILURE_CRITERIA':
-                        fil.write('%0.16f pn_failure_criteria\n' % nozzle.pn_failure_criteria[j]);
+                        fil.write('%0.16f pn_failure_criteria_%s\n' % (nozzle.pn_failure_criteria[j],prefix));
                         prt_item.append('pn failure criteria');
                         prt_comp.append('%s' % stress_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.pn_failure_criteria[j]);
                     elif tag == prefix + '_MAX_FAILURE_CRITERIA':
-                        fil.write('%0.16f max_failure_criteria\n' % nozzle.max_failure_criteria[j]);
+                        fil.write('%0.16f max_failure_criteria_%s\n' % (nozzle.max_failure_criteria[j],prefix));
                         prt_item.append('max failure criteria');
                         prt_comp.append('%s' % stress_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.max_failure_criteria[j]);
@@ -2573,17 +2573,17 @@ class Nozzle:
                 for prefix in temp_prefix:
                     j = temp_prefix.index(prefix);
                     if tag == prefix + '_KS_TEMPERATURE':
-                        fil.write('%0.16f ks_temperature\n' % nozzle.ks_temperature[j]);
+                        fil.write('%0.16f ks_temperature_%s\n' % (nozzle.ks_temperature[j],prefix));
                         prt_item.append('ks temperature');
                         prt_comp.append('%s' % temp_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.ks_temperature[j]);
                     elif tag == prefix + '_PN_TEMPERATURE':
-                        fil.write('%0.16f pn_temperature\n' % nozzle.pn_temperature[j]);
+                        fil.write('%0.16f pn_temperature_%s\n' % (nozzle.pn_temperature[j],prefix));
                         prt_item.append('pn temperature');
                         prt_comp.append('%s' % temp_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.pn_temperature[j]);
                     elif tag == prefix + '_MAX_TEMPERATURE':
-                        fil.write('%0.16f max_temperature\n' % nozzle.max_temperature[j]);
+                        fil.write('%0.16f max_temperature_%s\n' % (nozzle.max_temperature[j],prefix));
                         prt_item.append('max temperature');
                         prt_comp.append('%s' % temp_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.max_temperature[j]);
@@ -2591,17 +2591,17 @@ class Nozzle:
                 for prefix in temp_prefix:
                     j = temp_prefix.index(prefix);
                     if tag == prefix + '_KS_TEMP_RATIO':
-                        fil.write('%0.16f ks_temp_ratio\n' % nozzle.ks_temp_ratio[j]);
+                        fil.write('%0.16f ks_temp_ratio_%s\n' % (nozzle.ks_temp_ratio[j],prefix));
                         prt_item.append('ks temp ratio');
                         prt_comp.append('%s' % temp_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.ks_temp_ratio[j]);
                     elif tag == prefix + '_PN_TEMP_RATIO':
-                        fil.write('%0.16f pn_temp_ratio\n' % nozzle.pn_temp_ratio[j]);
+                        fil.write('%0.16f pn_temp_ratio_%s\n' % (nozzle.pn_temp_ratio[j],prefix));
                         prt_item.append('pn temp ratio');
                         prt_comp.append('%s' % temp_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.pn_temp_ratio[j]);
                     elif tag == prefix + '_MAX_TEMP_RATIO':
-                        fil.write('%0.16f max_temp_ratio\n' % nozzle.max_temp_ratio[j]);
+                        fil.write('%0.16f max_temp_ratio_%s\n' % (nozzle.max_temp_ratio[j],prefix));
                         prt_item.append('max temp ratio');
                         prt_comp.append('%s' % temp_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.max_temp_ratio[j]);
