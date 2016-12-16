@@ -185,7 +185,7 @@ class Nozzle:
                 if key == 'WALL':                    
                     nozzle.wall.dv = [];
                     sizeTemp = nozzle.wall.coefs_size; # number of DV for checking
-                    self.AssignListDV(config,nozzle.wall.dv,'WALL_COEFS_DV',
+                    self.AssignListDV(config,nozzle.wall.dv,'WALL_DV',
                                       NbrDV,sizeTemp);
                     continue;
                 
