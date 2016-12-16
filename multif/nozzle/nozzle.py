@@ -554,6 +554,14 @@ class Nozzle:
             nozzle.su2_convergence_order = config['SU2_CONVERGENCE_ORDER'];
         else:
             nozzle.su2_convergence_order = 3;
+        
+        # --- Setup max iterations for SU2
+        if 'SU2_MAX_ITERATIONS' in config:
+            nozzle.su2_max_iterations = int(config['SU2_MAX_ITERATIONS']);
+        elif nozzle.method == 'EULER':
+            nozzle.su2_max_iterations = 300;
+        else:
+            nozzle.su2_max_iterations = 2000;
             
         if output == 'verbose':
             sys.stdout.write('Setup Mission complete\n');
@@ -1081,7 +1089,7 @@ class Nozzle:
             x    = [];
             y    = [];
 
-            nx = 100;
+            nx = 4000; # use 4000 points to interpolate inner wall shape
             _meshutils_module.py_BSplineGeo3 (knots, coefs, x, y, nx);
 
             nozzle.xwall = x;
@@ -2728,18 +2736,9 @@ def NozzleSetup( config_name, flevel, output='verbose' ):
     
     if output == 'verbose':
         print config;
-    
-    # --- File names
-    
-     #nozzle.mesh_name    =     'blabla.su2'
-     #nozzle.restart_name =  'blabla.dat'
 
-    #hdl, toto = tempfile.mkstemp(suffix='.su2');
-     #
-    #print "TMPNAME = %s" %  (toto);
-
-    nozzle.mesh_name    =  'nozzle.su2'; #tempfile.mkstemp(suffix='.su2');
-    nozzle.restart_name =  'nozzle.dat'; #tempfile.mkstemp(suffix='.dat');
+    nozzle.mesh_name    =  'nozzle.su2';
+    nozzle.restart_name =  'nozzle.dat';
     
     if 'TEMP_RUN_DIR' in config:
         if config['TEMP_RUN_DIR'] == 'YES':
@@ -2755,6 +2754,11 @@ def NozzleSetup( config_name, flevel, output='verbose' ):
         nozzle.SU2_RUN = config['SU2_RUN'];
     else:
         nozzle.SU2_RUN = os.environ['SU2_RUN'];
+        
+    if 'SU2_OUTPUT_FORMAT' in config:
+        nozzle.su2_output_format = config['SU2_OUTPUT_FORMAT'];
+    else:
+        nozzle.su2_output_format = 'TECPLOT';
     
     # --- Parse fidelity levels
     

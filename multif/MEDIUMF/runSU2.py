@@ -196,7 +196,7 @@ def SetupConfig (solver_options):
 	# --- Input/Output
 	
 	config.MESH_FILENAME= mesh_name;
-	config.OUTPUT_FORMAT= 'TECPLOT';
+	config.OUTPUT_FORMAT= solver_options.su2_output_format;
 	config.CONV_FILENAME= 'history';
 	config.RESTART_FLOW_FILENAME= restart_name;
 	config.WRT_SOL_FREQ= '1000';
@@ -234,12 +234,10 @@ def runSU2 ( nozzle ):
 	
 	solver_options.LocalRelax = nozzle.LocalRelax;
 	
-	if nozzle.method == 'EULER':
-		solver_options.NbrIte = 300;
-	else:
-		solver_options.NbrIte = 2000;
+	solver_options.NbrIte = nozzle.su2_max_iterations;
 		
 	solver_options.SU2_RUN = nozzle.SU2_RUN;
+	solver_options.su2_output_format = nozzle.su2_output_format; 
 	
 	solver_options.mesh_name    = nozzle.mesh_name;
 	solver_options.restart_name = nozzle.restart_name;
