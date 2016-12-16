@@ -332,6 +332,11 @@ class Nozzle:
 			nozzle.su2_convergence_order = config['SU2_CONVERGENCE_ORDER'];
 		else:
 			nozzle.su2_convergence_order = 3;
+			
+		if 'SU2_EXT_ITER' in config:
+			nozzle.NbrIte = config['SU2_EXT_ITER'];
+		else:
+			nozzle.NbrIte = 300;
 		
 	def SetupBSplineCoefs(self, config):
 		
