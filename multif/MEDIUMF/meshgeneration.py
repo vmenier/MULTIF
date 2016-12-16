@@ -216,5 +216,32 @@ def NozzleGeoFile(FilNam, Mesh_options):
 		fil.write('BoundaryLayer Field = %d;           \n' % (NbrFld+2));
 	
 	
+	else :
+		
+		fil.write('Delete {                                             \n');
+		fil.write('  Surface{14};                                       \n');
+		fil.write('}                                                    \n');
+		fil.write('Line(15) = {12, 2};                                  \n');
+		fil.write('Line Loop(16) = {10, 11, 15, 2, 3, 4, 5, 6, 7, 8, 9};\n');
+		fil.write('Plane Surface(17) = {16};                            \n');
+		fil.write('Line Loop(18) = {12, 13, 1, -15};                    \n');
+		fil.write('Plane Surface(19) = {18};                            \n');
+		fil.write('Physical Surface(20) = {19, 17};                     \n');
+		fil.write('Physical Line(1)  = {1};                             \n');
+		fil.write('Physical Line(2)  = {2};                             \n');
+		fil.write('Physical Line(3)  = {3};                             \n');
+		fil.write('Physical Line(4)  = {4};                             \n');
+		fil.write('Physical Line(5)  = {5};                             \n');
+		fil.write('Physical Line(6)  = {6};                             \n');
+		fil.write('Physical Line(7)  = {7};                             \n');
+		fil.write('Physical Line(8)  = {8};                             \n');
+		fil.write('Physical Line(9)  = {9};                             \n');
+		fil.write('Physical Line(10) = {10};                            \n');
+		fil.write('Physical Line(11) = {11};                            \n');
+		fil.write('Physical Line(12) = {12};                            \n');
+		fil.write('Physical Line(13) = {13};                            \n');
+		fil.write('Physical Line(14) = {14};                            \n');
+	
+	
 	fil.close();
 	
