@@ -481,19 +481,20 @@ def localToGlobalCoordConversion(x,rLower,nUpper,drdxLower):
                 rb = rTransform[i-1]
                 ib = i-1
                 decFlag = 2 # flag we are in an increasing portion of the shape after having been in a decreasing portion
-            
             if xTransform[i] > xa: # just cut out offending kink entirely
                 xTransform = np.hstack((xTransform[0:ia+1],xTransform[i:]))
                 rTransform = np.hstack((rTransform[0:ia+1],rTransform[i:]))
                 #print 'remedied basic kink'
-                break                 
+                break
                 
             if decFlag == 2:
                 xcp = xTransform[i]
                 rcp = rTransform[i]
                 icp = i
                 rI = np.interp(xcp,xTransform[0:ia+1],rTransform[0:ia+1])
-                rII = np.interp(xcp,xTransform[ia:ib+1],rTransform[ia:ib+1]) 
+                rII = np.interp(xcp,xTransform[ia:ib+1][::-1],rTransform[ia:ib+1][::-1]) 
+                #print xTransform[ia:ib+1]
+                #print rTransform[ia:ib+1]
                 if rI > rcp and rcp > rII: # situation 3 before crossover
                     sitFlag = 3
                 elif rII > rcp and rcp > rI: # situation 4 before crossover
