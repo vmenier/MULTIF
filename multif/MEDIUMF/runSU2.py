@@ -233,7 +233,7 @@ def runSU2 ( nozzle ):
 	solver_options.InletTstag = nozzle.inlet.Tstag;
 	
 	solver_options.LocalRelax = nozzle.LocalRelax;
-	
+
 	solver_options.NbrIte = nozzle.su2_max_iterations;
 		
 	solver_options.SU2_RUN = nozzle.SU2_RUN;

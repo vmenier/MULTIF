@@ -1154,6 +1154,7 @@ class Nozzle:
             y    = [];
 
             nx = 4000; # use 4000 points to interpolate inner wall shape
+
             _meshutils_module.py_BSplineGeo3 (knots, coefs, x, y, nx);
 
             nozzle.xwall = x;
