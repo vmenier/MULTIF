@@ -266,7 +266,7 @@ class Nozzle:
 
         analysisType = -1;
 
-        if NbrFidLev < 1 :
+        if NbrFidLev < 1:
             sys.stdout.write("  ## ERROR : No fidelity level was defined.\n");
             sys.exit(0);
 
@@ -282,18 +282,13 @@ class Nozzle:
           sys.stdout.write('\n%s | %s | %s\n' % ("Level #".ljust(10),         \
             "Tag".ljust(10),"Description.".ljust(70)));
           sys.stdout.write('-' * 90);
-          sys.stdout.write('\n'); 
-        elif output == 'quiet':
-          pass
-        else:
-          raise ValueError('keyword argument output can only be set to '      \
-            '"verbose" or "quiet" mode')
+          sys.stdout.write('\n');
 
-        for i in range(NbrFidLev) :
+        for i in range(NbrFidLev):
             tag = fidelity_tags[i];
             kwd = "DEF_%s" % tag;
 
-            if kwd not in config :
+            if kwd not in config:
                 sys.stderr.write("\n  ## ERROR : The fidelity level tagged '  \
                   '%s is not defined.\n\n" % kwd);
                 sys.exit(0);
@@ -305,26 +300,40 @@ class Nozzle:
 
             description = "";
 
-            if i == flevel :
+            if i == flevel:
                 nozzle.method = method;
 
-            if method == 'NONIDEALNOZZLE' :
+            if method == 'NONIDEALNOZZLE':
 
                 tol = float(cfgLvl[1]);
-                if tol < 1e-30 :
+                if tol < 1e-16:
                     sys.stderr.write("\n ## ERROR : Wrong tolerance for "     \
                      "fidelity level %d (tagged %s)\n\n" % (i,tag));
                     sys.exit(0);
-
-                if i == flevel :
+                description += "Quasi-1D, ODE solver relative and absolute "  \
+                    "tolerance set to %le" % (tol);
+                        
+                # Set thermostructural parameters if necessary
+                if len(cfgLvl) == 5:
+                    if cfgLvl[3] == 'LINEAR':
+                        description += ", linear structural analysis"
+                    elif cfgLvl[3] == 'NONLINEAR':
+                        description += ", nonlinear structural analysis"
+                    else:
+                        sys.stderr.write('\n ## ERROR: Only LINEAR or '   \
+                          'NONLINEAR can be specified for structural '    \
+                          'analysis type. %s specified instead in.\n\n'   \
+                          % cfgLvl[3]);
+                        sys.exit(0); 
+                    description += ', thermostructural fidelity level %s' % cfgLvl[4];
+                        
+                if i == flevel:                    
+                    # Set tolerances
                     nozzle.tolerance = tolerance.Tolerance();
                     nozzle.tolerance.setRelTol(tol);
                     nozzle.tolerance.setAbsTol(tol);
-                    #nozzle.tolerance.exitTempPercentError = tol;
-                description = "ODE solver relative and absolute tolerance "   \
-                  "set to %le." % (tol);
-                  
-                if i == flevel:
+
+                    # Set analysis type
                     try:
                         analysisType = cfgLvl[2];
                     except:
@@ -334,7 +343,26 @@ class Nozzle:
                           'in the model definition of fidelity level %d.\n\n' \
                           % flevel);
                         sys.exit(0);
-
+                        
+                    # Set thermostructural parameters if necessary
+                    if len(cfgLvl) == 5:
+                        if cfgLvl[3] == 'LINEAR':
+                            nozzle.linearStructuralAnalysis = 1;
+                        elif cfgLvl[3] == 'NONLINEAR':
+                            nozzle.linearStructuralAnalysis = 0;
+                            
+                        nozzle.thermostructuralFidelityLevel = float(cfgLvl[4]);
+                        if( nozzle.thermostructuralFidelityLevel < 0 or 
+                        nozzle.thermostructuralFidelityLevel > 1):
+                            sys.stderr.write('\n ## ERROR: thermostructural ' \
+                              'fidelity level must range from 0 (low) to 1 '\
+                              '(high). %f provided instead.\n\n' % 
+                              nozzle.thermostructuralFidelityLevel);
+                            sys.exit(0);
+                    else:
+                        nozzle.linearStructuralAnalysis = 1;
+                        nozzle.thermostructuralFidelityLevel = 0.5;
+                        
             elif method == 'RANS' or method == 'EULER':
                 dim = cfgLvl[1];
                 if dim != '2D' and dim != '3D' :
@@ -353,10 +381,42 @@ class Nozzle:
                       "fidelity level %d (tagged %s) : must be set to "       \
                       "either COARSE, MEDIUM or FINE" % (i,tag));
                     sys.exit(0);
-                description = "%s %s CFD simulation using the %s mesh level." \
+                description += "%s %s CFD, %s mesh" \
                   % (dim, method, meshsize);
-
+                  
+                # --- Setup convergence parameter
+                
+                if 'SU2_CONVERGENCE_ORDER' in config:
+                    nozzle.su2_convergence_order = int(config['SU2_CONVERGENCE_ORDER']);
+                else:
+                    nozzle.su2_convergence_order = 3;
+                description += ", relative convergence order %i" % nozzle.su2_convergence_order;
+                
+                # --- Setup max iterations for SU2
+                if 'SU2_MAX_ITERATIONS' in config:
+                    nozzle.su2_max_iterations = int(config['SU2_MAX_ITERATIONS']);
+                elif nozzle.method == 'EULER':
+                    nozzle.su2_max_iterations = 300;
+                else:
+                    nozzle.su2_max_iterations = 2000;                  
+                description += ", max iterations %i" % nozzle.su2_max_iterations;
+                  
+                # Set thermostructural parameters if necessary
+                if len(cfgLvl) == 6:
+                    if cfgLvl[4] == 'LINEAR':
+                        description += ", linear structural analysis"
+                    elif cfgLvl[4] == 'NONLINEAR':
+                        description += ", nonlinear structural analysis"
+                    else:
+                        sys.stderr.write('\n ## ERROR: Only LINEAR or '   \
+                          'NONLINEAR can be specified for structural '    \
+                          'analysis type. %s specified instead in.\n\n'   \
+                          % cfgLvl[4]);
+                        sys.exit(0);                    
+                    description += ', thermostructural fidelity level %s' % cfgLvl[5];
+                    
                 if i == flevel:
+                    # Set mesh level
                     nozzle.meshsize = meshsize;
                     
                     nozzle.bl_ds        = 0.000007;
@@ -372,8 +432,8 @@ class Nozzle:
                         scaleMesh = 0.5;
 
                     nozzle.meshhl = scaleMesh*np.asarray([0.1, 0.07, 0.06, 0.006, 0.0108]);
-                    
-                if i == flevel:
+
+                    # Set analysis type
                     try:
                         analysisType = cfgLvl[3];
                     except:
@@ -383,7 +443,26 @@ class Nozzle:
                           ' be provided in the model definition of '          \
                           'fidelity level %d.\n\n' % flevel);
                         sys.exit(0);
-
+                        
+                    # Set thermostructural parameters if necessary
+                    if len(cfgLvl) == 6:
+                        if cfgLvl[4] == 'LINEAR':
+                            nozzle.linearStructuralAnalysis = 1;
+                        elif cfgLvl[4] == 'NONLINEAR':
+                            nozzle.linearStructuralAnalysis = 0;      
+                            
+                        nozzle.thermostructuralFidelityLevel = float(cfgLvl[5]);
+                        if( nozzle.thermostructuralFidelityLevel < 0 or 
+                        nozzle.thermostructuralFidelityLevel > 1):
+                            sys.stderr.write('\n ## ERROR: thermostructural ' \
+                              'fidelity level must range from 0 (low) to 1 '\
+                              '(high). %f provided instead.\n\n' % 
+                              nozzle.thermostructuralFidelityLevel);
+                            sys.exit(0);
+                    else:
+                        nozzle.linearStructuralAnalysis = 1;
+                        nozzle.thermostructuralFidelityLevel = 0.5;
+                            
             else :
                 sys.stderr.write("\n ## ERROR : Unknown governing method "    \
                   "(%s) for fidelity level %s.\n\n" % (method, tag));
@@ -547,21 +626,6 @@ class Nozzle:
         heatRatio = 1.4;
         gasCst    = 287.06;
         nozzle.fluid = fluid.Fluid(heatRatio, gasCst);
-        
-        # --- Setup convergence parameter
-        
-        if 'SU2_CONVERGENCE_ORDER' in config:
-            nozzle.su2_convergence_order = config['SU2_CONVERGENCE_ORDER'];
-        else:
-            nozzle.su2_convergence_order = 3;
-        
-        # --- Setup max iterations for SU2
-        if 'SU2_MAX_ITERATIONS' in config:
-            nozzle.su2_max_iterations = int(config['SU2_MAX_ITERATIONS']);
-        elif nozzle.method == 'EULER':
-            nozzle.su2_max_iterations = 300;
-        else:
-            nozzle.su2_max_iterations = 2000;
             
         if output == 'verbose':
             sys.stdout.write('Setup Mission complete\n');

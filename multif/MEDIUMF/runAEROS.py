@@ -125,12 +125,22 @@ def runAEROS ( nozzle ):
     iTemp = idHeader['Temperature'];
     
     # --- Mesh parameters
-    lc   = 0.02; # Characteristic length (i.e. element size)
+    # lc: characteristic length (i.e. element size)
+    # Tn1: number of nodes through thickness of thermal insulating layer
+    # Tn2: number of nodes through thickness of gap between thermal and load layers
+    # Ln: number of nodes through each half of the thickness of the load layer (thermal model)
+    if nozzle.thermostructuralFidelityLevel <= 0.5:
+        lc = np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[0.04,0.02]);
+        Tn1 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[2,4]));
+        Tn2 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[1,2]));
+        Ln = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[1,2]));
+    else: # nozzle.thermostructuralFidelityLevel betwen 0.5 and 1
+        lc = np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[0.02,0.01]);
+        Tn1 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[4,8]));
+        Tn2 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[2,4]));
+        Ln = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[2,4]));
     Ns   = max(2,nozzle.stringers.n); # number of panels (i.e. circumferential subdivisions of the mesh)
     Mn   = max(2,(2*math.pi*nozzle.wall.geometry.radius(points[0])/Ns)/lc+1); # Number of nodes in circumferential direction per panel
-    Tn1  = 4;  # Number of nodes through thickness of thermal insulating layer
-    Tn2  = 2;  # Number of nodes through thickness of gap between thermal and load layers
-    Ln   = 2;  # Number of nodes through each half of the thickness of the load layer (thermal model)
     Sn   = max(nozzle.stringers.height.radius(0)/lc+1,2) if nozzle.stringers.n > 0 else 0; # number of nodes on radial edge of stringers
     
     ## --- How to get x, y, P, T :
@@ -142,7 +152,7 @@ def runAEROS ( nozzle ):
         thermalFlag = 1;  # 0: structural analysis only, 1: both thermal and structural analyses
     else: # only perform structural analysis
         thermalFlag = 0;
-    linearFlag = 1; # 0: nonlinear structural analysis, 1: linear structural analysis
+    linearFlag = nozzle.linearStructuralAnalysis; # 0: nonlinear structural analysis, 1: linear structural analysis
 
     materialNames = [nozzle.materials[k].name for k in nozzle.materials]
     # material ids of the thermal and load layers
