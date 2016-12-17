@@ -10,7 +10,7 @@ from .. import _meshutils_module
 import ctypes
 import numpy as np
 
-
+from scipy.interpolate import interp1d	
 from .. import nozzle as nozzlemod
 
 
@@ -71,7 +71,8 @@ def ExtractSolutionAtExit ( nozzle ):
 	pyInfo   = [];
 	pyHeader = [];
 	
-	pyBox = [nozzle.length,nozzle.length,0,nozzle.height+1e-20];
+	#pyBox = [nozzle.length,nozzle.length,0,nozzle.height+1e-20];
+	pyBox = [nozzle.x_thrust,nozzle.x_thrust,-1e-20,nozzle.height+1e-20];
 	
 	_meshutils_module.py_ExtractAlongLine (mesh_name, restart_name, pyBox, pyResult, pyInfo, pyHeader);
 	
@@ -140,24 +141,77 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
 	T0  = nozzle.environment.T;
 	U0  = M0*np.sqrt(Gam*Rs*T0);
 	
-	for iVer in range(1, NbrVer) :
+	
+	#for iVer in range(1, NbrVer) :
+	#	
+	#	y    = float(SolExtract[iVer][1]);
+	#	
+	#	#if y > nozzle.height-1e-6:
+	#	#	print "REMOVE POINT %d" % iVer
+	#	#	continue;
+	#	
+	#	rho  = 0.5*(SolExtract[iVer][2+iCons1] +  SolExtract[iVer-1][2+iCons1]);
+	#	rhoU = 0.5*(SolExtract[iVer][2+iCons2] +  SolExtract[iVer-1][2+iCons2]);
+	#	Pres = 0.5*(SolExtract[iVer][2+iPres]  +  SolExtract[iVer-1][2+iPres] );
+	#	Mach = 0.5*(SolExtract[iVer][2+iMach]  +  SolExtract[iVer-1][2+iMach] );
+	#	Temp = 0.5*(SolExtract[iVer][2+iTem]   +  SolExtract[iVer-1][2+iTem]  );
+	#	
+	#	
+	#	U = rhoU/rho;
+	#	
+	#	dy = y - SolExtract[iVer-1][1];
+	#	
+	#	#print "%lf %lf %lf %lf %lf %lf" % (y, rho, rhoU, Pres, Mach, Temp);
+	#			
+	#	Thrust = Thrust + dy*(rhoU*(U-U0)+Pres-P0);
+	#
+	#print "THRUST = %lf" % Thrust
+	
+	#y = SolExtract[iVer][];
+	
+	NbrVer = len(SolExtract);
+	
+	y   = np.zeros(NbrVer);
+	sol = np.zeros([NbrVer,5]);
+	
+	for i in range(0,NbrVer):
+		y[i] = float(SolExtract[i][1]);
 		
-		y    = SolExtract[iVer][1];
-		rho  = SolExtract[iVer][2+iCons1];
-		rhoU = SolExtract[iVer][2+iCons2];
-		Pres = SolExtract[iVer][2+iPres];
-		Mach = SolExtract[iVer][2+iMach];
-		Temp = SolExtract[iVer][2+iTem];
+		sol[i][0] = float(SolExtract[i][2+iCons1]);
+		sol[i][1] = float(SolExtract[i][2+iCons2]);
+		sol[i][2] = float(SolExtract[i][2+iPres]);
+	
+	fsol = [];
+	for j in range(0,3):
+		fsol.append(interp1d(y,sol[:,j]));
+	
+	
+	nbv = 1000;
+	ynew = np.linspace(0,y[-1],nbv);
+	
+	tabrho  = fsol[0](ynew);
+	tabrhoU = fsol[1](ynew);
+	tabPres = fsol[2](ynew);
+	
+	fil = open('exit.dat','w')
+	
+	for i in range(1, nbv) :
 		
-		
+		rho  = 0.5*(tabrho[i-1]+tabrho[i]);
+		rhoU = 0.5*(tabrhoU[i-1]+tabrhoU[i]);
+		Pres = 0.5*(tabPres[i-1]+tabPres[i]);
+				
 		U = rhoU/rho;
 		
-		dy = y - SolExtract[iVer-1][1];
+		dy = ynew[i]-ynew[i-1];
 		
-		print "%lf %lf %lf %lf %lf %lf" % (y, rho, rhoU, Pres, Mach, Temp);
-				
+		fil.write("%lf %lf %lf %lf\n" % (ynew[i], rho, rhoU, Pres));
+					
 		Thrust = Thrust + dy*(rhoU*(U-U0)+Pres-P0);
-		
+	
+	
+	fil.close();
+	
 	return Thrust;
 	
 	
