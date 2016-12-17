@@ -67,6 +67,8 @@ def SetupConfig (solver_options):
 	
 	convergence_order = solver_options.convergence_order;
 	
+	MaxCFL = solver_options.MaxCFL;
+	
 	# --- SU2_RUN
 	
 	config.SU2_RUN = solver_options.SU2_RUN;
@@ -95,7 +97,7 @@ def SetupConfig (solver_options):
 	# --- Numerical method
 	
 	config.NUM_METHOD_GRAD= 'WEIGHTED_LEAST_SQUARES';
-	config.CFL_NUMBER= '25';
+	config.CFL_NUMBER= '%lf' % MaxCFL;
 	config.CFL_ADAPT= 'NO';
 	config.MAX_DELTA_TIME= '1E6';
 	config.EXT_ITER= NbrIte;
@@ -156,7 +158,7 @@ def SetupConfig (solver_options):
 		config.RELAXATION_LOCAL= 'YES';
 		config.CFL_ADAPT_LOCAL= 'YES';
 		config.HARD_LIMITING_PARAM= '(0.15, 1e-5)';
-		config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 30.0 )';
+		config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, %lf )' % MaxCFL;
 		config.RESIDUAL_MAXVAL= 2;
 				
 	return config;
@@ -182,6 +184,9 @@ def runSU2 ( nozzle ):
 	solver_options.restart_name = nozzle.restart_name;
 	
 	solver_options.convergence_order = nozzle.su2_convergence_order;
+	
+	solver_options.MaxCFL = nozzle.MaxCFL;
+	
 		
 	GenerateNozzleMesh(nozzle);
 	

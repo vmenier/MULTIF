@@ -35,16 +35,19 @@ def Run( nozzle ):
 	if nozzle.runDir != '':
 		os.chdir(nozzle.runDir);
 	
-	# --- Run CFD
-	
-	runSU2 (nozzle);
-	
-	# --- Run AEROS
-	
-	runAEROS (nozzle);
-	
+	if nozzle.postpro != 1:
+		
+		# --- Run CFD
+		
+		runSU2 (nozzle);
+		
+		# --- Run AEROS
+		
+		runAEROS (nozzle);
+		
 	# --- Postprocessing
-	
+	nozzle.OUTPUT_FORMAT = 'TECPLOT'
+	nozzle.CONV_FILENAME = 'history'
 	PostProcessing(nozzle);
 	
 	sys.stdout.write("\n  -- Info : Result directory :  %s\n\n" % nozzle.runDir);

@@ -72,7 +72,9 @@ def ExtractSolutionAtExit ( nozzle ):
 	pyHeader = [];
 	
 	#pyBox = [nozzle.length,nozzle.length,0,nozzle.height+1e-20];
-	pyBox = [nozzle.x_thrust,nozzle.x_thrust,-1e-20,nozzle.height+1e-20];
+	pyBox = [nozzle.x_thrust,nozzle.x_thrust,-1e-20,nozzle.y_thrust+1e-20];
+	
+	print "XTHRUST = %lf YTHRUST = %lf" % (nozzle.x_thrust,nozzle.y_thrust);
 	
 	_meshutils_module.py_ExtractAlongLine (mesh_name, restart_name, pyBox, pyResult, pyInfo, pyHeader);
 	
@@ -183,10 +185,10 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
 	
 	fsol = [];
 	for j in range(0,3):
-		fsol.append(interp1d(y,sol[:,j]));
+		fsol.append(interp1d(y,sol[:,j], kind='linear'));
 	
 	
-	nbv = 1000;
+	nbv = 4000;
 	ynew = np.linspace(0,y[-1],nbv);
 	
 	tabrho  = fsol[0](ynew);

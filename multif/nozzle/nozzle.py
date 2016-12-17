@@ -166,6 +166,8 @@ class Nozzle:
 		fidelity_tags = config['FIDELITY_LEVELS_TAGS'].strip('()');
 		fidelity_tags = fidelity_tags.split(",");
 
+		nozzle.MaxCFL = 30.0;
+
 		NbrFidLev = len(fidelity_tags);
 
 		if NbrFidLev < 1 :
@@ -244,6 +246,7 @@ class Nozzle:
 						scaleMesh = 1.1;
 					elif meshsize == 'FINE':
 						scaleMesh = 0.5;
+						nozzle.MaxCFL = 15.0;
 
 					nozzle.meshhl = scaleMesh*np.asarray([0.1, 0.07, 0.06, 0.006, 0.0108]);
 
@@ -337,6 +340,8 @@ class Nozzle:
 			nozzle.NbrIte = config['SU2_EXT_ITER'];
 		else:
 			nozzle.NbrIte = 300;
+			
+		
 		
 	def SetupBSplineCoefs(self, config):
 		
@@ -476,6 +481,7 @@ class Nozzle:
 		nozzle.length = coefs[coefs_size/2-1];
 		
 		nozzle.xthrust = -1; # --- x crd for the thrust integration
+		nozzle.ythrust = -1;
 		
 		if nozzle.method == 'RANS' or nozzle.method == 'EULER':
 			x    = [];
@@ -491,6 +497,7 @@ class Nozzle:
 			for i in range(0,nx) :
 				if (  x[nx-i-1] < x[-1]-dx_exit  ):
 					nozzle.x_thrust = x[nx-i-1];
+					nozzle.y_thrust = y[nx-i-1];
 					break;
 
 			
@@ -1016,6 +1023,8 @@ def NozzleSetup( config_name, flevel, output='verbose' ):
 	nozzle = multif.nozzle.nozzle.Nozzle()
 	
 	config = SU2.io.Config(config_name)
+	
+	nozzle.postpro = 0; # Post-Processing mode? 
 	
 	# --- File names
 	
