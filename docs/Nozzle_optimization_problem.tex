@@ -77,9 +77,13 @@ The purpose of this document is to unify the SEQUOIA team in pursuit of the same
 
 \section{Models} \label{sec:models}
 
-The \texttt{MULTI-F} software brings together several design and analysis software codes of varying fidelities to provide comprehensive design and analysis capabilities for a military turbofan non-afterburning nozzle. Currently, only an axisymmetric nozzle is supported. \texttt{MULTI-F} models internal fluid flow, heat transfer through the nozzle wall, and thermal and mechanical stresses in the nozzle and its structure. The code can be accessed on GitHub at \url{<https://github.com/vmenier/MULTIF>}.
+The \texttt{MULTI-F} software brings together several design and analysis software codes of varying fidelities to provide comprehensive design and analysis capabilities for a military turbofan non-afterburning nozzle. Currently, only an axisymmetric nozzle is supported. \texttt{MULTI-F} models internal fluid flow, heat transfer through the nozzle wall, and temperature and total stress in the nozzle and its structure. The code can be accessed on GitHub at \url{<https://github.com/vmenier/MULTIF>}.
 
-A common nozzle shape parameterization is used for each fidelity level. Figure \ref{fig:nozzleSchematic} shows the axisymmetric nozzle geometry and associated coordinate systems.
+A common nozzle shape parameterization is used for each fidelity level. Figure \ref{fig:nozzleSchematic} shows the axisymmetric nozzle geometry and associated coordinate systems. Figure \ref{fig:components} shows the individual wall layers in the nozzle wall and a structural model of the nozzle with baffles and stringers.
+
+\begin{mdframed}
+\textbf{Components of the nozzle:} A nozzle component is defined as a part of the nozzle. These include the thermal layer, each layer in the load layer, each stringer, and each baffle. Since every stringer has the same shape, only one stringer needs to be considered as a component.
+\end{mdframed}
 
 \begin{figure}
 \caption{Schematic of nozzle and geometric components showing global $\hat{x}$-$\hat{r}$ coordinate systems and one local $\hat{t}$-$\hat{n}$ coordinate system for the first wall layer, the thermal layer.}
@@ -89,18 +93,21 @@ A common nozzle shape parameterization is used for each fidelity level. Figure \
 \end{center}
 \end{figure}
 
-{\color{red} Include updated diagram showing baffles and stringers.}
-
-\begin{mdframed}
-\textbf{Components of the nozzle:} A nozzle component is defined as a substructure of the nozzle. These include the thermal layer, each layer in the load layer, each stringer, and each baffle. Since every stringer has the same shape, only one stringer needs to be considered as a component. A schematic of the different layers in the nozzle wall is shown in figure \ref{fig:nozzleLayerSchematic}.
-\end{mdframed}
-
-\begin{figure}
-\caption{Cross-sectional cut showing individual layers in nozzle wall. The thermal insulation aerogel is not modeled, but all other layers are modeled.}
-\label{fig:nozzleLayerSchematic}
-\begin{center}
-\includegraphics[scale=0.5]{figs/layers.png}
-\end{center}
+\begin{figure}[t!]
+    \centering
+    \begin{subfigure}[t]{0.5\textwidth}
+        \centering
+        \includegraphics[width=0.9\linewidth]{figs/layers.png}
+        \caption{Individual layers in the nozzle wall. The thermal insulation aerogel is not modeled but all other layers are modeled.}
+    \end{subfigure}%
+    ~ 
+    \begin{subfigure}[t]{0.5\textwidth}
+        \centering
+        \includegraphics[width=0.6\linewidth]{figs/structural_model.png}
+        \caption{Structural model of the nozzle showing nozzle wall, baffles, and stringers.}
+    \end{subfigure}
+    \caption{Nozzle components and structure.}
+    \label{fig:components}
 \end{figure}
 
 \subsection{Inputs}
@@ -108,26 +115,28 @@ A common nozzle shape parameterization is used for each fidelity level. Figure \
 The inputs for the nozzle model are related to geometry, materials, inlet conditions, atmospheric conditions, and heat transfer to the ambient. Table \ref{tab:inputDimension} tallies the total dimension of the model inputs for various concrete parameterizations. A description of various inputs follows:
 
 \begin{table}
-\caption[Dimensions of model inputs]{Total dimension of model inputs for various parameterizations. {\color{red} Parameterization numbers should be updated}}
+\caption[Dimensions of model inputs]{Total dimension of model inputs for various parameterizations. The standard and high-dimension parameterization are the most feasible for real design problems.}
 \label{tab:inputDimension}
 \begin{center}
-\begin{tabular}[]{ c | c | c }
-\textbf{Input} & \textbf{Standard Param} & \textbf{High-Dimension Param} \\ \hline
-Inner wall geo & 21 & 50 \\ \hline
-Thermal layer geo & 18 & 40 \\ \hline
-Air layer geo & 1 & 1 \\ \hline
-Load layer geo & 18*3 & 40*3 \\ \hline
-Baffle geo & 10 & 14 \\ \hline
-Stringer geo & 28 & 60 \\ \hline
-CMC material & 2 & 4 \\ \hline
-GR-BMI material & 12 & 24 \\ \hline
-TI-HC material & 5 & 10 \\ \hline
-Inlet conditions & 2 & 4 \\ \hline
-Atmospheric conditions & 2 & 4 \\ \hline
-Heat transfer coefficient & 1 & 2 \\ \hline \hline
-\textbf{Total Dimension} & 155 & 336 \\ \hline
-\textbf{Total Deterministic Dimension} & \{0,131\} & \{0,288\} \\ \hline
-\textbf{Total Random Dimension} & \{155,24\} & \{336,48\} \\ \hline
+\begin{tabular}[]{ c | c | c | c}
+\textbf{Input} & \textbf{Standard Param} & \textbf{High-Dim Param} & \textbf{Very High-Dim Param}\\ \hline
+Inner wall geo            & 21  & 21   & 50   \\ \hline
+Thermal layer geo         & 6   & 20   & 40   \\ \hline
+Air layer geo             & 1   & 1    & 1    \\ \hline
+Load layer geo            & 6*3 & 20*3 & 40*3 \\ \hline
+Baffle geo                & 10  & 10   & 10   \\ \hline
+Stringer geo              & 6   & 6    & 6    \\ \hline
+CMC material              & 7   & 7    & 10   \\ \hline
+GR-BMI material           & 20  & 20   & 20   \\ \hline
+TI-HC material            & 7   & 7    & 9    \\ \hline
+AIR material              & 1   & 1    & 1    \\ \hline
+PANEL material            & 1   & 1    & 1    \\ \hline
+Inlet conditions          & 2   & 2    & 4    \\ \hline
+Atmospheric conditions    & 2   & 2    & 4    \\ \hline
+Heat transfer coefficient & 1   & 2    & 4    \\ \hline \hline
+\textbf{Total Dimension}  & 103 & 160  & 280  \\ \hline
+\textbf{Total Deterministic Dimension} & \{0,62\} & \{0,118\} & \{0,227\} \\ \hline
+\textbf{Total Random Dimension} & \{103,41\} & \{160,42\} & \{280,53\} \\ \hline
 \end{tabular}
 \end{center}
 \end{table}
@@ -135,7 +144,7 @@ Heat transfer coefficient & 1 & 2 \\ \hline \hline
 \begin{description}
 \item[Analysis type] At the minimum, a fluid analysis must be performed, however thermal and structural analyses are optional.
 
-\item[Inner wall geometry] The inner wall of the nozzle is parameterized using a 3rd degree basis spline (B-spline). The shape of the B-spline is manipulated by specifying a matrix of B-spline coefficients (\textit{i.e.} spline control points). The first two and last 2 coefficients must be the same. In addition, several degrees of freedom should be removed from control points near the throat to ensure only one degree of freedom controls the throat radius (see figure \ref{fig:throatDofs} in the Appendix (\ref{sec:appendix}). B-splines are also discussed in more detail in the Appendix (\ref{sec:appendix}).
+\item[Inner wall geometry] The inner wall of the nozzle is parameterized using a 3rd degree basis spline (B-spline). The shape of the B-spline is manipulated by specifying a matrix of B-spline coefficients (\textit{i.e.} spline control points). The first two and last 2 coefficients must be the same. In addition, several degrees of freedom should be removed from control points near the throat to ensure only one degree of freedom controls the throat radius (see figure \ref{fig:throatDofs} in the Appendix (\ref{sec:appendix})). B-splines are also discussed in more detail in the Appendix (\ref{sec:appendix}).
 
 \item[Thermal layer geometry] The thickness of the innermost wall layer is parameterized using a piecewise-linear function defined in the local non-orthogonal $\hat{x}$-$\hat{n}$ coordinate system, where $\hat{n}$ is the outward unit vector normal to the inner wall's B-spline. The function shape is controlled by manipulating the location of its breaks, and the function value at its breaks. A ceramic matrix composite material (CMC) is assigned to this layer.
 
@@ -145,7 +154,7 @@ Heat transfer coefficient & 1 & 2 \\ \hline \hline
 
 \item[Baffle geometry] Baffles (vertical panels perpendicular to the global $\hat{x}$-coordinate which provide structural support) are defined individually by the location of their centerline on $\hat{x}$, their thickness, and the distance they extend in the radial direction from the nozzle axis (height). Baffles are constructed from a symmetric 3-layer composite sandwich material (GR-BMI / TI-HC / GR-BMI), where the ratio of each layer thickness to baffle thickness is taken to be constant (and must be specified). The number of baffles is fixed for a given optimization problem, and is taken to be 6 in general. In addition, baffle height is by default automatically resized by \texttt{MULTI-F} to match the exterior wall profile.
 
-\item[Stringer geometry] Stringers (long, thin structural elements which run the entire length of the outside of the nozzle) are spaced evenly about the circumference of the nozzle. Each stringer assumes the same geometry. The height ($\hat{r}$-direction length) and thickness ($\hat{\theta}$-direction length) are modeled using piecewise-linear functions, which share the same break locations, but can have different values at the breaks. Stringer break locations and heights can be automatically resized by \texttt{MULTI-F} to match baffle heights.
+\item[Stringer geometry] Stringers (long, thin structural elements which run the entire length of the outside of the nozzle) are spaced evenly about the circumference of the nozzle. Each stringer assumes the same geometry. The height ($\hat{r}$-direction length) and thickness ($\hat{\theta}$-direction length) are modeled using piecewise-linear functions, which share the same break locations, but can have different values at the breaks. Stringer break locations and heights can be automatically resized by \texttt{MULTI-F} to match baffle locations and heights.
 
 \item[CMC material] The ceramic matrix composite (CMC) material is an isotropic material used by the thermal layer. It assumes no structural loads. Only density and thermal conductivity are needed inputs.
 
@@ -159,7 +168,7 @@ Heat transfer coefficient & 1 & 2 \\ \hline \hline
 
 \item[Heat transfer coefficient to environment] This coefficient depends on flight conditions and atmospheric conditions and represents how well heat is transferred from the nozzle structure to the ambient environment.
 
-\item[Fidelity-specific inputs] For low-fidelity this includes the error tolerance controlling the percent error in the conjugate heat transfer problem. For medium-fidelity this includes the mesh size (coarse, medium, or fine).
+\item[Fidelity-specific inputs] For low-fidelity this includes the error tolerance controlling the percent error in the conjugate heat transfer problem. For medium-fidelity this includes the mesh size (coarse, medium, or fine). In addition, fidelity of the thermostructural analysis is specified using a float ranging from 0 (low) to 1 (high).
 
 \end{description}
 
@@ -797,17 +806,98 @@ A set of automatically generated linear constraints will be provided shortly wit
 
 \section{Results} \label{sec:results}
 
-None to date.
+\subsection{Deterministic Low-Fidelity Optimization}
+
+This optimization problem corresponds to the equivalent deterministic optimization problem for the specific reliable DUU problem found in equation \ref{eq:specific_reliable_equiv_deterministic_optim} using the standard parameterization from table \ref{tab:inputDimension}. 
+
+\subsubsection{Design Variables}
+The design variables $y$ are taken to be deterministic, thus, $y = x$. There are 62 design variables in all:
+
+\begin{itemize}
+\item Inner wall: 21 design variables, corresponding to B-spline with 18 coefficients.
+\item Thermal layer: 6 design variables, for piecewise linear function with 4 breaks
+\item Air gap: 1 design variable for constant thickness
+\item All load layers: 6 design variables, for piecewise linear function with 4 breaks
+\item Stringer thicknesses: 6 values
+\item Baffle locations and thicknesses: 10 values total for 6 baffles
+\end{itemize}
+
+The stringer height and break locations are set from the baffle heights and break locations. Baffle height is automatically updated to mate with the external aircraft geometry.
+
+Design variable bounds are taken from this document.
+
+\subsubsection{Other Parameters}
+
+All other nozzle parameters are set at the nominal values defined in this document. The exception is the stress failure criterion. Yield stress is used for all materials. 120 MPa is used for the CMC material, 324 MPa is used for the GR-BMI material, 12.9 MPa is used for the TI-HC material and 324 MPa is used for the PANEL material used for the baffles.
+
+\subsubsection{Constraints}
+
+As given in the problem specification in equation \ref{eq:specific_reliable_equiv_deterministic_optim}, there are 13 nonlinear constraints including 1 thrust constraint, 1 temperature ratio constraint and 11 stress failure criterion constraints, one for each component. The modified P-norm function is used to agglomerate the temperature ratio and failure criterion fields with $p = 10$.
+
+There are 97 linear constraints. Additional constraints on maximum and minimum slopes between B-spline coefficients were added to avoid unusual shapes. The constraints have been normalized.
+
+\subsubsection{Method}
+
+Dakota 6.5 is used to manage the optimization which is performed using NPSOL. The function precision is set to 1e-6 and the convergence and constraint tolerance are both set to 1e-3. Design variables are automatically scaled and the nonlinear thrust constraint is also scaled. The objective function is scaled to be of order 1. A relative forward finite gradient step size of 1e-3 is used to estimate gradients.
+
+The optimization is run in parallel using 20 cores and converges to an optimum in 117 minutes and 37 major iterations. There are 2,016 new function evaluations and 2,583 duplicate function evaluations including finite differences.
+
+\subsubsection{Optimum}
+
+The optimal shape is shown in figure \ref{fig:det-lo-optimal-shape}. Table \ref{tab:det-lo-optimal-values} gives the values of the objective function and nonlinear constraints at the optimum. At the optimum 37 variable bounds are tight, 12 linear constraints are tight and the nonlinear thrust constraint is tight.
+
+The nozzle is as short as possible. The thermal layer has a constant thickness equal to its lower bound of 1 cm. The thickness of the air gap is at its maximum value of 1 cm. The inner load layer is essentially as thin as possible (within the constraint tolerance). The middle load layer is as thin as possible as well with constant thickness. The outer load layer is also essentially as thin as possible (within the constraint tolerance). The stringers are as thin as possible. The 2 baffles just to the right of the throat moved as far right as possible. Baffle thickness is as small as possible (within the constraint tolerance).
+
+Two post-throat B-spline coefficients have a tight linear constraint on their x-position. Three B-spline coefficients have been pushed as far down as they can go without going below the throat. One B-spline segment in the pre-throat region is limited by its upper slope. Four B-spline segments in the post-throat region have obtained their lowest possible slope. Two baffles are as far from other baffles as possible.
+
+The only tight non-linear constraint is the thrust constraint, although since the Lagrange multiplier for this constraint is small (0.63e-3) it is possible that an alternative optimum exists.
+
+\begin{figure}
+\caption{Optimal shape for equivalent low-fidelity deterministic optimization for reliable DUU problem in equation \ref{eq:specific_reliable_equiv_deterministic_optim}.}
+\label{fig:det-lo-optimal-shape}
+\begin{center}
+\includegraphics[scale=0.35]{figs/det-lo-optimal-shape.png}
+\end{center}
+\end{figure}
+
+
+\begin{table}
+\caption[Equivalent low-fidelity deterministic optimization objective and constraint values]{Value of objective function and constraints at equivalent low-fidelity deterministic optimum.}
+\label{tab:det-lo-optimal-values}
+\begin{center}
+\begin{tabular}[]{ c | c | c }
+\textbf{Description} & \textbf{Notation} & \textbf{Value} \\ \hline
+Mass & $M$ & 32.843833 \\ \hline
+Thrust & $F$ & 21500.000632 \\ \hline
+Inner load layer P-norm of temperature ratio & $g_1(\sfrac{T_2}{T_{max,2}})$ & 0.437059 \\ \hline
+Thermal layer P-norm of failure criterion & $g_2(S_1(\sigma_1))$ & 0.122024 \\ \hline
+Inner load layer P-norm of failure criterion & $g_3(S_2(\sigma_2))$ & 0.050842 \\ \hline
+Middle load layer P-norm of failure criterion & $g_4(S_3(\sigma_3))$ & 0.212316 \\ \hline
+Outer load layer P-norm of failure criterion & $g_5(S_4(\sigma_4))$ & 0.035907 \\ \hline
+Stringers P-norm of failure criterion & $g_6(S_5(\sigma_5))$ & 0.024764 \\ \hline
+Baffle 1 P-norm of failure criterion & $g_7(S_6(\sigma_6))$ & 0.002868 \\ \hline
+Baffle 2 P-norm of failure criterion & $g_8(S_7(\sigma_7))$ & 0.007546 \\ \hline
+Baffle 3 P-norm of failure criterion & $g_9(S_8(\sigma_8))$ & 0.006873 \\ \hline
+Baffle 4 P-norm of failure criterion & $g_{10}(S_9(\sigma_9))$ & 0.004623 \\ \hline
+Baffle 5 P-norm of failure criterion & $g_{11}(S_{10}(\sigma_{10}))$ & 0.002679 \\ \hline
+Baffle 6 P-norm of failure criterion & $g_{12}(S_{11}(\sigma_{11}))$ & 0.002224 \\ \hline
+\end{tabular}
+\end{center}
+\end{table}
+
+\subsubsection{Discussion of Optimum}
+
+The optimal nozzle shape shows a careful balance between the mass of the nozzle baffles and stringers and the mass of the nozzle wall, while at the same time finding a shape that generates enough thrust.
+
+The overall wall shape is a nozzle that converges to the throat and remains flat until the exit. A flat post-throat shapes gives a lower nozzle wall mass compared to a diverging post-throat shape and is found here because the low-fidelity fluid analysis does not account for the detrimental shock/expansion phenomena that would occur with such a shape. The nozzle converges gradually to the throat due to a careful balance between baffle and wall mass (a steeper convergence would lead to a larger baffle). In fact, note that the converging portion of the nozzle wall is approximately parallel to the external aircraft shape. In addition, the nozzle wall has a small bump in the converging portion of the nozzle to decrease the baffle mass there.
+
+As expected for a minimum mass problem, all wall layers, baffles, and stringers are as thin as possible. The exception is the air gap, which has the greatest possible thickness. It contributes to the nozzle mass indirectly since although the air is assumed to have no mass, the thickness of the air gap changes the radius of the upper wall layers and therefore their mass. Since the temperature constraint is not tight, it seems that a large air gap helps decrease the baffle mass more than the mass of the load layer increases. Lastly, the last three baffles have also been pushed as far right as possible to minimize their mass.
+
+Although this is the critical loading condition, with the given material properties and minimum thicknesses, stresses and temperatures are not critical. Thinner wall layers would lead to higher temperatures and stresses. It appears that the middle titanium-honeycomb load layer is the most critical for stress.
 
 \section{\texttt{MULTI-F} Verification} \label{sec:verification}
 
-
-
 \section{Appendix} \label{sec:appendix}
-
-\subsection{Detailed Material Properties}
-
-These tables have been removed for brevity.
 
 \subsection{Wall Parameterization}
 

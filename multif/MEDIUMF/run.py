@@ -73,5 +73,11 @@ def Run( nozzle, output = 'verbose' ):
     if output == 'verbose':
         sys.stdout.write("\n  -- Info : Result directory :  %s\n\n" % nozzle.runDir);
     
+    # --- Output results
+
+    if nozzle.outputFormat == 'PLAIN':
+        nozzle.WriteOutputFunctions_Plain();
+    else:
+        nozzle.WriteOutputFunctions_Dakota();
     
 

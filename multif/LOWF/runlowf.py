@@ -817,4 +817,8 @@ def Run (nozzle,output='verbose'):
     #nozzle.geoTuple = geoTuple
     #nozzle.performanceTuple = performanceTuple
     
-    
+    # Write data
+    if nozzle.outputFormat == 'PLAIN':
+        nozzle.WriteOutputFunctions_Plain();
+    else:
+        nozzle.WriteOutputFunctions_Dakota();

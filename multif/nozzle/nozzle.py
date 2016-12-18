@@ -1961,6 +1961,18 @@ class Nozzle:
               "specified in config file. (OUTPUT_NAME expected)\n\n");
             sys.exit(0);
             
+        if 'OUTPUT_FORMAT' in config:
+            if config['OUTPUT_FORMAT'] == 'PLAIN':
+                nozzle.outputFormat = 'PLAIN';
+            elif config['OUTPUT_FORMAT'] == 'DAKOTA':
+                nozzle.outputFormat = 'DAKOTA';
+            else:
+                sys.stderr.write("\n ## ERROR : Output function file format " \
+                  "can only be PLAIN or DAKOTA\n\n");
+                sys.exit(0);                    
+        else :
+            nozzle.outputFormat = 'PLAIN';
+            
         # Determine which components have stresses and/or temperatures calculated
         nozzle.stressComponentList = list();
         nozzle.tempComponentList = list();
