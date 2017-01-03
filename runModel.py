@@ -59,7 +59,7 @@ def main():
         sys.stdout.write('\n  ## WARNING : You are not using the right version of SU2. This may have caused robustness issues.\n');
         sys.stdout.write('#' * 90);
         sys.stdout.write('\n\n');
-    
+
 # -------------------------------------------------------------------
 #  Run Main Program
 # -------------------------------------------------------------------
