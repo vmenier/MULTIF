@@ -6,4 +6,8 @@ from run import *
 from meshgeneration import *
 from runSU2 import *
 from postprocessing import *
-from runAEROS import *
+
+try:
+	from runAEROS import *
+except ImportError:
+	pass;
