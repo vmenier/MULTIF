@@ -126,7 +126,7 @@ class Nozzle:
                 if nozzle.materials[k].type == 'ISOTROPIC':
                     dv_n.append([[2,5],1,1,0,1,0,1,1,[1,2],[1,2],1,1]);
                 else: # ANISOTROPIC_SHELL
-                    dv_n.append([12,1,2,1,1,2,2,3,5,5,2])                
+                    dv_n.append([12,1,2,1,1,2,[2,3],3,5,5,[1,2],1]);              
             dv_keys.append(['INLET_PSTAG']);
             dv_n.append([1]);
             dv_keys.append(['INLET_TSTAG']);
@@ -185,7 +185,7 @@ class Nozzle:
                 if key == 'WALL':                    
                     nozzle.wall.dv = [];
                     sizeTemp = nozzle.wall.coefs_size; # number of DV for checking
-                    self.AssignListDV(config,nozzle.wall.dv,'WALL_DV',
+                    self.AssignListDV(config,nozzle.wall.dv,'WALL_COEFS_DV',
                                       NbrDV,sizeTemp);
                     continue;
                 
@@ -1748,15 +1748,29 @@ class Nozzle:
                         check = 1;
                     elif NbrDV == 2:
                         ltemp = nozzle.materials[k].getThermalConductivity();
-                        prt_name.append('%s mutual influence coef u1' % k);
+                        prt_name.append('%s thermal conductivity k1' % k);
                         prt_basval.append('%.2le' % ltemp[0]);
                         prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                        prt_name.append('%s mutual influence coef u2' % k);
+                        prt_name.append('%s thermal conductivity k2' % k);
                         prt_basval.append('%.2le' % ltemp[1]);
                         prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);                        
                         nozzle.materials[k].setThermalConductivity(nozzle.DV_List[id_dv:id_dv+2]);    
                         NbrChanged = NbrChanged + 2;
                         check = 1;
+                    elif NbrDV == 3:
+                        ltemp = nozzle.materials[k].getThermalConductivity();
+                        prt_name.append('%s thermal conductivity k1' % k);
+                        prt_basval.append('%.2le' % ltemp[0]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                        prt_name.append('%s thermal conductivity k2' % k);
+                        prt_basval.append('%.2le' % ltemp[1]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);          
+                        prt_name.append('%s thermal conductivity k3' % k);
+                        prt_basval.append('%.2le' % ltemp[2]);
+                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+2]);                                                
+                        nozzle.materials[k].setThermalConductivity(nozzle.DV_List[id_dv:id_dv+3]);    
+                        NbrChanged = NbrChanged + 3;
+                        check = 1;                       
                 elif Tag == k + '_THERMAL_EXPANSION_COEF':
                     if NbrDV == 1:
                         prt_name.append('%s thermal expansion coef' % k);
