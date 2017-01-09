@@ -649,7 +649,7 @@ int writeAEROS(GModel *g,
     for(int k = 0; k < baffleCount; ++k)
       fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.%d\" 1 NG %d median mechanical\n", 5+k, 5+k);
   }
-  // stresses and strains in the x and y directions of the material coordinate frame (layers 1 and 3 only)
+  // stresses and strains in the x and y directions of the material coordinate frame (layers 1 and 3 and stringers only)
   fprintf(fp, "stressxx 14 7 \"STRESSXX.1\" 1 NG 2 lower matfrm\n");
   fprintf(fp, "stressxx 14 7 \"STRESSXX.3\" 1 NG 2 upper matfrm\n");
   fprintf(fp, "stressyy 14 7 \"STRESSYY.1\" 1 NG 2 lower matfrm\n");
@@ -658,6 +658,12 @@ int writeAEROS(GModel *g,
   fprintf(fp, "strainxx 14 7 \"STRAINXX.3\" 1 NG 2 upper matfrm\n");
   fprintf(fp, "strainyy 14 7 \"STRAINYY.1\" 1 NG 2 lower matfrm\n");
   fprintf(fp, "strainyy 14 7 \"STRAINYY.3\" 1 NG 2 upper matfrm\n");
+  if(stringerCount > 0) {
+    fprintf(fp, "stressxx 14 7 \"STRESSXX.4\" 1 NG 4 median matfrm\n");
+    fprintf(fp, "stressyy 14 7 \"STRESSYY.4\" 1 NG 4 median matfrm\n");
+    fprintf(fp, "strainxx 14 7 \"STRAINXX.4\" 1 NG 4 median matfrm\n");
+    fprintf(fp, "strainyy 14 7 \"STRAINYY.4\" 1 NG 4 median matfrm\n");
+  }
 
   fprintf(fp, "*\n");
   fprintf(fp, "GROUPS\n");
