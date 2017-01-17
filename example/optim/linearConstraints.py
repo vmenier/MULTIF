@@ -85,32 +85,41 @@ def wall(x):
         A[i,j] = slopeCondition[c]; A[i,j-1] = -slopeCondition[c]; A[i,j+10] = -1; A[i,j+9] = 1; conNum += 1; c += 1; j += 1;
     return (A.dot(x) - b, A, b)
  
-# 7 linear constraints for a piecewise-linear shape with 4 nodes and 6 dofs
-# (the first 2 dofs correspond to the x-position of the 2nd and 3rd break) 
+# linear constraints for a piecewise-linear shape with n nodes and 2*n - 2 dofs
+# where the x-position of the first and last nodes is fixed at 0 and 1
 def thermalLayer(x):
     delta = 1e-3 # for x-proximity of control points
     mMin = -0.2
     mMax = 0.2
-    nLinearCon = 7
+    
+    n = int((len(x) + 2)/2) # assume all node x-positions except first and last, and all node thicknesses are given
+    nx = n - 2 # bumber of node x-positions
+    nt = n # number of node thicknesses (y-values)
+    nLinearCon = (n-3) + 2*(n-1)
     A = np.zeros((nLinearCon, x.size)) # matrix for Ax <= b
     b = np.zeros(nLinearCon) # RHS vector for Ax <= b
     
-    conNum = 0 		
- 
-    # Set constraint(s) on x-position
-    A[0,0] = 1; A[0,1] = -1; b[0] = -delta; conNum += 1
-      
-    # Set constraints for steepness of slopes
-    A[conNum,0] = mMin; A[conNum,2] = 1; A[conNum,3] = -1; b[conNum] = 0; conNum += 1
-    A[conNum,0] = -mMax; A[conNum,2] = -1; A[conNum,3] = 1; b[conNum] = 0; conNum += 1
+    conNum = 0
     
-    A[conNum,0] = -mMin; A[conNum,1] = mMin; A[conNum,3] = 1; A[conNum,4] = -1; b[conNum] = 0; conNum += 1
-    A[conNum,0] = mMax; A[conNum,1] = -mMax; A[conNum,3] = -1; A[conNum,4] = 1; b[conNum] = 0; conNum += 1
+    # Set constraint(s) on x-position
+    for i in range(n-3):
+        A[conNum,i] = 1; A[conNum,i+1] = -1; b[conNum] = -delta; conNum += 1
         
-    A[conNum,1] = -mMin; A[conNum,4] = 1; A[conNum,5] = -1; b[conNum] = -mMin; conNum += 1
-    A[conNum,1] = mMax; A[conNum,4] = -1; A[conNum,5] = 1; b[conNum] = mMax; conNum += 1
-
-    return (A.dot(x) - b, A, b)
+    # Set constraints for steepness of slopes
+    # First segment
+    A[conNum,0] = mMin; A[conNum,nx] = 1; A[conNum,nx+1] = -1; b[conNum] = 0; conNum += 1
+    A[conNum,0] = -mMax; A[conNum,nx] = -1; A[conNum,nx+1] = 1; b[conNum] = 0; conNum += 1
+    
+    # In-between segments
+    for i in range(n-1-2):
+        A[conNum,i] = -mMin; A[conNum,1+i] = mMin; A[conNum,nx+i+1] = 1; A[conNum,nx+i+2] = -1; b[conNum] = 0; conNum += 1
+        A[conNum,i] = mMax; A[conNum,1+i] = -mMax; A[conNum,nx+i+1] = -1; A[conNum,nx+i+2] = 1; b[conNum] = 0; conNum += 1
+    
+    # Last segment
+    A[conNum,nx-1] = -mMin; A[conNum,nx+nt-2] = 1; A[conNum,nx+nt-1] = -1; b[conNum] = -mMin; conNum += 1
+    A[conNum,nx-1] = mMax; A[conNum,nx+nt-2] = -1; A[conNum,nx+nt-1] = 1; b[conNum] = mMax; conNum += 1
+    
+    return (A.dot(x) - b, A, b)        
     
 def baffles(x):
     minDistance = 0.15 # non-dimensional minimum separation distance
