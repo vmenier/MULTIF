@@ -128,7 +128,7 @@ def baffles(x):
         A[i,j] = 1; A[i,j-1] = -1; b[conNum] = maxDistance; conNum += 1; j += 1
     j = 1
     for i in range(conNum,conNum+3):
-        A[i,j] = -1; A[i,j-1] = 1; b[conNum] = minDistance; conNum += 1; j += 1
+        A[i,j] = -1; A[i,j-1] = 1; b[conNum] = -minDistance; conNum += 1; j += 1
     A[conNum,3] = -1; b[conNum] = maxDistance - 1; conNum += 1
     A[conNum,3] = 1; b[conNum] = 1 - minDistance; conNum += 1
     
