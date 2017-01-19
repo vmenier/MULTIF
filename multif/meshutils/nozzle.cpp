@@ -68,7 +68,8 @@ MOD_INIT(_nozzle_module)
 #include "Context.h"
 #include "gmshLevelset.h"
 
-struct VertexData { int p, mb; double wb; int nb; std::vector<double> t, tt; double tb, ts, ws; };
+struct PointData { std::vector<double> xyz; double dydx; std::vector<double> t, tt; double ts, ws; };
+struct VertexData { int p, mb; double wb; int nb; double tb; };
 struct SegmentData { std::vector<int> m; int ns, ms, nn, mn, sn; std::vector<int> mt, tn; int ln; };
 struct MaterialData
 {
@@ -86,10 +87,16 @@ struct BoundaryData { double x, P, T, Ta; };
 inline bool cmp(const BoundaryData &a, const double &b) { return a.x < b; }
 
 struct Cmp {
-  const std::vector<std::vector<double> > &points;
+  const std::vector<PointData> &points;
   double tol;
-  Cmp(const std::vector<std::vector<double> > &p, double t = std::numeric_limits<double>::epsilon()) : points(p), tol(t) {}
-  bool operator()(const VertexData &a, const double &b) { return points[a.p][0] < (b+tol); }
+  Cmp(const std::vector<PointData> &p, double t = std::numeric_limits<double>::epsilon()) : points(p), tol(t) {}
+  bool operator()(const VertexData &a, const double &b) { return points[a.p].xyz[0] < (b+tol); }
+};
+
+struct Cmp2 {
+  double tol;
+  Cmp2(double t = std::numeric_limits<double>::epsilon()) : tol(t) {}
+  bool operator()(const PointData &p, const double &b) { return p.xyz[0] < (b+tol); }
 };
 
 void writeNode(MVertex *m, FILE *fp, double scalingFactor)
@@ -125,7 +132,7 @@ void writeFace(MElement *m, FILE *fp, int type)
   fprintf(fp, "\n");
 }
 
-void writeAttr(MElement *m, FILE *fp, double scalingFactor, int physicalTag, const std::vector<std::vector<double> > &points,
+void writeAttr(MElement *m, FILE *fp, double scalingFactor, int physicalTag, const std::vector<PointData> &points,
                const std::vector<VertexData> &vertices, const std::vector<SegmentData> &segments) 
 {
   // find x-coordinate of element centroid
@@ -155,7 +162,7 @@ void writeAttr(MElement *m, FILE *fp, double scalingFactor, int physicalTag, con
 }
 
 void writeMate(MElement *m, FILE *fp, double scalingFactor, const std::vector<BoundaryData> &boundaries,
-               int physicalTag, const std::vector<MaterialData> &materials, const std::vector<std::vector<double> > &points,
+               int physicalTag, const std::vector<MaterialData> &materials, const std::vector<PointData> &points,
                const std::vector<VertexData> &vertices, const std::vector<SegmentData> &segments)
 {
   // find x-coordinate of triangle centroid
@@ -185,9 +192,11 @@ void writeMate(MElement *m, FILE *fp, double scalingFactor, const std::vector<Bo
       MaterialData mat;
       Cmp cmp(points);
       std::vector<VertexData>::const_iterator it = std::lower_bound(vertices.begin(), vertices.end(), x, cmp);
+      Cmp2 cmp2;
+      std::vector<PointData>::const_iterator it2 = std::lower_bound(points.begin(), points.end(), x, cmp2);
 
-      // interpolate stringer thickness from vertex data
-      tval = (it-1)->ts + (it->ts - (it-1)->ts)*(x - points[(it-1)->p][0])/(points[it->p][0] - points[(it-1)->p][0]);
+      // interpolate stringer thickness from point data
+      tval = (it2-1)->ts + (it2->ts - (it2-1)->ts)*(x - (it2-1)->xyz[0])/(it2->xyz[0] - (it2-1)->xyz[0]);
       mat = materials[(segments.begin()+std::distance(vertices.begin(),it-1))->ms];
 
       fprintf(fp, "%d 0 %g %g %g 0 0 %g 0 %g 0 %g 0 0 0\n",
@@ -199,7 +208,7 @@ void writeMate(MElement *m, FILE *fp, double scalingFactor, const std::vector<Bo
       double tval;
       MaterialData mat;
       Cmp cmp(points);
-      std::vector<VertexData>::const_iterator it = std::lower_bound(vertices.begin(), vertices.end(), x, cmp); // returns it such that it->p[0] >= x
+      std::vector<VertexData>::const_iterator it = std::lower_bound(vertices.begin(), vertices.end(), x, cmp); // returns it such that it->p.xyz[0] >= x
 
       if(it == vertices.begin()) {
         tval = it->tb;
@@ -207,12 +216,6 @@ void writeMate(MElement *m, FILE *fp, double scalingFactor, const std::vector<Bo
       }
       else {
         tval = (it-1)->tb;
-        int discount = 2;
-        while(tval==0) { // Check for zero baffle thickness (occurs if baffle vertex is skipped since it is followed by a vertex that is too close)     
-        	tval = (it-discount)->tb;
-        	discount += 1;
-        	if(discount > 5) {break;}
-        }
         mat = materials[(it-1)->mb];
       }
 
@@ -222,7 +225,7 @@ void writeMate(MElement *m, FILE *fp, double scalingFactor, const std::vector<Bo
   }
 }
 
-void writeComp(MElement *m, FILE *fp, double scalingFactor, const std::vector<std::vector<double> > &points,
+void writeComp(MElement *m, FILE *fp, double scalingFactor, const std::vector<PointData> &points,
                const std::vector<VertexData> &vertices, const std::vector<SegmentData> &segments,
                const std::vector<MaterialData> &materials)
 {
@@ -239,9 +242,11 @@ void writeComp(MElement *m, FILE *fp, double scalingFactor, const std::vector<st
   Cmp cmp(points);
   std::vector<VertexData>::const_iterator it = std::lower_bound(vertices.begin(), vertices.end(), x, cmp);
   int segment_id = std::min<long>(segments.size()-1,std::distance(vertices.begin(), it));
-  for(unsigned int k=0; k<it->t.size(); ++k) {
-    tval = (it == vertices.begin()) ? it->t[k] 
-         : ((it-1)->t[k] + (it->t[k] - (it-1)->t[k])*(x - points[(it-1)->p][0])/(points[it->p][0] - points[(it-1)->p][0]));
+  Cmp2 cmp2;
+  std::vector<PointData>::const_iterator it2 = std::lower_bound(points.begin(), points.end(), x, cmp2);
+  for(unsigned int k=0; k<it2->t.size(); ++k) {
+    tval = (it2 == points.begin()) ? it2->t[k] 
+         : ((it2-1)->t[k] + (it2->t[k] - (it2-1)->t[k])*(x - (it2-1)->xyz[0])/(it2->xyz[0] - (it2-1)->xyz[0]));
     const MaterialData &mat = materials[segments[segment_id].m[k]];
     if(mat.type == MaterialData::ISOTROPIC) {
       double G = mat.E/(2*(1+mat.nu));
@@ -294,7 +299,7 @@ void writeTemp(MVertex *m, FILE *fp, double scalingFactor, const std::vector<Bou
 
   double x = m->x() * scalingFactor;
 
-  // interpolate temperature at vertex from boundary data
+  // interpolate temperature at node from boundary data
   std::vector<BoundaryData>::const_iterator it = std::lower_bound(boundaries.begin(), boundaries.end(), x, cmp);
   double tval = (it == boundaries.begin()) ? it->T : ((it-1)->T + (it->T - (it-1)->T)*(x - (it-1)->x)/(it->x - (it-1)->x));
 
@@ -331,7 +336,7 @@ void writeConvec(MElement *m, FILE *fp, double scalingFactor, double h, const st
 }
 
 int writeAEROS(GModel *g,
-               const std::vector<std::vector<double> > &points,
+               const std::vector<PointData> &points,
                const std::vector<VertexData> &vertices,
                const std::vector<SegmentData> &segments,
                const std::vector<MaterialData> &materials,
@@ -536,6 +541,7 @@ int writeAEROS(GModel *g,
   fprintf(fp, "*\n");
   if(lf == 0) {
     fprintf(fp, "NONLINEAR\n");
+    fprintf(fp, "maxit 15\n");
     fprintf(fp, "*\n");
   }
   fprintf(fp, "OUTPUT\n");
@@ -649,6 +655,21 @@ int writeAEROS(GModel *g,
     for(int k = 0; k < baffleCount; ++k)
       fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.%d\" 1 NG %d median mechanical\n", 5+k, 5+k);
   }
+  // stresses and strains in the x and y directions of the material coordinate frame (layers 1 and 3 only)
+  fprintf(fp, "stressxx 14 7 \"STRESSXX.1\" 1 NG 2 lower matfrm\n");
+  fprintf(fp, "stressxx 14 7 \"STRESSXX.3\" 1 NG 2 upper matfrm\n");
+  fprintf(fp, "stressyy 14 7 \"STRESSYY.1\" 1 NG 2 lower matfrm\n");
+  fprintf(fp, "stressyy 14 7 \"STRESSYY.3\" 1 NG 2 upper matfrm\n");
+  fprintf(fp, "strainxx 14 7 \"STRAINXX.1\" 1 NG 2 lower matfrm\n");
+  fprintf(fp, "strainxx 14 7 \"STRAINXX.3\" 1 NG 2 upper matfrm\n");
+  fprintf(fp, "strainyy 14 7 \"STRAINYY.1\" 1 NG 2 lower matfrm\n");
+  fprintf(fp, "strainyy 14 7 \"STRAINYY.3\" 1 NG 2 upper matfrm\n");
+  if(stringerCount > 0) {
+    fprintf(fp, "stressxx 14 7 \"STRESSXX.4\" 1 NG 4 median matfrm\n");
+    fprintf(fp, "stressyy 14 7 \"STRESSYY.4\" 1 NG 4 median matfrm\n");
+    fprintf(fp, "strainxx 14 7 \"STRAINXX.4\" 1 NG 4 median matfrm\n");
+    fprintf(fp, "strainyy 14 7 \"STRAINYY.4\" 1 NG 4 median matfrm\n");
+  }
 
   fprintf(fp, "*\n");
   fprintf(fp, "GROUPS\n");
@@ -676,7 +697,7 @@ int writeAEROS(GModel *g,
 }
 
 int writeAEROH(GModel *g,
-               const std::vector<std::vector<double> > &points,
+               const std::vector<PointData> &points,
                const std::vector<VertexData> &vertices,
                const std::vector<SegmentData> &segments,
                const std::vector<MaterialData> &materials,
@@ -867,7 +888,7 @@ int writeAEROH(GModel *g,
 }
 
 int writeAEROS2(GModel *g,
-                const std::vector<std::vector<double> > &points,
+                const std::vector<PointData> &points,
                 const std::vector<VertexData> &vertices,
                 const std::vector<SegmentData> &segments,
                 const std::vector<MaterialData> &materials,
@@ -974,6 +995,7 @@ int writeAEROS2(GModel *g,
   fprintf(fp, "*\n");
   if(lf == 0) {
     fprintf(fp, "NONLINEAR\n");
+    fprintf(fp, "maxit 15\n");
     fprintf(fp, "*\n");
   }
   fprintf(fp, "OUTPUT\n");
@@ -1034,7 +1056,7 @@ int writeAEROS2(GModel *g,
   return 1;
 }
 
-void generateNozzle(const std::vector<std::vector<double> > &points,
+void generateNozzle(const std::vector<PointData> &points,
                     const std::vector<VertexData> &vertices,
                     const std::vector<SegmentData> &segments,
                     const std::vector<MaterialData> &materials,
@@ -1062,9 +1084,9 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
   std::vector<double> p1(3), p2(3); // points defining the axis of revolution
   p1[0] = p1[1] = p1[2] = p2[1] = p2[2] = 0; p2[0] = 1;
 
-  std::vector<std::vector<double> >::const_iterator pointIt1 = points.begin();
-  std::vector<VertexData>::const_iterator vertexIt = vertices.begin();
-  GVertex *vertex1 = m->addVertex((*pointIt1)[0], (*pointIt1)[1], (*pointIt1)[2], lc);
+  std::vector<PointData>::const_iterator pointIt1 = points.begin();
+  std::vector<VertexData>::const_iterator vertexIt1 = vertices.begin(), vertexIt2 = vertices.begin()+1;
+  GVertex *vertex1 = m->addVertex(pointIt1->xyz[0], pointIt1->xyz[1], pointIt1->xyz[2], lc);
 
   std::vector<std::pair<GEntity::GeomType,int> > exteriorBoundaryTags;
   std::vector<std::pair<GEntity::GeomType,int> > interiorBoundaryTags;
@@ -1081,14 +1103,13 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
 
   // loop over the segments
   int baffleIndex = 0;
-  int baffleInfo = 0;
-  for(std::vector<SegmentData>::const_iterator segmentIt = segments.begin(); segmentIt != segments.end(); ++segmentIt, ++vertexIt) {
-  
-  	//if(skipFlag == 1) { skipFlag = 0; continue; }
+  for(std::vector<SegmentData>::const_iterator segmentIt = segments.begin(); segmentIt != segments.end(); ++segmentIt, ++vertexIt2) {
 
-    std::vector<std::vector<double> >::const_iterator pointIt2 = points.begin()+(vertexIt+1)->p;
-    GVertex *vertex2 = m->addVertex((*pointIt2)[0], (*pointIt2)[1], (*pointIt2)[2], lc);
-    std::vector<std::vector<double> > controlPoints(pointIt1+1, pointIt2);
+    std::vector<PointData>::const_iterator pointIt2 = points.begin()+vertexIt2->p;
+    GVertex *vertex2 = m->addVertex(pointIt2->xyz[0], pointIt2->xyz[1], pointIt2->xyz[2], lc);
+    std::vector<std::vector<double> > controlPoints;
+    std::vector<PointData>::const_iterator pointIt;
+    for(pointIt = pointIt1+1; pointIt != pointIt2; ++pointIt) controlPoints.push_back(pointIt->xyz);
     // inside of inner layer
     GEdge *edge1;
     try {
@@ -1097,85 +1118,78 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
     catch(...) {
       std::cerr << "Warning : mesh generation failed in segment " << std::distance(segments.begin(),segmentIt)
                 << ", x = [" << vertex1->x() << "," << vertex2->x() << "]\n";
-      if(vertexIt->wb > 0) { // if vertex corresponds to baffle, keep track of where baffle info is
-				baffleInfo += 1;
-      }
-      pointIt1 = pointIt2; vertex1 = vertex2;
+      pointIt1 = pointIt2; vertexIt1 = vertexIt2; vertex1 = vertex2;
       continue;
     } 
 
     int ns = std::max(1,segmentIt->ns); // number of circumferential segments
-    double wb = 0;
-    if(baffleInfo) { // baffle data from previous vertex should be used
-    	wb = (vertexIt-baffleInfo)->wb;
-    	baffleInfo = 0;
-    } else {
-    	wb = vertexIt->wb;                // width of baffle
-    }
-    int nb = vertexIt->nb;              // number of transfinite points (radial edges of baffle)
-    double ws1 = vertexIt->ws;          // width of stiffeners
-    double ws2 = (vertexIt+1)->ws;      // width of stiffeners
+    double wb1 = vertexIt1->wb;         // width of baffle
+    double wb2 = vertexIt2->wb;         // width of baffle
+    int nb1 = vertexIt1->nb;            // number of transfinite points (radial edges of baffle)
+    int nb2 = vertexIt2->nb;            // number of transfinite points (radial edges of baffle)
+    double ws1 = pointIt1->ws;          // width of stiffeners
+    double ws2 = pointIt2->ws;          // width of stiffeners
     int nn = segmentIt->nn;             // number of transfinite points (longitudinal edges)
     int mn = segmentIt->mn;             // number of transfinite points (circumferential edges)
     int sn = segmentIt->sn;             // number of transfinite points (radial edges of stiffener)
-    double t1 = std::accumulate(vertexIt->t.begin(), vertexIt->t.end(), 0.);         // total thickness of outer structural layer
-    double t2 = std::accumulate((vertexIt+1)->t.begin(), (vertexIt+1)->t.end(), 0.); // total thickness of outer structural layer
-    double tt1 = vertexIt->tt[0];       // thickness of inner thermal insulating layer
-    double tt2 = (vertexIt+1)->tt[0];   // thickness of inner thermal insulating layer
+    double t1 = std::accumulate(pointIt1->t.begin(), pointIt1->t.end(), 0.); // total thickness of outer structural layer
+    double t2 = std::accumulate(pointIt2->t.begin(), pointIt2->t.end(), 0.); // total thickness of outer structural layer
+    double tt1 = pointIt1->tt[0];       // thickness of inner thermal insulating layer
+    double tt2 = pointIt2->tt[0];       // thickness of inner thermal insulating layer
     int tn_inner = segmentIt->tn[0];    // number of transfinite points through thickness of inner part of insulating layer in thermal mesh
     int tn_outer = segmentIt->tn[1];    // number of transfinite points through thickness of outer part of insulating layer in thermal mesh
     int ln = segmentIt->ln;             // number of transfinite points through each half of the thickness of the load layer in thermal mesh
     double angle = 2*M_PI/ns;
 
     // middle of inner layer
-    cth1 = 1/sqrt(1+(*pointIt1)[3]*(*pointIt1)[3]); // cosine of angle between normal and y-axis 
-    cth2 = 1/sqrt(1+(*pointIt2)[3]*(*pointIt2)[3]); // cosine of angle between normal and y-axis
+    cth1 = 1/sqrt(1+pointIt1->dydx*pointIt1->dydx); // cosine of angle between normal and y-axis 
+    cth2 = 1/sqrt(1+pointIt2->dydx*pointIt2->dydx); // cosine of angle between normal and y-axis
     std::vector<GEdge*> middleInnerLayer;
-    for(unsigned int k=0; k<vertexIt->tt.size()-1; ++k ) {
-      GVertex *vertex3 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+tt1/cth1, (*pointIt1)[2], lc);
-      GVertex *vertex4 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+tt2/cth2, (*pointIt2)[2], lc);
-      for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it) {
-        double cth = 1/sqrt(1+(*it)[3]*(*it)[3]); // cosine of angle between normal and y-axis
-        // interpolate thickness: t = tL + (tR-tL)*(x-xL)/(xR-xL)
-        (*it)[1] += (vertexIt->tt[k] + ((vertexIt+1)->tt[k] - vertexIt->tt[k])*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]))/cth;
+    std::vector<std::vector<double> >::iterator it;
+    for(unsigned int k=0; k<pointIt1->tt.size()-1; ++k ) {
+      GVertex *vertex3 = m->addVertex(pointIt1->xyz[0], pointIt1->xyz[1]+tt1/cth1, pointIt1->xyz[2], lc);
+      GVertex *vertex4 = m->addVertex(pointIt2->xyz[0], pointIt2->xyz[1]+tt2/cth2, pointIt2->xyz[2], lc);
+      for(it = controlPoints.begin(), pointIt = pointIt1+1; it != controlPoints.end(); ++it, ++pointIt) {
+        double cth = 1/sqrt(1+pointIt->dydx*pointIt->dydx); // cosine of angle between normal and y-axis
+        (*it)[1] += pointIt->tt[k]/cth;
       }
       middleInnerLayer.push_back(controlPoints.empty() ? m->addLine(vertex3, vertex4) : m->addBSpline(vertex3, vertex4, controlPoints));
-      tt1 += vertexIt->tt[k+1];
-      tt2 += (vertexIt+1)->tt[k+1];
+      tt1 += pointIt1->tt[k+1];
+      tt2 += pointIt2->tt[k+1];
     }
     // outside of inner layer / inside of outer layer
-    GVertex *vertex3 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+tt1/cth1, (*pointIt1)[2], lc);
-    GVertex *vertex4 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+tt2/cth2, (*pointIt2)[2], lc);
-    for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it) {
-      double cth = 1/sqrt(1+(*it)[3]*(*it)[3]); // cosine of angle between normal and y-axis
-      (*it)[1] += (vertexIt->tt.back() + ((vertexIt+1)->tt.back() - vertexIt->tt.back())*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]))/cth;
+    GVertex *vertex3 = m->addVertex(pointIt1->xyz[0], pointIt1->xyz[1]+tt1/cth1, pointIt1->xyz[2], lc);
+    GVertex *vertex4 = m->addVertex(pointIt2->xyz[0], pointIt2->xyz[1]+tt2/cth2, pointIt2->xyz[2], lc);
+    for(it = controlPoints.begin(), pointIt = pointIt1+1; it != controlPoints.end(); ++it, ++pointIt) {
+      double cth = 1/sqrt(1+pointIt->dydx*pointIt->dydx); // cosine of angle between normal and y-axis
+      (*it)[1] += pointIt->tt.back()/cth;
     }
     GEdge *edge2 = controlPoints.empty() ? m->addLine(vertex3, vertex4) : m->addBSpline(vertex3, vertex4, controlPoints);
     // middle of outer layer
-    GVertex *vertex5 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+(tt1+t1/2)/cth1, (*pointIt1)[2], lc);
-    GVertex *vertex6 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+(tt2+t2/2)/cth2, (*pointIt2)[2], lc);
-    for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it) {
-      double cth = 1/sqrt(1+(*it)[3]*(*it)[3]); // cosine of angle between normal and y-axis
-      (*it)[1] += (t1/2 + (t2/2 - t1/2)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]))/cth;
+    GVertex *vertex5 = m->addVertex(pointIt1->xyz[0], pointIt1->xyz[1]+(tt1+t1/2)/cth1, pointIt1->xyz[2], lc);
+    GVertex *vertex6 = m->addVertex(pointIt2->xyz[0], pointIt2->xyz[1]+(tt2+t2/2)/cth2, pointIt2->xyz[2], lc);
+    for(it = controlPoints.begin(), pointIt = pointIt1+1; it != controlPoints.end(); ++it, ++pointIt) {
+      double cth = 1/sqrt(1+pointIt->dydx*pointIt->dydx); // cosine of angle between normal and y-axis
+      (*it)[1] += (std::accumulate(pointIt->t.begin(), pointIt->t.end(), 0.)/2.)/cth;
     }
     GEdge *edge3 = controlPoints.empty() ? m->addLine(vertex5, vertex6) : m->addBSpline(vertex5, vertex6, controlPoints);
     // outside of outer layer
-    GVertex *vertex7 = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+(tt1+t1)/cth1, (*pointIt1)[2], lc);
-    GVertex *vertex8 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+(tt2+t2)/cth2, (*pointIt2)[2], lc);
-    for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it) {
-      double cth = 1/sqrt(1+(*it)[3]*(*it)[3]); // cosine of angle between normal and y-axis
-      (*it)[1] += (t1/2 + (t2/2 - t1/2)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]))/cth;
+    GVertex *vertex7 = m->addVertex(pointIt1->xyz[0], pointIt1->xyz[1]+(tt1+t1)/cth1, pointIt1->xyz[2], lc);
+    GVertex *vertex8 = m->addVertex(pointIt2->xyz[0], pointIt2->xyz[1]+(tt2+t2)/cth2, pointIt2->xyz[2], lc);
+    for(it = controlPoints.begin(), pointIt = pointIt1+1; it != controlPoints.end(); ++it, ++pointIt) {
+      double cth = 1/sqrt(1+pointIt->dydx*pointIt->dydx); // cosine of angle between normal and y-axis
+      (*it)[1] += (std::accumulate(pointIt->t.begin(), pointIt->t.end(), 0.)/2.)/cth;
     }
     GEdge *edge4 = controlPoints.empty() ? m->addLine(vertex7, vertex8) : m->addBSpline(vertex7, vertex8, controlPoints);
     // top of stiffeners
     GVertex *vertex9, *vertex10; GEdge *edge11;
     if(ws1 != 0) {
-      vertex9  = m->addVertex((*pointIt1)[0], (*pointIt1)[1]+(tt1+t1/2)/cth1+ws1, (*pointIt1)[2], lc);
-      vertex10 = m->addVertex((*pointIt2)[0], (*pointIt2)[1]+(tt2+t2/2)/cth2+ws2, (*pointIt2)[2], lc);
-      for(std::vector<std::vector<double> >::iterator it = controlPoints.begin(); it != controlPoints.end(); ++it) {
-        double cth = 1/sqrt(1+(*it)[3]*(*it)[3]); // cosine of angle between normal and y-axis
-        (*it)[1] -= (t1/2 + (t2/2 - t1/2)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]))/cth;
-        (*it)[1] += (ws1 + (ws2 - ws1)*((*it)[0]-(*pointIt1)[0])/((*pointIt2)[0]-(*pointIt1)[0]));
+      vertex9  = m->addVertex(pointIt1->xyz[0], pointIt1->xyz[1]+(tt1+t1/2)/cth1+ws1, pointIt1->xyz[2], lc);
+      vertex10 = m->addVertex(pointIt2->xyz[0], pointIt2->xyz[1]+(tt2+t2/2)/cth2+ws2, pointIt2->xyz[2], lc);
+      for(it = controlPoints.begin(), pointIt = pointIt1+1; it != controlPoints.end(); ++it, ++pointIt) {
+        double cth = 1/sqrt(1+pointIt->dydx*pointIt->dydx); // cosine of angle between normal and y-axis
+        (*it)[1] -= (std::accumulate(pointIt->t.begin(), pointIt->t.end(), 0.)/2.)/cth;
+        (*it)[1] += pointIt->ws/cth;
       }
       edge11 = controlPoints.empty() ? m->addLine(vertex9, vertex10) : m->addBSpline(vertex9, vertex10, controlPoints);
     }
@@ -1236,9 +1250,9 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
       surfaceTags.push_back(std::make_pair(face3->geomType(),face3->tag()));
 
       // baffle:
-      if(wb > 0) {
+      if(wb1 > 0) {
         if(ws1 == 0) { // no stiffeners
-          std::vector<double> p5(p4); p5[1] *= wb; p5[2] *= wb; // point defining extrusion vector
+          std::vector<double> p5(p4); p5[1] *= wb1; p5[2] *= wb1; // point defining extrusion vector
           GEntity *baffleEdge = m->extrude(edge3->getBeginVertex(), p3, p5);
           GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
           baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
@@ -1249,7 +1263,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
             int edgeIndex = std::distance(edges.begin(),it);
             switch(edgeIndex) {
               case 0: case 2: (*it)->meshAttributes.nbPointsTransfinite = mn; break;
-              case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = nb; break;
+              case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = nb1; break;
             }
             (*it)->meshAttributes.coeffTransfinite = 1.0;
             if(bf != 0 && edgeIndex == 2) {
@@ -1277,7 +1291,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
             }
             (*it)->meshAttributes.coeffTransfinite = 1.0;
             if(edgeIndex == 2) {
-              if(bf != 0 && ws1 == wb) { // then, this is the boundary
+              if(bf != 0 && ws1 == wb1) { // then, this is the boundary
                 boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
                 boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
                 boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
@@ -1287,8 +1301,8 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
           }
           baffleFace->addPhysicalEntity(5+baffleIndex);
 
-          if(ws1 < wb) {
-            std::vector<double> p5(p4); p5[1] *= (wb-ws1); p5[2] *= (wb-ws1); // point defining 2nd extrusion vector
+          if(ws1 < wb1) {
+            std::vector<double> p5(p4); p5[1] *= (wb1-ws1); p5[2] *= (wb1-ws1); // point defining 2nd extrusion vector
             GEntity *baffleEdge = m->extrude(edge5->getBeginVertex(), p3, p5);
             GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
             baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
@@ -1299,7 +1313,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
               int edgeIndex = std::distance(edges.begin(),it);
               switch(edgeIndex) {
                 case 0: case 2: (*it)->meshAttributes.nbPointsTransfinite = mn; break;
-                case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = nb; break;
+                case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = nb1; break;
               }
               (*it)->meshAttributes.coeffTransfinite = 1.0;
               if(bf != 0 && edgeIndex == 2) {
@@ -1310,7 +1324,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
             }
             baffleFace->addPhysicalEntity(5+baffleIndex);
           }
-          else if(ws1 > wb) std::cerr << "error: stringer height is greater than baffle height\n"; 
+          else if(ws1 > wb1) std::cerr << "error: stringer height is greater than baffle height\n"; 
         }
       }
 
@@ -1336,9 +1350,8 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
       }
 
       // final baffle:
-      if((vertexIt+1)->wb > 0 && segmentIt+1 == segments.end()) {
-        int baffleIndex2 = (wb > 0) ? baffleIndex+1 : baffleIndex;
-        double wb = (vertexIt+1)->wb; // width of baffle
+      if(wb2 > 0 && segmentIt+1 == segments.end()) {
+        int baffleIndex2 = (wb1 > 0) ? baffleIndex+1 : baffleIndex;
         std::vector<double> p3(3), p4(3);
         p3[0] = edge3->getEndVertex()->x(); p3[1] = p3[2] = 0;
         p4[0] = p3[0]; p4[1] = edge3->getEndVertex()->y(); p4[2] = edge3->getEndVertex()->z();
@@ -1346,7 +1359,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
         p4[1] /= r; p4[2] /= r;
 
         if(ws2 == 0) { // no stiffener
-          std::vector<double> p5(p4); p5[1] *= wb; p5[2] *= wb; // point defining extrusion vector
+          std::vector<double> p5(p4); p5[1] *= wb2; p5[2] *= wb2; // point defining extrusion vector
           GEntity *baffleEdge = m->extrude(edge3->getEndVertex(), p3, p5);
           GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
           baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
@@ -1357,7 +1370,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
             int edgeIndex = std::distance(edges.begin(),it);
             switch(edgeIndex) {
               case 0: case 2: (*it)->meshAttributes.nbPointsTransfinite = mn; break;
-              case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = nb; break;
+              case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = nb2; break;
             }
             (*it)->meshAttributes.coeffTransfinite = 1.0;
             if(bf != 0 && edgeIndex == 2) {
@@ -1385,7 +1398,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
             }
             (*it)->meshAttributes.coeffTransfinite = 1.0;
             if(edgeIndex == 2) {
-              if(bf !=0 && ws2 == wb) { // then, this is the boundary
+              if(bf !=0 && ws2 == wb2) { // then, this is the boundary
                 boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
                 boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
                 boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
@@ -1395,8 +1408,8 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
           }
           baffleFace->addPhysicalEntity(5+baffleIndex2);
 
-          if(ws2 < wb) {
-            std::vector<double> p5(p4); p5[1] *= (wb-ws2); p5[2] *= (wb-ws2); // point defining 2nd extrusion vector
+          if(ws2 < wb2) {
+            std::vector<double> p5(p4); p5[1] *= (wb2-ws2); p5[2] *= (wb2-ws2); // point defining 2nd extrusion vector
             GEntity *baffleEdge = m->extrude(edge5->getBeginVertex(), p3, p5);
             GEntity *baffleFace = m->revolve(baffleEdge, p1, p2, angle);
             baffleFace->cast2Face()->meshAttributes.method = MESH_TRANSFINITE;
@@ -1407,7 +1420,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
               int edgeIndex = std::distance(edges.begin(),it);
               switch(edgeIndex) {
                 case 0: case 2: (*it)->meshAttributes.nbPointsTransfinite = mn; break;
-                case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = nb; break;
+                case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = nb2; break;
               }
               (*it)->meshAttributes.coeffTransfinite = 1.0;
               if(bf != 0 && edgeIndex == 2) {
@@ -1418,7 +1431,7 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
             }
             baffleFace->addPhysicalEntity(5+baffleIndex2);
           }
-          else if(ws2 > wb) std::cerr << "error: stringer height is greater than baffle height\n";
+          else if(ws2 > wb2) std::cerr << "error: stringer height is greater than baffle height\n";
         }
       }
 
@@ -1670,8 +1683,9 @@ void generateNozzle(const std::vector<std::vector<double> > &points,
     }
 
     pointIt1 = pointIt2;
+    vertexIt1 = vertexIt2;
     vertex1 = vertex2;
-    if(wb > 0) baffleIndex++;
+    if(wb1 > 0) baffleIndex++;
   }
 
   //m->writeGEO("nozzle.geo");
@@ -1700,20 +1714,20 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
   int np, nv, nm; double lc; int bf, tf, nl, nlt, lf;
   fin >> np >> nv >> nm >> lc >> bf >> tf >> nl >> nlt >> lf;
   
-  std::vector<std::vector<double> > points;
+  std::vector<PointData> points(np);
   for(int i=0; i<np; ++i) {
-    std::vector<double> xyz(4);
-    fin >> xyz[0] >> xyz[1] >> xyz[3]; xyz[2] = 0;
-    points.push_back(xyz);
+    PointData &p = points[i];
+    p.xyz.resize(3);
+    fin >> p.xyz[0] >> p.xyz[1] >> p.dydx; p.xyz[2] = 0.;
+    for(int k=0; k<nl; ++k) { double tk; fin >> tk; p.t.push_back(tk); }
+    for(int k=0; k<nlt; ++k) { double tt; fin >> tt; p.tt.push_back(tt); }
+    fin >> p.ts >> p.ws;
   }
 
   std::vector<VertexData> vertices(nv);
   for(int j=0; j<nv; ++j) {
     VertexData &v = vertices[j];
-    fin >> v.p >> v.wb >> v.mb >> v.nb;
-    for(int k=0; k<nl; ++k) { double tk; fin >> tk; v.t.push_back(tk); }
-    for(int k=0; k<nlt; ++k) { double tt; fin >> tt; v.tt.push_back(tt); }
-    fin >> v.tb >> v.ts >> v.ws;
+    fin >> v.p >> v.wb >> v.mb >> v.nb >> v.tb;
   }
 
   std::vector<SegmentData> segments(nv-1);
