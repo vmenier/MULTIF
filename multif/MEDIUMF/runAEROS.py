@@ -89,12 +89,18 @@ def runAEROS ( nozzle, output='verbose' ):
         SolExtract, Size, idHeader  = ExtractSolutionAtWall(nozzle);
 
     # merge lists
-    vertices = sorted(list(set(list(nozzle.wall.layer[0].thickness.nodes[0,:])+list(nozzle.wall.layer[2].thickness.nodes[0,:])+
-                               list(nozzle.wall.layer[3].thickness.nodes[0,:])+list(nozzle.wall.layer[4].thickness.nodes[0,:])+
-                               list(nozzle.baffles.location)+list(nozzle.stringers.thickness.nodes[0,:])+
-                               list(nozzle.stringers.height.nodes[0,:]))))
+    ends = [min(list(nozzle.wall.layer[0].thickness.nodes[0,:])), max(list(nozzle.wall.layer[0].thickness.nodes[0,:]))]
+    #for i in range(len(ends)):
+    #    print ' i = %d, ends[i] = %f' % (i, ends[i])
 
-    points = sorted(list(set(vertices+[item[0] for item in SolExtract])))
+    vertices = sorted(list(set(ends+list(nozzle.baffles.location))))
+    #for j in range(len(vertices)):
+    #    print ' j = %d, vertices[j] = %f' % (j, vertices[j])
+
+    points = sorted(list(set(vertices+[item[0] for item in SolExtract]+
+                             list(nozzle.wall.layer[0].thickness.nodes[0,:])+list(nozzle.wall.layer[2].thickness.nodes[0,:])+
+                             list(nozzle.wall.layer[3].thickness.nodes[0,:])+list(nozzle.wall.layer[4].thickness.nodes[0,:])+
+                             list(nozzle.stringers.thickness.nodes[0,:])+list(nozzle.stringers.height.nodes[0,:]))))
     #for k in range(len(points)):
     #    print ' k = %d, points[k] = %f' % (k, points[k])
     
@@ -153,20 +159,22 @@ def runAEROS ( nozzle, output='verbose' ):
     print >> f1, "%d %d %d %f %d %d %d %d %d" % (len(points), len(vertices), len(nozzle.materials), lc, boundaryFlag, thermalFlag, 3, 2, linearFlag);
     # points
     for i in range(len(points)):
-        print >> f1, "%.*lf %.*lf %.*lf" % (16, points[i], 16, nozzle.wall.geometry.radius(points[i]), 16, nozzle.wall.geometry.radiusGradient(points[i]));
+        Tg = nozzle.wall.layer[1].thickness.radius(0.) # thickness of gap between thermal and load layers
+        Ts = nozzle.stringers.thickness.radius(points[i]) if nozzle.stringers.n > 0 else 0; # thickness of stringers
+        Ws = nozzle.stringers.height.radius(points[i]) if nozzle.stringers.n > 0 else 0; # height of stringer
+        print >> f1, "%0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e" % (points[i],
+                 nozzle.wall.geometry.radius(points[i]), nozzle.wall.geometry.radiusGradient(points[i]),
+                 nozzle.wall.layer[2].thickness.radius(points[i]), nozzle.wall.layer[3].thickness.radius(points[i]),
+                 nozzle.wall.layer[4].thickness.radius(points[i]), nozzle.wall.layer[0].thickness.radius(points[i]),
+                 Tg, Ts, Ws);
         
     # vertices
     for i in range(len(vertices)):  
         Wb = nozzle.baffles.height[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # height of baffle
         Ws = nozzle.stringers.height.radius(vertices[i]) if nozzle.stringers.n > 0 else 0; # height of stringer
         Nb = max((Wb-Ws)/lc+1,2); # number of nodes on radial edge of baffle (not including overlap with stringer)
-        Tg = nozzle.wall.layer[1].thickness.radius(0.) # thickness of gap between thermal and load layers
         Tb = nozzle.baffles.thickness[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # thickness of baffle
-        Ts = nozzle.stringers.thickness.radius(vertices[i]) if nozzle.stringers.n > 0 else 0; # thickness of stringers
-        print >> f1, "%d %0.16f %d %d %0.16f %0.16f %0.16f %0.16f %0.16f %0.16f %0.16f %0.16f" % (points.index(vertices[i]), Wb, Mb, Nb,
-                 nozzle.wall.layer[2].thickness.radius(vertices[i]), nozzle.wall.layer[3].thickness.radius(vertices[i]),
-                 nozzle.wall.layer[4].thickness.radius(vertices[i]), nozzle.wall.layer[0].thickness.radius(vertices[i]),
-                 Tg, Tb, Ts, Ws);
+        print >> f1, "%d %0.16e %d %d %0.16e" % (points.index(vertices[i]), Wb, Mb, Nb, Tb);
                  
     # panels
     for i in range(1,len(vertices)):
@@ -176,14 +184,14 @@ def runAEROS ( nozzle, output='verbose' ):
     for k in nozzle.materials:
       if nozzle.materials[k].type == 'ISOTROPIC':
         if nozzle.materials[k].name == 'CMC':
-            print >> f1, "ISOTROPIC %lf %lf %lf %0.12f %lf 0" % (nozzle.materials[k].getElasticModulus(),
+            print >> f1, "ISOTROPIC %0.16e %0.16e %0.16e %0.16e %0.16e 0" % (nozzle.materials[k].getElasticModulus(),
                      nozzle.materials[k].getPoissonRatio(), nozzle.materials[k].getDensity(),
                      nozzle.materials[k].getThermalExpansionCoef(), nozzle.materials[k].getThermalConductivity())
         elif nozzle.materials[k].name == 'AIR':
-            print >> f1, "ISOTROPIC 0 0 %lf 0 %lf 0" % (nozzle.materials[k].getDensity(),
+            print >> f1, "ISOTROPIC 0 0 %0.16e 0 %0.16e 0" % (nozzle.materials[k].getDensity(),
                      nozzle.materials[k].getThermalConductivity())   
         else:
-            print >> f1, "ISOTROPIC %lf %lf %lf %0.12f %lf %lf" % (nozzle.materials[k].getElasticModulus(),
+            print >> f1, "ISOTROPIC %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e" % (nozzle.materials[k].getElasticModulus(),
                      nozzle.materials[k].getPoissonRatio(), nozzle.materials[k].getDensity(),
                      nozzle.materials[k].getThermalExpansionCoef(), nozzle.materials[k].getThermalConductivity(),
                      nozzle.environment.hInf);
@@ -192,7 +200,7 @@ def runAEROS ( nozzle, output='verbose' ):
         [mu1, mu2] = nozzle.materials[k].getMutualInfluenceCoefs()
         [alpha1, alpha2, alpha12] = nozzle.materials[k].getThermalExpansionCoef()
         [k11, k12, k13] = nozzle.materials[k].getThermalConductivity();
-        print >> f1, "ANISOTROPIC %lf %lf %lf %lf %lf %lf %lf %0.12f %0.12f %0.12f %lf %lf" % \
+        print >> f1, "ANISOTROPIC %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e" % \
                 (E1, E2, nozzle.materials[k].getPoissonRatio(), nozzle.materials[k].getShearModulus(), mu1, mu2,
                  nozzle.materials[k].getDensity(), alpha1, alpha2, alpha12, (k11+k12+k13)/3, nozzle.environment.hInf);
     f1.close();
@@ -200,7 +208,7 @@ def runAEROS ( nozzle, output='verbose' ):
     f2 = open("BOUNDARY.txt", 'w');
     print >> f2, "%d" % (Size[0]);
     for i in range(0,Size[0]):
-        print >> f2, "%0.8f %0.8f %0.8f %0.8f" % (SolExtract[i][0], SolExtract[i][iPres], SolExtract[i][iTemp], nozzle.environment.T);
+        print >> f2, "%0.16e %0.16e %0.16e %0.16e" % (SolExtract[i][0], SolExtract[i][iPres], SolExtract[i][iTemp], nozzle.environment.T);
     f2.close();
     
     _nozzle_module.generate();       # generate the meshes for thermal and structural analyses
