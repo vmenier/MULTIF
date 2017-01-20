@@ -1222,6 +1222,18 @@ class Nozzle:
         shapeDefinition = np.array([[0., 0.1548, nozzle.length],
                                     [0.4244, 0.4244, innerBaffleRadius + 0.012]]);
         nozzle.exterior.geometry = geometry.PiecewiseLinear(shapeDefinition);  
+        
+        # --- Check for intersection of nozzle wall with external geometry
+        wallDiff = rList[-2] - nozzle.exterior.geometry.radius(x);
+        if max(wallDiff) > 0:
+            sys.stdout.write('\nWARNING! Nozzle wall intersects with exterior geometry\n');
+            wallBend = 0.1548;
+            for i in range(len(nozzle.wall.layer)):
+                wallBend = max([wallBend, nozzle.wall.layer[i].thickness.nodes[0,-2]]);
+            shapeDefinition = np.array([[0., wallBend, nozzle.length],
+                                        [0.4244, 0.4244, innerBaffleRadius + 0.012]]);
+            nozzle.exterior.geometry = geometry.PiecewiseLinear(shapeDefinition); 
+            sys.stdout.write('WARNING! Altered exterior nozzle geometry to fit nozzle wall shape\n\n');
        
         # --- Update height of baffles to coincide with exterior wall shape
         for i in range(len(nozzle.baffles.location)):
