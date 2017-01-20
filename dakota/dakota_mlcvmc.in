@@ -19,13 +19,13 @@ method,
 
 model,
 	id_model = 'HIERARCH'
-	variables_pointer = 'MF_VARS'
+	variables_pointer = 'VARS'
 	surrogate hierarchical
 	  ordered_model_fidelities = 'NONIDEALNOZZLE' 'EULER'
 
 model,
 	id_model = 'NONIDEALNOZZLE'
-	variables_pointer = 'LF_VARS'
+	variables_pointer = 'VARS'
 	interface_pointer = 'LF_I'
 	responses_pointer = 'ID_R'
 	simulation
@@ -34,7 +34,7 @@ model,
 
 model,
 	id_model = 'EULER'
-	variables_pointer = 'MF_VARS'
+	variables_pointer = 'VARS'
 	interface_pointer = 'MF_I'
 	responses_pointer = 'ID_R'
 	simulation
@@ -42,20 +42,7 @@ model,
 	  solution_level_cost = 22.5 423 107 # match ascending MF_discretization
 
 variables,
-	id_variables = 'LF_VARS'
-	uniform_uncertain = 15
-    	  lower_bounds      =  897.75        8.064                  57000      248.9      7.38e10           1.8e-6                216000        0.005  0.005  0.005  0.005  0.005  0.005  0.005  0.005
-    	  upper_bounds      =  992.25        9.856                  63000      275.1      9.02e10           2.2e-6                264000        0.03   0.03   0.03   0.03   0.03   0.03   0.03   0.03
-    	  descriptors       = 'INLET_TSTAG' 'THERMAL_CONDUCTIVITY' 'ATM_PRES' 'ATM_TEMP' 'ELASTIC_MODULUS' 'THERMAL_DIFFUSIVITY' 'INLET_PSTAG' 'LWT1' 'LWT2' 'LWT3' 'LWT4' 'UWT1' 'UWT2' 'UWT3' 'UWT4'
-	discrete_state_set
-	  real = 1
-	    num_set_values = 3
-	    set_values = 1e-8 1.e-4 0.01 # error trap for set: must be ascending
-	    initial_state = 1e-8
-	    descriptors 'LF_solver_tol'
-
-variables,
-	id_variables = 'MF_VARS'
+	id_variables = 'VARS'
 	uniform_uncertain = 15
     	  lower_bounds      =  897.75        8.064                  57000      248.9      7.38e10           1.8e-6                216000        0.005  0.005  0.005  0.005  0.005  0.005  0.005  0.005
     	  upper_bounds      =  992.25        9.856                  63000      275.1      9.02e10           2.2e-6                264000        0.03   0.03   0.03   0.03   0.03   0.03   0.03   0.03
@@ -66,16 +53,22 @@ variables,
 	    set_values = 'COARSE' 'FINE' 'MEDIUM'
 	    initial_state = 'COARSE'
 	    descriptors 'MF_discretization'
+          real = 1
+            num_set_values = 1
+            set_values = 1e-8 # 1.e-4 0.01 # error trap for set: must be ascending
+            initial_state = 1e-8
+            descriptors 'LF_solver_tol'
 
 interface
   id_interface = 'LF_I'
       analysis_driver = 'python_dprepro_driver0' # if LF_solver_tol is active
 #     analysis_driver = 'python runModel.py -f input.cfg -l 0' # python model1
         fork
-        work_directory named '/tmp/jamonsc/dakota_work'
+        work_directory named '/gscratch/jamonsc/tmp/dakota_work_lf'
         link_files '/ascldap/users/jamonsc/multif/*'
         directory_tag #directory_save
-        file_tag file_save
+        #file_tag
+        #file_save
         parameters_file = 'inputdv_all.in'
         results_file    = 'output.dat'
 
@@ -84,16 +77,17 @@ interface
      analysis_driver = 'python_dprepro_driver1' # if MF_discretization is active
 #    analysis_driver = 'python runModel.py -f input.cfg -l 1' # python model2
         fork
-        work_directory named '/tmp/jamonsc/dakota_work'
+        work_directory named '/gscratch/jamonsc/tmp/dakota_work_mf'
         link_files '/ascldap/users/jamonsc/multif/*'
         directory_tag #directory_save
-        file_tag file_save
+        #file_tag
+        #file_save
         parameters_file = 'inputdv_all.in'
         results_file    = 'output.dat'
 
 responses
   id_responses = 'ID_R'
-  response_functions = 4
+  response_functions = 3
   no_gradients
   no_hessians
-  response_descriptors = 'VOLUME' 'THRUST' 'MECHANICAL_STRESS' 'THERMAL_STRESS'
+  response_descriptors = 'THRUST' 'MECHANICAL_STRESS' 'THERMAL_STRESS'

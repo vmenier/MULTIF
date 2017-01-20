@@ -12,16 +12,17 @@ method,
 	  orthogonal_matching_pursuit
 #	  max_iterations = 5
 # Tighten this as budget allows...
-	  convergence_tolerance = .1			#s0
+	  convergence_tolerance = 1e-8			#s0
 #	  convergence_tolerance = .01			#s1
 #	  convergence_tolerance = .001			#s2
 #	  convergence_tolerance = .0001			#s3
-#	output silent
+#	output debug
 
 model,
 	id_model = 'HIERARCH'
 	surrogate hierarchical
 	  ordered_model_fidelities = 'EULER'
+	  correction additive zeroth_order
 
 model,
 	id_model = 'EULER'
@@ -47,10 +48,11 @@ interface
      analysis_driver = 'python_dprepro_driver1' # if MF_discretization is active
 #    analysis_driver = 'python runModel.py -f input.cfg -l 1' # python model2
         fork
-        work_directory named '/tmp/jamonsc/dakota_work'
+        work_directory named '/gscratch/jamonsc/mlpce/dakota_work_mf_3'
         link_files '/ascldap/users/jamonsc/multif/*'
-        directory_tag #directory_save
-        file_tag file_save
+        directory_tag directory_save
+        #file_tag 
+	file_save
         parameters_file = 'inputdv_all.in'
         results_file    = 'output.dat'
 
