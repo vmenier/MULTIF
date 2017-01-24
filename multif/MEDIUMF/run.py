@@ -42,7 +42,7 @@ def Run( nozzle, output = 'verbose' ):
     
     # --- Run CFD
     
-    runSU2 (nozzle);
+    #runSU2 (nozzle);
     
     # --- Run AEROS  
     
