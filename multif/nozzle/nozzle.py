@@ -262,6 +262,8 @@ class Nozzle:
         fidelity_tags = config['FIDELITY_LEVELS_TAGS'].strip('()');
         fidelity_tags = fidelity_tags.split(",");
 
+        nozzle.MaxCFL = 30.0;
+
         NbrFidLev = len(fidelity_tags);
 
         analysisType = -1;
@@ -391,6 +393,10 @@ class Nozzle:
                 else:
                     nozzle.su2_convergence_order = 3;
                 description += ", relative convergence order %i" % nozzle.su2_convergence_order;
+                
+                nozzle.OUTPUT_FORMAT = 'TECPLOT'
+                nozzle.CONV_FILENAME = 'history'
+                
                 
                 # --- Setup max iterations for SU2
                 if 'SU2_MAX_ITERATIONS' in config:
@@ -1149,17 +1155,27 @@ class Nozzle:
         nozzle.height = coefs[coefs_size-1];
         nozzle.length = coefs[coefs_size/2-1];
         
+        nozzle.xthrust = -1; # --- x crd for the thrust integration
+        nozzle.ythrust = -1;
+        
         if nozzle.method == 'RANS' or nozzle.method == 'EULER':
             x    = [];
             y    = [];
-
+        
             nx = 4000; # use 4000 points to interpolate inner wall shape
-
+        
             _meshutils_module.py_BSplineGeo3 (knots, coefs, x, y, nx);
-
+        
             nozzle.xwall = x;
             nozzle.ywall = y;
-    
+            
+            dx_exit = max(1.3*nozzle.meshhl[3], 0.001);
+            for i in range(0,nx) :
+            	if (  x[nx-i-1] < x[-1]-dx_exit  ):
+            		nozzle.x_thrust = x[nx-i-1];
+            		nozzle.y_thrust = y[nx-i-1];
+            		break;
+            
         coefsnp = np.empty([2, coefs_size/2]);
     
         for i in range(0, coefs_size/2):
