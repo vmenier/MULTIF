@@ -50,13 +50,13 @@ def Run( nozzle, output = 'verbose' ):
     if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
         nozzle.runAEROS = 1;
     
-#        try:
-#            #from runAEROS import *
-#            if output == 'verbose':      
-#                print "SUCCESS IMPORTING AEROS"
-#        except ImportError:
-#                nozzle.runAEROS = 0;
-#                pass;
+        try:
+            #from runAEROS import *
+            if output == 'verbose':      
+                print "SUCCESS IMPORTING AEROS"
+        except ImportError:
+                nozzle.runAEROS = 0;
+                pass;
     
     if output == 'verbose':
         print "RUNAEROS = %d" % nozzle.runAEROS;
