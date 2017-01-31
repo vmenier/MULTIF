@@ -55,28 +55,26 @@ setup(ext_modules=[Extension("_meshutils_module",
 #
 
 
-setup(ext_modules=[Extension("_mshint_module",
-      sources=["./mshint/boule.c"      , \
-			"./mshint/bucket.c"     , \
-			"./mshint/chrono.c"     , \
-			"./mshint/hash.c"       , \
-			"./mshint/inout.c"      , \
-			"./mshint/intelt.c"     , \
-			"./mshint/libmesh5.c"   , \
-			"./mshint/locelt.c"     , \
-			"./mshint/mshin1.c"     , \
-			"./mshint/mshint.c"     , \
-			"./mshint/mshint_py.c"  , \
-			"./mshint/mshint_py.i"  , \
-			"./mshint/GMFio.c" , \
-			"./mshint/SU2io.c" , \
-			"./mshint/mesh.c" ,\
-			"./mshint/scalem.c"] , \
-			extra_compile_args=["-O3","-c","-Wuninitialized","-Wunused","-Winline","-Wshadow","-fexpensive-optimizations","-funroll-loops"])
-		#	extra_compile_args=["-std=c99","-Wno-unused-variable","-Wno-unused-result"])
-])
-
-
-
-
-
+#setup(ext_modules=[Extension("_mshint_module",
+#      sources=["./mshint/boule.c"      , \
+#			"./mshint/bucket.c"     , \
+#			"./mshint/chrono.c"     , \
+#			"./mshint/hash.c"       , \
+#			"./mshint/inout.c"      , \
+#			"./mshint/intelt.c"     , \
+#			"./mshint/libmesh5.c"   , \
+#			"./mshint/locelt.c"     , \
+#			"./mshint/mshin1.c"     , \
+#			"./mshint/mshint.c"     , \
+#			"./mshint/mshint_py.c"  , \
+#			"./mshint/mshint_py.i"  , \
+#			"./mshint/GMFio.c" , \
+#			"./mshint/SU2io.c" , \
+#			"./mshint/mesh.c" ,\
+#			"./mshint/scalem.c"] , \
+#			extra_compile_args=["-O3","-c","-Wuninitialized","-Wunused","-Winline","-Wshadow","-fexpensive-optimizations","-funroll-loops"])
+#		#	extra_compile_args=["-std=c99","-Wno-unused-variable","-Wno-unused-result"])
+#])
+#
+#
+#
