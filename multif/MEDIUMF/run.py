@@ -8,11 +8,6 @@ try:
 except ImportError:
     print 'Error importing all functions from runAEROS.\n'
 
-#try:
-#    from runAEROS import *
-#else ImportError:
-#    pass;
-
 def CheckOptions (nozzle):
     
 		print "Check options"
@@ -26,7 +21,7 @@ def CheckOptions (nozzle):
     
 
 def Run( nozzle, output = 'verbose' ):
-    
+        
     # --- Check SU2 version
     
     CheckSU2Version(nozzle);
@@ -61,8 +56,9 @@ def Run( nozzle, output = 'verbose' ):
     if output == 'verbose':
         print "RUNAEROS = %d" % nozzle.runAEROS;
     
+    print output;
     if nozzle.runAEROS == 1:
-        runAEROS (nozzle);
+        runAEROS(nozzle, output);
     else :
         sys.stdout.write('  -- Info: Skip call to AEROS.\n');
 

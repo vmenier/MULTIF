@@ -154,9 +154,12 @@ def runAEROS ( nozzle, output='verbose' ):
     Mb = materialNames.index(nozzle.baffles.material.name) if len(nozzle.baffles.location) > 0 else -1
     # material id of stringers
     Ms = materialNames.index(nozzle.stringers.material.name) if nozzle.stringers.n > 0 else -1
-    
+
     f1 = open("NOZZLE.txt", 'w');
-    print >> f1, "%d %d %d %f %d %d %d %d %d" % (len(points), len(vertices), len(nozzle.materials), lc, boundaryFlag, thermalFlag, 3, 2, linearFlag);
+    verboseFlag = 0.;
+    if output == 'verbose':
+        verboseFlag = 1.;
+    print >> f1, "%d %d %d %f %d %d %d %d %d %d" % (len(points), len(vertices), len(nozzle.materials), lc, boundaryFlag, thermalFlag, 3, 2, linearFlag, verboseFlag);
     # points
     for i in range(len(points)):
         Tg = nozzle.wall.layer[1].thickness.radius(0.) # thickness of gap between thermal and load layers

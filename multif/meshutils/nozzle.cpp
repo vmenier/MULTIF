@@ -1061,7 +1061,7 @@ void generateNozzle(const std::vector<PointData> &points,
                     const std::vector<SegmentData> &segments,
                     const std::vector<MaterialData> &materials,
                     const std::vector<BoundaryData> &boundaries,
-                    double lc, int bf, int tf, int lf)
+                    double lc, int bf, int tf, int lf, double vf)
 {
   // bf = 0: constrain inner wall inlet edge
   // bf = 1: constrain baffle outer edges
@@ -1072,12 +1072,15 @@ void generateNozzle(const std::vector<PointData> &points,
 
   // lf = 0: nonlinear structural model
   // lf = 1: linear structural model
+  
+  // vf = 0: non-verbose mode
+  // vf = 1: verbose mode
 
   GmshInitialize();
   GModel *m = new GModel();
   m->setFactory("OpenCASCADE");
 
-  GmshSetOption("General","Terminal", 1.);
+  GmshSetOption("General","Terminal", vf);
   GmshSetOption("Mesh","CharacteristicLengthMin", lc);
   GmshSetOption("Mesh","CharacteristicLengthMax", lc);
 
@@ -1711,8 +1714,8 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
 {
   std::ifstream fin("NOZZLE.txt");
 
-  int np, nv, nm; double lc; int bf, tf, nl, nlt, lf;
-  fin >> np >> nv >> nm >> lc >> bf >> tf >> nl >> nlt >> lf;
+  int np, nv, nm; double lc; int bf, tf, nl, nlt, lf, vf;
+  fin >> np >> nv >> nm >> lc >> bf >> tf >> nl >> nlt >> lf >> vf;
   
   std::vector<PointData> points(np);
   for(int i=0; i<np; ++i) {
@@ -1770,7 +1773,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
 
   fin2.close();
 
-  generateNozzle(points, vertices, segments, materials, boundaries, lc, bf, tf, lf);
+  generateNozzle(points, vertices, segments, materials, boundaries, lc, bf, tf, lf, vf);
 
   Py_RETURN_NONE;
 }

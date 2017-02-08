@@ -14,6 +14,11 @@ from .. import nozzle as nozzlemod
 #import lifetime
 #import geometry
 
+try:
+    from multif.MEDIUMF.runAEROS import *
+except ImportError:
+    print 'Error importing all functions from runAEROS.\n'
+
 #from matplotlib import pyplot as plt
 
 #==============================================================================
@@ -776,19 +781,19 @@ def Quasi1D(nozzle,output='verbose'):
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
             nozzle.runAEROS = 1;
             
-            try:
-                from  multif.MEDIUMF.runAEROS import *
-                if output == 'verbose':
-                    print 'SUCCESS IMPORTING AEROS'
-            except ImportError:
-                nozzle.runAEROS = 0
-                pass
+#            try:
+#                from  multif.MEDIUMF.runAEROS import *
+#                if output == 'verbose':
+#                    print 'SUCCESS IMPORTING AEROS'
+#            except ImportError:
+#                nozzle.runAEROS = 0
+#                pass
                 
         if output == 'verbose':
             print "RUNAEROS = %d" % nozzle.runAEROS;
         
         if nozzle.runAEROS == 1:
-            runAEROS(nozzle);
+            runAEROS(nozzle, output);
         else :
             sys.stdout.write('  -- Info: Skip call to AEROS.\n');        
 
