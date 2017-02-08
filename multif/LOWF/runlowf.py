@@ -522,10 +522,16 @@ def Quasi1D(nozzle,output='verbose'):
       TstagThroat,PstagExit,TstagExit)
     
     # Initialize loop variables
-    Cf = np.array(([0.004, 0.004]))
-    Tstag = np.array(([nozzle.inlet.Tstag, nozzle.inlet.Tstag-6.*nozzle.wall.geometry.length]))
-    dTstagdx = np.array(([-6., -6.]))
-    xPositionOld = np.array(([0., nozzle.wall.geometry.length]))
+    if hasattr(nozzle.wall,'temperature'):
+        xPositionOld = np.linspace(0.,nozzle.wall.geometry.length,4000)
+        Tstag = nozzle.wall.temperature.geometry.radius(xPositionOld)
+        dTstagdx = nozzle.wall.temperature.geometry.radiusGradient(xPositionOld)
+        Cf = np.array([0.004]*4000)
+    else:
+        Cf = np.array(([0.004, 0.004]))
+        Tstag = np.array(([nozzle.inlet.Tstag, nozzle.inlet.Tstag-6.*nozzle.wall.geometry.length]))
+        dTstagdx = np.array(([-6., -6.]))
+        xPositionOld = np.array(([0., nozzle.wall.geometry.length]))
     
     if nozzle.thermalFlag == 1:
         maxIterations = 12 # max number of iterations to solve for Cf and Tstag
@@ -579,8 +585,8 @@ def Quasi1D(nozzle,output='verbose'):
               
         # Check output
         if( np.isnan(M2.any()) or M2.any() < 0. or np.isinf(M2.any()) ):
-            raise RuntimeError("Unrealistic Mach number calculated")
-            
+            raise RuntimeError("Unrealistic Mach number calculated")      
+        
         # Calculate geometric properties
         D = nozzle.wall.geometry.diameter(xPosition)
         A = nozzle.wall.geometry.area(xPosition)
@@ -620,6 +626,9 @@ def Quasi1D(nozzle,output='verbose'):
           1./(nozzle.environment.hInf*np.pi*(D+2.*tTempUpper))
         
         # Redefine stagnation temperature distribution (for axisymmetric nozzle)
+#        if hasattr(nozzle.wall,'temperature'):                    
+#            dTstagdx = np.interp(xPosition,xPositionOld,dTstagdx)
+#        else:
         TstagXIntegrand = 1./(RtotPrime*density*U*A*nozzle.fluid.Cp(T))
         TstagXIntegral = integrateTrapezoidal(TstagXIntegrand,xPosition)
         Tstag = nozzle.environment.T*(1. - np.exp(-TstagXIntegral)) +        \
@@ -643,7 +652,13 @@ def Quasi1D(nozzle,output='verbose'):
         QwFlux = (Tstag - nozzle.environment.T)/RtotPrime/(np.pi*D) # W/m
                 
         #Tinside = Tstag + Qw/hf # interior wall temperature
-        Tinside = Tstag - QwFlux/hf
+        if hasattr(nozzle.wall,'temperature'):
+            Tinside = nozzle.wall.temperature.geometry.radius(xPosition)
+            dTstagdx = (Tinside[1:]-Tinside[0:-1])/(xPosition[1:]-xPosition[0:-1])
+            dTstagdx = np.hstack((dTstagdx,dTstagdx[-1]))
+            Tstag = Tinside + QwFlux/hf
+        else:
+            Tinside = Tstag - QwFlux/hf
         #recoveryFactor = (Tinside/T - 1)/((gam-1)*M2/2)
         
         # Estimate exterior wall temperature
