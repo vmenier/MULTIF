@@ -23,7 +23,7 @@ def GenerateNozzleMesh (nozzle):
 	#hdl, nozzle.tmpMshNam = tempfile.mkstemp(suffix='.mesh');
 	
 	nozzle.tmpGeoNam = 'nozzle_tmp.geo';
-	nozzle.tmpMshNam = 'nozzle_tmp.mesh';
+	nozzle.tmpMshNam = 'nozzle.su2';
 	
 	# --- Write geo file
 	
@@ -49,12 +49,14 @@ def GenerateNozzleMesh (nozzle):
 		print "\n  ## ERROR : Mesh generation failed.\n";
 		sys.exit(0);
 	
-	# --- Mesh preprocessing
-	try :
-		MeshPrepro(nozzle);
-	except :
-		print "\n  ## ERROR : Mesh preprocessing failed.\n";
-		sys.exit(0);
+	#sys.exit(1)
+	
+	## --- Mesh preprocessing
+	#try :
+	#	MeshPrepro(nozzle);
+	#except :
+	#	print "\n  ## ERROR : Mesh preprocessing failed.\n";
+	#	sys.exit(0);
 	
 
 def CallGmsh (nozzle):
@@ -62,6 +64,7 @@ def CallGmsh (nozzle):
 	gmsh_executable = 'gmsh';
 	try :
 		cmd = [gmsh_executable, '-2', nozzle.tmpGeoNam, '-o', nozzle.tmpMshNam];
+		print "%s" % cmd
 		out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=None)
 	except:
 		raise;
@@ -246,6 +249,8 @@ def NozzleGeoFile_old(FilNam, Mesh_options):
 	
 	
 	fil.close();
+	
+	
 
 	
 def NozzleGeoFile(FilNam, Mesh_options):
@@ -353,6 +358,8 @@ def NozzleGeoFile(FilNam, Mesh_options):
 		fil.write(', %d' % i);
 
 	fil.write('};\n');
+	
+	savIdx = i;
 
 	fil.write('Line(13) = {%d, 1};\n' % (i));
 
@@ -400,14 +407,42 @@ def NozzleGeoFile(FilNam, Mesh_options):
 	# --- Add boundary layer definition
 	if method == 'RANS':
 		fil.write('Field[%d] = BoundaryLayer;          \n' % (NbrFld+2));
-		fil.write('Field[%d].EdgesList = {9,10,11,12}; \n' % (NbrFld+2));
-		fil.write('Field[%d].NodesList = {6,111};      \n' % (NbrFld+2));
+		fil.write('Field[%d].EdgesList = {9,10,11,12,15}; \n' % (NbrFld+2));
+		fil.write('Field[%d].NodesList = {6,%d};      \n' % ((NbrFld+2), savIdx));
 		fil.write('Field[%d].hfar = 1;                 \n' % (NbrFld+2));
 		fil.write('Field[%d].hwall_n = %le;       \n' % ((NbrFld+2), ds));
 		fil.write('Field[%d].hwall_t = 0.300000;       \n' % (NbrFld+2));
 		fil.write('Field[%d].ratio = %le;              \n' % ((NbrFld+2),ratio));
 		fil.write('Field[%d].thickness = %le;         \n' % ((NbrFld+2), thickness));
 		fil.write('BoundaryLayer Field = %d;           \n' % (NbrFld+2));
+		
+		
+		#fil.write('Physical Line(1)  = {1};                             \n');
+		#fil.write('Physical Line(2)  = {2};                             \n');
+		#fil.write('Physical Line(3)  = {3};                             \n');
+		#fil.write('Physical Line(4)  = {4};                             \n');
+		#fil.write('Physical Line(5)  = {5};                             \n');
+		#fil.write('Physical Line(6)  = {6};                             \n');
+		#fil.write('Physical Line(7)  = {7};                             \n');
+		#fil.write('Physical Line(8)  = {8};                             \n');
+		#fil.write('Physical Line(9)  = {9};                             \n');
+		#fil.write('Physical Line(10) = {10};                            \n');
+		#fil.write('Physical Line(11) = {11};                            \n');
+		#fil.write('Physical Line(12) = {12,15};                         \n');
+		#fil.write('Physical Line(13) = {13};                            \n');
+		#fil.write('Physical Line(14) = {14};                            \n');
+		
+		fil.write('Physical Line(1)  = {12, 15};                          \n');
+		fil.write('Physical Line(2)  = {11};                          \n');
+		fil.write('Physical Line(3)  = {9, 10};                       \n');
+		fil.write('Physical Line(4)  = {7, 8};                        \n');
+		fil.write('Physical Line(5)  = {6};                           \n');
+		fil.write('Physical Line(6)  = {3, 4, 5};                     \n');
+		fil.write('Physical Line(7)  = {1, 2};                        \n');
+		fil.write('Physical Line(8)  = {13};                           \n');
+		
+		
+		fil.write('Physical Surface(21) = {14};                          \n');
 
 
 	else :
@@ -423,20 +458,30 @@ def NozzleGeoFile(FilNam, Mesh_options):
 		fil.write('Physical Surface(21) = {20, 18};                          \n');
 		
 		
-		fil.write('Physical Line(1)  = {1};                             \n');
-		fil.write('Physical Line(2)  = {2};                             \n');
-		fil.write('Physical Line(3)  = {3};                             \n');
-		fil.write('Physical Line(4)  = {4};                             \n');
-		fil.write('Physical Line(5)  = {5};                             \n');
-		fil.write('Physical Line(6)  = {6};                             \n');
-		fil.write('Physical Line(7)  = {7};                             \n');
-		fil.write('Physical Line(8)  = {8};                             \n');
-		fil.write('Physical Line(9)  = {9};                             \n');
-		fil.write('Physical Line(10) = {10};                            \n');
-		fil.write('Physical Line(11) = {11};                            \n');
-		fil.write('Physical Line(12) = {12,15};                         \n');
-		fil.write('Physical Line(13) = {13};                            \n');
-		fil.write('Physical Line(14) = {14};                            \n');
+		#fil.write('Physical Line(1)  = {1};                             \n');
+		#fil.write('Physical Line(2)  = {2};                             \n');
+		#fil.write('Physical Line(3)  = {3};                             \n');
+		#fil.write('Physical Line(4)  = {4};                             \n');
+		#fil.write('Physical Line(5)  = {5};                             \n');
+		#fil.write('Physical Line(6)  = {6};                             \n');
+		#fil.write('Physical Line(7)  = {7};                             \n');
+		#fil.write('Physical Line(8)  = {8};                             \n');
+		#fil.write('Physical Line(9)  = {9};                             \n');
+		#fil.write('Physical Line(10) = {10};                            \n');
+		#fil.write('Physical Line(11) = {11};                            \n');
+		#fil.write('Physical Line(12) = {12,15};                         \n');
+		#fil.write('Physical Line(13) = {13};                            \n');
+		#fil.write('Physical Line(14) = {14};                            \n');
+		
+		
+		fil.write('Physical Line(1)  = {12, 15};                          \n');
+		fil.write('Physical Line(2)  = {11};                          \n');
+		fil.write('Physical Line(3)  = {9, 10};                       \n');
+		fil.write('Physical Line(4)  = {7, 8};                        \n');
+		fil.write('Physical Line(5)  = {6};                           \n');
+		fil.write('Physical Line(6)  = {3, 4, 5};                     \n');
+		fil.write('Physical Line(7)  = {1, 2};                        \n');
+		fil.write('Physical Line(8)  = {13};                           \n');
 
 
 	fil.close();
@@ -444,3 +489,5 @@ def NozzleGeoFile(FilNam, Mesh_options):
 	fil = open("%s.opt"%FilNam,'w');
 	fil.write("Mesh.SaveElementTagType = 2;\n");
 	fil.close();
+	
+	
