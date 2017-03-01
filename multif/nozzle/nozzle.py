@@ -412,10 +412,11 @@ class Nozzle:
                     nozzle.su2_convergence_order = 3;
                 description += ", relative convergence order %i" % nozzle.su2_convergence_order;
                 
-                nozzle.OUTPUT_FORMAT = 'TECPLOT'
-                nozzle.CONV_FILENAME = 'history'
-                
-                
+                if 'SU2_OUTPUT_FORMAT' in config:
+                    nozzle.OUTPUT_FORMAT = config['SU2_OUTPUT_FORMAT'];
+                else:
+                    nozzle.OUTPUT_FORMAT = 'TECPLOT';
+                                
                 # --- Setup max iterations for SU2
                 if 'SU2_MAX_ITERATIONS' in config:
                     nozzle.su2_max_iterations = int(config['SU2_MAX_ITERATIONS']);
@@ -2117,6 +2118,8 @@ class Nozzle:
         
         nozzle.GetOutput = dict();
         
+        nozzle.OutputLocations = dict(); # for field variable outputs
+        
         if 'OUTPUT_NAME' in config:
             nozzle.Output_Name = config['OUTPUT_NAME'];
         else :
@@ -2184,6 +2187,9 @@ class Nozzle:
             nozzle.ks_temp_ratio.append(-1);
             nozzle.pn_temp_ratio.append(-1);
             nozzle.max_temp_ratio.append(-1);
+        nozzle.wall_pressure = -1;
+        nozzle.pressure = -1;
+        nozzle.velocity = -1;
         
         if 'OUTPUT_FUNCTIONS' in config:
             
@@ -2196,7 +2202,9 @@ class Nozzle:
                           'PN_FAILURE_CRITERIA'];
             dv_temp = ['KS_TEMPERATURE','PN_TEMPERATURE','MAX_TEMPERATURE'];
             dv_tempRatio = ['KS_TEMP_RATIO','PN_TEMP_RATIO','MAX_TEMP_RATIO'];
-            dv_keys = dv_scalar + dv_stress + dv_failure + dv_temp + dv_tempRatio;
+            dv_field = ['WALL_PRESSURE','PRESSURE','VELOCITY'];
+            dv_keys = dv_scalar + dv_stress + dv_failure + dv_temp + \
+                      dv_tempRatio + dv_field;
             
             # Stress and temperature outputs can have prefixes appended to them
             stress_prefix = [];
@@ -2220,6 +2228,8 @@ class Nozzle:
                     nozzle.GetOutput[key] = [0]*len(temp_prefix);
                 elif key in dv_tempRatio:
                     nozzle.GetOutput[key] = [0]*len(temp_prefix);
+                elif key in dv_field:
+                    nozzle.GetOutput[key] = 0;
 
             hdl = config['OUTPUT_FUNCTIONS'].strip('()');
             hdl = hdl.split(",");
@@ -2269,7 +2279,31 @@ class Nozzle:
                         nozzle.Output_Tags.append(key);
                     else:
                         sys.stderr.write('\n ## ERROR : %s cannot be '        \
-                          'returned if THERMAL_ANALYSIS= 0\n\n' % key);                           
+                          'returned if THERMAL_ANALYSIS= 0\n\n' % key);   
+                elif( key in dv_field ):
+                    nozzle.GetOutput[key] = 1;
+                    nozzle.Output_Tags.append(key);
+                    # Also extract necessary information for field
+                    if( key+'_LOCATIONS' in config ):
+                        loc = config[key+'_LOCATIONS'].strip('()')
+                        loc = loc.split(';')
+                        try: # list of numbers given
+                            float(loc[0].split(',')[0])
+                            tmp = 1
+                        except: # filename given
+                            tmp = 0
+                        if( tmp ): # list of numbers given
+                            locList = []
+                            for item in loc:
+                                item2 = item.split(',')
+                                locList.append([float(e) for e in item2])
+                            nozzle.OutputLocations[key] = np.squeeze(np.array(locList))                        
+                        else: # filename given
+                            nozzle.OutputLocations[key] = np.loadtxt(loc[0])                               
+                    else:
+                        sys.stderr.write('\n ## ERROR : key %s_LOCATIONS ' \
+                          'not found in config file to specify location of ' \
+                          'requested output repsonses\n\n')
                 else: # cycle through all possible more specific names for stress and temp
                     # check stress first         
                     assigned = 0;
@@ -2399,6 +2433,36 @@ class Nozzle:
                 prt_item.append('thrust');
                 prt_comp.append('');
                 prt_val.append('%0.16f' % nozzle.thrust); 
+                
+            elif tag == 'WALL_PRESSURE':
+                for i in range(nozzle.wall_pressure.size):
+                    fil.write('%0.16f\n' % nozzle.wall_pressure[i]);
+                    prt_item.append('wall pressure loc %i' % i);
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.wall_pressure[i]);
+                    
+            elif tag == 'PRESSURE':
+                for i in range(nozzle.pressure.size):
+                    fil.write('%0.16f\n' % nozzle.pressure[i]);
+                    prt_item.append('pressure loc %i' % i);
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.pressure[i]);  
+                    
+            elif tag == 'VELOCITY':
+                nr, nc = nozzle.velocity.shape
+                for i in range(nr):
+                    fil.write('%0.16f\n' % nozzle.velocity[i,0]);
+                    fil.write('%0.16f\n' % nozzle.velocity[i,1]);
+                    fil.write('%0.16f\n' % nozzle.velocity[i,2]);
+                    prt_item.append('velocity (x-dir) loc %i' % i);
+                    prt_item.append('velocity (y-dir) loc %i' % i);
+                    prt_item.append('velocity (z-dir) loc %i' % i);
+                    prt_comp.append('');
+                    prt_comp.append('');
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.velocity[i,0]);    
+                    prt_val.append('%0.16f' % nozzle.velocity[i,1]);    
+                    prt_val.append('%0.16f' % nozzle.velocity[i,2]);    
                                 
             elif tag == 'KS_TOTAL_STRESS':
                 for j in range(len(nozzle.stressComponentList)):
@@ -2676,6 +2740,36 @@ class Nozzle:
                 prt_item.append('thrust');
                 prt_comp.append('');
                 prt_val.append('%0.16f' % nozzle.thrust); 
+                
+            elif tag == 'WALL_PRESSURE':
+                for i in range(nozzle.wall_pressure.size):
+                    fil.write('%0.16f wall_pressure_%i\n' % (nozzle.wall_pressure[i],i));
+                    prt_item.append('wall pressure loc %i' % i);
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.wall_pressure[i]);
+                    
+            elif tag == 'PRESSURE':
+                for i in range(nozzle.pressure.size):
+                    fil.write('%0.16f pressure_%i\n' % (nozzle.pressure[i],i));
+                    prt_item.append('pressure loc %i' % i);
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.pressure[i]);  
+                    
+            elif tag == 'VELOCITY':
+                nr, nc = nozzle.velocity.shape
+                for i in range(nr):
+                    fil.write('%0.16f velocity_x_%i\n' % (nozzle.velocity[i,0],i));
+                    fil.write('%0.16f velocity_y_%i\n' % (nozzle.velocity[i,1],i));
+                    fil.write('%0.16f velocity_z_%i\n' % (nozzle.velocity[i,2],i));
+                    prt_item.append('velocity (x-dir) loc %i' % i);
+                    prt_item.append('velocity (y-dir) loc %i' % i);
+                    prt_item.append('velocity (z-dir) loc %i' % i);
+                    prt_comp.append('');
+                    prt_comp.append('');
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.velocity[i,0]);    
+                    prt_val.append('%0.16f' % nozzle.velocity[i,1]);    
+                    prt_val.append('%0.16f' % nozzle.velocity[i,2]);                 
                                 
             elif tag == 'KS_TOTAL_STRESS':
                 for j in range(len(nozzle.stressComponentList)):

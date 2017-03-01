@@ -829,6 +829,17 @@ def Run (nozzle,output='verbose'):
     if nozzle.GetOutput['MASS_WALL_ONLY'] == 1:
         n_layers = len(nozzle.wall.layer);
         nozzle.mass_wall_only = np.sum(performanceTuple[1][:n_layers]);
+    if nozzle.GetOutput['WALL_PRESSURE'] == 1:
+        nozzle.wall_pressure = np.interp(nozzle.OutputLocations['WALL_PRESSURE'], \
+          xPosition, flowTuple[3])
+    if nozzle.GetOutput['PRESSURE'] == 1:
+        nozzle.pressure = np.interp(nozzle.OutputLocations['PRESSURE'][:,0], \
+          xPosition, flowTuple[3])
+    if nozzle.GetOutput['VELOCITY'] == 1:
+        nr, nc = nozzle.OutputLocations['VELOCITY'].shape
+        nozzle.velocity = np.zeros((nr,3))
+        nozzle.velocity[:,0] = np.interp(nozzle.OutputLocations['VELOCITY'][:,0], \
+          xPosition, flowTuple[1])
     
     # For testing purposes only; usually these do not need to be output
     #nozzle.xPosition = xPosition
