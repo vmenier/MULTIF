@@ -15,6 +15,8 @@ from scipy.interpolate import interp2d
 from .. import nozzle as nozzlemod
 
 
+from multif import _mshint_module
+
 def PostProcessing (nozzle):
 	
 	# --- Check residual convergence
@@ -87,26 +89,44 @@ def PostProcessing (nozzle):
 #		  nozzle.wall.geometry.radius(nozzle.OutputLocations['WALL_PRESSURE']));
 #		nozzle.wall_pressure = np.squeeze(nozzle.wall_pressure);
 #		print nozzle.wall_pressure
-		  
+
+
 	if nozzle.GetOutput['PRESSURE'] == 1:
 		
-		sys.stderr.write("  ## ERROR : Pressure output not available yet.\n");
-		sys.exit(0);
+		#sys.stderr.write("  ## ERROR : Pressure output not available yet.\n");
+		#sys.exit(0);
 		
-		print 'Provide pressure in output here!'
-		nozzle.pressure = np.zeros((nozzle.OutputLocations['PRESSURE'].size,))
+		x = nozzle.OutputLocations['PRESSURE'][:,0];
+		y = nozzle.OutputLocations['PRESSURE'][:,1];
+		nozzle.pressure = ExtractSolutionAtXY (x, y, ["Pressure"]);
+		
+		nozzle.pressure = np.squeeze(nozzle.pressure);
+		
+#		print 'Provide pressure in output here!'
+#		nozzle.pressure = np.zeros((nozzle.OutputLocations['PRESSURE'].size,))
 #		func = interp2d(data[:,0], data[:,1], data[:,6], kind='linear');
 #		nozzle.pressure = func(nozzle.OutputLocations['PRESSURE'][:,0], \
 #		  nozzle.OutputLocations['PRESSURE'][:,1]);
 		  
 	if nozzle.GetOutput['VELOCITY'] == 1:
 		
-		sys.stderr.write("  ## ERROR : Velocity output not available yet.\n");
-		sys.exit(0);
+		#sys.stderr.write("  ## ERROR : Velocity output not available yet.\n");
+		#sys.exit(0);
 		
-		print 'Provide velocity in output here!'
-		nr, nc = nozzle.OutputLocations['VELOCITY'].shape
-		nozzle.velocity = np.zeros((nr,3))
+		x = nozzle.OutputLocations['VELOCITY'][:,0];
+		y = nozzle.OutputLocations['VELOCITY'][:,1];
+		cons = ExtractSolutionAtXY (x, y, ["Conservative_1","Conservative_2","Conservative_2"]);
+		
+		nozzle.velocity = np.zeros((len(cons),3));
+		for i in range(len(cons)):
+			nozzle.velocity[i][0] = cons[i][1]/cons[i][0]; 
+			nozzle.velocity[i][1] = cons[i][2]/cons[i][0]; 
+			nozzle.velocity[i][2] = 0.0;
+			
+#		print nozzle.velocity
+#		print 'Provide velocity in output here!'
+#		nr, nc = nozzle.OutputLocations['VELOCITY'].shape
+#		nozzle.velocity = np.zeros((nr,3))
 #		nozzle.velocity[:,0] = np.interp(nozzle.OutputLocations['VELOCITY'][:,0], \
 #		  xPosition, flowTuple[1])
  
@@ -330,5 +350,126 @@ def ExtractSolutionAtWall (nozzle):
 	return OutResult, pyInfo, idHeader;
 	
 	
+def WriteGMFMesh2D(MshNam, Ver, Tri):
+	
+	f = open(MshNam, 'wb');
+	
+	NbrVer = len(Ver);
+	NbrTri = len(Tri);
+	
+	f.write("MeshVersionFormatted\n2\nDimension\n2\n\n");
+
+
+	#--- Write vertices
+	f.write("Vertices\n%d\n" % NbrVer);
+	for i in range(0,NbrVer):
+		f.write("%lf %lf %d\n" % (Ver[i][0],Ver[i][1],0));
+		
+	#--- Write triangles
+	f.write("\n\nTriangles\n%d\n" % NbrTri);
+	for i in range(0,NbrTri):
+		f.write("%d %d %d 1\n" % (Tri[i][0],Tri[i][1], Tri[i][2]));
+		
+	f.write("\nEnd\n");
+	
+	if f :
+		f.close();
+
+
+def ExtractSolutionAtXY (x, y, tagField):
+	
+	Ver = [];
+	Tri = [];
+	
+	# --- Create structured mesh
+	
+	x, id_x = np.unique(x.round(decimals=4),return_inverse=True);
+	y, id_y = np.unique(y.round(decimals=4),return_inverse=True);
+	
+	Ni = len(x);
+	Nj = len(y);
+	
+	if Ni == 1:
+		x = np.append(x, x[0]+0.1);
+		Ni=Ni+1;
+		
+	if Nj == 1:
+		y = np.append(y, y[0]+0.1);
+		Nj=Nj+1;
+		
+	NbrVer = Ni*Nj;
+	
+	for i in range(0,Ni):
+		for j in range(0,Nj):
+			Ver.append([x[i],y[j],0.0]);
+	
+	NbrTri = 0;
+	
+	for i in range(2,Ni+1):
+		for j in range(2,Nj+1):
+			ind = (i-2)*Nj+j-1;
+	
+			Tri.append([ind, ind+Nj, ind+Nj+1]);
+			Tri.append([ind, ind+1+Nj, ind+1,1]);
+
+	WriteGMFMesh2D('nozzle_extract.mesh', Ver, Tri);
+	
+	info = [];
+	Crd  = [];
+	Tri  = [];
+	Tet  = [];
+	Sol  = [];
+	Header = [];
+	
+	out = _mshint_module.py_Interpolation ("nozzle_extract.mesh", "nozzle.su2", "nozzle.dat",\
+		info, Crd, Tri, Tet, Sol, Header);
+	
+	dim    = info[0];
+	NbrVer = info[1]; 
+	NbrTri = info[2];
+	NbrTet = info[3];
+	SolSiz = info[4];
+	
+	NbrFld = len(tagField);
+	iFldTab = [];
 	
 	
+	for iTab in range(NbrFld):
+		
+		tag = tagField[iTab];
+		iFld = -1
+		
+		
+		for i in range(0,len(Header)):
+			if ( Header[i] == tag ):
+				iFld = i;
+				break;
+		
+		if iFld == -1 :
+			sys.stderr.write("  ## ERROR Extraction solution : required field not found in solution file.\n");
+			sys.exit(1);
+		
+		iFldTab.append(iFld);
+		
+	OutSol = [];
+	
+	for i in range(len(id_x)):
+		
+		ii = id_x[i]+1;
+		jj = id_y[i]+1;
+		
+		iVer = (ii-1)*Nj+jj;
+		
+		idx  = (iVer-1)*dim;
+		idxs = (iVer-1)*SolSiz;
+		
+		
+		solTab = [];
+		
+		for iTab in range(NbrFld):
+			iFld = iFldTab[iTab];
+			solTab.append(Sol[idxs+iFld+1]);
+		
+		OutSol.append(solTab);
+		
+	return OutSol;
