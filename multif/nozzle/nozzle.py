@@ -721,12 +721,15 @@ class Nozzle:
     def SetupWallTemp(self, config, output='verbose'): 
         
         nozzle = self;
+
+        nozzle.wall_temp = 0;
         
         if 'WALL_TEMP' not in config:
             return 0;
         else:
             if output == 'verbose':
                 sys.stdout.write('Wall temp will be fixed\n');
+            nozzle.wall_temp = 1;
                 
         definition = config['WALL_TEMP'].strip('()');
         if definition == 'KLE':
@@ -1479,7 +1482,7 @@ class Nozzle:
                 for iCoord in range(len(nozzle.wall.temperature.thicknessNodes)):
                     id_dv = nozzle.DV_Head[iTag] + iCoord;                  
                     prt_name.append('wall temp value #%d' % (iCoord+1));
-                    prt_basval.append('%.4lf'% nozzle.wall.temperature.thicknessNodes[iCoord][1]);
+                    prt_basval.append('%.4lf'% [iCoord][1]);
                     prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
                     nozzle.wall.temperature.thicknessNodes[iCoord][1] = nozzle.DV_List[id_dv];
                     NbrChanged = NbrChanged+1;
@@ -3073,6 +3076,7 @@ def NozzleSetup( config_name, flevel, output='verbose' ):
 
     nozzle.mesh_name    =  'nozzle.su2';
     nozzle.restart_name =  'nozzle.dat';
+    nozzle.CONV_FILENAME = 'history'
     
     if 'TEMP_RUN_DIR' in config:
         if config['TEMP_RUN_DIR'] == 'YES':

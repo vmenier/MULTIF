@@ -236,6 +236,10 @@ def SetupConfig (solver_options):
     Pt = solver_options.Pt;
     Tt = solver_options.Tt;
 
+	
+    wall_temp = solver_options.wall_temp;
+    wall_temp_values = solver_options.wall_temp_values;
+	
     # --- SU2_RUN
 
     config.SU2_RUN = solver_options.SU2_RUN;
@@ -399,10 +403,26 @@ def SetupConfig (solver_options):
         config.HARD_LIMITING_PARAM= '(0.15, 1e-5)';
         config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 30.0 )';
         config.RESIDUAL_MAXVAL= 2;
-
+		
+    # --- Setup wall temp distribution
+    
+    if ( wall_temp == 1 ) :
+    	
+    	nbv = len(wall_temp_values);
+    	print "NBV %d" % nbv
+    	print wall_temp_values
+    	
+    	temp_kwd = "%lf, %lf" % (wall_temp_values[0][0], wall_temp_values[0][1]);
+    	
+    	for i in range(1,nbv):
+    		temp_kwd = "%s, %lf, %lf" % (temp_kwd, wall_temp_values[i][0], wall_temp_values[i][1]);
+    
+    	temp_kwd = "(%s)" % temp_kwd;
+    	
+    	config.MARKER_WALL_TEMP= "( PhysicalLine1 )";
+    	config.WALL_TEMP_DEFINITION = temp_kwd;
+    	
     return config;
-
-
 
 
 
@@ -456,6 +476,15 @@ def runSU2 ( nozzle ):
     
     solver_options.Pt = Ps + 0.5*rho*U*U;
     solver_options.Tt = Ts*(1.+0.5*(gam-1.)*M*M);
+
+    # --- Setup wall temperature distribution
+    
+    if ( nozzle.wall_temp == 1 ) :
+    	if ( nozzle.method != 'RANS' ):
+    		sys.stderr.write('  ## ERROR : Wall temperature distribution only available for RANS.\n');
+    		sys.exit(1);
+    	solver_options.wall_temp = nozzle.wall_temp;
+    	solver_options.wall_temp_values = nozzle.wall.temperature.thicknessNodes;
 
     #print "Rey %lf mu %lf rho %lf  T %lf  P %lf  D %lf" % (Rey, mu, rho, Ts, Ps,  D)
     #sys.exit(1)
