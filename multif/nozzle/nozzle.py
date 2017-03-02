@@ -2187,6 +2187,7 @@ class Nozzle:
             nozzle.ks_temp_ratio.append(-1);
             nozzle.pn_temp_ratio.append(-1);
             nozzle.max_temp_ratio.append(-1);
+        nozzle.wall_temperature = -1;
         nozzle.wall_pressure = -1;
         nozzle.pressure = -1;
         nozzle.velocity = -1;
@@ -2202,7 +2203,7 @@ class Nozzle:
                           'PN_FAILURE_CRITERIA'];
             dv_temp = ['KS_TEMPERATURE','PN_TEMPERATURE','MAX_TEMPERATURE'];
             dv_tempRatio = ['KS_TEMP_RATIO','PN_TEMP_RATIO','MAX_TEMP_RATIO'];
-            dv_field = ['WALL_PRESSURE','PRESSURE','VELOCITY'];
+            dv_field = ['WALL_TEMPERATURE','WALL_PRESSURE','PRESSURE','VELOCITY'];
             dv_keys = dv_scalar + dv_stress + dv_failure + dv_temp + \
                       dv_tempRatio + dv_field;
             
@@ -2433,7 +2434,14 @@ class Nozzle:
                 prt_item.append('thrust');
                 prt_comp.append('');
                 prt_val.append('%0.16f' % nozzle.thrust); 
-                
+
+            elif tag == 'WALL_TEMPERATURE':
+                for i in range(nozzle.wall_temperature.size):
+                    fil.write('%0.16f\n' % nozzle.wall_temperature[i]);
+                    prt_item.append('wall temp loc %i' % i);
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.wall_temperature[i]);
+                    
             elif tag == 'WALL_PRESSURE':
                 for i in range(nozzle.wall_pressure.size):
                     fil.write('%0.16f\n' % nozzle.wall_pressure[i]);
@@ -2741,6 +2749,13 @@ class Nozzle:
                 prt_comp.append('');
                 prt_val.append('%0.16f' % nozzle.thrust); 
                 
+            elif tag == 'WALL_TEMPERATURE':
+                for i in range(nozzle.wall_temperature.size):
+                    fil.write('%0.16f wall_temp_%i\n' % (nozzle.wall_temperature[i],i));
+                    prt_item.append('wall temp loc %i' % i);
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.wall_temperature[i]);
+                    
             elif tag == 'WALL_PRESSURE':
                 for i in range(nozzle.wall_pressure.size):
                     fil.write('%0.16f wall_pressure_%i\n' % (nozzle.wall_pressure[i],i));

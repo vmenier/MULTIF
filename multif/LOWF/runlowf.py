@@ -822,6 +822,8 @@ def Run (nozzle,output='verbose'):
     xPosition, flowTuple, heatTuple,                                         \
     geoTuple, performanceTuple = Quasi1D(nozzle,output);
     
+    print flowTuple[0][0]
+    
     nozzle.mass = np.sum(performanceTuple[1]);
     nozzle.volume = np.sum(performanceTuple[0]);
     nozzle.thrust = performanceTuple[2];
@@ -829,6 +831,9 @@ def Run (nozzle,output='verbose'):
     if nozzle.GetOutput['MASS_WALL_ONLY'] == 1:
         n_layers = len(nozzle.wall.layer);
         nozzle.mass_wall_only = np.sum(performanceTuple[1][:n_layers]);
+    if nozzle.GetOutput['WALL_TEMPERATURE'] == 1:
+        nozzle.wall_temperature = np.interp(nozzle.OutputLocations['WALL_TEMPERATURE'], \
+          xPosition, heatTuple[0])
     if nozzle.GetOutput['WALL_PRESSURE'] == 1:
         nozzle.wall_pressure = np.interp(nozzle.OutputLocations['WALL_PRESSURE'], \
           xPosition, flowTuple[3])
