@@ -747,9 +747,20 @@ class Nozzle:
             try:
                 thicknessNodes = self.ParseThickness(config,'WALL_TEMP',loc='_LOCATIONS',val='_VALUES');
             except:
-                sys.stderr.write('\n ## ERROR : Piecewise linear definition ' \
-                     'could not be parsed for WALL_TEMP.\n\n');
-                sys.exit(0);
+                try:
+                    xCoordFile = config['WALL_TEMP_LOCATIONS'].strip('()');
+                    yCoordFile = config['WALL_TEMP_VALUES'].strip('()');
+                    xCoord = np.loadtxt(xCoordFile);
+                    yCoord = np.loadtxt(yCoordFile);
+                    thicknessNodes = [[0 for i in range(2)] for j in range(yCoord.size)];
+                    
+                    for i in range(xCoord.size):
+                        thicknessNodes[i][0] = xCoord[i];
+                        thicknessNodes[i][1] = yCoord[i];                    
+                except:                        
+                    sys.stderr.write('\n ## ERROR : Piecewise linear definition ' \
+                         'could not be parsed for WALL_TEMP.\n\n');
+                    sys.exit(0);
                 
             nozzle.wall.temperature = component.Distribution('WALL_TEMP');
             nozzle.wall.temperature.param = 'PIECEWISE_LINEAR';
@@ -1482,7 +1493,7 @@ class Nozzle:
                 for iCoord in range(len(nozzle.wall.temperature.thicknessNodes)):
                     id_dv = nozzle.DV_Head[iTag] + iCoord;                  
                     prt_name.append('wall temp value #%d' % (iCoord+1));
-                    prt_basval.append('%.4lf'% [iCoord][1]);
+                    prt_basval.append('%.4lf'% nozzle.wall.temperature.thicknessNodes[iCoord][1]);
                     prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
                     nozzle.wall.temperature.thicknessNodes[iCoord][1] = nozzle.DV_List[id_dv];
                     NbrChanged = NbrChanged+1;
@@ -2307,7 +2318,7 @@ class Nozzle:
                     else:
                         sys.stderr.write('\n ## ERROR : key %s_LOCATIONS ' \
                           'not found in config file to specify location of ' \
-                          'requested output repsonses\n\n')
+                          'requested output responses\n\n')
                 else: # cycle through all possible more specific names for stress and temp
                     # check stress first         
                     assigned = 0;
