@@ -432,8 +432,7 @@ def ExtractSolutionAtXY (x, y, tagField):
 	
 	NbrFld = len(tagField);
 	iFldTab = [];
-	
-	
+		
 	for iTab in range(NbrFld):
 		
 		tag = tagField[iTab];

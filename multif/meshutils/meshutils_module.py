@@ -126,6 +126,10 @@ py_ExtractAlongLine = _meshutils_module.py_ExtractAlongLine
 def py_ExtractAtRef(MshNam, SolNam, pyRefs, pyResult, PyInfo, pyHeader):
     return _meshutils_module.py_ExtractAtRef(MshNam, SolNam, pyRefs, pyResult, PyInfo, pyHeader)
 py_ExtractAtRef = _meshutils_module.py_ExtractAtRef
+
+def py_ReadMesh(MshNam, SolNam, pyVer, pyTri, pyTet, pyEdg):
+    return _meshutils_module.py_ReadMesh(MshNam, SolNam, pyVer, pyTri, pyTet, pyEdg)
+py_ReadMesh = _meshutils_module.py_ReadMesh
 # This file is compatible with both classic and new-style classes.
 
 

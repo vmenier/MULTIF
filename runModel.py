@@ -45,7 +45,9 @@ def main():
         sys.stderr.write("  ## ERROR : Please choose a fidelity level to run (option -l or --flevel)");
         sys.exit(0);
     
-    nozzle = multif.nozzle.NozzleSetup( options.filename, options.flevel, output );
+    nozzle = multif.nozzle.NozzleSetup( options.filename, options.flevel, output, options.partitions );
+
+	
 
     if nozzle.method == 'NONIDEALNOZZLE' :
         multif.LOWF.Run(nozzle, output);

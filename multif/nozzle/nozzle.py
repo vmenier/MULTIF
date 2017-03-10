@@ -3060,7 +3060,7 @@ class Nozzle:
         
         sys.stdout.write("  -- Info : nozzle.svg OPENED.\n\n");
 
-def NozzleSetup( config_name, flevel, output='verbose' ):
+def NozzleSetup( config_name, flevel, output='verbose', partitions=1 ):
     import tempfile
         
     if not os.path.isfile(config_name) :
@@ -3077,6 +3077,8 @@ def NozzleSetup( config_name, flevel, output='verbose' ):
     nozzle.mesh_name    =  'nozzle.su2';
     nozzle.restart_name =  'nozzle.dat';
     nozzle.CONV_FILENAME = 'history'
+
+    nozzle.partitions = partitions;
     
     if 'TEMP_RUN_DIR' in config:
         if config['TEMP_RUN_DIR'] == 'YES':

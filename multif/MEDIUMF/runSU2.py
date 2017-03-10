@@ -67,6 +67,8 @@ def SetupConfig_old (solver_options):
     
     convergence_order = solver_options.convergence_order;
     
+    partitions = solver_options.partitions;
+
     MaxCFL = solver_options.MaxCFL;
     
     # --- SU2_RUN
@@ -149,7 +151,7 @@ def SetupConfig_old (solver_options):
     config.WRT_CON_FREQ= '1';
     
     # --- Misc
-    config.NUMBER_PART= 1;
+    config.NUMBER_PART= partitions;
     
     # --- Local relaxation / CFL
     #     Note: these options are only available in a custom version of su2:
@@ -392,8 +394,7 @@ def SetupConfig (solver_options):
     config.RESTART_FLOW_FILENAME= restart_name;
     config.WRT_SOL_FREQ= '1000';
     config.WRT_CON_FREQ= '1';
-
-
+	
     # --- Local relaxation / CFL
     #     Note: these options are only available in a custom version of su2:
     #                     https://github.com/vmenier/SU2/tree/darpa
@@ -472,13 +473,16 @@ def runSU2 ( nozzle ):
     solver_options.Reynolds        = Rey;
 
     
-    solver_options.nproc = 1;
+    solver_options.nproc = nozzle.partitions;
     
     solver_options.Pt = Ps + 0.5*rho*U*U;
     solver_options.Tt = Ts*(1.+0.5*(gam-1.)*M*M);
 
     # --- Setup wall temperature distribution
     
+    solver_options.wall_temp = 0;
+    solver_options.wall_temp_values = [];
+
     if ( nozzle.wall_temp == 1 ) :
     	if ( nozzle.method != 'RANS' ):
     		sys.stderr.write('  ## ERROR : Wall temperature distribution only available for RANS.\n');
