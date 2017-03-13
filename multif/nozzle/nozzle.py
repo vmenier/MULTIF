@@ -447,14 +447,23 @@ class Nozzle:
                     nozzle.bl_ds        = 0.000007;
                     nozzle.bl_ratio     = 1.3; 
                     nozzle.bl_thickness = 0.02;
-
-                    scaleMesh = 1.0;
-                    if meshsize == 'COARSE':
-                        scaleMesh = 2.5;
-                    elif meshsize == 'MEDIUM':
-                        scaleMesh = 1.1;
-                    elif meshsize == 'FINE':
-                        scaleMesh = 0.5;
+					
+                    if ( method == "EULER" ):
+                    	scaleMesh = 1.0;
+                    	if meshsize == 'COARSE':
+                    	    scaleMesh = 2.5;
+                    	elif meshsize == 'MEDIUM':
+                    	    scaleMesh = 1.1;
+                    	elif meshsize == 'FINE':
+                    	    scaleMesh = 0.5;
+                    else : 
+                    	scaleMesh = 1.0;
+                    	if meshsize == 'COARSE':
+                    	    scaleMesh = 2.5;
+                    	elif meshsize == 'MEDIUM':
+                    	    scaleMesh = 1.5;
+                    	elif meshsize == 'FINE':
+                    	    scaleMesh = 0.9;
 
                     nozzle.meshhl = scaleMesh*np.asarray([0.1, 0.07, 0.06, 0.006, 0.0108]);
 
