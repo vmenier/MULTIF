@@ -238,9 +238,11 @@ def SetupConfig (solver_options):
     Pt = solver_options.Pt;
     Tt = solver_options.Tt;
 
-	
-    wall_temp = solver_options.wall_temp;
-    wall_temp_values = solver_options.wall_temp_values;
+    if hasattr(solver_options,'wall_temp'):
+        wall_temp = solver_options.wall_temp;
+        wall_temp_values = solver_options.wall_temp_values;
+    else:
+        wall_temp = 0;
 	
     # --- SU2_RUN
 

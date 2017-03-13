@@ -1011,8 +1011,8 @@ int writeAEROS2(GModel *g,
     fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.0\" 1 NG 1 mechanical\n");
   }
   // 1st principal stress
-  fprintf(fp, "stressp1 14 7 \"STRESSP1.cmc\" 1 lower\n");
-  fprintf(fp, "stressp1 14 7 \"STRESSP1.0\" 1 NG 1 lower\n");
+  fprintf(fp, "stressp1 14 7 \"STRESSP1.cmc\" 1\n");
+  fprintf(fp, "stressp1 14 7 \"STRESSP1.0\" 1 NG 1\n");
   if(lf == 1) {
     fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.cmc\" 1 thermal\n");
     fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.0\" 1 NG 1 thermal\n");
@@ -1020,8 +1020,8 @@ int writeAEROS2(GModel *g,
     fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.0\" 1 NG 1 mechanical\n");
   }
   // 2nd principal stress
-  fprintf(fp, "stressp2 14 7 \"STRESSP2.cmc\" 1 lower\n");
-  fprintf(fp, "stressp2 14 7 \"STRESSP2.0\" 1 NG 1 lower\n");
+  fprintf(fp, "stressp2 14 7 \"STRESSP2.cmc\" 1\n");
+  fprintf(fp, "stressp2 14 7 \"STRESSP2.0\" 1 NG 1\n");
   if(lf == 1) {
     fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.cmc\" 1 thermal\n");
     fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.0\" 1 NG 1 thermal\n");
@@ -1029,14 +1029,23 @@ int writeAEROS2(GModel *g,
     fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.0\" 1 NG 1 mechanical\n");
   }
   // 3rd principal stress
-  fprintf(fp, "stressp3 14 7 \"STRESSP3.cmc\" 1 lower\n");
-  fprintf(fp, "stressp3 14 7 \"STRESSP3.0\" 1 NG 1 lower\n");
+  fprintf(fp, "stressp3 14 7 \"STRESSP3.cmc\" 1\n");
+  fprintf(fp, "stressp3 14 7 \"STRESSP3.0\" 1 NG 1\n");
   if(lf == 1) {
     fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.cmc\" 1 thermal\n");
     fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.0\" 1 NG 1 thermal\n");
     fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.cmc\" 1 mechanical\n");
     fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.0\" 1 NG 1 mechanical\n");
   }
+  // 1st principal strain
+  fprintf(fp, "strainp1 14 7 \"STRAINP1.cmc\" 1\n");
+  fprintf(fp, "strainp1 14 7 \"STRAINP1.0\" 1 NG 1\n");
+  // 2nd principal strain
+  fprintf(fp, "strainp2 14 7 \"STRAINP2.cmc\" 1\n");
+  fprintf(fp, "strainp2 14 7 \"STRAINP2.0\" 1 NG 1\n");
+  // 3rd principal strain
+  fprintf(fp, "strainp3 14 7 \"STRAINP3.cmc\" 1\n");
+  fprintf(fp, "strainp3 14 7 \"STRAINP3.0\" 1 NG 1\n");
 
   fprintf(fp, "*\n");
   fprintf(fp, "GROUPS\n");

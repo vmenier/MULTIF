@@ -756,9 +756,20 @@ class Nozzle:
             try:
                 thicknessNodes = self.ParseThickness(config,'WALL_TEMP',loc='_LOCATIONS',val='_VALUES');
             except:
-                sys.stderr.write('\n ## ERROR : Piecewise linear definition ' \
-                     'could not be parsed for WALL_TEMP.\n\n');
-                sys.exit(0);
+                try:
+                    xCoordFile = config['WALL_TEMP_LOCATIONS'].strip('()');
+                    yCoordFile = config['WALL_TEMP_VALUES'].strip('()');
+                    xCoord = np.loadtxt(xCoordFile);
+                    yCoord = np.loadtxt(yCoordFile);
+                    thicknessNodes = [[0 for i in range(2)] for j in range(yCoord.size)];
+                    
+                    for i in range(xCoord.size):
+                        thicknessNodes[i][0] = xCoord[i];
+                        thicknessNodes[i][1] = yCoord[i];                    
+                except:                        
+                    sys.stderr.write('\n ## ERROR : Piecewise linear definition ' \
+                         'could not be parsed for WALL_TEMP.\n\n');
+                    sys.exit(0);
                 
             nozzle.wall.temperature = component.Distribution('WALL_TEMP');
             nozzle.wall.temperature.param = 'PIECEWISE_LINEAR';
@@ -1491,7 +1502,7 @@ class Nozzle:
                 for iCoord in range(len(nozzle.wall.temperature.thicknessNodes)):
                     id_dv = nozzle.DV_Head[iTag] + iCoord;                  
                     prt_name.append('wall temp value #%d' % (iCoord+1));
-                    prt_basval.append('%.4lf'% [iCoord][1]);
+                    prt_basval.append('%.4lf'% nozzle.wall.temperature.thicknessNodes[iCoord][1]);
                     prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
                     nozzle.wall.temperature.thicknessNodes[iCoord][1] = nozzle.DV_List[id_dv];
                     NbrChanged = NbrChanged+1;
@@ -2199,6 +2210,7 @@ class Nozzle:
             nozzle.ks_temp_ratio.append(-1);
             nozzle.pn_temp_ratio.append(-1);
             nozzle.max_temp_ratio.append(-1);
+        nozzle.wall_temperature = -1;
         nozzle.wall_pressure = -1;
         nozzle.pressure = -1;
         nozzle.velocity = -1;
@@ -2214,7 +2226,7 @@ class Nozzle:
                           'PN_FAILURE_CRITERIA'];
             dv_temp = ['KS_TEMPERATURE','PN_TEMPERATURE','MAX_TEMPERATURE'];
             dv_tempRatio = ['KS_TEMP_RATIO','PN_TEMP_RATIO','MAX_TEMP_RATIO'];
-            dv_field = ['WALL_PRESSURE','PRESSURE','VELOCITY'];
+            dv_field = ['WALL_TEMPERATURE','WALL_PRESSURE','PRESSURE','VELOCITY'];
             dv_keys = dv_scalar + dv_stress + dv_failure + dv_temp + \
                       dv_tempRatio + dv_field;
             
@@ -2315,7 +2327,7 @@ class Nozzle:
                     else:
                         sys.stderr.write('\n ## ERROR : key %s_LOCATIONS ' \
                           'not found in config file to specify location of ' \
-                          'requested output repsonses\n\n')
+                          'requested output responses\n\n')
                 else: # cycle through all possible more specific names for stress and temp
                     # check stress first         
                     assigned = 0;
@@ -2445,7 +2457,14 @@ class Nozzle:
                 prt_item.append('thrust');
                 prt_comp.append('');
                 prt_val.append('%0.16f' % nozzle.thrust); 
-                
+
+            elif tag == 'WALL_TEMPERATURE':
+                for i in range(nozzle.wall_temperature.size):
+                    fil.write('%0.16f\n' % nozzle.wall_temperature[i]);
+                    prt_item.append('wall temp loc %i' % i);
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.wall_temperature[i]);
+                    
             elif tag == 'WALL_PRESSURE':
                 for i in range(nozzle.wall_pressure.size):
                     fil.write('%0.16f\n' % nozzle.wall_pressure[i]);
@@ -2753,6 +2772,13 @@ class Nozzle:
                 prt_comp.append('');
                 prt_val.append('%0.16f' % nozzle.thrust); 
                 
+            elif tag == 'WALL_TEMPERATURE':
+                for i in range(nozzle.wall_temperature.size):
+                    fil.write('%0.16f wall_temp_%i\n' % (nozzle.wall_temperature[i],i));
+                    prt_item.append('wall temp loc %i' % i);
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.wall_temperature[i]);
+                    
             elif tag == 'WALL_PRESSURE':
                 for i in range(nozzle.wall_pressure.size):
                     fil.write('%0.16f wall_pressure_%i\n' % (nozzle.wall_pressure[i],i));

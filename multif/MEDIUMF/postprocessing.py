@@ -41,31 +41,12 @@ def PostProcessing (nozzle):
 		  nozzle.mass = np.sum(mass);
 		  n_layers = len(nozzle.wall.layer);
 		  nozzle.mass_wall_only = np.sum(mass[:n_layers]);
-	
-	#if( nozzle.GetOutput['WALL_PRESSURE'] == 1 or 
-	#	nozzle.GetOutput['PRESSURE'] == 1 or
-	#	nozzle.GetOutput['VELOCITY'] == 1 ):
-	#		
-	#	# Read data from flow.dat file for post-processing
-	#	f = open('flow.dat','r');
-	#	f.readline(); f.readline(); line = f.readline();
-	#	line = line.split(' ');
-	#	nNodes = int(line[2].strip(','));
-	#	data = np.empty((nNodes,10));
-	#	for i in range(nNodes):
-	#		line = f.readline();
-	#		data[i,:] = np.array([float(e) for e in line.split()])
-	#	f.close();
 
 	SolExtract, Size, idHeader  = ExtractSolutionAtWall(nozzle);
 
-	#print SolExtract
-	
 	iPres = idHeader['Pressure'];
 	iTemp = idHeader['Temperature'];
-	
-	
-	
+
 	Pres = SolExtract[:,iPres];
 	Temp = SolExtract[:,iTemp];
 	
@@ -82,53 +63,26 @@ def PostProcessing (nozzle):
 		#plt.legend()
 		#plt.show();
 		#sys.exit(1);
-		
-		
-#		func = interp2d(data[:,0], data[:,1], data[:,6], kind='linear');
-#		nozzle.wall_pressure = func(nozzle.OutputLocations['WALL_PRESSURE'], \
-#		  nozzle.wall.geometry.radius(nozzle.OutputLocations['WALL_PRESSURE']));
-#		nozzle.wall_pressure = np.squeeze(nozzle.wall_pressure);
-#		print nozzle.wall_pressure
-
 
 	if nozzle.GetOutput['PRESSURE'] == 1:
-		
-		#sys.stderr.write("  ## ERROR : Pressure output not available yet.\n");
-		#sys.exit(0);
 		
 		x = nozzle.OutputLocations['PRESSURE'][:,0];
 		y = nozzle.OutputLocations['PRESSURE'][:,1];
 		nozzle.pressure = ExtractSolutionAtXY (x, y, ["Pressure"]);
 		
 		nozzle.pressure = np.squeeze(nozzle.pressure);
-		
-#		print 'Provide pressure in output here!'
-#		nozzle.pressure = np.zeros((nozzle.OutputLocations['PRESSURE'].size,))
-#		func = interp2d(data[:,0], data[:,1], data[:,6], kind='linear');
-#		nozzle.pressure = func(nozzle.OutputLocations['PRESSURE'][:,0], \
-#		  nozzle.OutputLocations['PRESSURE'][:,1]);
 		  
 	if nozzle.GetOutput['VELOCITY'] == 1:
 		
-		#sys.stderr.write("  ## ERROR : Velocity output not available yet.\n");
-		#sys.exit(0);
-		
 		x = nozzle.OutputLocations['VELOCITY'][:,0];
 		y = nozzle.OutputLocations['VELOCITY'][:,1];
-		cons = ExtractSolutionAtXY (x, y, ["Conservative_1","Conservative_2","Conservative_2"]);
+		cons = ExtractSolutionAtXY (x, y, ["Conservative_1","Conservative_2","Conservative_3"]);
 		
 		nozzle.velocity = np.zeros((len(cons),3));
 		for i in range(len(cons)):
 			nozzle.velocity[i][0] = cons[i][1]/cons[i][0]; 
 			nozzle.velocity[i][1] = cons[i][2]/cons[i][0]; 
 			nozzle.velocity[i][2] = 0.0;
-			
-#		print nozzle.velocity
-#		print 'Provide velocity in output here!'
-#		nr, nc = nozzle.OutputLocations['VELOCITY'].shape
-#		nozzle.velocity = np.zeros((nr,3))
-#		nozzle.velocity[:,0] = np.interp(nozzle.OutputLocations['VELOCITY'][:,0], \
-#		  xPosition, flowTuple[1])
  
 def CheckConvergence ( nozzle ) :
 	
