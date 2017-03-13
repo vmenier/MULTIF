@@ -10,9 +10,16 @@ from .. import _meshutils_module
 import ctypes
 import numpy as np
 
-from scipy.interpolate import interp1d	
+
+
+from scipy.interpolate import interp1d  
+from scipy.interpolate import interp2d  
+
+
 from .. import nozzle as nozzlemod
 
+
+from multif import _mshint_module
 
 def PostProcessing (nozzle):
 	
@@ -29,28 +36,71 @@ def PostProcessing (nozzle):
 	
 	SolExtract, Size, Header  = ExtractSolutionAtExit(nozzle);
 	
-	nozzle.thrust = -1;
-	nozzle.volume = -1;
-	
+
 	if nozzle.GetOutput['THRUST'] == 1:			
 		nozzle.thrust = ComputeThrust ( nozzle, SolExtract, Size, Header );
 	
 	if nozzle.GetOutput['VOLUME'] == 1 or nozzle.GetOutput['MASS'] == 1 or nozzle.GetOutput['MASS_WALL_ONLY'] == 1:
-	      volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle);
-	      nozzle.volume = np.sum(volume);
-	      nozzle.mass = np.sum(mass);
-	      n_layers = len(nozzle.wall.layer);
-	      nozzle.mass_wall_only = np.sum(mass[:n_layers]);		
 
+		  volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle);
+		  nozzle.volume = np.sum(volume);
+		  nozzle.mass = np.sum(mass);
+		  n_layers = len(nozzle.wall.layer);
+		  nozzle.mass_wall_only = np.sum(mass[:n_layers]);
+
+	SolExtract, Size, idHeader  = ExtractSolutionAtWall(nozzle);
+
+
+	iPres = idHeader['Pressure'];
+	iTemp = idHeader['Temperature'];
+
+	Pres = SolExtract[:,iPres];
+	Temp = SolExtract[:,iTemp];
+	
+	if nozzle.GetOutput['WALL_PRESSURE'] == 1:		
+		nozzle.wall_pressure = np.zeros((nozzle.OutputLocations['WALL_PRESSURE'].size,1))
+		func = interp1d(SolExtract[:,0],  Pres, kind='linear');
+		nozzle.wall_pressure = func(nozzle.OutputLocations['WALL_PRESSURE']);
+		nozzle.wall_pressure = np.squeeze(nozzle.wall_pressure);
+		
+		# --- CHECK INTERPOLATION :
+		#import matplotlib.pyplot as plt
+		#plt.plot(SolExtract[:,0], Pres, "-", label="EXTRACT")
+		#plt.plot(nozzle.OutputLocations['WALL_PRESSURE'], nozzle.wall_pressure, "-", label="OUTPUT")
+		#plt.legend()
+		#plt.show();
+		#sys.exit(1);
+
+	if nozzle.GetOutput['PRESSURE'] == 1:
+		
+		x = nozzle.OutputLocations['PRESSURE'][:,0];
+		y = nozzle.OutputLocations['PRESSURE'][:,1];
+		nozzle.pressure = ExtractSolutionAtXY (x, y, ["Pressure"]);
+		
+		nozzle.pressure = np.squeeze(nozzle.pressure);
+		  
+	if nozzle.GetOutput['VELOCITY'] == 1:
+		
+		x = nozzle.OutputLocations['VELOCITY'][:,0];
+		y = nozzle.OutputLocations['VELOCITY'][:,1];
+		cons = ExtractSolutionAtXY (x, y, ["Conservative_1","Conservative_2","Conservative_3"]);
+		
+		nozzle.velocity = np.zeros((len(cons),3));
+		for i in range(len(cons)):
+			nozzle.velocity[i][0] = cons[i][1]/cons[i][0]; 
+			nozzle.velocity[i][1] = cons[i][2]/cons[i][0]; 
+			nozzle.velocity[i][2] = 0.0;
+ 
 def CheckConvergence ( nozzle ) :
 	
-	# filenames
-	plot_format      = nozzle.OUTPUT_FORMAT;
+
+	plot_format	  = nozzle.OUTPUT_FORMAT;
 	plot_extension   = SU2.io.get_extension(plot_format)
 	history_filename = nozzle.CONV_FILENAME + plot_extension
-	#special_cases    = SU2.io.get_specialCases(config)
+	#special_cases	= SU2.io.get_specialCases(config)
 	
-	history      = SU2.io.read_history( history_filename )
+	history	  = SU2.io.read_history( history_filename )
+
 	
 	plot = SU2.io.read_plot(history_filename);
 	
@@ -65,8 +115,10 @@ def CheckConvergence ( nozzle ) :
 	
 	
 def ExtractSolutionAtExit ( nozzle ):
-	
-	mesh_name    = nozzle.mesh_name;
+
+
+	mesh_name	= nozzle.mesh_name;
+
 	restart_name = nozzle.restart_name;
 	
 	pyResult = [];
@@ -146,7 +198,9 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
 	
 	#for iVer in range(1, NbrVer) :
 	#	
-	#	y    = float(SolExtract[iVer][1]);
+
+	#	y	= float(SolExtract[iVer][1]);
+
 	#	
 	#	#if y > nozzle.height-1e-6:
 	#	#	print "REMOVE POINT %d" % iVer
@@ -221,7 +275,9 @@ def ExtractSolutionAtWall (nozzle):
 	
 	# --- Extract CFD solution at the inner wall
 	
-	mesh_name    = nozzle.mesh_name;
+
+	mesh_name	= nozzle.mesh_name;
+
 	restart_name = nozzle.restart_name;
 	
 	pyResult = [];
@@ -261,6 +317,127 @@ def ExtractSolutionAtWall (nozzle):
 	
 	return OutResult, pyInfo, idHeader;
 	
+
+def WriteGMFMesh2D(MshNam, Ver, Tri):
 	
+	f = open(MshNam, 'wb');
 	
+	NbrVer = len(Ver);
+	NbrTri = len(Tri);
 	
+	f.write("MeshVersionFormatted\n2\nDimension\n2\n\n");
+
+
+	#--- Write vertices
+	f.write("Vertices\n%d\n" % NbrVer);
+	for i in range(0,NbrVer):
+		f.write("%lf %lf %d\n" % (Ver[i][0],Ver[i][1],0));
+		
+	#--- Write triangles
+	f.write("\n\nTriangles\n%d\n" % NbrTri);
+	for i in range(0,NbrTri):
+		f.write("%d %d %d 1\n" % (Tri[i][0],Tri[i][1], Tri[i][2]));
+		
+	f.write("\nEnd\n");
+	
+	if f :
+		f.close();
+
+
+def ExtractSolutionAtXY (x, y, tagField):
+	
+	Ver = [];
+	Tri = [];
+	
+	# --- Create structured mesh
+	
+	x, id_x = np.unique(x.round(decimals=4),return_inverse=True);
+	y, id_y = np.unique(y.round(decimals=4),return_inverse=True);
+	
+	Ni = len(x);
+	Nj = len(y);
+	
+	if Ni == 1:
+		x = np.append(x, x[0]+0.1);
+		Ni=Ni+1;
+		
+	if Nj == 1:
+		y = np.append(y, y[0]+0.1);
+		Nj=Nj+1;
+		
+	NbrVer = Ni*Nj;
+	
+	for i in range(0,Ni):
+		for j in range(0,Nj):
+			Ver.append([x[i],y[j],0.0]);
+	
+	NbrTri = 0;
+	
+	for i in range(2,Ni+1):
+		for j in range(2,Nj+1):
+			ind = (i-2)*Nj+j-1;
+	
+			Tri.append([ind, ind+Nj, ind+Nj+1]);
+			Tri.append([ind, ind+1+Nj, ind+1,1]);
+
+	WriteGMFMesh2D('nozzle_extract.mesh', Ver, Tri);
+	
+	info = [];
+	Crd  = [];
+	Tri  = [];
+	Tet  = [];
+	Sol  = [];
+	Header = [];
+	
+	out = _mshint_module.py_Interpolation ("nozzle_extract.mesh", "nozzle.su2", "nozzle.dat",\
+		info, Crd, Tri, Tet, Sol, Header);
+	
+	dim    = info[0];
+	NbrVer = info[1]; 
+	NbrTri = info[2];
+	NbrTet = info[3];
+	SolSiz = info[4];
+	
+	NbrFld = len(tagField);
+	iFldTab = [];
+		
+	for iTab in range(NbrFld):
+		
+		tag = tagField[iTab];
+		iFld = -1
+		
+		
+		for i in range(0,len(Header)):
+			if ( Header[i] == tag ):
+				iFld = i;
+				break;
+		
+		if iFld == -1 :
+			sys.stderr.write("  ## ERROR Extraction solution : required field not found in solution file.\n");
+			sys.exit(1);
+		
+		iFldTab.append(iFld);
+		
+	OutSol = [];
+	
+	for i in range(len(id_x)):
+		
+		ii = id_x[i]+1;
+		jj = id_y[i]+1;
+		
+		iVer = (ii-1)*Nj+jj;
+		
+		idx  = (iVer-1)*dim;
+		idxs = (iVer-1)*SolSiz;
+		
+		
+		solTab = [];
+		
+		for iTab in range(NbrFld):
+			iFld = iFldTab[iTab];
+			solTab.append(Sol[idxs+iFld+1]);
+		
+		OutSol.append(solTab);
+		
+	return OutSol;
+

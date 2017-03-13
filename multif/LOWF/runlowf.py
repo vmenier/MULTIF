@@ -14,6 +14,11 @@ from .. import nozzle as nozzlemod
 #import lifetime
 #import geometry
 
+try:
+    from multif.MEDIUMF.runAEROS import *
+except ImportError:
+    print 'Error importing all functions from runAEROS.\n'
+
 #from matplotlib import pyplot as plt
 
 #==============================================================================
@@ -522,10 +527,16 @@ def Quasi1D(nozzle,output='verbose'):
       TstagThroat,PstagExit,TstagExit)
     
     # Initialize loop variables
-    Cf = np.array(([0.004, 0.004]))
-    Tstag = np.array(([nozzle.inlet.Tstag, nozzle.inlet.Tstag-6.*nozzle.wall.geometry.length]))
-    dTstagdx = np.array(([-6., -6.]))
-    xPositionOld = np.array(([0., nozzle.wall.geometry.length]))
+    if hasattr(nozzle.wall,'temperature'):
+        xPositionOld = np.linspace(0.,nozzle.wall.geometry.length,4000)
+        Tstag = nozzle.wall.temperature.geometry.radius(xPositionOld)
+        dTstagdx = nozzle.wall.temperature.geometry.radiusGradient(xPositionOld)
+        Cf = np.array([0.004]*4000)
+    else:
+        Cf = np.array(([0.004, 0.004]))
+        Tstag = np.array(([nozzle.inlet.Tstag, nozzle.inlet.Tstag-6.*nozzle.wall.geometry.length]))
+        dTstagdx = np.array(([-6., -6.]))
+        xPositionOld = np.array(([0., nozzle.wall.geometry.length]))
     
     if nozzle.thermalFlag == 1:
         maxIterations = 12 # max number of iterations to solve for Cf and Tstag
@@ -579,8 +590,8 @@ def Quasi1D(nozzle,output='verbose'):
               
         # Check output
         if( np.isnan(M2.any()) or M2.any() < 0. or np.isinf(M2.any()) ):
-            raise RuntimeError("Unrealistic Mach number calculated")
-            
+            raise RuntimeError("Unrealistic Mach number calculated")      
+        
         # Calculate geometric properties
         D = nozzle.wall.geometry.diameter(xPosition)
         A = nozzle.wall.geometry.area(xPosition)
@@ -620,6 +631,9 @@ def Quasi1D(nozzle,output='verbose'):
           1./(nozzle.environment.hInf*np.pi*(D+2.*tTempUpper))
         
         # Redefine stagnation temperature distribution (for axisymmetric nozzle)
+#        if hasattr(nozzle.wall,'temperature'):                    
+#            dTstagdx = np.interp(xPosition,xPositionOld,dTstagdx)
+#        else:
         TstagXIntegrand = 1./(RtotPrime*density*U*A*nozzle.fluid.Cp(T))
         TstagXIntegral = integrateTrapezoidal(TstagXIntegrand,xPosition)
         Tstag = nozzle.environment.T*(1. - np.exp(-TstagXIntegral)) +        \
@@ -643,7 +657,13 @@ def Quasi1D(nozzle,output='verbose'):
         QwFlux = (Tstag - nozzle.environment.T)/RtotPrime/(np.pi*D) # W/m
                 
         #Tinside = Tstag + Qw/hf # interior wall temperature
-        Tinside = Tstag - QwFlux/hf
+        if hasattr(nozzle.wall,'temperature'):
+            Tinside = nozzle.wall.temperature.geometry.radius(xPosition)
+            dTstagdx = (Tinside[1:]-Tinside[0:-1])/(xPosition[1:]-xPosition[0:-1])
+            dTstagdx = np.hstack((dTstagdx,dTstagdx[-1]))
+            Tstag = Tinside + QwFlux/hf
+        else:
+            Tinside = Tstag - QwFlux/hf
         #recoveryFactor = (Tinside/T - 1)/((gam-1)*M2/2)
         
         # Estimate exterior wall temperature
@@ -761,19 +781,19 @@ def Quasi1D(nozzle,output='verbose'):
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
             nozzle.runAEROS = 1;
             
-            try:
-                from  multif.MEDIUMF.runAEROS import *
-                if output == 'verbose':
-                    print 'SUCCESS IMPORTING AEROS'
-            except ImportError:
-                nozzle.runAEROS = 0
-                pass
+#            try:
+#                from  multif.MEDIUMF.runAEROS import *
+#                if output == 'verbose':
+#                    print 'SUCCESS IMPORTING AEROS'
+#            except ImportError:
+#                nozzle.runAEROS = 0
+#                pass
                 
         if output == 'verbose':
             print "RUNAEROS = %d" % nozzle.runAEROS;
         
         if nozzle.runAEROS == 1:
-            runAEROS(nozzle);
+            runAEROS(nozzle, output);
         else :
             sys.stdout.write('  -- Info: Skip call to AEROS.\n');        
 
@@ -802,6 +822,8 @@ def Run (nozzle,output='verbose'):
     xPosition, flowTuple, heatTuple,                                         \
     geoTuple, performanceTuple = Quasi1D(nozzle,output);
     
+    print flowTuple[0][0]
+    
     nozzle.mass = np.sum(performanceTuple[1]);
     nozzle.volume = np.sum(performanceTuple[0]);
     nozzle.thrust = performanceTuple[2];
@@ -809,6 +831,20 @@ def Run (nozzle,output='verbose'):
     if nozzle.GetOutput['MASS_WALL_ONLY'] == 1:
         n_layers = len(nozzle.wall.layer);
         nozzle.mass_wall_only = np.sum(performanceTuple[1][:n_layers]);
+    if nozzle.GetOutput['WALL_TEMPERATURE'] == 1:
+        nozzle.wall_temperature = np.interp(nozzle.OutputLocations['WALL_TEMPERATURE'], \
+          xPosition, heatTuple[0])
+    if nozzle.GetOutput['WALL_PRESSURE'] == 1:
+        nozzle.wall_pressure = np.interp(nozzle.OutputLocations['WALL_PRESSURE'], \
+          xPosition, flowTuple[3])
+    if nozzle.GetOutput['PRESSURE'] == 1:
+        nozzle.pressure = np.interp(nozzle.OutputLocations['PRESSURE'][:,0], \
+          xPosition, flowTuple[3])
+    if nozzle.GetOutput['VELOCITY'] == 1:
+        nr, nc = nozzle.OutputLocations['VELOCITY'].shape
+        nozzle.velocity = np.zeros((nr,3))
+        nozzle.velocity[:,0] = np.interp(nozzle.OutputLocations['VELOCITY'][:,0], \
+          xPosition, flowTuple[1])
     
     # For testing purposes only; usually these do not need to be output
     #nozzle.xPosition = xPosition

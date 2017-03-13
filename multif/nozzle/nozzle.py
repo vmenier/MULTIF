@@ -88,6 +88,17 @@ class Nozzle:
             dv_n.append([len(nozzle.wall.coefs)]);
             #dv_keys.append(['WALL_CENTERLINE']);
             #dv_n.append([len(nozzle.wall.centerline.coefs)]);
+            if hasattr(nozzle.wall,'temperature'):
+                if nozzle.wall.temperature.param == 'PIECEWISE_LINEAR':
+                    ltemp = ['WALL_TEMP', 'WALL_TEMP_LOCATIONS',
+                             'WALL_TEMP_VALUES'];
+                    dv_keys.append(ltemp);
+                    dv_n.append([2*len(nozzle.wall.temperature.thicknessNodes),
+                                 len(nozzle.wall.temperature.thicknessNodes),
+                                 len(nozzle.wall.temperature.thicknessNodes)]);
+                elif nozzle.wall.temperature.param == 'KLE':
+                    dv_keys.append('WALL_TEMP_COEFS');
+                    dv_n.append(len(nozzle.wall.tempearture.coefs));
             for i in range(len(nozzle.wall.layer)): # assume piecewise linear
                 if nozzle.wall.layer[i].param == 'PIECEWISE_LINEAR':
                     ltemp = [nozzle.wall.layer[i].name, 
@@ -187,6 +198,13 @@ class Nozzle:
                     sizeTemp = nozzle.wall.coefs_size; # number of DV for checking
                     self.AssignListDV(config,nozzle.wall.dv,'WALL_COEFS_DV',
                                       NbrDV,sizeTemp);
+                    continue;
+                    
+                if key == 'WALL_TEMP':
+                    nozzle.wall.temperature.dv = [];
+                    sizeTemp = 2*len(nozzle.wall.temperature.thicknessNodes);
+                    self.AssignListDV(config,nozzle.wall.temperature.dv,
+                                      'WALL_TEMP_DV',NbrDV,sizeTemp);
                     continue;
                 
                 # Check all layers with non-specific names, e.g. LAYER1, etc.
@@ -394,10 +412,12 @@ class Nozzle:
                     nozzle.su2_convergence_order = 3;
                 description += ", relative convergence order %i" % nozzle.su2_convergence_order;
                 
-                nozzle.OUTPUT_FORMAT = 'TECPLOT'
-                nozzle.CONV_FILENAME = 'history'
-                
-                
+
+                if 'SU2_OUTPUT_FORMAT' in config:
+                    nozzle.OUTPUT_FORMAT = config['SU2_OUTPUT_FORMAT'];
+                else:
+                    nozzle.OUTPUT_FORMAT = 'TECPLOT';
+
                 # --- Setup max iterations for SU2
                 if 'SU2_MAX_ITERATIONS' in config:
                     nozzle.su2_max_iterations = int(config['SU2_MAX_ITERATIONS']);
@@ -428,14 +448,23 @@ class Nozzle:
                     nozzle.bl_ds        = 0.000007;
                     nozzle.bl_ratio     = 1.3; 
                     nozzle.bl_thickness = 0.02;
-
-                    scaleMesh = 1.0;
-                    if meshsize == 'COARSE':
-                        scaleMesh = 2.5;
-                    elif meshsize == 'MEDIUM':
-                        scaleMesh = 1.1;
-                    elif meshsize == 'FINE':
-                        scaleMesh = 0.5;
+					
+                    if ( method == "EULER" ):
+                    	scaleMesh = 1.0;
+                    	if meshsize == 'COARSE':
+                    	    scaleMesh = 2.5;
+                    	elif meshsize == 'MEDIUM':
+                    	    scaleMesh = 1.1;
+                    	elif meshsize == 'FINE':
+                    	    scaleMesh = 0.5;
+                    else : 
+                    	scaleMesh = 1.0;
+                    	if meshsize == 'COARSE':
+                    	    scaleMesh = 2.5;
+                    	elif meshsize == 'MEDIUM':
+                    	    scaleMesh = 1.5;
+                    	elif meshsize == 'FINE':
+                    	    scaleMesh = 0.9;
 
                     nozzle.meshhl = scaleMesh*np.asarray([0.1, 0.07, 0.06, 0.006, 0.0108]);
 
@@ -697,7 +726,64 @@ class Nozzle:
         
         if output == 'verbose':
             sys.stdout.write('Setup B-Spline Coefs complete\n');        
+
+
+    def SetupWallTemp(self, config, output='verbose'): 
         
+        nozzle = self;
+
+        nozzle.wall_temp = 0;
+        
+        if 'WALL_TEMP' not in config:
+            return 0;
+        else:
+            if output == 'verbose':
+                sys.stdout.write('Wall temp will be fixed\n');
+            nozzle.wall_temp = 1;
+                
+        definition = config['WALL_TEMP'].strip('()');
+        if definition == 'KLE':
+            
+            sys.stderr.write('\n ## ERROR: KLE definition for wall temp not ' \
+              'implemented yet.\n\n');
+            sys.exit(0);
+            
+            #nozzle.wall.temperature = component.Distribution('WALL_TEMP');
+            #nozzle.wall.temperature.param = 'KLE';
+            #nozzle.wall.temperature.coefs = config['WALL_TEMP_COEFS'].strip('()');
+            
+        elif definition == 'PIECEWISE_LINEAR':
+                        
+            try:
+                thicknessNodes = self.ParseThickness(config,'WALL_TEMP',loc='_LOCATIONS',val='_VALUES');
+            except:
+                try:
+                    xCoordFile = config['WALL_TEMP_LOCATIONS'].strip('()');
+                    yCoordFile = config['WALL_TEMP_VALUES'].strip('()');
+                    xCoord = np.loadtxt(xCoordFile);
+                    yCoord = np.loadtxt(yCoordFile);
+                    thicknessNodes = [[0 for i in range(2)] for j in range(yCoord.size)];
+                    
+                    for i in range(xCoord.size):
+                        thicknessNodes[i][0] = xCoord[i];
+                        thicknessNodes[i][1] = yCoord[i];                    
+                except:                        
+                    sys.stderr.write('\n ## ERROR : Piecewise linear definition ' \
+                         'could not be parsed for WALL_TEMP.\n\n');
+                    sys.exit(0);
+                
+            nozzle.wall.temperature = component.Distribution('WALL_TEMP');
+            nozzle.wall.temperature.param = 'PIECEWISE_LINEAR';
+            nozzle.wall.temperature.thicknessNodes = thicknessNodes;                
+                
+        else:
+            sys.stderr.write('\n ## ERROR: %s wall temp definition not '      \
+              'accepted. Only KLE and PIECEWISE_LINEAR are implemented.\n\n');
+            sys.exit(0);
+            
+        if output == 'verbose':
+            sys.stdout.write('Setup Wall Temp complete\n'); 
+            
     
     def ParseThickness(self, config, key, loc='_THICKNESS_LOCATIONS', val = '_THICKNESS_VALUES'):
         
@@ -1036,7 +1122,7 @@ class Nozzle:
                 # Assign thickness distribution
                 self.SetupLayerThickness(config,nozzle.wall.layer[i-1]);
                 # Assign material
-                nozzle.wall.layer[i-1].material=nozzle.materials[material]
+                nozzle.wall.layer[i-1].material=nozzle.materials[material];
                 
             else:
                 break;
@@ -1183,6 +1269,20 @@ class Nozzle:
             coefsnp[1][i] = coefs[i+coefs_size/2];        
         
         nozzle.wall.geometry = geometry.Bspline(coefsnp);
+        
+        # --- Setup inner nozzle wall temperature if necessary
+        if hasattr(nozzle.wall,'temperature'):
+            if nozzle.wall.temperature.param == 'PIECEWISE_LINEAR':
+                tsize = len(nozzle.wall.temperature.thicknessNodes);
+                thicknessNodeArray = np.zeros(shape=(2,tsize));
+                for j in range(tsize):
+                    thicknessNodeArray[0][j] = nozzle.wall.temperature.thicknessNodes[j][0]*nozzle.length;
+                    thicknessNodeArray[1][j] = nozzle.wall.temperature.thicknessNodes[j][1];
+                nozzle.wall.temperature.geometry = geometry.PiecewiseLinear(thicknessNodeArray);                
+            elif nozzle.wall.temperature.param == 'KLE':
+                sys.stderr.write('\n ## ERROR: KLE not implemented yet for '  \
+                  'inner nozzle wall temperature definition.\n\n');
+                sys.exit(0);
         
         # --- Setup thickness of each layer
         
@@ -1364,7 +1464,53 @@ class Nozzle:
                         nozzle.wall.coefs[iCoef] = nozzle.DV_List[id_dv];
                         NbrChanged = NbrChanged+1;
                 continue;
+            
+            # Update general piecewise linear wall temp definition
+            if Tag == 'WALL_TEMP':
+                lsize = len(nozzle.wall.temperature.thicknessNodes);
+                brk = np.max(nozzle.wall.temperature.dv[:lsize])+1;
+                for iCoord in range(len(nozzle.wall.temperature.dv)):
+                    id_dv = nozzle.DV_Head[iTag] + nozzle.wall.temperature.dv[iCoord];
+                    # Update coordinate in thickness array if required
+                    if id_dv < nozzle.DV_Head[iTag]:
+                        pass
+                    elif id_dv < nozzle.DV_Head[iTag]+brk:
+                        prt_name.append('wall temp location #%d' % (iCoord+1));
+                        prt_basval.append('%.4lf'% nozzle.wall.temperature.thicknessNodes[iCoord][0]);
+                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                        nozzle.wall.temperature.thicknessNodes[iCoord][0] = nozzle.DV_List[id_dv];
+                        NbrChanged = NbrChanged+1;
+                    else: # id_dv > nozzle.DV_Head[iTag]+brk
+                        prt_name.append('wall temp value #%d' % (iCoord+1-lsize));
+                        prt_basval.append('%.4lf'% nozzle.wall.temperature.thicknessNodes[iCoord-lsize][1]);
+                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                        nozzle.wall.temperature.thicknessNodes[iCoord-lsize][1] = nozzle.DV_List[id_dv];
+                        NbrChanged = NbrChanged+1;
+                continue;
                 
+            # Update specific thickness or values for piecewise linear wall temp def
+            check = 0;
+            if Tag == 'WALL_TEMP_LOCATIONS':
+                for iCoord in range(len(nozzle.wall.temperature.thicknessNodes)):
+                    id_dv = nozzle.DV_Head[iTag] + iCoord;
+                    prt_name.append('wall temp location #%d' % (iCoord+1));
+                    prt_basval.append('%.4lf'% nozzle.wall.temperature.thicknessNodes[iCoord][0]);
+                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                    nozzle.wall.temperature.thicknessNodes[iCoord][0] = nozzle.DV_List[id_dv];
+                    NbrChanged = NbrChanged+1;
+                check = 1;
+            elif Tag == 'WALL_TEMP_VALUES':
+                for iCoord in range(len(nozzle.wall.temperature.thicknessNodes)):
+                    id_dv = nozzle.DV_Head[iTag] + iCoord;                  
+                    prt_name.append('wall temp value #%d' % (iCoord+1));
+                    prt_basval.append('%.4lf'% nozzle.wall.temperature.thicknessNodes[iCoord][1]);
+                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
+                    nozzle.wall.temperature.thicknessNodes[iCoord][1] = nozzle.DV_List[id_dv];
+                    NbrChanged = NbrChanged+1;
+                check = 1;
+            if check == 1:
+                continue;                    
+
             # Update all layers with non-specific names, e.g. LAYER1, etc.
             check = 0;
             for j in range(len(nozzle.wall.layer)):
@@ -1996,6 +2142,8 @@ class Nozzle:
         
         nozzle.GetOutput = dict();
         
+        nozzle.OutputLocations = dict(); # for field variable outputs
+        
         if 'OUTPUT_NAME' in config:
             nozzle.Output_Name = config['OUTPUT_NAME'];
         else :
@@ -2063,6 +2211,10 @@ class Nozzle:
             nozzle.ks_temp_ratio.append(-1);
             nozzle.pn_temp_ratio.append(-1);
             nozzle.max_temp_ratio.append(-1);
+        nozzle.wall_temperature = -1;
+        nozzle.wall_pressure = -1;
+        nozzle.pressure = -1;
+        nozzle.velocity = -1;
         
         if 'OUTPUT_FUNCTIONS' in config:
             
@@ -2075,7 +2227,9 @@ class Nozzle:
                           'PN_FAILURE_CRITERIA'];
             dv_temp = ['KS_TEMPERATURE','PN_TEMPERATURE','MAX_TEMPERATURE'];
             dv_tempRatio = ['KS_TEMP_RATIO','PN_TEMP_RATIO','MAX_TEMP_RATIO'];
-            dv_keys = dv_scalar + dv_stress + dv_failure + dv_temp + dv_tempRatio;
+            dv_field = ['WALL_TEMPERATURE','WALL_PRESSURE','PRESSURE','VELOCITY'];
+            dv_keys = dv_scalar + dv_stress + dv_failure + dv_temp + \
+                      dv_tempRatio + dv_field;
             
             # Stress and temperature outputs can have prefixes appended to them
             stress_prefix = [];
@@ -2099,6 +2253,8 @@ class Nozzle:
                     nozzle.GetOutput[key] = [0]*len(temp_prefix);
                 elif key in dv_tempRatio:
                     nozzle.GetOutput[key] = [0]*len(temp_prefix);
+                elif key in dv_field:
+                    nozzle.GetOutput[key] = 0;
 
             hdl = config['OUTPUT_FUNCTIONS'].strip('()');
             hdl = hdl.split(",");
@@ -2148,7 +2304,31 @@ class Nozzle:
                         nozzle.Output_Tags.append(key);
                     else:
                         sys.stderr.write('\n ## ERROR : %s cannot be '        \
-                          'returned if THERMAL_ANALYSIS= 0\n\n' % key);                           
+                          'returned if THERMAL_ANALYSIS= 0\n\n' % key);   
+                elif( key in dv_field ):
+                    nozzle.GetOutput[key] = 1;
+                    nozzle.Output_Tags.append(key);
+                    # Also extract necessary information for field
+                    if( key+'_LOCATIONS' in config ):
+                        loc = config[key+'_LOCATIONS'].strip('()')
+                        loc = loc.split(';')
+                        try: # list of numbers given
+                            float(loc[0].split(',')[0])
+                            tmp = 1
+                        except: # filename given
+                            tmp = 0
+                        if( tmp ): # list of numbers given
+                            locList = []
+                            for item in loc:
+                                item2 = item.split(',')
+                                locList.append([float(e) for e in item2])
+                            nozzle.OutputLocations[key] = np.squeeze(np.array(locList))                        
+                        else: # filename given
+                            nozzle.OutputLocations[key] = np.loadtxt(loc[0])                               
+                    else:
+                        sys.stderr.write('\n ## ERROR : key %s_LOCATIONS ' \
+                          'not found in config file to specify location of ' \
+                          'requested output responses\n\n')
                 else: # cycle through all possible more specific names for stress and temp
                     # check stress first         
                     assigned = 0;
@@ -2278,6 +2458,43 @@ class Nozzle:
                 prt_item.append('thrust');
                 prt_comp.append('');
                 prt_val.append('%0.16f' % nozzle.thrust); 
+
+            elif tag == 'WALL_TEMPERATURE':
+                for i in range(nozzle.wall_temperature.size):
+                    fil.write('%0.16f\n' % nozzle.wall_temperature[i]);
+                    prt_item.append('wall temp loc %i' % i);
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.wall_temperature[i]);
+                    
+            elif tag == 'WALL_PRESSURE':
+                for i in range(nozzle.wall_pressure.size):
+                    fil.write('%0.16f\n' % nozzle.wall_pressure[i]);
+                    prt_item.append('wall pressure loc %i' % i);
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.wall_pressure[i]);
+                    
+            elif tag == 'PRESSURE':
+                for i in range(nozzle.pressure.size):
+                    fil.write('%0.16f\n' % nozzle.pressure[i]);
+                    prt_item.append('pressure loc %i' % i);
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.pressure[i]);  
+                    
+            elif tag == 'VELOCITY':
+                nr, nc = nozzle.velocity.shape
+                for i in range(nr):
+                    fil.write('%0.16f\n' % nozzle.velocity[i,0]);
+                    fil.write('%0.16f\n' % nozzle.velocity[i,1]);
+                    fil.write('%0.16f\n' % nozzle.velocity[i,2]);
+                    prt_item.append('velocity (x-dir) loc %i' % i);
+                    prt_item.append('velocity (y-dir) loc %i' % i);
+                    prt_item.append('velocity (z-dir) loc %i' % i);
+                    prt_comp.append('');
+                    prt_comp.append('');
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.velocity[i,0]);    
+                    prt_val.append('%0.16f' % nozzle.velocity[i,1]);    
+                    prt_val.append('%0.16f' % nozzle.velocity[i,2]);    
                                 
             elif tag == 'KS_TOTAL_STRESS':
                 for j in range(len(nozzle.stressComponentList)):
@@ -2555,6 +2772,43 @@ class Nozzle:
                 prt_item.append('thrust');
                 prt_comp.append('');
                 prt_val.append('%0.16f' % nozzle.thrust); 
+                
+            elif tag == 'WALL_TEMPERATURE':
+                for i in range(nozzle.wall_temperature.size):
+                    fil.write('%0.16f wall_temp_%i\n' % (nozzle.wall_temperature[i],i));
+                    prt_item.append('wall temp loc %i' % i);
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.wall_temperature[i]);
+                    
+            elif tag == 'WALL_PRESSURE':
+                for i in range(nozzle.wall_pressure.size):
+                    fil.write('%0.16f wall_pressure_%i\n' % (nozzle.wall_pressure[i],i));
+                    prt_item.append('wall pressure loc %i' % i);
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.wall_pressure[i]);
+                    
+            elif tag == 'PRESSURE':
+                for i in range(nozzle.pressure.size):
+                    fil.write('%0.16f pressure_%i\n' % (nozzle.pressure[i],i));
+                    prt_item.append('pressure loc %i' % i);
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.pressure[i]);  
+                    
+            elif tag == 'VELOCITY':
+                nr, nc = nozzle.velocity.shape
+                for i in range(nr):
+                    fil.write('%0.16f velocity_x_%i\n' % (nozzle.velocity[i,0],i));
+                    fil.write('%0.16f velocity_y_%i\n' % (nozzle.velocity[i,1],i));
+                    fil.write('%0.16f velocity_z_%i\n' % (nozzle.velocity[i,2],i));
+                    prt_item.append('velocity (x-dir) loc %i' % i);
+                    prt_item.append('velocity (y-dir) loc %i' % i);
+                    prt_item.append('velocity (z-dir) loc %i' % i);
+                    prt_comp.append('');
+                    prt_comp.append('');
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.velocity[i,0]);    
+                    prt_val.append('%0.16f' % nozzle.velocity[i,1]);    
+                    prt_val.append('%0.16f' % nozzle.velocity[i,2]);                 
                                 
             elif tag == 'KS_TOTAL_STRESS':
                 for j in range(len(nozzle.stressComponentList)):
@@ -2842,7 +3096,7 @@ class Nozzle:
         
         sys.stdout.write("  -- Info : nozzle.svg OPENED.\n\n");
 
-def NozzleSetup( config_name, flevel, output='verbose' ):
+def NozzleSetup( config_name, flevel, output='verbose', partitions=1 ):
     import tempfile
         
     if not os.path.isfile(config_name) :
@@ -2858,6 +3112,9 @@ def NozzleSetup( config_name, flevel, output='verbose' ):
 
     nozzle.mesh_name    =  'nozzle.su2';
     nozzle.restart_name =  'nozzle.dat';
+    nozzle.CONV_FILENAME = 'history'
+
+    nozzle.partitions = partitions;
     
     if 'TEMP_RUN_DIR' in config:
         if config['TEMP_RUN_DIR'] == 'YES':
@@ -2890,6 +3147,10 @@ def NozzleSetup( config_name, flevel, output='verbose' ):
     # --- Setup inner wall & parameterization (B-spline)
     
     nozzle.SetupBSplineCoefs(config,output);
+    
+    # --- Setup inner wall temperature definition (if necessary)
+    
+    nozzle.SetupWallTemp(config,output);
     
     # --- Setup materials
     

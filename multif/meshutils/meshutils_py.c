@@ -268,6 +268,59 @@ int py_BSplineGeo3LowF (PyObject *pyknots, PyObject *pycoefs, PyObject *pyx, PyO
 
 
 
+
+void py_ReadMesh (char *MshNam, char *SolNam, PyObject *pyVer, PyObject *pyTri, PyObject *pyTet, PyObject *pyEdg)
+{
+	int i, j, d;
+	
+	
+	Options *mshopt = AllocOptions();
+	
+	strcpy(mshopt->InpNam,MshNam);
+	strcpy(mshopt->SolNam,SolNam);
+	
+	
+	//--- Open mesh/solution file
+	Mesh *Msh = NULL;
+	Msh = SetupMeshAndSolution (mshopt->InpNam, mshopt->SolNam);
+	
+	//PrintMeshInfo (Msh);
+	
+//if ( !Msh->Sol ) {
+	//	printf("  ## ERROR SolutionExtraction : A solution must be provided.\n");
+	//	return;
+	//}
+	
+	for (i=1; i<=Msh->NbrVer; i++){
+		for (d=0; d<3; d++)
+			PyList_Append(pyVer, PyFloat_FromDouble(Msh->Ver[i][d]));
+	}
+	
+	for (i=1; i<=Msh->NbrTri; i++){
+		for (j=0; j<4; j++)
+			PyList_Append(pyTri, PyFloat_FromDouble(Msh->Tri[i][j]));
+	}
+	
+	
+	for (i=1; i<=Msh->NbrTet; i++){
+		for (j=0; j<4; j++)
+			PyList_Append(pyTet, PyFloat_FromDouble(Msh->Tet[i][j]));
+	}
+	
+	for (i=1; i<=Msh->NbrEfr; i++){
+		for (j=0; j<2; j++)
+			PyList_Append(pyEdg, PyFloat_FromDouble(Msh->Efr[i][j]));
+	}
+	
+	
+	if ( Msh )
+ 		FreeMesh(Msh);
+	
+}
+
+
+
+
 void py_ExtractAlongLine (char *MshNam, char *SolNam, PyObject *pyBox,  PyObject *pyResult, PyObject *PyInfo, PyObject *pyHeader)
 {
 	int i;

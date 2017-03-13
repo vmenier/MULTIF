@@ -10,16 +10,13 @@ from .. import _nozzle_module
 
 from postprocessing import *
 
-def runAEROS ( nozzle ):
+def runAEROS ( nozzle, output='verbose' ):
     
     # --- Get the CFD solution at the inner wall
     # SolExtract : Solution (x, y, sol1, sol2, etc.)
     # Size : [NbrVer, SolSiz]
     # idHeader : id of each solution field, e.g. mach_ver89 = SolExtract[89][idHeader['MACH']]
-    
-    
-    #print '\nEntered runAEROS\n'
-    
+
     # Start of example for accessing nozzle properties
     
     # First print all information related to geometry
@@ -95,6 +92,7 @@ def runAEROS ( nozzle ):
     ends = [min(list(nozzle.wall.layer[0].thickness.nodes[0,:])), max(list(nozzle.wall.layer[0].thickness.nodes[0,:]))]
     #for i in range(len(ends)):
     #    print ' i = %d, ends[i] = %f' % (i, ends[i])
+
     vertices = sorted(list(set(ends+list(nozzle.baffles.location))))
     #for j in range(len(vertices)):
     #    print ' j = %d, vertices[j] = %f' % (j, vertices[j])
@@ -156,9 +154,12 @@ def runAEROS ( nozzle ):
     Mb = materialNames.index(nozzle.baffles.material.name) if len(nozzle.baffles.location) > 0 else -1
     # material id of stringers
     Ms = materialNames.index(nozzle.stringers.material.name) if nozzle.stringers.n > 0 else -1
-    
+
     f1 = open("NOZZLE.txt", 'w');
-    print >> f1, "%d %d %d %f %d %d %d %d %d" % (len(points), len(vertices), len(nozzle.materials), lc, boundaryFlag, thermalFlag, 3, 2, linearFlag);
+    verboseFlag = 0.;
+    if output == 'verbose':
+        verboseFlag = 1.;
+    print >> f1, "%d %d %d %f %d %d %d %d %d %d" % (len(points), len(vertices), len(nozzle.materials), lc, boundaryFlag, thermalFlag, 3, 2, linearFlag, verboseFlag);
     # points
     for i in range(len(points)):
         Tg = nozzle.wall.layer[1].thickness.radius(0.) # thickness of gap between thermal and load layers
@@ -173,9 +174,6 @@ def runAEROS ( nozzle ):
     # vertices
     for i in range(len(vertices)):  
         Wb = nozzle.baffles.height[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # height of baffle
-        #WbIndex = np.argmin(np.abs([nozzle.baffles.location[q]-vertices[i] for q in range(len(nozzle.baffles.location))])) # location of height of baffle
-        #WbValue = np.min(np.abs([nozzle.baffles.location[q]-vertices[i] for q in range(len(nozzle.baffles.location))])) # value of difference 
-        #Wb = nozzle.baffles.height[WbIndex] if WbValue < 1e-7 else 0 # height of baffle
         Ws = nozzle.stringers.height.radius(vertices[i]) if nozzle.stringers.n > 0 else 0; # height of stringer
         Nb = max((Wb-Ws)/lc+1,2); # number of nodes on radial edge of baffle (not including overlap with stringer)
         Tb = nozzle.baffles.thickness[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # thickness of baffle
@@ -226,7 +224,7 @@ def runAEROS ( nozzle ):
     
     nozzle.wallTemp = SolExtract[:,iTemp];
     
-    AEROSPostProcessing ( nozzle );
+    AEROSPostProcessing ( nozzle, output );
 
 # Kreselmeier-Steinhauser function
 def ksFunction(x,p):
@@ -236,120 +234,146 @@ def ksFunction(x,p):
 def pnFunction(x,p):
     return ((1./len(x))*np.sum(np.power(x,p)))**(1./p)
 
-# Assign failure criteria based on stresses
-def assignStressAndFailureCriteria(nozzle, filename, failureCriteriaIndex, material):
-
-    # Read stress data
-    data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-    stress = data[:,-1];
+# Assign stresses
+def assignStress(nozzle, index, output='verbose'):
+    
+    # Mapping from MULTI-F internal ordering to AERO-S stress file suffixes
+    suffix = [0, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
     # KS and PN params for stresses
     ks_param1 = 50.;
     pn_param1 = 10.;
+
+    # Read stress data
+    filename = 'STRESS.' + str(suffix[index]);
+    try:
+        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+    except:
+        if output=='verbose':
+            sys.stdout.write('WARNING: could not open STRESS file for component %i\n' % index);
+        return 0;
+        
+    stress = data[:,-1];
+    
+    # Assign stresses
+    stemp = np.mean(stress);
+    nozzle.max_total_stress[index] = np.max(stress);
+    nozzle.ks_total_stress[index] = ksFunction(stress/stemp,ks_param1)*stemp;
+    nozzle.pn_total_stress[index] = pnFunction(stress/stemp,pn_param1)*stemp;
+
+    return 0;
+
+def assignFailureCriteria(nozzle, index, material, output='verbose'):
+    
+    # Mapping from MULTI-F internal ordering to AERO-S stress file suffixes
+    suffix = [0, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    
     # KS and PN params for failure criteria
     ks_param2 = 50.;
-    pn_param2 = 10.;    
-    i = failureCriteriaIndex;
+    pn_param2 = 10.;
     
-    # First assign stresses
-    stemp = np.mean(stress);
-    nozzle.max_total_stress[i] = np.max(stress);
-    nozzle.ks_total_stress[i] = ksFunction(stress/stemp,ks_param1)*stemp;
-    nozzle.pn_total_stress[i] = pnFunction(stress/stemp,pn_param1)*stemp;
-    
-    # Next, assign failure criteria
-    if material.failureType == 'VON_MISES':
+    # Assign failure criteria
+    if not hasattr(material,'failureType'):
+        if output=='verbose':
+            sys.stdout.write('WARNING: no failure type for component %i\n' % index);
+        return 0;
+    elif material.failureType == 'VON_MISES':
         # Von Mises is read in through the STRESS files
-        yieldStress = material.yieldStress;
-        nozzle.max_failure_criteria[i] = np.max(stress/yieldStress);
-        nozzle.ks_failure_criteria[i] = ksFunction(stress/yieldStress,ks_param2);
-        nozzle.pn_failure_criteria[i] = pnFunction(stress/yieldStress,pn_param2);
+        filename = 'STRESS.' + str(suffix[index]);
+        try: 
+            data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
+        except IOError:
+            if output=='verbose':
+                sys.stdout.write('WARNING: could not open STRESS file for component %i\n' % index);
+            return 0;
+        stress = data[:,-1];        
+        # Assign failure criterion
+        yieldStress = material.yieldStress;        
+        nozzle.max_failure_criteria[index] = np.max(stress/yieldStress);
+        nozzle.ks_failure_criteria[index] = ksFunction(stress/yieldStress,ks_param2);
+        nozzle.pn_failure_criteria[index] = pnFunction(stress/yieldStress,pn_param2);
     elif material.failureType == 'PRINCIPLE_FAILURE_STRAIN':
         sys.stderr.write('\n ## ERROR: NOT IMPLEMENTED: principle failure strain failure type\n\n');
         sys.exit(0);
     elif material.failureType == 'LOCAL_FAILURE_STRAIN':
-        sys.stderr.write('\n ## ERROR: NOT IMPLEMENTED: local failure strain failure type\n\n');
-        sys.exit(0);            
+        # Local strains are read in through the STRAINXX and STRAINYY files
+        filename = 'STRAINXX.' + str(suffix[index]);
+        try:
+            data = np.loadtxt(filename,dtype=float,skiprows=3); # strains in 4th column (0-indexed)
+        except IOError:
+            if output=='verbose':
+                sys.stdout.write('WARNING: could not open STRAINXX file for component %i\n' % index);
+            return 0;        
+        strainxx = data[:,-1];
+        try:
+            filename = 'STRAINYY.' + str(suffix[index]);
+        except IOError:
+            if output=='verbose':
+                sys.stdout.write('WARNING: could not open STRAINYY file for component %i\n' % index);
+            return 0;            
+        data = np.loadtxt(filename,dtype=float,skiprows=3); # strains in 4th column (0-indexed)
+        strainyy = data[:,-1];
+        # Assign failure criterion
+        failureStrain = material.getFailureLimit();
+        failxx = np.empty((strainxx.size));
+        failyy = np.empty((strainyy.size));
+        for i in range(len(failxx)):
+            if strainxx[i] >= 0:
+                failxx = failureStrain[0];
+            else:
+                failxx = failureStrain[1];
+            if strainyy[i] >= 0:
+                failyy = failureStrain[2];
+            else:
+                failyy = failureStrain[3];
+        strain = np.vstack((strainxx,strainyy));
+        failStrain = np.vstack((failxx,failyy));
+        nozzle.max_failure_criteria[index] = np.max(strain/failStrain);
+        nozzle.ks_failure_criteria[index] = ksFunction(strain/failStrain,ks_param2);
+        nozzle.pn_failure_criteria[index] = pnFunction(strain/failStrain,pn_param2);        
     else:
-        sys.stderr.write('\n ## ERROR: failure type not accepted for layer 2.\n\n');
-        sys.exit(0);
+        sys.stderr.write('\n ## ERROR: failure type not accepted.\n\n');
+        sys.exit(0);    
+    
     return 0;
     
-def AEROSPostProcessing ( nozzle ):
-    
-    # nozzle.stressComponentList:
-    # ['LOAD_LAYER_INSIDE', 'LOAD_LAYER_MIDDLE', 'LOAD_LAYER_OUTSIDE', 'STRINGERS', 'BAFFLE1', 'BAFFLE2', 'BAFFLE3', 'BAFFLE4']
-    # nozzle.tempComponentList:
-    #['THERMAL_LAYER', 'LOAD_LAYER_INSIDE', 'LOAD_LAYER_MIDDLE', 'LOAD_LAYER_OUTSIDE']
-    
-#    # --- Open MECHANICAL_STRESS
-#    try:
-#        fil = open("MECHANICAL_STRESS", "r" );
-#    except IOError:
-#        sys.stderr.write('\n ## ERROR : UNABLE TO OPEN MECHANICAL_STRESS FILE. RETURN 0.\n\n');
-#        nozzle.max_mechanical_stress = 0;
-#        return;
-#    
-#    lines = [line.split() for line in fil];
-#    
-#    max_mech = 0.0;
-#    for i in range(2,len(lines)):
-#        max_mech = max(float(lines[i][0]), max_mech);
-#        
-#    nozzle.max_mechanical_stress = max_mech;
-#    
-#    fil.close();    
-#     
-#    # --- Open THERMAL_STRESS    
-#    try:
-#        fil = open("THERMAL_STRESS", "r" );
-#    except IOError:
-#        sys.stderr.write('\n ## ERROR : UNABLE TO OPEN THERMAL_STRESS FILE. RETURN 0.\n\n');
-#        nozzle.max_thermal_stress = 0;
-#        return;
-#    
-#    lines = [line.split() for line in fil];
-#    
-#    max_therm = 0.0;
-#    for i in range(2,len(lines)):
-#        max_therm = max(float(lines[i][0]), max_therm);
-#    
-#    nozzle.max_thermal_stress = max_therm;
-#    
-#    fil.close();
+def AEROSPostProcessing ( nozzle, output='verbose' ):
     
     # ---- KS and modified P-norm parameters
     ks_param = 50.;
     pn_param = 10.;
     
-    # ---- Load and assign total stress results if necessary, AND
-    # ---- Load and assign failure criteria results if necessary  
+    # ---- Indexing arrays
+    mat = [nozzle.wall.layer[q].material for q in range(5)];
+    mat.append(nozzle.stringers.material);
+    for i in range(nozzle.baffles.n):
+        mat.append(nozzle.baffles.material);
+        
+    # ---- Load and assign total stress results if necessary 
     if ( sum(nozzle.GetOutput['MAX_TOTAL_STRESS']) > 0 or 
          sum(nozzle.GetOutput['KS_TOTAL_STRESS']) > 0 or
-         sum(nozzle.GetOutput['PN_TOTAL_STRESS']) > 0 or
-         sum( nozzle.GetOutput['MAX_FAILURE_CRITERIA']) > 0 or
+         sum(nozzle.GetOutput['PN_TOTAL_STRESS']) > 0):
+             
+        for i in range(len(nozzle.GetOutput['MAX_TOTAL_STRESS'])):
+            
+            if ( nozzle.GetOutput['MAX_TOTAL_STRESS'][i] >= 0 or
+                 nozzle.GetOutput['KS_TOTAL_STRESS'][i] >= 0 or
+                 nozzle.GetOutput['PN_TOTAL_STRESS'][i] >= 0):
+                     
+                     assignStress(nozzle, i, output);
+                     
+    # ---- Load and assign failure criteria results if necessary        
+    if ( sum( nozzle.GetOutput['MAX_FAILURE_CRITERIA']) > 0 or
          sum( nozzle.GetOutput['KS_FAILURE_CRITERIA']) > 0 or
          sum( nozzle.GetOutput['PN_FAILURE_CRITERIA']) > 0):
              
-        # Thermal layer
-        assignStressAndFailureCriteria(nozzle, 'STRESS.0', 0, nozzle.wall.layer[0].material);
-        
-        # Inner load layer
-        assignStressAndFailureCriteria(nozzle, 'STRESS.1', 2, nozzle.wall.layer[2].material);
-        
-        # Middle load layer
-        assignStressAndFailureCriteria(nozzle, 'STRESS.2', 3, nozzle.wall.layer[3].material);
-        
-        # Upper load layer 
-        assignStressAndFailureCriteria(nozzle, 'STRESS.3', 4, nozzle.wall.layer[4].material);
-        
-        # Stringers
-        assignStressAndFailureCriteria(nozzle, 'STRESS.4', 5, nozzle.stringers.material);
-    
-        # Each baffle
-        for i in range(7,nozzle.baffles.n+7):
-            filename = 'STRESS.' + str(i-2);
-            assignStressAndFailureCriteria(nozzle, filename, i-1, nozzle.baffles.material);
+        for i in range(len(nozzle.GetOutput['MAX_FAILURE_CRITERIA'])):
+            
+            if ( nozzle.GetOutput['MAX_FAILURE_CRITERIA'][i] >= 0 or
+                 nozzle.GetOutput['KS_FAILURE_CRITERIA'][i] >= 0 or
+                 nozzle.GetOutput['PN_FAILURE_CRITERIA'][i] >= 0):
+                     
+                     assignFailureCriteria(nozzle, i, mat[i], output);
     
     # ---- Load and assign mechanical stress results if necessary
     if sum(nozzle.GetOutput['MAX_MECHANICAL_STRESS']) > 0:

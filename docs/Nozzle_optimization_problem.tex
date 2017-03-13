@@ -808,9 +808,9 @@ A set of automatically generated linear constraints will be provided shortly wit
 
 \section{Results} \label{sec:results}
 
-\subsection{Deterministic Reliable Low-Fidelity Optimization}
+\subsection{Deterministic Reliable Optimization}
 
-This optimization problem corresponds to the equivalent deterministic optimization problem for the specific reliable DUU problem found in equation \ref{eq:specific_reliable_equiv_deterministic_optim} using the standard parameterization from table \ref{tab:inputDimension}. The only difference is that a von Mises stress failure criterion is used for the CMC and GR-BMI material layers instead of a max strain failure criterion.
+This optimization problem corresponds to the equivalent deterministic optimization problem for the specific reliable DUU problem found in equation \ref{eq:specific_reliable_equiv_deterministic_optim} using the standard parameterization from table \ref{tab:inputDimension}. The only difference is that a von Mises stress failure criterion is used for the CMC (and GR-BMI in the case of low-fidelity) material layers instead of a max strain failure criterion.
 
 \subsubsection{Design Variables}
 The design variables $y$ are taken to be deterministic, thus, $y = x$. There are 62 design variables in all:
@@ -830,7 +830,7 @@ Design variable bounds are taken from this document.
 
 \subsubsection{Other Parameters}
 
-All other nozzle parameters are set at the nominal values defined in this document. The exception is the stress failure criterion. Yield stress is used for all materials. 120 MPa is used for the CMC material, 324 MPa is used for the GR-BMI material, 12.9 MPa is used for the TI-HC material and 324 MPa is used for the PANEL material used for the baffles.
+All other nozzle parameters are set at the nominal values defined in this document. The exception is the stress failure criterion. For the low-fidelity result, yield stress is used for all materials. For the medium-fidelity result, yield stress is only used for the CMC and TI-HC materials. 120 MPa is used for the CMC material, 324 MPa is used for the GR-BMI material, 12.9 MPa is used for the TI-HC material and 324 MPa is used for the PANEL material used for the baffles.
 
 \subsubsection{Constraints}
 
@@ -842,17 +842,25 @@ There are 97 linear constraints. Additional constraints on maximum and minimum s
 
 Dakota 6.5 is used to manage the optimization which is performed using NPSOL. The function precision is set to 1e-6 and the convergence and constraint tolerance are both set to 1e-3. Design variables are automatically scaled and the nonlinear thrust constraint is also scaled. The objective function is scaled to be of order 1. A relative forward finite gradient step size of 1e-3 is used to estimate gradients.
 
+\subsection{Low-Fidelity Deterministic Optimization}
+
 The optimization is run in parallel using 20 cores and converges to an optimum in 117 minutes and 37 major iterations. There are 2,016 new function evaluations and 2,583 duplicate function evaluations including finite differences.
 
 \subsubsection{Optimum}
 
-The optimal shape is shown in figure \ref{fig:det-lo-optimal-shape}. Table \ref{tab:det-lo-optimal-values} gives the values of the objective function and nonlinear constraints at the optimum. At the optimum 37 variable bounds are tight, 12 linear constraints are tight and the nonlinear thrust constraint is tight.
+The optimal shape is shown in figure \ref{fig:det-lo-optimal-shape}. Table \ref{tab:det-lo-optimal-values} gives the values of the objective function and nonlinear constraints at the optimum. At the optimum 37 variable bounds are tight, 12 linear constraints are tight and the nonlinear thrust constraint is tight. The following observations are made about the solution:
 
-The nozzle is as short as possible. The thermal layer has a constant thickness equal to its lower bound of 1 cm. The thickness of the air gap is at its maximum value of 1 cm. The inner load layer is essentially as thin as possible (within the constraint tolerance). The middle load layer is as thin as possible as well with constant thickness. The outer load layer is also essentially as thin as possible (within the constraint tolerance). The stringers are as thin as possible. The 2 baffles just to the right of the throat moved as far right as possible. Baffle thickness is as small as possible (within the constraint tolerance).
-
-Two post-throat B-spline coefficients have a tight linear constraint on their x-position. Three B-spline coefficients have been pushed as far down as they can go without going below the throat. One B-spline segment in the pre-throat region is limited by its upper slope. Four B-spline segments in the post-throat region have obtained their lowest possible slope. Two baffles are as far from other baffles as possible.
-
-The only tight non-linear constraint is the thrust constraint, although since the Lagrange multiplier for this constraint is small (0.63e-3) it is possible that an alternative optimum exists.
+\begin{enumerate}
+\item The nozzle is as short as possible.
+\item The thermal layer, all load layers, stringers, and baffles are all as thin as possible.
+\item The air gap is as thick as possible.
+\item B-spline coefficients have tended to cluster after the throat as they are pushed to the right (2 tight relative x-position constraints).
+\item One B-spline segment in the pre-throat region is limited by its maximum slope magnitude.
+\item A flat diverging section is apparent. Three B-spline coefficients are pushed as low as possible and four B-spline segments in the post-throat region have obtained their lowest possible slope.
+\item Two baffles are as far from other baffles as possible.
+\item Baffles 4 and 5 are pushed as far to the right as possible.
+\item The only tight non-linear constraint is the thrust constraint, although since the Lagrange multiplier for this constraint is small (0.63e-3) it is possible that an alternative optimum exists.
+\end{enumerate}
 
 \begin{figure}
 \caption{Optimal shape for equivalent low-fidelity deterministic optimization for reliable DUU problem in equation \ref{eq:specific_reliable_equiv_deterministic_optim}.}
@@ -861,7 +869,6 @@ The only tight non-linear constraint is the thrust constraint, although since th
 \includegraphics[scale=0.35]{figs/det-lo-optimal-shape.png}
 \end{center}
 \end{figure}
-
 
 \begin{table}
 \caption[Equivalent low-fidelity deterministic optimization objective and constraint values]{Value of objective function and constraints at equivalent low-fidelity deterministic optimum.}
@@ -896,6 +903,70 @@ The overall wall shape is a nozzle that converges to the throat and remains flat
 As expected for a minimum mass problem, all wall layers, baffles, and stringers are as thin as possible. The exception is the air gap, which has the greatest possible thickness. It contributes to the nozzle mass indirectly since although the air is assumed to have no mass, the thickness of the air gap changes the radius of the upper wall layers and therefore their mass. Since the temperature constraint is not tight, it seems that a large air gap helps decrease the baffle mass more than the mass of the load layer increases. Lastly, the last three baffles have also been pushed as far right as possible to minimize their mass.
 
 Although this is the critical loading condition, with the given material properties and minimum thicknesses, stresses and temperatures are not critical. Thinner wall layers would lead to higher temperatures and stresses. It appears that the middle titanium-honeycomb load layer is the most critical for stress.
+
+\subsection{Medium-Fidelity Deterministic Optimization}
+
+The optimization is run in parallel using 16 cores and terminates with the message \texttt{Current point cannot be improved upon} after 13 days and 10 major iterations. There are 4,599 total function evaluations including finite differences and no duplicate evaluations. This termination message is indicative of poor gradient accuracy, however after restarting the optimization at the solution found by NPSOL using a rescaled problem and the SNOPT optimization algorithm, it was found that the scaled optimization problem satisfies the specified optimality and constraint tolerances. As a result the constraint tolerance was tightened to $10^{-4}$ and SNOPT is currently being used to improve the design. However, in this document the NPSOL solution is presented.
+
+\subsubsection{Optimum}
+
+The optimal shape is shown in figure \ref{fig:det-med-optimal-shape}. Table \ref{tab:det-med-optimal-values} gives the values of the objective function and nonlinear constraints at the optimum. At the optimum 32 variable bounds are tight, 11 linear constraints are tight and the nonlinear thrust constraint is infeasible but within 0.197\% of its bound. The following observations are made about the solution:
+
+\begin{enumerate}
+\item The nozzle is as short as possible.
+\item The throat is pushed as far to the right as possible.
+\item The thermal layer, all load layers, stringers, and baffles are all as thin as possible.
+\item B-spline coefficients have tended to cluster after the throat as they are pushed to the right (3 tight relative x-position constraints).
+\item A flat diverging section is apparent. The B-spline coefficients to the immediate left and right of the throat are as low as possible, and there are 3 tight minimum slope constraints in the post-throat region.
+\item Baffles 3 and 4 are as far apart as possible (notably in the converging section where the gap between the nozzle wall and exterior is greatest).
+\item Baffles 4, 5, and 6 are as close as possible.
+\item The only active non-linear constraint is the thrust constraint which is infeasible with a value of 21,547.51 N.
+\end{enumerate}
+
+\begin{figure}
+\caption{Optimal shape for equivalent medium-fidelity deterministic optimization for reliable DUU problem in equation \ref{eq:specific_reliable_equiv_deterministic_optim}.}
+\label{fig:det-med-optimal-shape}
+\begin{center}
+\includegraphics[scale=0.35]{figs/det-med-optimal-shape.png}
+\end{center}
+\end{figure}
+
+
+\begin{table}
+\caption[Equivalent medium-fidelity deterministic optimization objective and constraint values]{Value of objective function and constraints at equivalent medium-fidelity deterministic optimum.}
+\label{tab:det-med-optimal-values}
+\begin{center}
+\begin{tabular}[]{ c | c | c | c }
+\textbf{Description} & \textbf{Notation} & \textbf{Initial Value} & \textbf{Optimal Value} \\ \hline
+Mass & $M$ & 156.34  & 31.860419 \\ \hline
+Thrust & $F$ & 24064.73 & 21457.512003 \\ \hline
+Inner load layer P-norm of temperature ratio & $g_1(\sfrac{T_2}{T_{max,2}})$ & 0.380 & 0.457780 \\ \hline
+Thermal layer P-norm of failure criterion & $g_2(S_1(\sigma_1))$ & 0.108 & 0.115759 \\ \hline
+Inner load layer P-norm of failure criterion & $g_3(S_2(\sigma_2))$ & 0.022 & 0.057282 \\ \hline
+Middle load layer P-norm of failure criterion & $g_4(S_3(\sigma_3))$ & 0.002 & 0.001445 \\ \hline
+Outer load layer P-norm of failure criterion & $g_5(S_4(\sigma_4))$ & 0.044 & 0.050168 \\ \hline
+Stringers P-norm of failure criterion & $g_6(S_5(\sigma_5))$ & 0.044 & 0.025821 \\ \hline
+Baffle 1 P-norm of failure criterion & $g_7(S_6(\sigma_6))$ & 0.003 & 0.002771 \\ \hline
+Baffle 2 P-norm of failure criterion & $g_8(S_7(\sigma_7))$ & 0.007 & 0.004510 \\ \hline
+Baffle 3 P-norm of failure criterion & $g_9(S_8(\sigma_8))$ & 0.005 & 0.004155 \\ \hline
+Baffle 4 P-norm of failure criterion & $g_{10}(S_9(\sigma_9))$ & 0.009 & 0.001439 \\ \hline
+Baffle 5 P-norm of failure criterion & $g_{11}(S_{10}(\sigma_{10}))$ & 0.012 & 0.001854 \\ \hline
+Baffle 6 P-norm of failure criterion & $g_{12}(S_{11}(\sigma_{11}))$ & 0.007 & 0.001135 \\ \hline
+\end{tabular}
+\end{center}
+\end{table}
+
+\subsubsection{Discussion of Optimum}
+
+The optimal nozzle shape again shows a careful balance between the mass allocated to the baffles and the shape of the inner wall. Clearly wall layers of minimum thickness are beneficial. The thrust constraint is clearly the most critical, followed by the temperature constraint for the inner load layer. The most critical stress constraints are the thermal layer and the Gr-BMI layers in the load layer. Note here that the air gap is not maximized.
+
+The overall wall shape is a nozzle that converges smoothly to the throat and remains flat until the exit. Baffles have been positioned around this geometry so as to have the least mass, namely in the spaces where the nozzle wall is closest to the nozzle exterior. As a result, the optimal nozzle configuration is likely highly dependent on the exterior geometry.
+
+\subsubsection{Comparison of Low- and Medium-Fidelity Optimums}
+
+Interestingly the low- and medium-fidelity optimal geometries share many common features such as a flat diverging section, minimum wall layer thicknesses, and baffle placement sensitive to the exterior geometry and inner wall shape. Similar trends in stresses are observed.
+
+Several notable differences exist. First, the air gap is maximized in the low-fidelity optimization where as it is not in the medium-fidelity optimization, thus leading to a higher temperature in the inner load layer. Next, although both nozzle shapes have a smooth divergent section, the medium-fidelity shape is smoother without the bump found in the low-fidelity shape. Next, the medium-fidelity nozzle analysis generates a higher thrust than that predicted by the low-fidelity nozzle analysis. As a result, the medium-fidelity nozzle can have a smaller throat and thereby lower mass.
 
 \section{\texttt{MULTI-F} Verification} \label{sec:verification}
 

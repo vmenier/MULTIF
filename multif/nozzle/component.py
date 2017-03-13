@@ -41,3 +41,11 @@ class Stringers:
         self.n = int(n)
         self.height = None
         self.thickness = None
+        
+class Distribution:
+    def __init__(self,*args):
+        if len(args) == 1:
+            self.name = args[0]
+        else:
+            self.name = 'NONDESCRIPT_DISTRIBUTION'
+        self.param = 'NONE'

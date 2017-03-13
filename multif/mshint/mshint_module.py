@@ -13,12 +13,12 @@ if _swig_python_version_info >= (2, 7, 0):
     def swig_import_helper():
         import importlib
         pkg = __name__.rpartition('.')[0]
-        mname = '.'.join((pkg, '_meshutils_module')).lstrip('.')
+        mname = '.'.join((pkg, '_mshint_module')).lstrip('.')
         try:
             return importlib.import_module(mname)
         except ImportError:
-            return importlib.import_module('_meshutils_module')
-    _meshutils_module = swig_import_helper()
+            return importlib.import_module('_mshint_module')
+    _mshint_module = swig_import_helper()
     del swig_import_helper
 elif _swig_python_version_info >= (2, 6, 0):
     def swig_import_helper():
@@ -26,20 +26,20 @@ elif _swig_python_version_info >= (2, 6, 0):
         import imp
         fp = None
         try:
-            fp, pathname, description = imp.find_module('_meshutils_module', [dirname(__file__)])
+            fp, pathname, description = imp.find_module('_mshint_module', [dirname(__file__)])
         except ImportError:
-            import _meshutils_module
-            return _meshutils_module
+            import _mshint_module
+            return _mshint_module
         if fp is not None:
             try:
-                _mod = imp.load_module('_meshutils_module', fp, pathname, description)
+                _mod = imp.load_module('_mshint_module', fp, pathname, description)
             finally:
                 fp.close()
             return _mod
-    _meshutils_module = swig_import_helper()
+    _mshint_module = swig_import_helper()
     del swig_import_helper
 else:
-    import _meshutils_module
+    import _mshint_module
 del _swig_python_version_info
 try:
     _swig_property = property
@@ -99,37 +99,9 @@ except __builtin__.Exception:
     _newclass = 0
 
 
-def py_ConvertGMFToSU2(MshNam, SolNam, OutNam):
-    return _meshutils_module.py_ConvertGMFToSU2(MshNam, SolNam, OutNam)
-py_ConvertGMFToSU2 = _meshutils_module.py_ConvertGMFToSU2
-
-def py_ConvertSU2toGMSH(MshNam, SolNam, OutNam):
-    return _meshutils_module.py_ConvertSU2toGMSH(MshNam, SolNam, OutNam)
-py_ConvertSU2toGMSH = _meshutils_module.py_ConvertSU2toGMSH
-
-def py_BSplineGeo3(pyknots, pycoefs, pyx, pyy, nx):
-    return _meshutils_module.py_BSplineGeo3(pyknots, pycoefs, pyx, pyy, nx)
-py_BSplineGeo3 = _meshutils_module.py_BSplineGeo3
-
-def py_MeshPrepro2D(InpNam, OutNam):
-    return _meshutils_module.py_MeshPrepro2D(InpNam, OutNam)
-py_MeshPrepro2D = _meshutils_module.py_MeshPrepro2D
-
-def py_BSplineGeo3LowF(pyknots, pycoefs, pyx, pyy, pydydx):
-    return _meshutils_module.py_BSplineGeo3LowF(pyknots, pycoefs, pyx, pyy, pydydx)
-py_BSplineGeo3LowF = _meshutils_module.py_BSplineGeo3LowF
-
-def py_ExtractAlongLine(MshNam, SolNam, pyBox, pyResult, PyInfo, pyHeader):
-    return _meshutils_module.py_ExtractAlongLine(MshNam, SolNam, pyBox, pyResult, PyInfo, pyHeader)
-py_ExtractAlongLine = _meshutils_module.py_ExtractAlongLine
-
-def py_ExtractAtRef(MshNam, SolNam, pyRefs, pyResult, PyInfo, pyHeader):
-    return _meshutils_module.py_ExtractAtRef(MshNam, SolNam, pyRefs, pyResult, PyInfo, pyHeader)
-py_ExtractAtRef = _meshutils_module.py_ExtractAtRef
-
-def py_ReadMesh(MshNam, SolNam, pyVer, pyTri, pyTet, pyEdg):
-    return _meshutils_module.py_ReadMesh(MshNam, SolNam, pyVer, pyTri, pyTet, pyEdg)
-py_ReadMesh = _meshutils_module.py_ReadMesh
+def py_Interpolation(MshNam, BakMshNam, BakSolNam, pyInfo, pyCrd, pyTri, pyTet, pySol, pyHeader):
+    return _mshint_module.py_Interpolation(MshNam, BakMshNam, BakSolNam, pyInfo, pyCrd, pyTri, pyTet, pySol, pyHeader)
+py_Interpolation = _mshint_module.py_Interpolation
 # This file is compatible with both classic and new-style classes.
 
 
