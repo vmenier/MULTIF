@@ -26,7 +26,7 @@
 
 \title{Axisymmetric Nozzle Optimization Formulations\\DARPA EQUiPS SEQUOIA Team}
 \author{Richard W. Fenrich\\Department of Aeronautics and Astronautics\\Stanford University, Stanford, CA\\rfenrich@stanford.edu}
-\date{November 30, 2016}
+\date{March 13, 2017}
 
 \begin{document}
 
@@ -127,16 +127,16 @@ Load layer geo            & 6*3 & 20*3 & 40*3 \\ \hline
 Baffle geo                & 10  & 10   & 10   \\ \hline
 Stringer geo              & 6   & 6    & 6    \\ \hline
 CMC material              & 7   & 7    & 10   \\ \hline
-GR-BMI material           & 20  & 20   & 20   \\ \hline
+GR-BMI material           & 19  & 19   & 19   \\ \hline
 TI-HC material            & 7   & 7    & 9    \\ \hline
 AIR material              & 1   & 1    & 1    \\ \hline
 PANEL material            & 1   & 1    & 1    \\ \hline
 Inlet conditions          & 2   & 2    & 4    \\ \hline
 Atmospheric conditions    & 2   & 2    & 4    \\ \hline
 Heat transfer coefficient & 1   & 2    & 4    \\ \hline \hline
-\textbf{Total Dimension}  & 103 & 160  & 280  \\ \hline
+\textbf{Total Dimension}  & 102 & 158  & 279  \\ \hline
 \textbf{Total Deterministic Dimension} & \{0,62\} & \{0,118\} & \{0,227\} \\ \hline
-\textbf{Total Random Dimension} & \{103,41\} & \{160,42\} & \{280,53\} \\ \hline
+\textbf{Total Random Dimension} & \{102,40\} & \{158,40\} & \{279,52\} \\ \hline
 \end{tabular}
 \end{center}
 \end{table}
@@ -393,7 +393,7 @@ The set of linear constraints $Ay \leq b$ is used to avoid numerical issues and 
 
 \subsection{Material Constants}
 
-Material properties are specified using the local coordinate system in figure \ref{fig:materialCoordinateSystem}. An incomplete set of material properties is gathered from a variety of experimental data sources. Missing macroscopic properties are either determined through fundamental physical analysis of the material's structure or are approximated by values for similar materials. Table \ref{tab:matPropCMC} provides the properties used in the \texttt{MULTI-F} analysis for the CMC material, table \ref{tab:matPropGR-BMI} for the GR-BMI material, table \ref{tab:matPropTI-HC} for the TI-HC material, and table \ref{tab:matPropAirGap} for the air gap.
+Material properties are specified using the local coordinate system in figure \ref{fig:materialCoordinateSystem}. An incomplete set of material properties is gathered from a variety of experimental data sources. Missing macroscopic properties are either determined through fundamental physical analysis of the material's structure or are approximated by values for similar materials. Table \ref{tab:matPropCMC} provides the properties used in the \texttt{MULTI-F} analysis for the CMC material, table \ref{tab:matPropGR-BMI} for the GR-BMI material, table \ref{tab:matPropTI-HC} for the TI-HC material, and table \ref{tab:matPropAirGap} for the air gap. Lastly, \ref{tab:matPropPanel} gives the distribution for the assumed yield stress of the composite panel material used for the baffles.
 
 \begin{figure}
 \caption{Local coordinate system used for the specification of material properties in shell materials.}
@@ -444,7 +444,7 @@ Failure strain (compression)* & $\epsilon_{f,1} = \epsilon_{f,2}$ & \% & -0.52 &
 %Failure strain (tension/compression) & $\epsilon_{f,3}$ & \% & 0.17/0.11 \\ \hline
 Failure strain (shear)* & $\gamma_{f}$ & \% & 0.17 & $\mathcal{U}(0.153,0.187)$ \\ \hline
 \end{tabular} \\
-*if failure by yield (von Mises) is assumed instead of failure by strain (for simplicity), use isotropic yield stress $\sigma_Y = 324$ MPa, where $\sigma_Y \sim \textrm{ln}\mathcal{N}(5.7736,0.1196)$.
+*if failure by yield (von Mises) is assumed instead of failure by strain (for simplicity), use isotropic yield stress $\sigma_Y = 324$ MPa, where $\sigma_Y \sim \textrm{ln}\mathcal{N}(5.7736,0.1196^2)$.
 \end{center}
 \end{table}
 
@@ -460,7 +460,7 @@ Density & $\rho$ & $\frac{\textrm{kg}}{\textrm{m}^3}$ & 179.57 & $\mathcal{U}(17
 % Elastic modulus: nominal, NASA report 101732
 %Elastic modulus& $E$ & GPa & 0.1915 &  \\ \hline
 % Elastic modulus: nominal, Bencor, Inc.
-Elastic modulus& $E$ & GPa & 0.190 & $\textrm{ln}\mathcal{N}(0.6441,0.0779^2)$ \\ \hline
+Elastic modulus& $E$ & GPa & 1.90 & $\textrm{ln}\mathcal{N}(0.6441,0.0779^2)$ \\ \hline
 %$E_{3}$ & GPa & 1.915 & \\ \hline
 %$G_{12}$ & GPa & $4.2 \times 10^{-8}$ & \\ \hline
 %$G_{23}$ & GPa & 1.248 & \\ \hline
@@ -497,6 +497,19 @@ Thermal conductivity & $k$ & $\frac{\textrm{W}}{\textrm{m-K}}$ & 0.0425 &  $\mat
 \end{tabular}
 \end{center}
 \end{table}
+
+\begin{table}
+\caption[Panel structure material properties]{Assumed properties of panel structure used in baffles.}
+\label{tab:matPropPanel}
+\begin{center}
+\begin{tabular}[]{ c | c | c | c | c }
+\textbf{Property} & \textbf{Symbol} & \textbf{Units} & \textbf{Nominal Value} & \textbf{Distribution} \\ \hline
+Yield strength & $\sigma_Y$ & MPa & 324 & $\textrm{ln}\mathcal{N}(5.7736,0.1196^2)$ \\ \hline
+\end{tabular}
+\end{center}
+\end{table}
+
+if failure by yield (von Mises) is assumed instead of failure by strain (for simplicity), use isotropic yield stress $ = 324$ MPa, where $\sigma_Y \sim$.
 
 \subsection{Mission Parameters}
 
@@ -561,6 +574,8 @@ Baffle height & m & N/A & N/A & N/A \\ \hline
 \end{table}
 
 \subsection{Robust Design}
+
+\break
 
 \subsubsection{Full Problem Formulation}
 

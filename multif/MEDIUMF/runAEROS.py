@@ -293,8 +293,35 @@ def assignFailureCriteria(nozzle, index, material, output='verbose'):
         nozzle.ks_failure_criteria[index] = ksFunction(stress/yieldStress,ks_param2);
         nozzle.pn_failure_criteria[index] = pnFunction(stress/yieldStress,pn_param2);
     elif material.failureType == 'PRINCIPLE_FAILURE_STRAIN':
-        sys.stderr.write('\n ## ERROR: NOT IMPLEMENTED: principle failure strain failure type\n\n');
-        sys.exit(0);
+        
+        if index != 0:
+            sys.stderr.write('\n ## ERROR: NOT IMPLEMENTED: principle failure strain failure type for component %i\n\n' % index);
+            sys.exit(0);            
+        filename = 'STRAINP1.0';
+        try:
+            data = np.loadtxt(filename,dtype=float,skiprows=3); # strains in 4th column (0-indexed)
+        except IOError:
+            if output=='verbose':
+                sys.stdout.write('WARNING: could not open STRAINP1.0 file for component %i\n' % index);
+            return 0;        
+        strainp1 = data[:,-1];   
+        
+        filename = 'STRAINP3.0';
+        try:
+            data = np.loadtxt(filename,dtype=float,skiprows=3); # strains in 4th column (0-indexed)
+        except IOError:
+            if output=='verbose':
+                sys.stdout.write('WARNING: could not open STRAINP2.0 file for component %i\n' % index);
+            return 0;        
+        strainp3 = data[:,-1];   
+        # Assign failure criterion
+        failureStrain = material.getFailureLimit();
+        failStrain = failureStrain;
+        strain = np.max(np.vstack((strainp1,strainp3)),axis=0)
+        nozzle.max_failure_criteria[index] = np.max(strain/failStrain);
+        nozzle.ks_failure_criteria[index] = ksFunction(strain/failStrain,ks_param2);
+        nozzle.pn_failure_criteria[index] = pnFunction(strain/failStrain,pn_param2);                 
+        
     elif material.failureType == 'LOCAL_FAILURE_STRAIN':
         # Local strains are read in through the STRAINXX and STRAINYY files
         filename = 'STRAINXX.' + str(suffix[index]);

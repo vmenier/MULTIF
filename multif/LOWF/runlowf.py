@@ -822,8 +822,6 @@ def Run (nozzle,output='verbose'):
     xPosition, flowTuple, heatTuple,                                         \
     geoTuple, performanceTuple = Quasi1D(nozzle,output);
     
-    print flowTuple[0][0]
-    
     nozzle.mass = np.sum(performanceTuple[1]);
     nozzle.volume = np.sum(performanceTuple[0]);
     nozzle.thrust = performanceTuple[2];
