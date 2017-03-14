@@ -291,7 +291,7 @@ class Nozzle:
             sys.exit(0);
 
         if flevel >= NbrFidLev:
-          print "\n  ## ERROR : Fidelity level %d not defined.\n" % flevel;
+          sys.stderr.write("\n  ## ERROR : Fidelity level %d not defined.\n" % flevel);
           sys.exit(0)					
 
         if output == 'verbose':
@@ -1738,8 +1738,8 @@ class Nozzle:
                 id_dv = nozzle.DV_Head[iTag];
                 
                 # Skip fixed_ratio_panel materials which use predefined materials
-                if nozzle.materials[k].type == 'FIXED_RATIO_PANEL':
-                    continue;
+                #if nozzle.materials[k].type == 'FIXED_RATIO_PANEL':
+                #    continue;
                 
                 if Tag == k: # Update material with non-specific names                
                     if NbrDV == 2: # update density and thermal conductivity

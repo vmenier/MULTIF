@@ -112,7 +112,7 @@ def SetupConfig_old (solver_options):
     config.REF_ELEM_LENGTH= '0.005 ';
     config.LIMITER_COEFF= '0.3';
     config.SHARP_EDGES_COEFF= '3.0';
-    config.LIMITER_ITER= '150';
+    config.LIMITER_ITER= '200';
     config.REF_SHARP_EDGES= '3.0';
     config.SENS_REMOVE_SHARP= 'YES';
     
@@ -270,7 +270,7 @@ def SetupConfig (solver_options):
         config.LINEAR_SOLVER_ERROR= '1E-6';
         config.LINEAR_SOLVER_ITER= '3';
 
-        config.LIMITER_ITER= '150';
+        config.LIMITER_ITER= '200';
 
     elif method == 'RANS':
         config.PHYSICAL_PROBLEM= 'NAVIER_STOKES';
@@ -405,7 +405,8 @@ def SetupConfig (solver_options):
         config.RELAXATION_LOCAL= 'YES';
         config.CFL_ADAPT_LOCAL= 'YES';
         config.HARD_LIMITING_PARAM= '(0.15, 1e-5)';
-        config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 30.0 )';
+        #config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 30.0 )';
+        config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 20.0 )';
         config.RESIDUAL_MAXVAL= 2;
 		
     # --- Setup wall temp distribution
