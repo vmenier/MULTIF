@@ -2,6 +2,8 @@
 
 import os, time, sys, shutil, copy
 
+sys.path.append('/home/rick/Documents/Research/MULTIF')
+
 from optparse import OptionParser
 import textwrap
 
@@ -115,7 +117,7 @@ def GenCAD(idSam, hdlSam, sizes, params):
 	#except:
 	#	raise;
 	
-	NbrLnk = 5000;
+	NbrLnk = 400;
 	
 	xthroat = params[3];
 	xexit   = params[4];

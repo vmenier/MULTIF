@@ -123,7 +123,7 @@ class PiecewiseLinear:
         
     def areaGradient(self, x): # dAdx
         y = np.interp(x,self.nodes[0,:],self.nodes[1,:])
-        dydx = self.radiusGradient(x)            
+        dydx = self.radiusGradient(x)
         return 2*np.pi*y*dydx
 
 #==============================================================================
@@ -605,11 +605,23 @@ def calcVolumeAndMass(nozzle):
     x = np.linspace(0,nozzle.length,n)
     # Pick x smartly
     xHit = set()
-    for i in range(len(nozzle.wall.geometry.coefs[0,:])):
-        xHit.add(nozzle.wall.geometry.coefs[0,i])
-    for i in range(len(nozzle.wall.layer)):
-        for j in range(len(nozzle.wall.layer[i].thickness.nodes[0,:])):
-            xHit.add(nozzle.wall.layer[i].thickness.nodes[0,j])
+    if( nozzle.wall.geometry.type == 'B-spline' ):
+        for i in range(len(nozzle.wall.geometry.coefs[0,:])):
+            xHit.add(nozzle.wall.geometry.coefs[0,i])
+        for i in range(len(nozzle.wall.layer)):
+            for j in range(len(nozzle.wall.layer[i].thickness.nodes[0,:])):
+                xHit.add(nozzle.wall.layer[i].thickness.nodes[0,j])
+    elif( nozzle.wall.geometry.type == 'piecewise-linear' ):
+        for i in range(nozzle.wall.geometry.nodes.size/2):
+            xHit.add(nozzle.wall.geometry.nodes[0,i])
+        for i in range(len(nozzle.wall.layer)):
+            for j in range(len(nozzle.wall.layer[i].thickness.nodes[0,:])):
+                xHit.add(nozzle.wall.layer[i].thickness.nodes[0,j])
+    else: # just pickout nodes from layers
+        for i in range(len(nozzle.wall.layer)):
+            for j in range(len(nozzle.wall.layer[i].thickness.nodes[0,:])):
+                xHit.add(nozzle.wall.layer[i].thickness.nodes[0,j])
+        
     xHit = list(xHit)
     xHit.sort()
     x = np.array([])

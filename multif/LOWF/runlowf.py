@@ -8,7 +8,8 @@ Rick Fenrich 6/28/16
 import numpy as np
 import scipy.optimize
 import scipy.integrate
-import sys;
+import sys
+import time
 
 from .. import nozzle as nozzlemod
 #import lifetime
@@ -260,7 +261,7 @@ def integrateODEwithEvents(ode,dt,tfinal,ycrit,direction):
         if( ode.y > ycrit ):
             
             while ode.successful() and ode.t < tfinal - dt/2:
-                
+
                 yTemp = ode.integrate(ode.t+dt)
                 
                 if( yTemp < ycrit + delta ):
@@ -273,7 +274,6 @@ def integrateODEwithEvents(ode,dt,tfinal,ycrit,direction):
         elif( ode.y <= ycrit ):
         
             while ode.successful() and ode.t < tfinal - dt/2:
-                
                 yTemp = ode.integrate(ode.t+dt)
                 
                 if( yTemp > ycrit - delta ):
@@ -288,7 +288,7 @@ def integrateODEwithEvents(ode,dt,tfinal,ycrit,direction):
         if( ode.y > ycrit ):
             
             while ode.successful() and ode.t < tfinal - dt/2:
-                
+
                 yTemp = ode.integrate(ode.t+dt)
                 
                 if( yTemp < ycrit + delta ):
@@ -301,7 +301,7 @@ def integrateODEwithEvents(ode,dt,tfinal,ycrit,direction):
         elif( ode.y <= ycrit ):
         
             while ode.successful() and ode.t < tfinal - dt/2:
-                
+
                 yTemp = ode.integrate(ode.t+dt)
                 
                 if( yTemp > ycrit - delta ):
@@ -423,9 +423,9 @@ def integrateSupersonic(nozzle,tol,params,xThroat,nPartitions):
 
     # Else, assume nozzle is choked at throat, integrate forwards & backwards
     else:
-        UpperM = 1.001 # start integration at this Mach number for aft portion
-        LowerM = 0.999 # start integ. at this Mach number for fore portion
-        dx = 1e-3 # 1e-5 for 0.9999 to 1.0001 or 1e-4 for 0.999 to 1.001
+        UpperM = 1.005 # start integration at this Mach number for aft portion
+        LowerM = 0.995 # start integ. at this Mach number for fore portion
+        dx = 5e-3 # 1e-5 for 0.9999 to 1.0001 or 1e-4 for 0.999 to 1.001
         
         # Integrate forward from throat
         f = scipy.integrate.ode(dM2dxForward,jac=None).set_integrator(       \
@@ -440,7 +440,7 @@ def integrateSupersonic(nozzle,tol,params,xThroat,nPartitions):
         if( eventIndex != xF.size ):
             raise RuntimeError(("Integration terminated early while ",
                                "integrating forwards from the throat"))
-        
+                               
         # Integrate backward from throat
         b = scipy.integrate.ode(dM2dxBackward,jac=None).set_integrator(      \
           'dopri5',atol=tol["solverAbsTol"],rtol=tol["solverRelTol"])
@@ -499,6 +499,28 @@ def integrateTrapezoidal(y,x):
 #% exterior wall temp. Text, and approximate stress along length of nozzle.
 #==============================================================================
 def Quasi1D(nozzle,output='verbose'):
+    
+#    from matplotlib import pyplot as plt
+#    fig1 = plt.figure()
+#    plot_x = np.linspace(0,nozzle.wall.geometry.length,4000)
+#    plot_y = nozzle.wall.geometry.radius(plot_x)
+#    plt.plot(plot_x,plot_y)
+#    fig1.savefig('r_vs_x.png')
+#    
+#    fig2 = plt.figure()
+#    plot_drdx = nozzle.wall.geometry.radiusGradient(plot_x)
+#    plt.plot(plot_x,plot_drdx)
+#    fig2.savefig('dfdx_vs_x.png')
+#    
+#    print  nozzle.wall.geometry.nodes.shape
+    
+#    START = time.time()
+#    for i in range(1000):
+#        tmp = nozzle.wall.geometry.areaGradient(i*nozzle.wall.geometry.length/1000)
+#    #A = geo.area(x)
+#    #D = geo.diameter(x)
+#    END = time.time()
+#    print 'elapsed time: %f' % (END-START)
     
     # Initialize
     gam = nozzle.fluid.gam
@@ -568,7 +590,7 @@ def Quasi1D(nozzle,output='verbose'):
     while( 1 ):
         
         counter += 1
-                
+        
         # Parameters passed to functions called by ODE 
         params = (xPositionOld,Cf,Tstag,dTstagdx)
         
