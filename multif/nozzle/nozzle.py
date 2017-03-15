@@ -615,7 +615,7 @@ class Nozzle:
                   altitude = 0.
                   mach     = 0.01
                   inletTs  = 900.
-                  inletPs  = 1.1e5
+                  inletPs  = 1.1e5	
               else : 
                   sys.stderr.write('\n ## ERROR : UNKNOWN MISSION ID %d !! '     \
                                    '\n\n' % mission);

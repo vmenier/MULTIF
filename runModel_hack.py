@@ -159,16 +159,33 @@ def main():
 					  help="number of PARTITIONS", metavar="PARTITIONS")
 	
 	parser.add_option("-l", "--flevel", dest="flevel", default=-1,
-					  help="fidelity level to run", metavar="FLEVEL")	
+					  help="fidelity level to run", metavar="FLEVEL")
+					
+	parser.add_option("-s", "--samples", dest="samples_filename", default="",
+					  help="samples file name", metavar="FLEVEL")
+					
+	parser.add_option("-i", "--id", dest="idSam", default=-1,
+					  help="id of sample to be run", metavar="FLEVEL")						
 	
+						
 	(options, args)=parser.parse_args()
 	
 	options.partitions = int( options.partitions )
 	options.flevel	 = int( options.flevel )
+	options.idSam	 = int( options.idSam )
 	
+	if options.samples_filename == "" :
+		sys.stderr.write("  ## ERROR : No sample file was provided (Ex: -s samples.dat)\n\n");
+		sys.exit(0);
+	
+	if options.idSam < 0 :
+		sys.stderr.write("  ## ERROR : Please choose a sample id to run (Ex: -i 32)\n\n");
+		sys.exit(0);
+		
 	if options.flevel < 0 :
 		sys.stderr.write("  ## ERROR : Please choose a fidelity level to run (option -l or --flevel)");
-		sys.exit(0);
+		sys.exit(0);		
+	
 	
 	nozzle = multif.nozzle.NozzleSetup( options.filename, options.flevel, output, options.partitions );
 
@@ -177,10 +194,10 @@ def main():
 	
 	idSam = 2;
 	
-	FilNam = "samples.dat"
+	FilNam = options.samples_filename
 	hdlSam = np.loadtxt(FilNam);
 	
-	idSam = 6;
+	idSam = options.idSam;
 	
 	params = np.zeros(100)
 	params[0] = -0.0739843; # z crd of the cut at the throat
