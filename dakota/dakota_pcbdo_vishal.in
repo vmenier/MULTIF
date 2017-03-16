@@ -1,0 +1,98 @@
+environment,
+	method_pointer = 'OPTIM'
+#	output_precision = 16
+
+###########################
+# begin opt specification #
+###########################
+method,
+	id_method = 'OPTIM'
+	model_pointer = 'HF_NESTED'
+#	npsol_sqp
+#	  convergence_tolerance = 1.e-6
+	coliny_pattern_search
+#	  ... step size controls ...
+	  output verbose
+
+model,
+	id_model = 'HF_NESTED'
+	nested
+	  variables_pointer  = 'OPTIM_V'
+	  sub_method_pointer = 'UQ_HF'
+	  responses_pointer  = 'OPTIM_R'
+	  primary_response_mapping   = 0. 0. 0. 1. # stdev[T] --> objective
+	  secondary_response_mapping = 1. 0. 0. 0. #  mean[V] --> nln ineq 1
+	  			       0. 0. 1. 0. #  mean[T] --> nln ineq 2
+
+variables,
+	id_variables = 'OPTIM_V'
+	continuous_design = 19 # new design controls eliminate linear constr
+	  initial_point = # TO DO
+	  lower_bounds  = # TO DO
+	  upper_bounds  = # TO DO
+	  descriptors   = # TO DO
+
+responses,
+	id_responses = 'OPTIM_R'
+	objective_functions = 1               # std dev of Thrust
+	nonlinear_inequality_constraints = 2  # Exp values of mass & thrust
+	nonlinear_inequality_lower_bounds = -1.e+50  23000.
+	nonlinear_inequality_upper_bounds =  35.     1.e+50
+#	analytic_gradients
+	no_gradients
+	no_hessians
+
+#################################
+# begin UQ model specifications #
+#################################
+method,
+	id_method = 'UQ_HF'
+	model_pointer = 'M_FINE'
+	polynomial_chaos
+# For higher dimensions, consider sparse grid:
+#	  sparse_grid_level = 3
+# For 1D, tensor quadrature is fine:
+	  quadrature_order = 5
+
+model,
+	id_model = 'M_FINE'
+	single
+	  variables_pointer = 'UQ_V'
+	  interface_pointer = 'EULER_FINE'
+	  responses_pointer = 'UQ_R'
+
+variables,
+	id_variables = 'UQ_V'
+# This line just allocates space (values/bounds/labels provided at design level)
+	continuous_design = 19
+# This variable represents the model form uncertainty:
+	normal_uncertain = 1
+    	  means          = 1.
+    	  std_deviations = .5
+    	  descriptors    = 'BETA'
+# Resolution can be handled by Python command line option:
+#	discrete_state_set string = 1
+#	  num_set_values = 3
+#	  set_values = 'COARSE' 'FINE' 'MEDIUM'
+#	  initial_state = 'COARSE'
+#	  descriptors 'MF_discretization'
+
+interface,
+	id_interface = 'EULER_FINE'
+	# following spec pulls a particular model based on your cfg file
+	# e.g., -l 1 pulls model 1 = Medium Fidelity, FINE discretization
+	analysis_driver = 'python runModel.py -f input_mike.cfg -l 1'
+#	  deactivate strict_cache_equality cache_tolerance = 5.e-9
+	  fork asynchronous evaluation_concurrency 20
+    	  work_directory named '/tmp/jamonsc/duu/dakota_work_hf'
+    	  link_files '/home/jamonsc/sequoia/multif/MULTIF/*'
+    	  directory_tag #directory_save
+    	  parameters_file = 'inputdv_all.in'
+    	  results_file    = 'output.dat'
+
+responses,
+	id_responses = 'UQ_R'
+	response_functions = 2
+	descriptors = 'MASS' 'THRUST' #'MECHANICAL_STRESS' 'THERMAL_STRESS'
+	no_gradients
+	no_hessians
