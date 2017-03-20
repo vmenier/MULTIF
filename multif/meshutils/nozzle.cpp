@@ -1121,8 +1121,6 @@ void generateNozzle(const std::vector<PointData> &points,
   std::vector<std::pair<GEntity::GeomType,int> > boundaryTags;
   std::vector<std::pair<GEntity::GeomType,int> > cmcBoundaryTags;
 
-  double cth1, cth2;
-
   // count the number of baffles
   int baffleCount = 0;
   for(std::vector<VertexData>::const_iterator it = vertices.begin(); it != vertices.end(); ++it)
@@ -1159,64 +1157,102 @@ void generateNozzle(const std::vector<PointData> &points,
     int nn = segmentIt->nn;             // number of transfinite points (longitudinal edges)
     int mn = segmentIt->mn;             // number of transfinite points (circumferential edges)
     int sn = segmentIt->sn;             // number of transfinite points (radial edges of stiffener)
-    double t1 = std::accumulate(pointIt1->t.begin(), pointIt1->t.end(), 0.); // total thickness of outer structural layer
-    double t2 = std::accumulate(pointIt2->t.begin(), pointIt2->t.end(), 0.); // total thickness of outer structural layer
-    double tt1 = pointIt1->tt[0];       // thickness of inner thermal insulating layer
-    double tt2 = pointIt2->tt[0];       // thickness of inner thermal insulating layer
     int tn_inner = segmentIt->tn[0];    // number of transfinite points through thickness of inner part of insulating layer in thermal mesh
     int tn_outer = segmentIt->tn[1];    // number of transfinite points through thickness of outer part of insulating layer in thermal mesh
     int ln = segmentIt->ln;             // number of transfinite points through each half of the thickness of the load layer in thermal mesh
     double angle = 2*M_PI/ns;
 
+    // cumulative thickness of first k+1 thermal insulating layers
+    auto ttk = [&](std::vector<PointData>::const_iterator pointIt, int k) {
+      return std::accumulate(pointIt->tt.begin(), pointIt->tt.begin()+1+k, 0.);
+    };
+    // cumulative thickness of all thermal insulating layers
+    auto tt = [&](std::vector<PointData>::const_iterator pointIt) {
+      return std::accumulate(pointIt->tt.begin(), pointIt->tt.end(), 0.);
+    };
+    // cumulative thickness of all structural load bearing layers
+    auto ts = [&](std::vector<PointData>::const_iterator pointIt) {
+      return std::accumulate(pointIt->t.begin(), pointIt->t.end(), 0.);
+    };
+
+    // computes the y-coordinate of point extruded in the y direction, given the normal thickness
+    // this is currently approximated somewhat crudely using linear interpolations
+    // a cubic spline could be used to get a better approximation
+    auto ycoord = [&](std::vector<PointData>::const_iterator pointIt, double t) {
+      const double tol = 10*std::numeric_limits<double>::epsilon();
+      if(pointIt->dydx < 0) {
+        for(std::vector<PointData>::const_iterator p1 = pointIt-1; p1 >= points.begin(); --p1) {
+          std::vector<PointData>::const_iterator p2 = p1+1;
+          double cth1 = 1/sqrt(1+p1->dydx*p1->dydx), sth1 = p1->dydx*cth1;
+          double x1 = p1->xyz[0]-t*sth1;
+          double cth2 = 1/sqrt(1+p2->dydx*p2->dydx), sth2 = p2->dydx*cth2;
+          double x2 = p2->xyz[0]-t*sth2;
+          if(pointIt->xyz[0] > x1-tol && pointIt->xyz[0] < x2+tol) {
+            double y = p1->xyz[1] + (pointIt->xyz[0]-x1)/(x2-x1)*(p2->xyz[1]-p1->xyz[1]);
+            double dydx = p1->dydx + (pointIt->xyz[0]-x1)/(x2-x1)*(p2->dydx-p1->dydx);
+            double cth = 1/sqrt(1+dydx*dydx);
+            return y+t*cth;
+          }
+        }
+      }
+      else if(pointIt->dydx > 0) {
+        for(std::vector<PointData>::const_iterator p1 = pointIt; p1 < (points.end()-1); ++p1) {
+          std::vector<PointData>::const_iterator p2 = p1+1;
+          double cth1 = 1/sqrt(1+p1->dydx*p1->dydx), sth1 = p1->dydx*cth1;
+          double x1 = p1->xyz[0]-t*sth1;
+          double cth2 = 1/sqrt(1+p2->dydx*p2->dydx), sth2 = p2->dydx*cth2;
+          double x2 = p2->xyz[0]-t*sth2;
+          if(pointIt->xyz[0] > x1-tol && pointIt->xyz[0] < x2+tol) {
+            double y = p1->xyz[1] + (pointIt->xyz[0]-x1)/(x2-x1)*(p2->xyz[1]-p1->xyz[1]);
+            double dydx = p1->dydx + (pointIt->xyz[0]-x1)/(x2-x1)*(p2->dydx-p1->dydx);
+            double cth = 1/sqrt(1+dydx*dydx);
+            return y+t*cth;
+          }
+        }
+      }
+      double cth = 1/sqrt(1+pointIt->dydx*pointIt->dydx); // cosine of angle between normal and y-axis
+      return pointIt->xyz[1] + t/cth;
+    };
+
     // middle of inner layer
-    cth1 = 1/sqrt(1+pointIt1->dydx*pointIt1->dydx); // cosine of angle between normal and y-axis 
-    cth2 = 1/sqrt(1+pointIt2->dydx*pointIt2->dydx); // cosine of angle between normal and y-axis
     std::vector<GEdge*> middleInnerLayer;
     std::vector<std::vector<double> >::iterator it;
     for(unsigned int k=0; k<pointIt1->tt.size()-1; ++k ) {
-      GVertex *vertex3 = m->addVertex(pointIt1->xyz[0], pointIt1->xyz[1]+tt1/cth1, pointIt1->xyz[2], lc);
-      GVertex *vertex4 = m->addVertex(pointIt2->xyz[0], pointIt2->xyz[1]+tt2/cth2, pointIt2->xyz[2], lc);
+      GVertex *vertex3 = m->addVertex(pointIt1->xyz[0], ycoord(pointIt1,ttk(pointIt1,k)), pointIt1->xyz[2], lc);
+      GVertex *vertex4 = m->addVertex(pointIt2->xyz[0], ycoord(pointIt2,ttk(pointIt2,k)), pointIt2->xyz[2], lc);
       for(it = controlPoints.begin(), pointIt = pointIt1+1; it != controlPoints.end(); ++it, ++pointIt) {
-        double cth = 1/sqrt(1+pointIt->dydx*pointIt->dydx); // cosine of angle between normal and y-axis
-        (*it)[1] += pointIt->tt[k]/cth;
+        (*it)[1] = ycoord(pointIt,ttk(pointIt,k));
       }
       middleInnerLayer.push_back(controlPoints.empty() ? m->addLine(vertex3, vertex4) : m->addBSpline(vertex3, vertex4, controlPoints));
-      tt1 += pointIt1->tt[k+1];
-      tt2 += pointIt2->tt[k+1];
     }
     // outside of inner layer / inside of outer layer
-    GVertex *vertex3 = m->addVertex(pointIt1->xyz[0], pointIt1->xyz[1]+tt1/cth1, pointIt1->xyz[2], lc);
-    GVertex *vertex4 = m->addVertex(pointIt2->xyz[0], pointIt2->xyz[1]+tt2/cth2, pointIt2->xyz[2], lc);
+    GVertex *vertex3 = m->addVertex(pointIt1->xyz[0], ycoord(pointIt1,tt(pointIt1)), pointIt1->xyz[2], lc);
+    GVertex *vertex4 = m->addVertex(pointIt2->xyz[0], ycoord(pointIt2,tt(pointIt2)), pointIt2->xyz[2], lc);
     for(it = controlPoints.begin(), pointIt = pointIt1+1; it != controlPoints.end(); ++it, ++pointIt) {
-      double cth = 1/sqrt(1+pointIt->dydx*pointIt->dydx); // cosine of angle between normal and y-axis
-      (*it)[1] += pointIt->tt.back()/cth;
+      (*it)[1] = ycoord(pointIt,tt(pointIt));
     }
     GEdge *edge2 = controlPoints.empty() ? m->addLine(vertex3, vertex4) : m->addBSpline(vertex3, vertex4, controlPoints);
     // middle of outer layer
-    GVertex *vertex5 = m->addVertex(pointIt1->xyz[0], pointIt1->xyz[1]+(tt1+t1/2)/cth1, pointIt1->xyz[2], lc);
-    GVertex *vertex6 = m->addVertex(pointIt2->xyz[0], pointIt2->xyz[1]+(tt2+t2/2)/cth2, pointIt2->xyz[2], lc);
+    GVertex *vertex5 = m->addVertex(pointIt1->xyz[0], ycoord(pointIt1,tt(pointIt1)+ts(pointIt1)/2), pointIt1->xyz[2], lc);
+    GVertex *vertex6 = m->addVertex(pointIt2->xyz[0], ycoord(pointIt2,tt(pointIt1)+ts(pointIt2)/2), pointIt2->xyz[2], lc);
     for(it = controlPoints.begin(), pointIt = pointIt1+1; it != controlPoints.end(); ++it, ++pointIt) {
-      double cth = 1/sqrt(1+pointIt->dydx*pointIt->dydx); // cosine of angle between normal and y-axis
-      (*it)[1] += (std::accumulate(pointIt->t.begin(), pointIt->t.end(), 0.)/2.)/cth;
+      (*it)[1] = ycoord(pointIt,tt(pointIt)+ts(pointIt)/2);
     }
     GEdge *edge3 = controlPoints.empty() ? m->addLine(vertex5, vertex6) : m->addBSpline(vertex5, vertex6, controlPoints);
     // outside of outer layer
-    GVertex *vertex7 = m->addVertex(pointIt1->xyz[0], pointIt1->xyz[1]+(tt1+t1)/cth1, pointIt1->xyz[2], lc);
-    GVertex *vertex8 = m->addVertex(pointIt2->xyz[0], pointIt2->xyz[1]+(tt2+t2)/cth2, pointIt2->xyz[2], lc);
+    GVertex *vertex7 = m->addVertex(pointIt1->xyz[0], ycoord(pointIt1,tt(pointIt1)+ts(pointIt1)), pointIt1->xyz[2], lc);
+    GVertex *vertex8 = m->addVertex(pointIt2->xyz[0], ycoord(pointIt2,tt(pointIt2)+ts(pointIt2)), pointIt2->xyz[2], lc);
     for(it = controlPoints.begin(), pointIt = pointIt1+1; it != controlPoints.end(); ++it, ++pointIt) {
-      double cth = 1/sqrt(1+pointIt->dydx*pointIt->dydx); // cosine of angle between normal and y-axis
-      (*it)[1] += (std::accumulate(pointIt->t.begin(), pointIt->t.end(), 0.)/2.)/cth;
+      (*it)[1] = ycoord(pointIt,tt(pointIt)+ts(pointIt));
     }
     GEdge *edge4 = controlPoints.empty() ? m->addLine(vertex7, vertex8) : m->addBSpline(vertex7, vertex8, controlPoints);
     // top of stiffeners
     GVertex *vertex9, *vertex10; GEdge *edge11;
     if(ws1 != 0) {
-      vertex9  = m->addVertex(pointIt1->xyz[0], pointIt1->xyz[1]+(tt1+t1/2)/cth1+ws1, pointIt1->xyz[2], lc);
-      vertex10 = m->addVertex(pointIt2->xyz[0], pointIt2->xyz[1]+(tt2+t2/2)/cth2+ws2, pointIt2->xyz[2], lc);
+      vertex9  = m->addVertex(pointIt1->xyz[0], ycoord(pointIt1,tt(pointIt1)+ts(pointIt1)/2)+ws1, pointIt1->xyz[2], lc);
+      vertex10 = m->addVertex(pointIt2->xyz[0], ycoord(pointIt2,tt(pointIt2)+ts(pointIt2)/2)+ws2, pointIt2->xyz[2], lc);
       for(it = controlPoints.begin(), pointIt = pointIt1+1; it != controlPoints.end(); ++it, ++pointIt) {
-        double cth = 1/sqrt(1+pointIt->dydx*pointIt->dydx); // cosine of angle between normal and y-axis
-        (*it)[1] -= (std::accumulate(pointIt->t.begin(), pointIt->t.end(), 0.)/2.)/cth;
-        (*it)[1] += pointIt->ws/cth;
+        (*it)[1] = ycoord(pointIt,tt(pointIt)+ts(pointIt)/2)+pointIt->ws;
       }
       edge11 = controlPoints.empty() ? m->addLine(vertex9, vertex10) : m->addBSpline(vertex9, vertex10, controlPoints);
     }
