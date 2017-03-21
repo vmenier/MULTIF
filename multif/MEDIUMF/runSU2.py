@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os, time, sys, shutil, copy
+import numpy as np
 from optparse import OptionParser
 import textwrap
 import multif
@@ -506,6 +507,68 @@ def runSU2 ( nozzle ):
     nozzle.CONV_FILENAME = config['CONV_FILENAME'];
 
     info = SU2.run.CFD(config);
-
+    
+    # --- Check SU2 solution here
+    
+    if( os.path.isfile('history.csv') ):
+        history = np.loadtxt('history.csv',skiprows=1,delimiter=',');
+        finalResidual = history[-1,11];
+        residualReduction = history[0,11] - history[-1,11];        
+    elif( os.path.isfile('history.dat') ):
+        history = np.loadtxt('history.dat',skiprows=3,delimiter=',');
+        finalResidual = history[-1,11];
+        residualReduction = history[0,11] - history[-1,11];
+    else: # bypass solution checking
+        finalResidual = -1;
+        residualReduction = config.RESIDUAL_REDUCTION -1;
+    
+    # SU2 diverged
+    if( finalResidual > 0 ): # SU2 diverged
+    
+        if( config.PHYSICAL_PROBLEM=='EULER' and config.RELAXATION_LOCAL=='YES'):
+            
+            sys.stdout.write('  ## WARNING: Restarting SU2 for Euler with more conservative parameters since solution diverged.\n\n');
+            
+            # Choose more conservative CFL
+            config = SetupConfig(solver_options);
+            config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 10.0 )';
+            config.EXT_ITER = 4*config.EXT_ITER; 
+            
+            # Rerun SU2
+            info = SU2.run.CFD(config);
+            
+        else:
+            sys.stderr.write('  ## ERROR : SU2 diverged. No restart capability implemented.\n\n');
+            sys.exit(1);
+        
+    # SU2 reached max iter limit, but did not reduce residual by requested amount
+    elif( residualReduction < config.RESIDUAL_REDUCTION ):
+        
+        if( config.PHYSICAL_PROBLEM=='EULER' and config.RELAXATION_LOCAL=='YES'):
+            
+            sys.stdout.write('  ## WARNING: Restarting SU2 for Euler with more conservative parameters since solution did not reach requested accuracy.\n\n');
+            os.rename('history.csv','history0.csv');
+            
+            # Implement restart from previous solution
+            config = SetupConfig(solver_options);
+            config.RESTART_SOL= 'YES'; # restart from previous solution
+            os.rename('nozzle.dat','solution_flow.dat');
+            
+            # Gauge progress made in last N iter
+            N = min(300,history[:,0].size);
+            modVarLast300Iters = np.mean(np.abs(history[-N:-1,11] - np.mean(history[-N:-1,11])));
+            if( modVarLast300Iters > 0.2 ): # sufficient progress made
+                pass;
+            else: # no progress made, tighten CFL
+                config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 10.0 )';
+                config.EXT_ITER = 2*config.EXT_ITER; 
+            config.RESIDUAL_REDUCTION = config.RESIDUAL_REDUCTION - residualReduction;
+            
+            # Rerun SU2
+            info = SU2.run.CFD(config);            
+            
+        else:
+            sys.stdout.write('  ## WARNING : SU2 did not reach requested accuracy. Decrease in residual is only %0.2f orders of magnitude.\n\n' % residualReduction);       
+        
     #return info;
 
