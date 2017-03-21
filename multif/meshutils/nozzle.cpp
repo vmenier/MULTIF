@@ -1187,7 +1187,7 @@ void generateNozzle(const std::vector<PointData> &points,
           double x1 = p1->xyz[0]-t*sth1;
           double cth2 = 1/sqrt(1+p2->dydx*p2->dydx), sth2 = p2->dydx*cth2;
           double x2 = p2->xyz[0]-t*sth2;
-          if(pointIt->xyz[0] > x1-tol && pointIt->xyz[0] < x2+tol) {
+          if(pointIt->xyz[0] > x1-tol && pointIt->xyz[0] < x2+tol && fabs(x2-x1) > tol) {
             double y = p1->xyz[1] + (pointIt->xyz[0]-x1)/(x2-x1)*(p2->xyz[1]-p1->xyz[1]);
             double dydx = p1->dydx + (pointIt->xyz[0]-x1)/(x2-x1)*(p2->dydx-p1->dydx);
             double cth = 1/sqrt(1+dydx*dydx);
@@ -1202,7 +1202,7 @@ void generateNozzle(const std::vector<PointData> &points,
           double x1 = p1->xyz[0]-t*sth1;
           double cth2 = 1/sqrt(1+p2->dydx*p2->dydx), sth2 = p2->dydx*cth2;
           double x2 = p2->xyz[0]-t*sth2;
-          if(pointIt->xyz[0] > x1-tol && pointIt->xyz[0] < x2+tol) {
+          if(pointIt->xyz[0] > x1-tol && pointIt->xyz[0] < x2+tol && fabs(x2-x1) > tol) {
             double y = p1->xyz[1] + (pointIt->xyz[0]-x1)/(x2-x1)*(p2->xyz[1]-p1->xyz[1]);
             double dydx = p1->dydx + (pointIt->xyz[0]-x1)/(x2-x1)*(p2->dydx-p1->dydx);
             double cth = 1/sqrt(1+dydx*dydx);
