@@ -509,7 +509,7 @@ def runSU2 ( nozzle ):
     info = SU2.run.CFD(config);
     
     # --- Check SU2 solution here
-    
+
     if( os.path.isfile('history.csv') ):
         history = np.loadtxt('history.csv',skiprows=1,delimiter=',');
         finalResidual = history[-1,11];
