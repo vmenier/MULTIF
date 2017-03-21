@@ -542,6 +542,7 @@ int writeAEROS(GModel *g,
   if(lf == 0) {
     fprintf(fp, "NONLINEAR\n");
     fprintf(fp, "maxit 15\n");
+    fprintf(fp, "failsafe\n");
     fprintf(fp, "*\n");
   }
   fprintf(fp, "OUTPUT\n");
@@ -1011,6 +1012,7 @@ int writeAEROS2(GModel *g,
   if(lf == 0) {
     fprintf(fp, "NONLINEAR\n");
     fprintf(fp, "maxit 15\n");
+    fprintf(fp, "failsafe\n");
     fprintf(fp, "*\n");
   }
   fprintf(fp, "OUTPUT\n");
