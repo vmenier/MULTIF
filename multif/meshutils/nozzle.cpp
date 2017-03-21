@@ -1085,7 +1085,7 @@ void generateNozzle(const std::vector<PointData> &points,
                     const std::vector<SegmentData> &segments,
                     const std::vector<MaterialData> &materials,
                     const std::vector<BoundaryData> &boundaries,
-                    double lc, int bf, int tf, int lf, double vf)
+                    double lc, int bf, int tf, int lf, double vf, int sf)
 {
   // bf = 0: constrain inner wall inlet edge
   // bf = 1: constrain baffle outer edges
@@ -1099,6 +1099,9 @@ void generateNozzle(const std::vector<PointData> &points,
   
   // vf = 0: non-verbose mode
   // vf = 1: verbose mode
+
+  // sf = 0: stringer height defined as increment from wall
+  // sf = 1: stringer height defined as total y coordinate
 
   GmshInitialize();
   GModel *m = new GModel();
@@ -1249,10 +1252,24 @@ void generateNozzle(const std::vector<PointData> &points,
     // top of stiffeners
     GVertex *vertex9, *vertex10; GEdge *edge11;
     if(ws1 != 0) {
-      vertex9  = m->addVertex(pointIt1->xyz[0], ycoord(pointIt1,tt(pointIt1)+ts(pointIt1)/2)+ws1, pointIt1->xyz[2], lc);
-      vertex10 = m->addVertex(pointIt2->xyz[0], ycoord(pointIt2,tt(pointIt2)+ts(pointIt2)/2)+ws2, pointIt2->xyz[2], lc);
-      for(it = controlPoints.begin(), pointIt = pointIt1+1; it != controlPoints.end(); ++it, ++pointIt) {
-        (*it)[1] = ycoord(pointIt,tt(pointIt)+ts(pointIt)/2)+pointIt->ws;
+      if(sf == 0) {
+        vertex9  = m->addVertex(pointIt1->xyz[0], ycoord(pointIt1,tt(pointIt1)+ts(pointIt1)/2)+ws1, pointIt1->xyz[2], lc);
+        vertex10 = m->addVertex(pointIt2->xyz[0], ycoord(pointIt2,tt(pointIt2)+ts(pointIt2)/2)+ws2, pointIt2->xyz[2], lc);
+        for(it = controlPoints.begin(), pointIt = pointIt1+1; it != controlPoints.end(); ++it, ++pointIt) {
+          (*it)[1] = ycoord(pointIt,tt(pointIt)+ts(pointIt)/2)+pointIt->ws;
+        }
+      }
+      else {
+        vertex9  = m->addVertex(pointIt1->xyz[0], ws1, pointIt1->xyz[2], lc);
+        vertex10 = m->addVertex(pointIt2->xyz[0], ws2, pointIt2->xyz[2], lc);
+        for(it = controlPoints.begin(), pointIt = pointIt1+1; it != controlPoints.end(); ++it, ++pointIt) {
+          (*it)[1] = pointIt->ws;
+        }
+        // re-define ws1 and ws2 as incremental heights
+        ws1 -= ycoord(pointIt1,tt(pointIt1)+ts(pointIt1)/2);
+        if(fabs(ws1-wb1) < 10*std::numeric_limits<double>::epsilon()) ws1 = wb1;
+        ws2 -= ycoord(pointIt2,tt(pointIt2)+ts(pointIt2)/2);
+        if(fabs(ws2-wb2) < 10*std::numeric_limits<double>::epsilon()) ws2 = wb2;
       }
       edge11 = controlPoints.empty() ? m->addLine(vertex9, vertex10) : m->addBSpline(vertex9, vertex10, controlPoints);
     }
@@ -1774,8 +1791,8 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
 {
   std::ifstream fin("NOZZLE.txt");
 
-  int np, nv, nm; double lc; int bf, tf, nl, nlt, lf, vf;
-  fin >> np >> nv >> nm >> lc >> bf >> tf >> nl >> nlt >> lf >> vf;
+  int np, nv, nm; double lc; int bf, tf, nl, nlt, lf, vf, sf;
+  fin >> np >> nv >> nm >> lc >> bf >> tf >> nl >> nlt >> lf >> vf >> sf;
   
   std::vector<PointData> points(np);
   for(int i=0; i<np; ++i) {
@@ -1833,7 +1850,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
 
   fin2.close();
 
-  generateNozzle(points, vertices, segments, materials, boundaries, lc, bf, tf, lf, vf);
+  generateNozzle(points, vertices, segments, materials, boundaries, lc, bf, tf, lf, vf, sf);
 
   Py_RETURN_NONE;
 }
