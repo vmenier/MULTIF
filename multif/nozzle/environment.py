@@ -27,6 +27,7 @@ class Environment:
     # Manually set temperature
     def setTemperature(self,T):
         self.T = T # K
+        self.c = np.sqrt(1.4*287.06*self.T) # m/s, reset speed of sound
         self.consistentWithStandardAtmosphere = 0
         
     def reset(self,altitude):
