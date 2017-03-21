@@ -505,9 +505,12 @@ def runSU2 ( nozzle ):
 
     nozzle.OUTPUT_FORMAT = config['OUTPUT_FORMAT'];
     nozzle.CONV_FILENAME = config['CONV_FILENAME'];
-
-    info = SU2.run.CFD(config);
     
+    try:
+        info = SU2.run.CFD(config);
+    except:
+        sys.stdout.write('   ## WARNING: SU2 calculation unsuccessful.\n\n');
+
     # --- Check SU2 solution here
 
     if( os.path.isfile('history.csv') ):
