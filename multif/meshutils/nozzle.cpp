@@ -306,7 +306,9 @@ void writeTemp(MVertex *m, FILE *fp, double scalingFactor, const std::vector<Bou
   fprintf(fp, "%-8d %-16.9G\n", m->getIndex(), tval);
 }
 
-void writeConvec(MElement *m, FILE *fp, double scalingFactor, double h, const std::vector<BoundaryData> &boundaries)
+void writeConvec(MElement *m, FILE *fp, double scalingFactor, const std::vector<BoundaryData> &boundaries,
+                 const std::vector<PointData> &points, const std::vector<VertexData> &vertices,
+                 const std::vector<SegmentData> &segments, const std::vector<MaterialData> &materials)
 {
   // compute the nodal area
   int pOrder = 2;
@@ -327,9 +329,15 @@ void writeConvec(MElement *m, FILE *fp, double scalingFactor, double h, const st
 
   for(int i = 0; i < 4; ++i) {
     // interpolate ambient temperature at node from boundary data
-    double x = m->getVertexBDF(i)->x();
+    double x = m->getVertexBDF(i)->x() * scalingFactor;
     std::vector<BoundaryData>::const_iterator it = std::lower_bound(boundaries.begin(), boundaries.end(), x, cmp);
     double Ta = (it == boundaries.begin()) ? it->Ta : ((it-1)->Ta + (it->Ta - (it-1)->Ta)*(x - (it-1)->x)/(it->x - (it-1)->x));
+
+    // find the convection coefficient of the load layer
+    Cmp cmp(points);
+    std::vector<VertexData>::const_iterator it2 = std::lower_bound(vertices.begin(), vertices.end(), x, cmp);
+    double h = (it2 == vertices.end()) ? materials[segments.back().m[0]].h 
+                                       : materials[(segments.begin()+std::distance(vertices.begin(),it2-1))->m[0]].h;
 
     fprintf(fp, "%-8d %-16.9G %-16.9G %-16.9G\n", m->getVertexBDF(i)->getIndex(), h, A[i], Ta);
   }
@@ -806,9 +814,7 @@ int writeAEROH(GModel *g,
       for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
         const char *str = entities[i]->getMeshElement(j)->getStringForBDF();
         if(str && std::strcmp(str,"CQUAD4") == 0) {
-          int m = entities[i]->physicals[0];
-          double h = materials[m-1].h;
-          writeConvec(entities[i]->getMeshElement(j), fp6, scalingFactor, h, boundaries);
+          writeConvec(entities[i]->getMeshElement(j), fp6, scalingFactor, boundaries, points, vertices, segments, materials);
         }
       }
     }
