@@ -112,6 +112,9 @@ def runAEROS ( nozzle, output='verbose' ):
     
     iPres = idHeader['Pressure'];
     iTemp = idHeader['Temperature'];
+
+    stringerFlag = 0; # 0: stringer height is defined w.r.t. nozzle wall (specifically, the center of the load layers)
+                      # 1: stringer height is defined w.r.t. the axis of rotation of the nozzle, i.e. total y coordinate
     
     # --- Mesh parameters
     # lc: characteristic length (i.e. element size)
@@ -130,7 +133,10 @@ def runAEROS ( nozzle, output='verbose' ):
         Ln = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[2,4]));
     Ns   = max(2,nozzle.stringers.n); # number of panels (i.e. circumferential subdivisions of the mesh)
     Mn   = max(2,(2*math.pi*nozzle.wall.geometry.radius(points[0])/Ns)/lc+1); # Number of nodes in circumferential direction per panel
-    Sn   = max(nozzle.stringers.height.radius(0)/lc+1,2) if nozzle.stringers.n > 0 else 0; # number of nodes on radial edge of stringers
+    if stringerFlag == 0:
+        Sn = max(nozzle.stringers.height.radius(0)/lc+1,2) if nozzle.stringers.n > 0 else 0; # number of nodes on radial edge of stringers
+    else:
+        Sn = max((nozzle.stringers.height.radius(0)-nozzle.wall.geometry.radius(points[0]))/lc+1,2) if nozzle.stringers.n > 0 else 0;
     
     ## --- How to get x, y, P, T :
     #for i in range(0,Size[0]):
@@ -159,7 +165,7 @@ def runAEROS ( nozzle, output='verbose' ):
     verboseFlag = 0.;
     if output == 'verbose':
         verboseFlag = 1.;
-    print >> f1, "%d %d %d %f %d %d %d %d %d %d" % (len(points), len(vertices), len(nozzle.materials), lc, boundaryFlag, thermalFlag, 3, 2, linearFlag, verboseFlag);
+    print >> f1, "%d %d %d %f %d %d %d %d %d %d %d" % (len(points), len(vertices), len(nozzle.materials), lc, boundaryFlag, thermalFlag, 3, 2, linearFlag, verboseFlag, stringerFlag);
     # points
     for i in range(len(points)):
         Tg = nozzle.wall.layer[1].thickness.radius(0.) # thickness of gap between thermal and load layers
@@ -174,8 +180,7 @@ def runAEROS ( nozzle, output='verbose' ):
     # vertices
     for i in range(len(vertices)):  
         Wb = nozzle.baffles.height[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # height of baffle
-        Ws = nozzle.stringers.height.radius(vertices[i]) if nozzle.stringers.n > 0 else 0; # height of stringer
-        Nb = max((Wb-Ws)/lc+1,2); # number of nodes on radial edge of baffle (not including overlap with stringer)
+        Nb = max(Wb/lc-Ns+1,2); # number of nodes on radial edge of baffle (not including overlap with stringer)
         Tb = nozzle.baffles.thickness[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # thickness of baffle
         print >> f1, "%d %0.16e %d %d %0.16e" % (points.index(vertices[i]), Wb, Mb, Nb, Tb);
                  

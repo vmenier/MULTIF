@@ -306,7 +306,9 @@ void writeTemp(MVertex *m, FILE *fp, double scalingFactor, const std::vector<Bou
   fprintf(fp, "%-8d %-16.9G\n", m->getIndex(), tval);
 }
 
-void writeConvec(MElement *m, FILE *fp, double scalingFactor, double h, const std::vector<BoundaryData> &boundaries)
+void writeConvec(MElement *m, FILE *fp, double scalingFactor, const std::vector<BoundaryData> &boundaries,
+                 const std::vector<PointData> &points, const std::vector<VertexData> &vertices,
+                 const std::vector<SegmentData> &segments, const std::vector<MaterialData> &materials)
 {
   // compute the nodal area
   int pOrder = 2;
@@ -327,9 +329,15 @@ void writeConvec(MElement *m, FILE *fp, double scalingFactor, double h, const st
 
   for(int i = 0; i < 4; ++i) {
     // interpolate ambient temperature at node from boundary data
-    double x = m->getVertexBDF(i)->x();
+    double x = m->getVertexBDF(i)->x() * scalingFactor;
     std::vector<BoundaryData>::const_iterator it = std::lower_bound(boundaries.begin(), boundaries.end(), x, cmp);
     double Ta = (it == boundaries.begin()) ? it->Ta : ((it-1)->Ta + (it->Ta - (it-1)->Ta)*(x - (it-1)->x)/(it->x - (it-1)->x));
+
+    // find the convection coefficient of the load layer
+    Cmp cmp(points);
+    std::vector<VertexData>::const_iterator it2 = std::lower_bound(vertices.begin(), vertices.end(), x, cmp);
+    double h = (it2 == vertices.end()) ? materials[segments.back().m[0]].h 
+                                       : materials[(segments.begin()+std::distance(vertices.begin(),it2-1))->m[0]].h;
 
     fprintf(fp, "%-8d %-16.9G %-16.9G %-16.9G\n", m->getVertexBDF(i)->getIndex(), h, A[i], Ta);
   }
@@ -542,6 +550,7 @@ int writeAEROS(GModel *g,
   if(lf == 0) {
     fprintf(fp, "NONLINEAR\n");
     fprintf(fp, "maxit 15\n");
+    fprintf(fp, "failsafe\n");
     fprintf(fp, "*\n");
   }
   fprintf(fp, "OUTPUT\n");
@@ -805,9 +814,7 @@ int writeAEROH(GModel *g,
       for(unsigned int j = 0; j < entities[i]->getNumMeshElements(); j++) {
         const char *str = entities[i]->getMeshElement(j)->getStringForBDF();
         if(str && std::strcmp(str,"CQUAD4") == 0) {
-          int m = entities[i]->physicals[0];
-          double h = materials[m-1].h;
-          writeConvec(entities[i]->getMeshElement(j), fp6, scalingFactor, h, boundaries);
+          writeConvec(entities[i]->getMeshElement(j), fp6, scalingFactor, boundaries, points, vertices, segments, materials);
         }
       }
     }
@@ -1011,6 +1018,7 @@ int writeAEROS2(GModel *g,
   if(lf == 0) {
     fprintf(fp, "NONLINEAR\n");
     fprintf(fp, "maxit 15\n");
+    fprintf(fp, "failsafe\n");
     fprintf(fp, "*\n");
   }
   fprintf(fp, "OUTPUT\n");
@@ -1085,7 +1093,7 @@ void generateNozzle(const std::vector<PointData> &points,
                     const std::vector<SegmentData> &segments,
                     const std::vector<MaterialData> &materials,
                     const std::vector<BoundaryData> &boundaries,
-                    double lc, int bf, int tf, int lf, double vf)
+                    double lc, int bf, int tf, int lf, double vf, int sf)
 {
   // bf = 0: constrain inner wall inlet edge
   // bf = 1: constrain baffle outer edges
@@ -1099,6 +1107,9 @@ void generateNozzle(const std::vector<PointData> &points,
   
   // vf = 0: non-verbose mode
   // vf = 1: verbose mode
+
+  // sf = 0: stringer height defined as increment from wall
+  // sf = 1: stringer height defined as total y coordinate
 
   GmshInitialize();
   GModel *m = new GModel();
@@ -1187,7 +1198,7 @@ void generateNozzle(const std::vector<PointData> &points,
           double x1 = p1->xyz[0]-t*sth1;
           double cth2 = 1/sqrt(1+p2->dydx*p2->dydx), sth2 = p2->dydx*cth2;
           double x2 = p2->xyz[0]-t*sth2;
-          if(pointIt->xyz[0] > x1-tol && pointIt->xyz[0] < x2+tol) {
+          if(pointIt->xyz[0] > x1-tol && pointIt->xyz[0] < x2+tol && fabs(x2-x1) > tol) {
             double y = p1->xyz[1] + (pointIt->xyz[0]-x1)/(x2-x1)*(p2->xyz[1]-p1->xyz[1]);
             double dydx = p1->dydx + (pointIt->xyz[0]-x1)/(x2-x1)*(p2->dydx-p1->dydx);
             double cth = 1/sqrt(1+dydx*dydx);
@@ -1202,7 +1213,7 @@ void generateNozzle(const std::vector<PointData> &points,
           double x1 = p1->xyz[0]-t*sth1;
           double cth2 = 1/sqrt(1+p2->dydx*p2->dydx), sth2 = p2->dydx*cth2;
           double x2 = p2->xyz[0]-t*sth2;
-          if(pointIt->xyz[0] > x1-tol && pointIt->xyz[0] < x2+tol) {
+          if(pointIt->xyz[0] > x1-tol && pointIt->xyz[0] < x2+tol && fabs(x2-x1) > tol) {
             double y = p1->xyz[1] + (pointIt->xyz[0]-x1)/(x2-x1)*(p2->xyz[1]-p1->xyz[1]);
             double dydx = p1->dydx + (pointIt->xyz[0]-x1)/(x2-x1)*(p2->dydx-p1->dydx);
             double cth = 1/sqrt(1+dydx*dydx);
@@ -1249,10 +1260,24 @@ void generateNozzle(const std::vector<PointData> &points,
     // top of stiffeners
     GVertex *vertex9, *vertex10; GEdge *edge11;
     if(ws1 != 0) {
-      vertex9  = m->addVertex(pointIt1->xyz[0], ycoord(pointIt1,tt(pointIt1)+ts(pointIt1)/2)+ws1, pointIt1->xyz[2], lc);
-      vertex10 = m->addVertex(pointIt2->xyz[0], ycoord(pointIt2,tt(pointIt2)+ts(pointIt2)/2)+ws2, pointIt2->xyz[2], lc);
-      for(it = controlPoints.begin(), pointIt = pointIt1+1; it != controlPoints.end(); ++it, ++pointIt) {
-        (*it)[1] = ycoord(pointIt,tt(pointIt)+ts(pointIt)/2)+pointIt->ws;
+      if(sf == 0) {
+        vertex9  = m->addVertex(pointIt1->xyz[0], ycoord(pointIt1,tt(pointIt1)+ts(pointIt1)/2)+ws1, pointIt1->xyz[2], lc);
+        vertex10 = m->addVertex(pointIt2->xyz[0], ycoord(pointIt2,tt(pointIt2)+ts(pointIt2)/2)+ws2, pointIt2->xyz[2], lc);
+        for(it = controlPoints.begin(), pointIt = pointIt1+1; it != controlPoints.end(); ++it, ++pointIt) {
+          (*it)[1] = ycoord(pointIt,tt(pointIt)+ts(pointIt)/2)+pointIt->ws;
+        }
+      }
+      else {
+        vertex9  = m->addVertex(pointIt1->xyz[0], ws1, pointIt1->xyz[2], lc);
+        vertex10 = m->addVertex(pointIt2->xyz[0], ws2, pointIt2->xyz[2], lc);
+        for(it = controlPoints.begin(), pointIt = pointIt1+1; it != controlPoints.end(); ++it, ++pointIt) {
+          (*it)[1] = pointIt->ws;
+        }
+        // re-define ws1 and ws2 as incremental heights
+        ws1 -= ycoord(pointIt1,tt(pointIt1)+ts(pointIt1)/2);
+        if(fabs(ws1-wb1) < 10*std::numeric_limits<double>::epsilon()) ws1 = wb1;
+        ws2 -= ycoord(pointIt2,tt(pointIt2)+ts(pointIt2)/2);
+        if(fabs(ws2-wb2) < 10*std::numeric_limits<double>::epsilon()) ws2 = wb2;
       }
       edge11 = controlPoints.empty() ? m->addLine(vertex9, vertex10) : m->addBSpline(vertex9, vertex10, controlPoints);
     }
@@ -1774,8 +1799,8 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
 {
   std::ifstream fin("NOZZLE.txt");
 
-  int np, nv, nm; double lc; int bf, tf, nl, nlt, lf, vf;
-  fin >> np >> nv >> nm >> lc >> bf >> tf >> nl >> nlt >> lf >> vf;
+  int np, nv, nm; double lc; int bf, tf, nl, nlt, lf, vf, sf;
+  fin >> np >> nv >> nm >> lc >> bf >> tf >> nl >> nlt >> lf >> vf >> sf;
   
   std::vector<PointData> points(np);
   for(int i=0; i<np; ++i) {
@@ -1833,7 +1858,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
 
   fin2.close();
 
-  generateNozzle(points, vertices, segments, materials, boundaries, lc, bf, tf, lf, vf);
+  generateNozzle(points, vertices, segments, materials, boundaries, lc, bf, tf, lf, vf, sf);
 
   Py_RETURN_NONE;
 }
