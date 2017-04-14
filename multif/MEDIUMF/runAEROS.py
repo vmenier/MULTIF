@@ -537,7 +537,7 @@ def AEROSPostProcessing ( nozzle, output='verbose' ):
         nozzle.ks_temp_ratio[2] = ksFunction(data[:,-1]/nozzle.wall.layer[2].material.Tmax,ks_param);
         nozzle.pn_temp_ratio[2] = pnFunction(data[:,-1]/nozzle.wall.layer[2].material.Tmax,pn_param);
         
-        # Inner load layer
+        # Middle load layer
         filename = 'TEMP.2';
         data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
         stemp = np.mean(data[:,-1]);
@@ -548,7 +548,7 @@ def AEROSPostProcessing ( nozzle, output='verbose' ):
         nozzle.ks_temp_ratio[3] = ksFunction(data[:,-1]/nozzle.wall.layer[3].material.Tmax,ks_param);
         nozzle.pn_temp_ratio[3] = pnFunction(data[:,-1]/nozzle.wall.layer[3].material.Tmax,pn_param);
         
-        # Inner load layer
+        # Outer load layer
         filename = 'TEMP.3';
         data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
         stemp = np.mean(data[:,-1]);
