@@ -1245,7 +1245,7 @@ void generateNozzle(const std::vector<PointData> &points,
     GEdge *edge2 = controlPoints.empty() ? m->addLine(vertex3, vertex4) : m->addBSpline(vertex3, vertex4, controlPoints);
     // middle of outer layer
     GVertex *vertex5 = m->addVertex(pointIt1->xyz[0], ycoord(pointIt1,tt(pointIt1)+ts(pointIt1)/2), pointIt1->xyz[2], lc);
-    GVertex *vertex6 = m->addVertex(pointIt2->xyz[0], ycoord(pointIt2,tt(pointIt1)+ts(pointIt2)/2), pointIt2->xyz[2], lc);
+    GVertex *vertex6 = m->addVertex(pointIt2->xyz[0], ycoord(pointIt2,tt(pointIt2)+ts(pointIt2)/2), pointIt2->xyz[2], lc);
     for(it = controlPoints.begin(), pointIt = pointIt1+1; it != controlPoints.end(); ++it, ++pointIt) {
       (*it)[1] = ycoord(pointIt,tt(pointIt)+ts(pointIt)/2);
     }
