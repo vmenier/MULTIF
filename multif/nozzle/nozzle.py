@@ -1170,6 +1170,7 @@ class Nozzle:
         n, material = [x.strip() for x in info.split(',')];
         nozzle.stringers = component.Stringers(n);
         nozzle.stringers.material = nozzle.materials[material];
+        nozzle.stringers.absoluteRadialCoord = 0; # 0 if stringer height is measured relative to outside layer, 1 if measured relative to nozzle axis
         
         if ( 'STRINGERS_BREAK_LOCATIONS' not in config or 
              config['STRINGERS_BREAK_LOCATIONS'] == 'BAFFLES_LOCATION' ):
@@ -1178,26 +1179,42 @@ class Nozzle:
                        ' from baffle locations\n');
                  key = '';
                  k_loc = 'BAFFLES_LOCATION';
-                 if ( 'STRINGERS_HEIGHT_VALUES' not in config or
-                     config['STRINGERS_HEIGHT_VALUES'] == 'BAFFLES_HEIGHT' ):
-                         if output == 'verbose':
-                             sys.stdout.write('Stringer heights will be set'  \
+                 if ( 'STRINGERS_HEIGHT_VALUES' not in config ):
+                     if output == 'verbose':
+                         sys.stdout.write('Stringer heights will be set'  \
+                               ' to exterior geometry\n');
+                     h_val = 'EXTERIOR';     
+                     nozzle.stringers.absoluteRadialCoord = 1;
+                 elif ( config['STRINGERS_HEIGHT_VALUES'] == 'BAFFLES_HEIGHT' ):
+                     if output == 'verbose':
+                         sys.stdout.write('Stringer heights will be set'  \
                                ' from baffle heights\n');
-                         h_val = 'BAFFLES_HEIGHT';
+                     h_val = 'BAFFLES_HEIGHT';             
+                 elif ( config['STRINGERS_HEIGHT_VALUES'] == 'EXTERIOR' ):
+                     if output == 'verbose':
+                         sys.stdout.write('Stringer heights will be set'  \
+                               ' to exterior geometry\n');
+                     h_val = 'EXTERIOR';
+                     nozzle.stringers.absoluteRadialCoord = 1;
                  else:
                      h_val = 'STRINGERS_HEIGHT_VALUES';
                  t_val = 'STRINGERS_THICKNESS_VALUES';
         else:
             if ( 'STRINGERS_HEIGHT_VALUES' not in config or
-                config['STRINGERS_HEIGHT_VALUES'] == 'BAFFLES_HEIGHT' ):
+                config['STRINGERS_HEIGHT_VALUES'] == 'BAFFLES_HEIGHT'):
                     sys.stderr.write('\n ## ERROR: Stringer height values '   \
                       'cannot be set to baffle height values if stringers '   \
                       'break locations are not set to baffles location.\n\n')
                     sys.exit(0);
+
             key = 'STRINGERS';
             k_loc = '_BREAK_LOCATIONS';
             t_val = '_THICKNESS_VALUES';
             h_val = '_HEIGHT_VALUES';
+            
+            if ( config['STRINGERS_HEIGHT_VALUES'] == 'EXTERIOR' ):
+                h_val = 'EXTERIOR'
+                nozzle.stringers.absoluteRadialCoord = 1;
         
         # Assign thickness distribution
         try:
@@ -1211,9 +1228,12 @@ class Nozzle:
         try:
             nozzle.stringers.heightNodes = self.ParseThickness(config,key,loc=k_loc,val=h_val);
         except:
-            sys.stderr.write('\n ## ERROR : Height definition '   \
-                 'could not be parsed for STRINGERS.\n\n');
-            sys.exit(0);             
+            if( config['STRINGERS_HEIGHT_VALUES'] == 'EXTERIOR' ):
+                nozzle.stringers.heightNodes = [[0,0],[0,0]] # temporary assignment
+            else:
+                sys.stderr.write('\n ## ERROR : Height definition '   \
+                     'could not be parsed for STRINGERS.\n\n');
+                sys.exit(0);             
 
         #info = config['STRINGERS_HEIGHT'].strip('()');
         #ltemp = [x.strip() for x in info.split(',')];        
@@ -1366,28 +1386,30 @@ class Nozzle:
                   (i+1,nozzle.baffles.height[i]));
             
         # --- If stringers are dependent on baffles, re-update stringers
-        if ( 'STRINGERS_HEIGHT_VALUES' not in config or
-            config['STRINGERS_HEIGHT_VALUES'] == 'BAFFLES_HEIGHT' ):  
+        if ( config['STRINGERS_HEIGHT_VALUES'] == 'BAFFLES_HEIGHT' ):  
                 for i in range(len(nozzle.stringers.heightNodes)):
                     nozzle.stringers.heightNodes[i][1] = nozzle.baffles.height[i];
-       
+                    
         # --- Setup height distribution for stringers
-        tsize = len(nozzle.stringers.heightNodes);
-        thicknessNodeArray = np.zeros(shape=(2,tsize))
-        for j in range(tsize):
-            thicknessNodeArray[0][j] = nozzle.stringers.heightNodes[j][0]*nozzle.length;
-            thicknessNodeArray[1][j] = nozzle.stringers.heightNodes[j][1];    
-        nozzle.stringers.height = geometry.PiecewiseLinear(thicknessNodeArray);        
+        if ( config['STRINGERS_HEIGHT_VALUES'] == 'EXTERIOR' ):
+                nozzle.stringers.height = nozzle.exterior.geometry
+        else:                
+            tsize = len(nozzle.stringers.heightNodes);
+            thicknessNodeArray = np.zeros(shape=(2,tsize))
+            for j in range(tsize):
+                thicknessNodeArray[0][j] = nozzle.stringers.heightNodes[j][0]*nozzle.length;
+                thicknessNodeArray[1][j] = nozzle.stringers.heightNodes[j][1];    
+            nozzle.stringers.height = geometry.PiecewiseLinear(thicknessNodeArray);        
         
-        # --- Check that stringer heights are not above baffle heights
-        for i in range(len(nozzle.baffles.location)):
-            baffleLocation = nozzle.baffles.location[i];
-            baffleHeight = nozzle.baffles.height[i];
-            stringerHeight = nozzle.stringers.height.radius(baffleLocation);
-            if stringerHeight > baffleHeight:
-                sys.stderr.write('\n ## ERROR: Stringers must have heights'  \
-                  ' that remain below the baffle height.\n\n');
-                sys.exit(0);
+            # --- Check that stringer heights are not above baffle heights
+            for i in range(len(nozzle.baffles.location)):
+                baffleLocation = nozzle.baffles.location[i];
+                baffleHeight = nozzle.baffles.height[i];
+                stringerHeight = nozzle.stringers.height.radius(baffleLocation);
+                if stringerHeight > baffleHeight:
+                    sys.stderr.write('\n ## ERROR: Stringers must have heights'  \
+                      ' that remain below the baffle height.\n\n');
+                    sys.exit(0);
 
         if output == 'verbose':
             sys.stdout.write('Setup Wall complete\n');

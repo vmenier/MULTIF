@@ -113,7 +113,7 @@ def runAEROS ( nozzle, output='verbose' ):
     iPres = idHeader['Pressure'];
     iTemp = idHeader['Temperature'];
 
-    stringerFlag = 0; # 0: stringer height is defined w.r.t. nozzle wall (specifically, the center of the load layers)
+    stringerFlag = nozzle.stringers.absoluteRadialCoord; # 0: stringer height is defined w.r.t. nozzle wall (specifically, the center of the load layers)
                       # 1: stringer height is defined w.r.t. the axis of rotation of the nozzle, i.e. total y coordinate
     
     # --- Mesh parameters
