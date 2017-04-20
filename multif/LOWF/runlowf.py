@@ -437,9 +437,20 @@ def integrateSupersonic(nozzle,tol,params,xThroat,nPartitions):
         tfinal = nozzle.wall.geometry.length
         (xF,M2F,eventIndex) = integrateODEwithEvents(f,dt,tfinal,1.,"f")
         
-        if( eventIndex != xF.size ):
-            raise RuntimeError(("Integration terminated early while ",
-                               "integrating forwards from the throat"))
+        if( eventIndex != xF.size ): # Relax UpperM and try again
+            print 'Integration terminated early while integrating forwards from throat'
+            UpperM = 1.01
+            f = scipy.integrate.ode(dM2dxForward,jac=None).set_integrator(       \
+              'dopri5',atol=tol["solverAbsTol"],rtol=tol["solverRelTol"])
+            f.set_initial_value(UpperM**2,xThroat+dx/2)
+            f.set_f_params(nozzle.fluid.gam,nozzle.wall.geometry,params)
+            nP = np.round((1-xThroat/nozzle.wall.geometry.length)*nPartitions)
+            dt = (nozzle.wall.geometry.length-xThroat-dx/2)/nP
+            tfinal = nozzle.wall.geometry.length
+            (xF,M2F,eventIndex) = integrateODEwithEvents(f,dt,tfinal,1.,"f")    
+            if( eventIndex != xF.size ):        
+                raise RuntimeError(("Integration terminated early while ",
+                                   "integrating forwards from the throat"))
         
         # Integrate backward from throat
         b = scipy.integrate.ode(dM2dxBackward,jac=None).set_integrator(      \
@@ -451,9 +462,20 @@ def integrateSupersonic(nozzle,tol,params,xThroat,nPartitions):
         tfinal = 0.
         (xB,M2B,eventIndex) = integrateODEwithEvents(b,dt,tfinal,1.,"b")
                 
-        if( eventIndex != xB.size ):
-            raise RuntimeError(("Integration terminated early while ",
-                                "integrating backwards from throat"))
+        if( eventIndex != xB.size ): # Relax LowerM and try again
+            print 'Integration terminated early while integrating backwards from throat'
+            LowerM = 0.99
+            b = scipy.integrate.ode(dM2dxBackward,jac=None).set_integrator(      \
+              'dopri5',atol=tol["solverAbsTol"],rtol=tol["solverRelTol"])
+            b.set_initial_value(LowerM**2,xThroat-dx/2)
+            b.set_f_params(xThroat,nozzle.fluid.gam,nozzle.wall.geometry,params)
+            nP = np.round(xThroat/nozzle.wall.geometry.length*nPartitions)
+            dt = (xThroat-dx/2)/nP
+            tfinal = 0.
+            (xB,M2B,eventIndex) = integrateODEwithEvents(b,dt,tfinal,1.,"b")            
+            if( eventIndex != xB.size ): 
+                raise RuntimeError(("Integration terminated early while ",
+                                    "integrating backwards from throat"))
     
         xIntegrate = np.concatenate((xB,xF))
         M2 = np.concatenate((M2B,M2F))
