@@ -605,7 +605,7 @@ def runSU2 ( nozzle ):
                     config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 10.0 )';
                     config.EXT_ITER = 2*config.EXT_ITER; 
                     config.LIMITER_ITER= '400';
-                config.RESIDUAL_REDUCTION = config.RESIDUAL_REDUCTION - residualReduction;
+                config.RESIDUAL_REDUCTION = float(config.RESIDUAL_REDUCTION) - residualReduction;
                 
                 su2history = open('about.txt','a');
                 su2history.write('\nRestarting SU2 for Euler with more conservative params since solution did not reach required accuracy:\n');

@@ -11,83 +11,28 @@ from .. import _nozzle_module
 from postprocessing import *
 
 def runAEROS ( nozzle, output='verbose' ):
+
+    # --- Extract flow solution at the wall
     
-    # --- Get the CFD solution at the inner wall
     # SolExtract : Solution (x, y, sol1, sol2, etc.)
     # Size : [NbrVer, SolSiz]
     # idHeader : id of each solution field, e.g. mach_ver89 = SolExtract[89][idHeader['MACH']]
-
-    # Start of example for accessing nozzle properties
-    
-    # First print all information related to geometry
-    #print '--- Wall:'
-    #print 'B-spline coefs (x-r coordinates): {:{prec}}'.format(nozzle.wall.coefs,prec=16)
-    #print 'B-spline knots: {:{prec}}'.format(nozzle.wall.knots,prec=16)
-    #print ''
-    #for i in range(len(nozzle.wall.layer)):
-    #    print '--- %s:' % nozzle.wall.layer[i].name
-    #    print 'material: %s' % nozzle.wall.layer[i].material.name
-    #    print 'thickness node x-coordinate: {} m'.format(nozzle.wall.layer[i].thickness.nodes[0,:])
-    #    print 'thickness node local n-coordinate: {} m'.format(nozzle.wall.layer[i].thickness.nodes[1,:])
-    #    print '\n'
-    #print '--- Baffles:'
-    #print 'number: %i' % nozzle.baffles.n
-    #print 'material: %s' % nozzle.baffles.material.name
-    #print 'layer 1: %s (ratio: %f)' % (nozzle.baffles.material.layer[0].material.name,nozzle.baffles.material.layer[0].ratio)
-    #print 'layer 3: %s (ratio: %f)' % (nozzle.baffles.material.layer[1].material.name,nozzle.baffles.material.layer[1].ratio)
-    #print 'layer 4: %s (ratio: %f)' % (nozzle.baffles.material.layer[2].material.name,nozzle.baffles.material.layer[2].ratio)
-    #print 'location (x-coordinate): {} m'.format(nozzle.baffles.location)
-    #print 'thickness: {} m'.format(nozzle.baffles.thickness)
-    #print 'height: {} m'.format(nozzle.baffles.height)
-    #print '\nFor example to access material properties of layer in baffle:'
-    #print 'elastic modulus layer 1: {} Pa'.format(nozzle.baffles.material.layer[0].material.getElasticModulus())
-    #print ''
-    #print '--- Stringers:'
-    #print 'number: %i' % nozzle.stringers.n
-    #print 'material: %s' % nozzle.stringers.material.name
-    #print 'thickness node x-coordinate: {} m'.format(nozzle.stringers.thickness.nodes[0,:])
-    #print 'thickness node local n-coordinate: {} m'.format(nozzle.stringers.thickness.nodes[1,:])
-    #print 'height node x-coordinate: {} m'.format(nozzle.stringers.height.nodes[0,:])
-    #print 'height node local n-coordinate: {} m'.format(nozzle.stringers.height.nodes[1,:])    
-    #print '\n' 
-    
-    # aside: to easily calculate wall shape or thickness as a function of the
-    # x-coordinate in an item's local coordinates, use the radius method
-    #r_innerwall = nozzle.wall.geometry.radius(x) # returns shape of inner wall at x in r-coordinate
-    #t_thermal_layer = nozzle.wall.layer[0].thickness.radius(x) # returns thickness of thermal layer at x in local n-coordinate
-    
-    # Next, print all information related to materials
-    #for k in nozzle.materials:
-    #    print '--- %s material:' % nozzle.materials[k].name
-    #    print 'type: %s' % nozzle.materials[k].type
-    #    print 'density: %10.4f kg/m^3' % nozzle.materials[k].getDensity()
-    #    if nozzle.materials[k].name == 'TI-HC' or nozzle.materials[k].name == 'GR-BMI':
-    #        print 'elastic modulus: {} Pa'.format(nozzle.materials[k].getElasticModulus())
-    #        print 'shear modulus: %e Pa' % nozzle.materials[k].getShearModulus()
-    #        print 'poisson ratio: %1.4f' % nozzle.materials[k].getPoissonRatio()
-    #    if nozzle.materials[k].name == 'GR-BMI':            
-    #        print 'mutual influence coefs: {}'.format(nozzle.materials[k].getMutualInfluenceCoefs())
-    #    print 'thermal conductivity: {} W/m-K'.format(nozzle.materials[k].getThermalConductivity())
-    #    if nozzle.materials[k].name == 'TI-HC' or nozzle.materials[k].name == 'GR-BMI':
-    #        print 'thermal expansion coef: {} 1/K'.format(nozzle.materials[k].getThermalExpansionCoef())
-    #    print ''
-        
-    # So for example to obtain the Young's Moduli for the innermost Gr-BMI layer
-    #[E1, E2] = nozzle.wall.layer[1].material.getElasticModulus()
-    # Example, obtain all 3 coefs of thermal expansion for outermost Gr-BMI layer
-    #[alpha1, alpha2, alpha12] = nozzle.wall.layer[3].material.getThermalExpansionCoef()
-    # Example, obtain thermal conductivities for innermost Gr-BMI layer (there
-    # are 3 values: (1st in-plane direction, 2nd in-plane direction, out-of-plane direction))
-    #[k1, k2, k3] = nozzle.wall.layer[1].material.getThermalConductivity()
-    # End of example
-
     if nozzle.method == 'NONIDEALNOZZLE':
         SolExtract = nozzle.wallResults;
         Size = [x for x in nozzle.wallResults.shape];
         idHeader = {'Temperature': 1, 'Pressure': 2};
     else:
         SolExtract, Size, idHeader  = ExtractSolutionAtWall(nozzle);
+        
+    ## How to get x, y, P, T :
+    #for i in range(0,Size[0]):
+    #    print "VER %d : (x,y) = (%.*lf, %.*lf) , Pres = %lf, Temp = %lf" % (i, 16, SolExtract[i][0], 16, SolExtract[i][1], SolExtract[i][iPres], SolExtract[i][iTemp]);
 
+    iPres = idHeader['Pressure'];
+    iTemp = idHeader['Temperature'];
+    
+    # --- Assemble important points to align mesh with
+    
     # merge lists
     ends = [min(list(nozzle.wall.layer[0].thickness.nodes[0,:])), max(list(nozzle.wall.layer[0].thickness.nodes[0,:]))]
     #for i in range(len(ends)):
@@ -104,51 +49,62 @@ def runAEROS ( nozzle, output='verbose' ):
     #for k in range(len(points)):
     #    print ' k = %d, points[k] = %f' % (k, points[k])
     
-    # Average thermal conductivity of load layer (W/m*K)
-    #[k11, k12, k13] = nozzle.wall.layer[1].material.getThermalConductivity();
-    #k2 = nozzle.wall.layer[2].material.getThermalConductivity();
-    #[k31, k32, k33] = nozzle.wall.layer[3].material.getThermalConductivity();
-    #Lbd = (k11+k12+k13+3*k2+k31+k32+k33)/9
+    # --- Set important flags
     
-    iPres = idHeader['Pressure'];
-    iTemp = idHeader['Temperature'];
+    # Determine how stringer height is defined:
+    #     0: stringer height is defined w.r.t. nozzle wall (specifically, the center of the load layers)
+    #     1: stringer height is defined w.r.t. the axis of rotation of the nozzle, i.e. total y coordinate
+    stringerFlag = nozzle.stringers.absoluteRadialCoord;   
+    
+    # Determine where nozzle boundary is fixed:
+    #     0: inlet fixed
+    #     1: baffle edges fixed
+    #     2: both inlet and baffle edges fixed
+    boundaryFlag = 1 if len(nozzle.baffles.location) > 0 else 0;
+    
+    # Determine whether to perform structural and/or thermal analyses:
+    #     0: structural analysis only
+    #     1: both thermal and structural analyses
+    thermalFlag = 1 if nozzle.thermalFlag == 1 else 0;
 
-    stringerFlag = nozzle.stringers.absoluteRadialCoord; # 0: stringer height is defined w.r.t. nozzle wall (specifically, the center of the load layers)
-                      # 1: stringer height is defined w.r.t. the axis of rotation of the nozzle, i.e. total y coordinate
+    # Determine structural analysis type:
+    #     0: nonlinear structural analysis
+    #     1: linear structural analysis
+    linearFlag = nozzle.linearStructuralAnalysis;
     
     # --- Mesh parameters
+    
+    # Assign a continuous range of mesh parameters based on user-specified thermostructuralFidelityLevel float. This
+    # float is between 0 and 1. Choosing 0.5 gives the baseline mesh parameters.
+    
     # lc: characteristic length (i.e. element size)
     # Tn1: number of nodes through thickness of thermal insulating layer
     # Tn2: number of nodes through thickness of gap between thermal and load layers
     # Ln: number of nodes through each half of the thickness of the load layer (thermal model)
+    # Mn: number of nodes in circumferential direction per baffle
     if nozzle.thermostructuralFidelityLevel <= 0.5:
         lc = np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[0.04,0.02]);
         Tn1 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[2,4]));
         Tn2 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[1,2]));
         Ln = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[1,2]));
+        Mn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[25,40]));
+        Sn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[5,8]));
     else: # nozzle.thermostructuralFidelityLevel betwen 0.5 and 1
-        lc = np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[0.02,0.01]);
-        Tn1 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[4,8]));
-        Tn2 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[2,4]));
-        Ln = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[2,4]));
+        lc = np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[0.02,0.01]);
+        Tn1 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[4,8]));
+        Tn2 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[2,4]));
+        Ln = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[2,4]));
+        Mn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[40,55]));
+        Sn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[8,11]));
     Ns   = max(2,nozzle.stringers.n); # number of panels (i.e. circumferential subdivisions of the mesh)
-    Mn   = max(2,(2*math.pi*nozzle.wall.geometry.radius(points[0])/Ns)/lc+1); # Number of nodes in circumferential direction per panel
-    if stringerFlag == 0:
-        Sn = max(nozzle.stringers.height.radius(0)/lc+1,2) if nozzle.stringers.n > 0 else 0; # number of nodes on radial edge of stringers
-    else:
-        Sn = max((nozzle.stringers.height.radius(0)-nozzle.wall.geometry.radius(points[0]))/lc+1,2) if nozzle.stringers.n > 0 else 0;
+    #Mn   = max(2,(2*math.pi*nozzle.wall.geometry.radius(points[0])/Ns)/lc+1); # Number of nodes in circumferential direction per panel
+    #if stringerFlag == 0: # height defined w.r.t. nozzle exterior wall
+    #    Sn = max(nozzle.stringers.height.radius(0)/lc+1,2) if nozzle.stringers.n > 0 else 0; # number of nodes on radial edge of stringers
+    #else:
+    #    Sn = max((nozzle.stringers.height.radius(0)-nozzle.wall.geometry.radius(points[0]))/lc+1,2) if nozzle.stringers.n > 0 else 0;
     
-    ## --- How to get x, y, P, T :
-    #for i in range(0,Size[0]):
-    #    print "VER %d : (x,y) = (%.*lf, %.*lf) , Pres = %lf, Temp = %lf" % (i, 16, SolExtract[i][0], 16, SolExtract[i][1], SolExtract[i][iPres], SolExtract[i][iTemp]);
-
-    boundaryFlag = 1 if len(nozzle.baffles.location) > 0 else 0; # 0: inlet fixed, 1: baffles fixed, 2: both inlet and baffles fixed
-    if nozzle.thermalFlag == 1:
-        thermalFlag = 1;  # 0: structural analysis only, 1: both thermal and structural analyses
-    else: # only perform structural analysis
-        thermalFlag = 0;
-    linearFlag = nozzle.linearStructuralAnalysis; # 0: nonlinear structural analysis, 1: linear structural analysis
-
+    # --- Material properties
+    
     materialNames = [nozzle.materials[k].name for k in nozzle.materials]
     # material ids of the thermal and load layers
     M = list();
@@ -161,11 +117,14 @@ def runAEROS ( nozzle, output='verbose' ):
     # material id of stringers
     Ms = materialNames.index(nozzle.stringers.material.name) if nozzle.stringers.n > 0 else -1
 
+    # --- Write nozzle definition to file for Aero-S
+    
     f1 = open("NOZZLE.txt", 'w');
     verboseFlag = 0.;
     if output == 'verbose':
         verboseFlag = 1.;
     print >> f1, "%d %d %d %f %d %d %d %d %d %d %d" % (len(points), len(vertices), len(nozzle.materials), lc, boundaryFlag, thermalFlag, 3, 2, linearFlag, verboseFlag, stringerFlag);
+    
     # points
     for i in range(len(points)):
         Tg = nozzle.wall.layer[1].thickness.radius(0.) # thickness of gap between thermal and load layers
@@ -180,13 +139,15 @@ def runAEROS ( nozzle, output='verbose' ):
     # vertices
     for i in range(len(vertices)):  
         Wb = nozzle.baffles.height[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # height of baffle
-        Nb = max(Wb/lc-Ns+1,2); # number of nodes on radial edge of baffle (not including overlap with stringer)
+        #Nb = max(Wb/lc-Ns+1,2); # number of nodes on radial edge of baffle (not including overlap with stringer)
+        Nb = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,1],[2,4]));
         Tb = nozzle.baffles.thickness[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # thickness of baffle
         print >> f1, "%d %0.16e %d %d %0.16e" % (points.index(vertices[i]), Wb, Mb, Nb, Tb);
                  
     # panels
     for i in range(1,len(vertices)):
-        Nn = max(2,(vertices[i]-vertices[i-1])/lc+1); # number of nodes on longitudial edge
+        #Nn = max(2,(vertices[i]-vertices[i-1])/lc+1); # number of nodes on longitudial edge
+        Nn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,1],[7,15]));
         print >> f1, "%d %d %d %d %d %d %d %d %d %d %d %d %d" % (M[2], M[3], M[4], Ns, Ms, Nn, Mn, Sn, M[0], M[1], Tn1, Tn2, Ln);
     # material properties
     for k in nozzle.materials:

@@ -1621,7 +1621,8 @@ class Nozzle:
                                 prt_basval.append('%.4lf'% nozzle.baffles.location[iCoord]);
                                 prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
                                 nozzle.stringers.thicknessNodes[iCoord][0] = nozzle.DV_List[id_dv];
-                                nozzle.stringers.heightNodes[iCoord][0] = nozzle.DV_List[id_dv];                        
+                                if (config['STRINGERS_HEIGHT_VALUES'] == 'BAFFLES_HEIGHT'):
+                                    nozzle.stringers.heightNodes[iCoord][0] = nozzle.DV_List[id_dv];                        
                                 NbrChanged = NbrChanged+1;
                     elif id_dv < nozzle.DV_Head[iTag] + brk2:
                         prt_name.append('baffle thickness #%d' % (iCoord+1-lsize));
