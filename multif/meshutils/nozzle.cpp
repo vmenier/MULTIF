@@ -1379,7 +1379,7 @@ void generateNozzle(const std::vector<PointData> &points,
             }
             (*it)->meshAttributes.coeffTransfinite = 1.0;
             if(edgeIndex == 2) {
-              if(bf != 0 && ws1 == wb1) { // then, this is the boundary
+              if(bf != 0 && ws1 >= wb1) { // then, this is the boundary
                 boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
                 boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
                 boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
