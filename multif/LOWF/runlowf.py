@@ -437,9 +437,20 @@ def integrateSupersonic(nozzle,tol,params,xThroat,nPartitions):
         tfinal = nozzle.wall.geometry.length
         (xF,M2F,eventIndex) = integrateODEwithEvents(f,dt,tfinal,1.,"f")
         
-        if( eventIndex != xF.size ):
-            raise RuntimeError(("Integration terminated early while ",
-                               "integrating forwards from the throat"))
+        if( eventIndex != xF.size ): # Relax UpperM and try again
+            print 'Integration terminated early while integrating forwards from throat'
+            UpperM = 1.01
+            f = scipy.integrate.ode(dM2dxForward,jac=None).set_integrator(       \
+              'dopri5',atol=tol["solverAbsTol"],rtol=tol["solverRelTol"])
+            f.set_initial_value(UpperM**2,xThroat+dx/2)
+            f.set_f_params(nozzle.fluid.gam,nozzle.wall.geometry,params)
+            nP = np.round((1-xThroat/nozzle.wall.geometry.length)*nPartitions)
+            dt = (nozzle.wall.geometry.length-xThroat-dx/2)/nP
+            tfinal = nozzle.wall.geometry.length
+            (xF,M2F,eventIndex) = integrateODEwithEvents(f,dt,tfinal,1.,"f")    
+            if( eventIndex != xF.size ):        
+                raise RuntimeError(("Integration terminated early while ",
+                                   "integrating forwards from the throat"))
         
         # Integrate backward from throat
         b = scipy.integrate.ode(dM2dxBackward,jac=None).set_integrator(      \
@@ -451,9 +462,20 @@ def integrateSupersonic(nozzle,tol,params,xThroat,nPartitions):
         tfinal = 0.
         (xB,M2B,eventIndex) = integrateODEwithEvents(b,dt,tfinal,1.,"b")
                 
-        if( eventIndex != xB.size ):
-            raise RuntimeError(("Integration terminated early while ",
-                                "integrating backwards from throat"))
+        if( eventIndex != xB.size ): # Relax LowerM and try again
+            print 'Integration terminated early while integrating backwards from throat'
+            LowerM = 0.99
+            b = scipy.integrate.ode(dM2dxBackward,jac=None).set_integrator(      \
+              'dopri5',atol=tol["solverAbsTol"],rtol=tol["solverRelTol"])
+            b.set_initial_value(LowerM**2,xThroat-dx/2)
+            b.set_f_params(xThroat,nozzle.fluid.gam,nozzle.wall.geometry,params)
+            nP = np.round(xThroat/nozzle.wall.geometry.length*nPartitions)
+            dt = (xThroat-dx/2)/nP
+            tfinal = 0.
+            (xB,M2B,eventIndex) = integrateODEwithEvents(b,dt,tfinal,1.,"b")            
+            if( eventIndex != xB.size ): 
+                raise RuntimeError(("Integration terminated early while ",
+                                    "integrating backwards from throat"))
     
         xIntegrate = np.concatenate((xB,xF))
         M2 = np.concatenate((M2B,M2F))
@@ -819,37 +841,46 @@ def Quasi1D(nozzle,output='verbose'):
 
 def Run (nozzle,output='verbose'):
     
-    xPosition, flowTuple, heatTuple,                                         \
-    geoTuple, performanceTuple = Quasi1D(nozzle,output);
-    
-    nozzle.mass = np.sum(performanceTuple[1]);
-    nozzle.volume = np.sum(performanceTuple[0]);
-    nozzle.thrust = performanceTuple[2];
-    
+    # Obtain mass and volume
+    if nozzle.GetOutput['MASS'] == 1 or nozzle.getoutput['VOLUME'] == 1:
+        volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle) 
+        nozzle.mass = np.sum(mass)
+        nozzle.volume = np.sum(volume)
+        
+    # Obtain mass of wall only if requested
     if nozzle.GetOutput['MASS_WALL_ONLY'] == 1:
         n_layers = len(nozzle.wall.layer);
-        nozzle.mass_wall_only = np.sum(performanceTuple[1][:n_layers]);
-    if nozzle.GetOutput['WALL_TEMPERATURE'] == 1:
-        nozzle.wall_temperature = np.interp(nozzle.OutputLocations['WALL_TEMPERATURE'], \
-          xPosition, heatTuple[0])
-    if nozzle.GetOutput['WALL_PRESSURE'] == 1:
-        nozzle.wall_pressure = np.interp(nozzle.OutputLocations['WALL_PRESSURE'], \
-          xPosition, flowTuple[3])
-    if nozzle.GetOutput['PRESSURE'] == 1:
-        nozzle.pressure = np.interp(nozzle.OutputLocations['PRESSURE'][:,0], \
-          xPosition, flowTuple[3])
-    if nozzle.GetOutput['VELOCITY'] == 1:
-        nr, nc = nozzle.OutputLocations['VELOCITY'].shape
-        nozzle.velocity = np.zeros((nr,3))
-        nozzle.velocity[:,0] = np.interp(nozzle.OutputLocations['VELOCITY'][:,0], \
-          xPosition, flowTuple[1])
-    
-    # For testing purposes only; usually these do not need to be output
-    #nozzle.xPosition = xPosition
-    #nozzle.flowTuple = flowTuple
-    #nozzle.heatTuple = heatTuple
-    #nozzle.geoTuple = geoTuple
-    #nozzle.performanceTuple = performanceTuple
+        nozzle.mass_wall_only = np.sum(performanceTuple[1][:n_layers]);    
+
+    # Run aero-thermal-structural analysis if other QoI are requested
+    otherQoI = ['MAX_TOTAL_STRESS','KS_TEMPERATURE','KS_TOTAL_STRESS','MAX_TEMP_RATIO', \
+        'KS_FAILURE_CRITERIA','WALL_PRESSURE','PN_TOTAL_STRESS','PN_TEMP_RATIO', \
+        'PN_TEMPERATURE','VELOCITY','MAX_THERMAL_STRESS','MAX_TEMPERATURE', \
+        'WALL_TEMPERATURE','MAX_FAILURE_CRITERIA','PRESSURE','PN_FAILURE_CRITERIA', \
+        'THRUST','KS_TEMP_RATIO','MAX_MECHANICAL_STRESS']
+    nRequested = 0
+    for qoi in otherQoI:
+        nRequested += np.sum(nozzle.GetOutput[qoi])
+    if nRequested > 0:
+        xPosition, flowTuple, heatTuple, geoTuple, \
+            performanceTuple = Quasi1D(nozzle,output);
+        
+        nozzle.thrust = performanceTuple[2];
+
+        if nozzle.GetOutput['WALL_TEMPERATURE'] == 1:
+            nozzle.wall_temperature = np.interp(nozzle.OutputLocations['WALL_TEMPERATURE'], \
+              xPosition, heatTuple[0])
+        if nozzle.GetOutput['WALL_PRESSURE'] == 1:
+            nozzle.wall_pressure = np.interp(nozzle.OutputLocations['WALL_PRESSURE'], \
+              xPosition, flowTuple[3])
+        if nozzle.GetOutput['PRESSURE'] == 1:
+            nozzle.pressure = np.interp(nozzle.OutputLocations['PRESSURE'][:,0], \
+              xPosition, flowTuple[3])
+        if nozzle.GetOutput['VELOCITY'] == 1:
+            nr, nc = nozzle.OutputLocations['VELOCITY'].shape
+            nozzle.velocity = np.zeros((nr,3))
+            nozzle.velocity[:,0] = np.interp(nozzle.OutputLocations['VELOCITY'][:,0], \
+              xPosition, flowTuple[1])
     
     # Write data
     if nozzle.outputFormat == 'PLAIN':

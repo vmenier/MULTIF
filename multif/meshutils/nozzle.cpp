@@ -1245,7 +1245,7 @@ void generateNozzle(const std::vector<PointData> &points,
     GEdge *edge2 = controlPoints.empty() ? m->addLine(vertex3, vertex4) : m->addBSpline(vertex3, vertex4, controlPoints);
     // middle of outer layer
     GVertex *vertex5 = m->addVertex(pointIt1->xyz[0], ycoord(pointIt1,tt(pointIt1)+ts(pointIt1)/2), pointIt1->xyz[2], lc);
-    GVertex *vertex6 = m->addVertex(pointIt2->xyz[0], ycoord(pointIt2,tt(pointIt1)+ts(pointIt2)/2), pointIt2->xyz[2], lc);
+    GVertex *vertex6 = m->addVertex(pointIt2->xyz[0], ycoord(pointIt2,tt(pointIt2)+ts(pointIt2)/2), pointIt2->xyz[2], lc);
     for(it = controlPoints.begin(), pointIt = pointIt1+1; it != controlPoints.end(); ++it, ++pointIt) {
       (*it)[1] = ycoord(pointIt,tt(pointIt)+ts(pointIt)/2);
     }
@@ -1379,7 +1379,7 @@ void generateNozzle(const std::vector<PointData> &points,
             }
             (*it)->meshAttributes.coeffTransfinite = 1.0;
             if(edgeIndex == 2) {
-              if(bf != 0 && ws1 == wb1) { // then, this is the boundary
+              if(bf != 0 && ws1 >= wb1) { // then, this is the boundary
                 boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
                 boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
                 boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
@@ -1428,11 +1428,20 @@ void generateNozzle(const std::vector<PointData> &points,
         std::list<GEdge*> edges = stiffenerFace->cast2Face()->edges();
         for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++ it) {
           (*it)->meshAttributes.method = MESH_TRANSFINITE;
-          switch(std::distance(edges.begin(),it)) {
+          int edgeIndex = std::distance(edges.begin(),it);
+          switch(edgeIndex) {
             case 0: case 2: (*it)->meshAttributes.nbPointsTransfinite = nn; break;
             case 1: case 3: (*it)->meshAttributes.nbPointsTransfinite = sn; break;
           }
           (*it)->meshAttributes.coeffTransfinite = 1.0;
+          if(edgeIndex == 2) {
+            if(bf != 0 && ws1 >= wb1) { // then, this is the boundary
+              boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
+              boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
+              //Note: to add displacement boundary condition also on the top edge of the stiffener, uncomment next line
+              //boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));
+            }
+          }
         }
         stiffenerFace->addPhysicalEntity(4);
       }
@@ -1486,7 +1495,7 @@ void generateNozzle(const std::vector<PointData> &points,
             }
             (*it)->meshAttributes.coeffTransfinite = 1.0;
             if(edgeIndex == 2) {
-              if(bf !=0 && ws2 == wb2) { // then, this is the boundary
+              if(bf !=0 && ws2 >= wb2) { // then, this is the boundary
                 boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(),(*it)->getBeginVertex()->tag()));
                 boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(),(*it)->getEndVertex()->tag()));
                 boundaryTags.push_back(std::make_pair((*it)->geomType(),(*it)->tag()));

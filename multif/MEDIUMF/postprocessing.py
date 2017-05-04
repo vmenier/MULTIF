@@ -140,7 +140,6 @@ def CheckSU2Convergence ( history_filename, field_name ) :
 
 	#print "Initial res = %le, Final res = %lf, DIFF = %lf\n" % (IniRes, FinRes, ResDif);
 	return IniRes, FinRes;
-
 	
 def ExtractSolutionAtExit ( nozzle ):
 
