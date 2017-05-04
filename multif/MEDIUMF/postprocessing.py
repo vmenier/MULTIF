@@ -38,7 +38,8 @@ def PostProcessing (nozzle):
 	
 
 	if nozzle.GetOutput['THRUST'] == 1:			
-		nozzle.thrust = ComputeThrust ( nozzle, SolExtract, Size, Header );
+		#nozzle.thrust = ComputeThrust ( nozzle, SolExtract, Size, Header );
+		nozzle.thrust = Get_Thrust_File(nozzle);
 	
 	if nozzle.GetOutput['VOLUME'] == 1 or nozzle.GetOutput['MASS'] == 1 or nozzle.GetOutput['MASS_WALL_ONLY'] == 1:
 
@@ -113,6 +114,33 @@ def CheckConvergence ( nozzle ) :
 	#print "Initial res = %le, Final res = %lf, DIFF = %lf\n" % (IniRes, FinRes, ResDif);
 	return IniRes, FinRes;
 	
+def CheckSU2Convergence ( history_filename, field_name ) :
+
+
+	#plot_format	  = con.OUTPUT_FORMAT;
+	#plot_extension   = SU2.io.get_extension(plot_format)
+	#history_filename = nozzle.CONV_FILENAME + plot_extension
+	#special_cases	= SU2.io.get_specialCases(config)
+
+	history	  = SU2.io.read_history( history_filename )
+	
+	plot = SU2.io.read_plot(history_filename);
+
+	Res = history[field_name];
+	
+	
+	NbrIte = len(Res);
+	
+	if ( NbrIte < 1 ):
+		IniRes = 0;
+		FinRes = 0;
+	else :
+		IniRes = Res[0];
+		FinRes = Res[NbrIte-1];
+
+	#print "Initial res = %le, Final res = %lf, DIFF = %lf\n" % (IniRes, FinRes, ResDif);
+	return IniRes, FinRes;
+
 	
 def ExtractSolutionAtExit ( nozzle ):
 
@@ -140,6 +168,20 @@ def ExtractSolutionAtExit ( nozzle ):
 	Out_sort = OutResult[OutResult[:,1].argsort()]
 	
 	return Out_sort, pyInfo, pyHeader;
+
+
+def Get_Thrust_File(nozzle):
+	
+	thrust_filename = "thrust_nodef.dat"
+	
+	if not os.path.isfile(thrust_filename) :
+		sys.stderr.write("  ## ERROR Get thrust : file %s not found.\n \
+		Are you using the right version of SU2?\n" % thrust_filename);
+		return -1;
+		
+	thrust = np.loadtxt(thrust_filename);
+	return thrust;
+		
 	
 
 def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
@@ -441,3 +483,4 @@ def ExtractSolutionAtXY (x, y, tagField):
 		
 	return OutSol;
 
+	

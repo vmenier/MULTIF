@@ -1412,11 +1412,15 @@ class Nozzle:
             sys.exit(0);
                 
         if inputDVformat == 'PLAIN':
-            DV_List, OutputCode, Derivatives_DV = ParseDesignVariables_Plain(filename);    
-            NbrDV = len(DV_List);                    
+			DV_List, OutputCode, Derivatives_DV = ParseDesignVariables_Plain(filename);    
+			NbrDV = len(DV_List);   
+          
         elif inputDVformat == 'DAKOTA' :
-            DV_List, OutputCode, Derivatives_DV = ParseDesignVariables_Dakota(filename);    
-            NbrDV = len(DV_List);
+			DV_List, OutputCode, Derivatives_DV = ParseDesignVariables_Dakota(filename);    
+			NbrDV = len(DV_List);
+			#print OutputCode
+			#print DV_List
+			#sys.exit(1)
         else:
             sys.stderr.write('\n ## ERROR : Unknown DV input file format '    \
               '%s\n\n' % inputDVformat);
@@ -1428,12 +1432,52 @@ class Nozzle:
             sys.stderr.write('             %d given, %d expected\n' %         \
               (NbrDV, nozzle.NbrDVTot ));
             sys.exit(0);
-    
+        
         nozzle.DV_List = DV_List;
+        nozzle.OutputCode = OutputCode;
+		
+        nozzle.thrust_gradients = 'NO'
+
+        for i in range(0, len(nozzle.Output_Tags)):
+            
+            
+            tag  = nozzle.Output_Tags[i];
+            code = nozzle.OutputCode[i];
+            
+            
+            
+            # 6 Get Hessian, gradient, and value Get Hessian and gradient
+            # 5 Get Hessian and value
+            # 4 Get Hessian
+            # 3 Get gradient and value
+            # 2 Get gradient
+            # 1 Get value
+            # 0 No data required, function is inactive
+            code = nozzle.OutputCode[i];
+            
+            out_gra = 0;
+            out_val  = 0;
+            
+            if code == 1:
+            	out_val = 1;
+            elif code == 2:
+            	out_gra = 1;
+            elif code == 3:
+            	out_val = 1;
+            	out_gra = 1;
+            
+            if nozzle.gradients_method == "ADJOINT":
+            	if out_gra == 1 and tag != "THRUST":
+            		sys.stderr.write("  ## ERROR : adjoint gradient computation not available for %s\n", tag);
+            		sys.exit(1);
+            
+			if tag == 'THRUST' and out_gra==1:
+				nozzle.thrust_gradients = 'YES'
+		
         
         if output == 'verbose':
             sys.stdout.write('Setup Parse Design Variables complete\n');        
-    
+        
     
     def UpdateDV(self, config, output='verbose'):
         
@@ -2744,16 +2788,48 @@ class Nozzle:
         prt_val = list();             
 
         for i in range(0, len(nozzle.Output_Tags)):
-          
+            
             tag = nozzle.Output_Tags[i];
-
+            
             tag = nozzle.Output_Tags[i];
-    
+            
+            
+            # 6 Get Hessian, gradient, and value Get Hessian and gradient
+            # 5 Get Hessian and value
+            # 4 Get Hessian
+            # 3 Get gradient and value
+            # 2 Get gradient
+            # 1 Get value
+            # 0 No data required, function is inactive
+            code = nozzle.OutputCode[i];
+            
+            out_gra = 0;
+            out_val  = 0;
+            
+            if code == 1:
+            	out_val = 1;
+            elif code == 2:
+            	out_gra = 1;
+            elif code == 3:
+            	out_val = 1;
+            	out_gra = 1;
+            
+            print "TAG %s CODE %d" % (tag, code)
+            
+            if nozzle.gradients_method == "ADJOINT":
+            	if out_gra == 1 and tag != "THRUST":
+            		sys.stderr.write("  ## ERROR : adjoint gradient computation not available for %s\n", tag);
+            		sys.exit(1);
+            
             if tag == 'MASS':
-                fil.write('%0.16f mass\n' % nozzle.mass);
-                prt_item.append('mass');
-                prt_comp.append('');
-                prt_val.append('%0.16f' % nozzle.mass); 
+	
+				if out_val:
+					fil.write('%0.16f mass\n' % nozzle.mass);
+				prt_item.append('mass');
+				prt_comp.append('');
+				prt_val.append('%0.16f' % nozzle.mass); 
+				
+				
                     
             elif tag == 'MASS_WALL_ONLY':
                 fil.write('%0.16f mass_wall_only\n' % nozzle.mass_wall_only);
@@ -2768,7 +2844,14 @@ class Nozzle:
                 prt_val.append('%0.16f' % nozzle.volume); 
                     
             elif tag == 'THRUST':
-                fil.write('%0.16f thrust\n' % nozzle.thrust);
+                
+                if out_val:
+                	fil.write('%0.16f thrust\n' % nozzle.thrust);
+                if out_gra:
+                	fil.write('[ ');
+                	for i in range(len(nozzle.thrust_grad)):
+                		fil.write('%0.16f ' % nozzle.thrust_grad[i]);
+                	fil.write(']\n');
                 prt_item.append('thrust');
                 prt_comp.append('');
                 prt_val.append('%0.16f' % nozzle.thrust); 
@@ -3123,6 +3206,34 @@ def NozzleSetup( config_name, flevel, output='verbose', partitions=1 ):
             nozzle.runDir = '';
     else:
         nozzle.runDir = '';
+
+	nozzle.gradients = 'NONE';
+	
+	nozzle.output_gradients = "NO";
+	nozzle.output_gradients_filename = "gradients.dat"
+	
+	if 'OUTPUT_GRADIENTS' in config:
+		if config['OUTPUT_GRADIENTS'] == 'YES':
+			nozzle.output_gradients = 'YES';
+			if 'OUTPUT_GRADIENTS_FILENAME' in config:
+				nozzle.output_gradients_filename = config['OUTPUT_GRADIENTS_FILENAME'];
+			
+		elif config['OUTPUT_GRADIENTS'] == 'NO':
+			nozzle.output_gradients = 'NO';
+		else :
+			sys.stderr.write("  ## ERROR : Invalid entry for GRADIENTS_COMPUTATION option (expected: YES, NO, or INPUT_FILE)\n");
+			sys.exit(1);
+
+	if 'GRADIENTS_COMPUTATION_METHOD' in config:
+		if config['GRADIENTS_COMPUTATION_METHOD'] == 'FINITE_DIFF':
+		    nozzle.gradients_method = 'FINITE_DIFF';
+		elif config['GRADIENTS_COMPUTATION_METHOD'] == 'ADJOINT':
+			nozzle.gradients_method = 'ADJOINT';
+		else :
+			sys.stderr.write("  ## ERROR : Invalid entry for GRADIENTS_COMPUTATION_METHOD option (expected: ADJOINT or FINITE_DIFF)\n");
+			sys.exit(1);
+			
+	
     
     # --- Path to SU2 exe
     
@@ -3168,8 +3279,13 @@ def NozzleSetup( config_name, flevel, output='verbose', partitions=1 ):
     
     nozzle.SetupStringers(config,output);
     
+    # --- Get output functions to be returned
+    
+    nozzle.SetupOutputFunctions(config,output);
+
     # --- Setup DV definition
-        
+    nozzle.DV_List = [];
+    nozzle.OutputCode = [0] * len(nozzle.Output_Tags);
     nozzle.SetupDV(config,output);
     
     # --- If input DV are provided, parse them and update nozzle
@@ -3188,9 +3304,7 @@ def NozzleSetup( config_name, flevel, output='verbose', partitions=1 ):
     
     nozzle.SetupWall(config,output);
     
-    # --- Get output functions to be returned
-    
-    nozzle.SetupOutputFunctions(config,output);
+
         
     #sys.exit(1);
     return nozzle;    

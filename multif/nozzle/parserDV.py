@@ -140,11 +140,12 @@ def ParseDesignVariables_Dakota (filename):
 	# 2 Get gradient
 	# 1 Get value
 	# 0 No data required, function is inactive
+	
+	for i in range(id+1,id+NbrOut+1):
 		
-	for i in range(id,id+NbrOut+1):
 		code = int(FilTab[i][0]);
 		OutputCode.append(code);
-		#print "%s %s" % (FilTab[i][0],FilTab[i][1]);
+		print "%s %s" % (FilTab[i][0],FilTab[i][1]);
 	
 	# --- Get derivative variables
 	
@@ -164,3 +165,6 @@ def ParseDesignVariables_Dakota (filename):
 			Derivatives_DV.append(int(FilTab[i][0]));	
 	
 	return DV_List, OutputCode, Derivatives_DV;
+	
+	
+	
