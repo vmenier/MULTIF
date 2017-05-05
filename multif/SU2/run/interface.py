@@ -127,10 +127,11 @@ def CFD(config):
     
         the_Command = 'SU2_CFD ' + tempname
 
+		
+    the_Command = '%s/%s' % (base,the_Command);
 			
     the_Command = build_command( the_Command , processes )
 		
-    the_Command = '%s/%s' % (base,the_Command);
 	
     run_command( the_Command )
     
