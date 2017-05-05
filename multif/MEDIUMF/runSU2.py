@@ -377,8 +377,6 @@ def SetupConfig (solver_options):
     if ( wall_temp == 1 ) :
     	
     	nbv = len(wall_temp_values);
-    	print "NBV %d" % nbv
-    	print wall_temp_values
     	
     	temp_kwd = "%lf, %lf" % (wall_temp_values[0][0], wall_temp_values[0][1]);
     	
@@ -404,13 +402,13 @@ def checkResidual(config):
         finalResidual = history[-1,11];
         residualReduction = history[0,11] - history[-1,11];
     else: # bypass solution checking
+        history = -1;
         finalResidual = -1;
         residualReduction = config.RESIDUAL_REDUCTION -1;
-        
+        sys.stderr.write("  ## ERROR No history file found.\n");
+        sys.exit();
+		        
     return history, finalResidual, residualReduction
-
-
-
 
 
 def runSU2 ( nozzle ):
@@ -433,6 +431,7 @@ def runSU2 ( nozzle ):
 	solver_options.output_format = nozzle.OUTPUT_FORMAT;
 	
 	solver_options.SU2_RUN = nozzle.SU2_RUN;
+	print 'SU2_RUN is %s' % nozzle.SU2_RUN
 	
 	solver_options.mesh_name    = nozzle.mesh_name;
 	solver_options.restart_name = nozzle.restart_name;
