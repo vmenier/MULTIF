@@ -339,10 +339,9 @@ def SetupConfig (solver_options):
         config.CFL_REDUCTION_TURB= '0.5'
         config.RELAXATION_FACTOR_TURB= '1.0'
 
-
     # --- Convergence parameters
 
-	if gradients == 'ADJOINT':
+	if solver_options.gradients == 'ADJOINT':
 		convergence_order = max(convergence_order, 8);
 
     config.CONV_CRITERIA= 'RESIDUAL';
@@ -440,34 +439,41 @@ def runSU2 ( nozzle ):
 	
 	solver_options.dv_coefs = [];
 	
-	iTag = -1;
-	for i in range(len(nozzle.DV_Tags)):
-		Tag = nozzle.DV_Tags[i];
-		if (Tag == "WALL"):
-			iTag = i;
-			break;
+	# --- Specify wall variable data when adjoint gradients are requested
+	if( nozzle.gradients_method == 'ADJOINT' ):
+	
+	    iTag = -1;
+	    for i in range(len(nozzle.DV_Tags)):
+		    Tag = nozzle.DV_Tags[i];
+		    if (Tag == "WALL"):
+			    iTag = i;
+			    break;
 		
-	if ( iTag < 0 ):
-		sys.stderr.write("  ## ERROR SU2 adjoint computation: Wall parameterization not specified.\n");
-		return;
+	    if ( iTag < 0 ):
+		    sys.stderr.write("  ## ERROR SU2 adjoint computation: Wall parameterization not specified.\n");
+		    sys.exit();
+
+	    nbr_dv = max(nozzle.wall.dv)+1;
+
+	    for i in range(nbr_dv):
+		    id_dv = nozzle.DV_Head[iTag] + i;
+		    print "id_dv %d val %lf" % (id_dv, nozzle.DV_List[id_dv])
+		    solver_options.dv_coefs.append(nozzle.DV_List[id_dv]);
 	
-	nbr_dv = max(nozzle.wall.dv)+1;
 	
-	for i in range(nbr_dv):
-		id_dv = nozzle.DV_Head[iTag] + i;
-		print "id_dv %d val %lf" % (id_dv, nozzle.DV_List[id_dv])
-		solver_options.dv_coefs.append(nozzle.DV_List[id_dv]);
+	    #for iCoef in range(len(nozzle.wall.dv)):
+	    #	id_dv = nozzle.DV_Head[iTag] + nozzle.wall.dv[iCoef];  
+	    #	if id_dv >= nozzle.DV_Head[iTag]:
+	    #		print "id_dv %d val %lf" % (id_dv, nozzle.DV_List[id_dv])
+	    #		solver_options.dv_coefs.append(nozzle.DV_List[id_dv]);
+	    #
+	    solver_options.gradients     = nozzle.gradients_method;
+	    solver_options.wall_coefs    = nozzle.wall.coefs;
+	    solver_options.wall_coefs_dv = nozzle.wall.dv;
+	    
+	else:
 	
-	
-	#for iCoef in range(len(nozzle.wall.dv)):
-	#	id_dv = nozzle.DV_Head[iTag] + nozzle.wall.dv[iCoef];  
-	#	if id_dv >= nozzle.DV_Head[iTag]:
-	#		print "id_dv %d val %lf" % (id_dv, nozzle.DV_List[id_dv])
-	#		solver_options.dv_coefs.append(nozzle.DV_List[id_dv]);
-	#
-	solver_options.gradients     = nozzle.gradients_method;
-	solver_options.wall_coefs    = nozzle.wall.coefs;
-	solver_options.wall_coefs_dv = nozzle.wall.dv;
+	    solver_options.gradients     = nozzle.gradients_method;
 	
 	gam   = 1.4;
 	R     = 287.06;
@@ -504,9 +510,7 @@ def runSU2 ( nozzle ):
 			sys.exit(1);
 		solver_options.wall_temp = nozzle.wall_temp;
 		solver_options.wall_temp_values = nozzle.wall.temperature.thicknessNodes;
-	
-	#print "Rey %lf mu %lf rho %lf  T %lf  P %lf  D %lf" % (Rey, mu, rho, Ts, Ps,  D)
-	#sys.exit(1)
+
 	solver_options.Dimension = '2D';
 	
 	GenerateNozzleMesh(nozzle);
@@ -520,8 +524,6 @@ def runSU2 ( nozzle ):
 	#
 	#info = SU2.run.CFD(config);
 	#
-	################################
-	
 	
 	nozzle.OUTPUT_FORMAT = config['OUTPUT_FORMAT'];
 	nozzle.CONV_FILENAME = config['CONV_FILENAME'];
@@ -536,6 +538,7 @@ def runSU2 ( nozzle ):
 	su2history = open('about.txt','w');
 	su2history.close();
 	
+	info = SU2.run.CFD(config);
 	try:
 	    info = SU2.run.CFD(config);
 	except:
@@ -543,6 +546,7 @@ def runSU2 ( nozzle ):
 	    su2history = open('about.txt','a');
 	    su2history.write('SU2 calculation with baseline params unsuccessful.\n');
 	    su2history.close();
+	    sys.exit(1);
 	
 	
 	# --- Check SU2 solution here
@@ -653,9 +657,8 @@ def runSU2 ( nozzle ):
 	        su2history = open('about.txt','a');
 	        su2history.write('Decrease in residual: %0.16f\n' % residualReduction);
 	        su2history.write('SU2 did not reach requested accuracy. Continuing...\n');
-	        su2history.close();    
-	
-	
+	        su2history.close();  
+		
 	# --- Adjoint computation
 	
 	nozzle.thrust_grad = [];
@@ -1255,7 +1258,7 @@ def Compute_Thrust_Gradients_FD (nozzle):
 		
 	if ( iTag < 0 ):
 		sys.stderr.write("  ## ERROR SU2 adjoint computation: Wall parameterization not specified.\n");
-		return;
+		sys.exit();
 	
 	nbr_dv = max(nozzle.wall.dv)+1;
 	

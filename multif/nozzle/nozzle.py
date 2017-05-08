@@ -1461,12 +1461,12 @@ class Nozzle:
         nozzle.thrust_gradients = 'NO'
 
         for i in range(0, len(nozzle.Output_Tags)):
-            
+    
+            print nozzle.Output_Tags
+            print nozzle.OutputCode
+            print i        
             
             tag  = nozzle.Output_Tags[i];
-            code = nozzle.OutputCode[i];
-            
-            
             
             # 6 Get Hessian, gradient, and value Get Hessian and gradient
             # 5 Get Hessian and value
@@ -1475,7 +1475,10 @@ class Nozzle:
             # 2 Get gradient
             # 1 Get value
             # 0 No data required, function is inactive
-            code = nozzle.OutputCode[i];
+            if inputDVformat == 'PLAIN':
+                code = 1;
+            else:
+                code = nozzle.OutputCode[i];
             
             out_gra = 0;
             out_val  = 0;
@@ -1489,13 +1492,15 @@ class Nozzle:
             	out_gra = 1;
             
             if nozzle.gradients_method == "ADJOINT":
+                if inputDVformat == 'PLAIN':
+                    sys.stderr.write('  ## ERROR : plain input file format currently does not support specifying calculation of gradients. Use Dakota input file format instead\n');
+                    sys.exit(1);
             	if out_gra == 1 and tag != "THRUST":
-            		sys.stderr.write("  ## ERROR : adjoint gradient computation not available for %s\n", tag);
+            		sys.stderr.write("  ## ERROR : adjoint gradient computation not available for %s\n" % tag);
             		sys.exit(1);
             
 			if tag == 'THRUST' and out_gra==1:
-				nozzle.thrust_gradients = 'YES'
-		
+				nozzle.thrust_gradients = 'YES'		
         
         if output == 'verbose':
             sys.stdout.write('Setup Parse Design Variables complete\n');        
@@ -3259,8 +3264,8 @@ def NozzleSetup( config_name, flevel, output='verbose', partitions=1 ):
 		else :
 			sys.stderr.write("  ## ERROR : Invalid entry for GRADIENTS_COMPUTATION_METHOD option (expected: ADJOINT or FINITE_DIFF)\n");
 			sys.exit(1);
-			
-	
+	else:
+	    nozzle.gradients_method = 'NONE';
     
     # --- Path to SU2 exe
     
