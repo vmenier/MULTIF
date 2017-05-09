@@ -1200,7 +1200,8 @@ def Compute_Thrust_Gradients_FD (nozzle):
 	thrust_nodef = Get_Thrust_File(nozzle);
 	
 	if thrust_nodef < 0 :
-		sys.stderr.write("  ## WARNING Compute_Thrust_Gradients_FD : No baseline thrust value was found. Using 0 instead.\n");
+		sys.stderr.write("  ## ERROR Compute_Thrust_Gradients_FD : No baseline thrust value was found.\n");
+		sys.exit(1);
 		thrust_nodef = 0.0;
 	
 	thrust_grad = np.zeros(nbr_dv)

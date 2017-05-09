@@ -30,10 +30,10 @@ def main():
     parser = OptionParser()
     parser.add_option("-f", "--file", dest="filename",
                       help="read config from FILE", metavar="FILE")
-    parser.add_option("-n", "--partitions", dest="partitions", default=0,
+    parser.add_option("-n", "--partitions", dest="partitions", default=1,
                       help="number of PARTITIONS", metavar="PARTITIONS")
     
-    parser.add_option("-l", "--flevel", dest="flevel", default=-1,
+    parser.add_option("-l", "--flevel", dest="flevel", default=0,
                       help="fidelity level to run", metavar="FLEVEL")    
     
     (options, args)=parser.parse_args()

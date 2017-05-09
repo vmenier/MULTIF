@@ -180,7 +180,6 @@ def Get_Thrust_File(nozzle):
 		
 	thrust = np.loadtxt(thrust_filename);
 	return thrust;
-		
 	
 
 def ComputeThrust ( nozzle, SolExtract, Size, Header )	:

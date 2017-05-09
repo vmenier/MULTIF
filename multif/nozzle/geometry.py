@@ -7,6 +7,7 @@ Rick Fenrich 6/28/16
 """
 
 import sys
+import copy
 import numpy as np 
 import scipy.optimize
 import scipy.integrate   
@@ -666,6 +667,87 @@ def calcVolumeAndMass(nozzle):
         m.append(V[-1]*nozzle.baffles.material.getDensity())
     
     return V, m
+    
 
+def printNozzleDef(nozzle):
+
+    # Print all information related to nozzle definition
+    print 'Wall coef\n'
+    print nozzle.wall.coefs
+    #print nozzle.wall.temperature.thicknessNodes
+    for j in range(len(nozzle.wall.layer)):
+        print 'Layer %i thickness\n' % j
+        print nozzle.wall.layer[j].thicknessNodes
+    print 'Baffles loc\n'
+    print nozzle.baffles.location
+    print 'Stringers thickness\n'
+    print nozzle.stringers.thicknessNodes
+    print 'Stringers height\n'
+    print nozzle.stringers.heightNodes
+    print 'Baffles thickness\n'
+    print nozzle.baffles.thickness
+    print 'Baffles height\n'
+    print nozzle.baffles.height
+    for k in nozzle.materials:
+        print 'Material %s' % k
+        print nozzle.materials[k].getDensity()
+        try:
+            print nozzle.materials[k].getElasticModulus()
+        except:
+            print 'no elastic modulus'
+        try:
+            print nozzle.materials[k].getShearModulus()
+        except:
+            print 'no shear modulus'
+        try:
+            print nozzle.materials[k].getPoissonRatio()
+        except:
+            print 'no poisson ratio'
+        try:
+            print nozzle.materials[k].getMutualInfluenceCoefs()
+        except:
+            print 'no mutual coefs'
+        print nozzle.materials[k].getThermalConductivity()
+        try:
+            print nozzle.materials[k].getThermalExpansionCoef()
+        except:
+            print 'no thermal expansion coef'
+        try:
+            print nozzle.materials[k].getFailureLimit()
+        except:
+            print 'no failure limit'
+
+    return
+    
+
+# Calculate and return forward finite difference gradients of nozzle mass
+def calcMassGradientsFD(nozzle,fd_step):
+
+    mass = nozzle.mass;
+    
+    # For parallel computation
+    #print nozzle.partitions
+    
+    # Perform serial forward finite difference on mass
+    dmdx = [];
+    
+    # For each design variable
+    for i in range(len(nozzle.DV_List)):
+        
+        nozzle2 = copy.deepcopy(nozzle);
+
+        nozzle2.DV_List[i] += fd_step;
+        nozzle2.UpdateDV(output='quiet');
+        nozzle2.SetupWall(output='quiet');
+        
+        volume2, mass2 = calcVolumeAndMass(nozzle2);
+        mass2 = np.sum(mass2);
+        volume2 = np.sum(volume2);
+        
+        dmdxLocal = (mass2-mass)/fd_step;
+        
+        dmdx.append((mass2-mass)/fd_step);
+    
+    return dmdx
 
 
