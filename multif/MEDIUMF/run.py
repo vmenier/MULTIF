@@ -31,7 +31,9 @@ def Run( nozzle, output = 'verbose' ):
         # Calculate mass gradients if necessary
         if nozzle.mass_gradients == 'YES' or nozzle.output_gradients == 'YES':
             if ( nozzle.gradients_method == 'ADJOINT' ):
-                nozzle.mass_grad = nozzlemod.geometry.calcMassGradientsFD(nozzle,1e-6);
+                # Convergence study using B-spline coefs show finite difference mass gradients
+                # converge. Most accurate gradients use absolute step size 1e-8. RWF 5/10/17
+                nozzle.mass_grad = nozzlemod.geometry.calcMassGradientsFD(nozzle,1e-8);
             elif ( nozzle.gradients_method == 'FINITE_DIFF' ):
                 sys.stderr.write('\n ## ERROR : No user-defined finite difference step has been defined\n');
                 sys.exit(1);
@@ -55,6 +57,7 @@ def Run( nozzle, output = 'verbose' ):
         'PN_TEMPERATURE','VELOCITY','MAX_THERMAL_STRESS','MAX_TEMPERATURE', \
         'WALL_TEMPERATURE','MAX_FAILURE_CRITERIA','PRESSURE','PN_FAILURE_CRITERIA', \
         'THRUST','KS_TEMP_RATIO','MAX_MECHANICAL_STRESS']
+    
     nRequested = 0
     for qoi in otherQoI:
         nRequested += np.sum(nozzle.GetOutput[qoi])

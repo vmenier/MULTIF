@@ -842,10 +842,28 @@ def Quasi1D(nozzle,output='verbose'):
 def Run (nozzle,output='verbose'):
     
     # Obtain mass and volume
-    if nozzle.GetOutput['MASS'] == 1 or nozzle.getoutput['VOLUME'] == 1:
+    if nozzle.GetOutput['MASS'] == 1 or nozzle.GetOutput['VOLUME'] == 1:
         volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle) 
         nozzle.mass = np.sum(mass)
         nozzle.volume = np.sum(volume)
+        
+        # Calculate mass gradients if necessary
+        if nozzle.mass_gradients == 'YES' or nozzle.output_gradients == 'YES':
+            if ( nozzle.gradients_method == 'ADJOINT' ):
+                # Convergence study using B-spline coefs show finite difference mass gradients
+                # converge. Most accurate gradients use absolute step size 1e-8. RWF 5/10/17
+                nozzle.mass_grad = nozzlemod.geometry.calcMassGradientsFD(nozzle,1e-8);
+            elif ( nozzle.gradients_method == 'FINITE_DIFF' ):
+                sys.stderr.write('\n ## ERROR : No user-defined finite difference step has been defined\n');
+                sys.exit(1);
+                user_step = 1e-3;
+                nozzle.mass_grad = nozzlemod.geometry.calcMassGradientsFD(nozzle,user_step);
+            else:
+			    sys.stderr.write("  ## ERROR : Unknown gradients computation method.\n");
+			    sys.exit(1);
+			    
+            if nozzle.output_gradients == 'YES':
+			    np.savetxt(nozzle.output_gradients_filename, nozzle.mass_grad, delimiter='\n')
         
     # Obtain mass of wall only if requested
     if nozzle.GetOutput['MASS_WALL_ONLY'] == 1:
@@ -858,14 +876,27 @@ def Run (nozzle,output='verbose'):
         'PN_TEMPERATURE','VELOCITY','MAX_THERMAL_STRESS','MAX_TEMPERATURE', \
         'WALL_TEMPERATURE','MAX_FAILURE_CRITERIA','PRESSURE','PN_FAILURE_CRITERIA', \
         'THRUST','KS_TEMP_RATIO','MAX_MECHANICAL_STRESS']
+    
     nRequested = 0
     for qoi in otherQoI:
         nRequested += np.sum(nozzle.GetOutput[qoi])
+        
     if nRequested > 0:
         xPosition, flowTuple, heatTuple, geoTuple, \
             performanceTuple = Quasi1D(nozzle,output);
         
         nozzle.thrust = performanceTuple[2];
+        
+        if nozzle.thrust_gradients == 'YES' or nozzle.output_gradients == 'YES':
+            if ( nozzle.gradients_method == 'ADJOINT' ):
+                sys.stderr.write('\n ## ERROR : Adjoint gradients for low-fidelity thrust calculation are not available.\n');
+                sys.exit(1);            
+            elif ( nozzle.gradients_method == 'FINITE_DIFF' ):
+                sys.stderr.write('\n ## ERROR : Finite difference gradients for low-fidelity thrust calculation are not available.\n');
+                sys.exit(1);            
+            else:
+			    sys.stderr.write("  ## ERROR : Unknown gradients computation method.\n");
+			    sys.exit(1);            
 
         if nozzle.GetOutput['WALL_TEMPERATURE'] == 1:
             nozzle.wall_temperature = np.interp(nozzle.OutputLocations['WALL_TEMPERATURE'], \

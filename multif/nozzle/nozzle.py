@@ -1444,14 +1444,10 @@ class Nozzle:
                 
         if inputDVformat == 'PLAIN':
 			DV_List, OutputCode, Derivatives_DV = ParseDesignVariables_Plain(filename);    
-			NbrDV = len(DV_List);   
-          
+			NbrDV = len(DV_List);             
         elif inputDVformat == 'DAKOTA' :
 			DV_List, OutputCode, Derivatives_DV = ParseDesignVariables_Dakota(filename);    
 			NbrDV = len(DV_List);
-			#print OutputCode
-			#print DV_List
-			#sys.exit(1)
         else:
             sys.stderr.write('\n ## ERROR : Unknown DV input file format '    \
               '%s\n\n' % inputDVformat);
@@ -2826,12 +2822,10 @@ class Nozzle:
         prt_comp = list();
         prt_val = list();             
 
+        # Print function values first
         for i in range(0, len(nozzle.Output_Tags)):
             
-            tag = nozzle.Output_Tags[i];
-            
-            tag = nozzle.Output_Tags[i];
-            
+            tag = nozzle.Output_Tags[i];            
             
             # 6 Get Hessian, gradient, and value Get Hessian and gradient
             # 5 Get Hessian and value
@@ -2842,16 +2836,12 @@ class Nozzle:
             # 0 No data required, function is inactive
             code = nozzle.OutputCode[i];
             
-            out_gra = 0;
-            out_val  = 0;
-            
             if code == 1:
-            	out_val = 1;
+            	pass;
             elif code == 2:
-            	out_gra = 1;
+            	continue; # skip writing of function value to file
             elif code == 3:
-            	out_val = 1;
-            	out_gra = 1;
+            	pass;
             else:
                 sys.stderr.write('\n ## ERROR : code %i in DV input file not available\n' % code);
                 sys.exit(1);
@@ -2859,96 +2849,56 @@ class Nozzle:
             print "TAG %s CODE %d" % (tag, code)
             
             if tag == 'MASS':	
-				if out_val:
-					fil.write('%0.16f mass\n' % nozzle.mass);
-				if out_gra:
-					print nozzle.mass_grad;
-					fil.write('[ ');
-					for i in range(len(nozzle.mass_grad)):
-						print nozzle.mass_grad[i]
-						fil.write('%0.16e ' % (nozzle.mass_grad[i]));
-					fil.write(']\n');
-				prt_item.append('mass');
-				prt_comp.append('');
-				prt_val.append('%0.16f' % nozzle.mass); 
+                fil.write('%0.16f mass\n' % nozzle.mass);
+                prt_item.append('mass');
+                prt_comp.append('');
+                prt_val.append('%0.16f' % nozzle.mass); 
                     
             elif tag == 'MASS_WALL_ONLY':
-                if out_val:
-                    fil.write('%0.16f mass_wall_only\n' % nozzle.mass_wall_only);
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);                    
+                fil.write('%0.16f mass_wall_only\n' % nozzle.mass_wall_only);                   
                 prt_item.append('wall mass');
                 prt_comp.append('');
                 prt_val.append('%0.16f' % nozzle.mass_wall_only);                  
                     
             elif tag == 'VOLUME':
-                if out_val:
-                    fil.write('%0.16f volume\n' % nozzle.volume);
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);                     
+                fil.write('%0.16f volume\n' % nozzle.volume);                   
                 prt_item.append('volume');
                 prt_comp.append('');
                 prt_val.append('%0.16f' % nozzle.volume); 
                     
             elif tag == 'THRUST':                
-                if out_val:
-                	fil.write('%0.16f thrust\n' % nozzle.thrust);
-                if out_gra:
-					print nozzle.thrust_grad;
-					fil.write('[ ');
-					for i in range(len(nozzle.thrust_grad)):
-						print nozzle.thrust_grad[i]
-						fil.write('%0.16e ' % (nozzle.thrust_grad[i]));
-					fil.write(']\n');
+                fil.write('%0.16f thrust\n' % nozzle.thrust);
                 prt_item.append('thrust');
                 prt_comp.append('');
                 prt_val.append('%0.16f' % nozzle.thrust); 
                 
-            elif tag == 'WALL_TEMPERATURE':
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);                       
+            elif tag == 'WALL_TEMPERATURE':                      
                 for i in range(nozzle.wall_temperature.size):
-                    if out_val:
-                        fil.write('%0.16f wall_temp_%i\n' % (nozzle.wall_temperature[i],i));
+                    fil.write('%0.16f wall_temp_%i\n' % (nozzle.wall_temperature[i],i));
                     prt_item.append('wall temp loc %i' % i);
                     prt_comp.append('');
                     prt_val.append('%0.16f' % nozzle.wall_temperature[i]);
                     
-            elif tag == 'WALL_PRESSURE':
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);   
+            elif tag == 'WALL_PRESSURE':  
                 for i in range(nozzle.wall_pressure.size):
-                    if out_val:
-                        fil.write('%0.16f wall_pressure_%i\n' % (nozzle.wall_pressure[i],i));
+                    fil.write('%0.16f wall_pressure_%i\n' % (nozzle.wall_pressure[i],i));
                     prt_item.append('wall pressure loc %i' % i);
                     prt_comp.append('');
                     prt_val.append('%0.16f' % nozzle.wall_pressure[i]);
                     
-            elif tag == 'PRESSURE':
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);               
+            elif tag == 'PRESSURE':               
                 for i in range(nozzle.pressure.size):
-                    if out_val: 
-                        fil.write('%0.16f pressure_%i\n' % (nozzle.pressure[i],i));
+                    fil.write('%0.16f pressure_%i\n' % (nozzle.pressure[i],i));
                     prt_item.append('pressure loc %i' % i);
                     prt_comp.append('');
                     prt_val.append('%0.16f' % nozzle.pressure[i]);  
                     
             elif tag == 'VELOCITY':
-                nr, nc = nozzle.velocity.shape
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);                   
+                nr, nc = nozzle.velocity.shape                  
                 for i in range(nr):
-                    if out_val:
-                        fil.write('%0.16f velocity_x_%i\n' % (nozzle.velocity[i,0],i));
-                        fil.write('%0.16f velocity_y_%i\n' % (nozzle.velocity[i,1],i));
-                        fil.write('%0.16f velocity_z_%i\n' % (nozzle.velocity[i,2],i));
+                    fil.write('%0.16f velocity_x_%i\n' % (nozzle.velocity[i,0],i));
+                    fil.write('%0.16f velocity_y_%i\n' % (nozzle.velocity[i,1],i));
+                    fil.write('%0.16f velocity_z_%i\n' % (nozzle.velocity[i,2],i));
                     prt_item.append('velocity (x-dir) loc %i' % i);
                     prt_item.append('velocity (y-dir) loc %i' % i);
                     prt_item.append('velocity (z-dir) loc %i' % i);
@@ -2959,156 +2909,100 @@ class Nozzle:
                     prt_val.append('%0.16f' % nozzle.velocity[i,1]);    
                     prt_val.append('%0.16f' % nozzle.velocity[i,2]);                 
                                 
-            elif tag == 'KS_TOTAL_STRESS':
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);   
+            elif tag == 'KS_TOTAL_STRESS': 
                 for j in range(len(nozzle.stressComponentList)):
-                    if out_val:
-                        fil.write('%0.16f ks_total_stress_%s\n' % (nozzle.ks_total_stress[j],nozzle.stressComponentList[j]));
+                    fil.write('%0.16f ks_total_stress_%s\n' % (nozzle.ks_total_stress[j],nozzle.stressComponentList[j]));
                     prt_item.append('ks total stress');
                     prt_comp.append('%s' % nozzle.stressComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.ks_total_stress[j]);
                     
-            elif tag == 'PN_TOTAL_STRESS':
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);               
+            elif tag == 'PN_TOTAL_STRESS':               
                 for j in range(len(nozzle.stressComponentList)):
-                    if out_val:
-                        fil.write('%0.16f pn_total_stress_%s\n' % (nozzle.pn_total_stress[j],nozzle.stressComponentList[j]));
+                    fil.write('%0.16f pn_total_stress_%s\n' % (nozzle.pn_total_stress[j],nozzle.stressComponentList[j]));
                     prt_item.append('pn total stress');
                     prt_comp.append('%s' % nozzle.stressComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.pn_total_stress[j]);
                     
-            elif tag == 'MAX_TOTAL_STRESS':
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);                  
+            elif tag == 'MAX_TOTAL_STRESS':                
                 for j in range(len(nozzle.stressComponentList)):
-                    if out_val:
-                        fil.write('%0.16f max_total_stress_%s\n' % (nozzle.max_total_stress[j],nozzle.stressComponentList[j]));
+                    fil.write('%0.16f max_total_stress_%s\n' % (nozzle.max_total_stress[j],nozzle.stressComponentList[j]));
                     prt_item.append('max total stress');
                     prt_comp.append('%s' % nozzle.stressComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.max_total_stress[j]);
                     
-            elif tag == 'MAX_THERMAL_STRESS':
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);               
+            elif tag == 'MAX_THERMAL_STRESS':             
                 for j in range(len(nozzle.stressComponentList)):
-                    if out_val:
-                        fil.write('%0.16f max_thermal_stress_%s\n' % (nozzle.max_thermal_stress[j],nozzle.stressComponentList[j]));
+                    fil.write('%0.16f max_thermal_stress_%s\n' % (nozzle.max_thermal_stress[j],nozzle.stressComponentList[j]));
                     prt_item.append('max thermal stress');
                     prt_comp.append('%s' % nozzle.stressComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.max_thermal_stress[j]);
                     
-            elif tag == 'MAX_MECHANICAL_STRESS':
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);               
+            elif tag == 'MAX_MECHANICAL_STRESS':             
                 for j in range(len(nozzle.stressComponentList)):
-                    if out_val:
-                        fil.write('%0.16f max_mechanical_stress_%s\n' % (nozzle.max_mechanical_stress[j],nozzle.stressComponentList[j]));
+                    fil.write('%0.16f max_mechanical_stress_%s\n' % (nozzle.max_mechanical_stress[j],nozzle.stressComponentList[j]));
                     prt_item.append('max mechanical stress');
                     prt_comp.append('%s' % nozzle.stressComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.max_mechanical_stress[j]);
                     
-            elif tag == 'KS_FAILURE_CRITERIA':
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);               
+            elif tag == 'KS_FAILURE_CRITERIA':              
                 for j in range(len(nozzle.stressComponentList)):
-                    if out_val:
-                        fil.write('%0.16f ks_failure_criteria_%s\n' % (nozzle.ks_failure_criteria[j],nozzle.stressComponentList[j]));
+                    fil.write('%0.16f ks_failure_criteria_%s\n' % (nozzle.ks_failure_criteria[j],nozzle.stressComponentList[j]));
                     prt_item.append('ks failure criteria');
                     prt_comp.append('%s' % nozzle.stressComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.ks_failure_criteria[j]);
                     
-            elif tag == 'PN_FAILURE_CRITERIA':
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);               
+            elif tag == 'PN_FAILURE_CRITERIA':              
                 for j in range(len(nozzle.stressComponentList)):
-                    if out_val:
-                        fil.write('%0.16f pn_failure_criteria_%s\n' % (nozzle.pn_failure_criteria[j],nozzle.stressComponentList[j]));
+                    fil.write('%0.16f pn_failure_criteria_%s\n' % (nozzle.pn_failure_criteria[j],nozzle.stressComponentList[j]));
                     prt_item.append('pn failure criteria');
                     prt_comp.append('%s' % nozzle.stressComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.pn_failure_criteria[j]);
                     
-            elif tag == 'MAX_FAILURE_CRITERIA':
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);               
+            elif tag == 'MAX_FAILURE_CRITERIA':              
                 for j in range(len(nozzle.stressComponentList)):
-                    if out_val:
-                        fil.write('%0.16f max_failure_criteria_%s\n' % (nozzle.max_failure_criteria[j],nozzle.stressComponentList[j]));
+                    fil.write('%0.16f max_failure_criteria_%s\n' % (nozzle.max_failure_criteria[j],nozzle.stressComponentList[j]));
                     prt_item.append('max failure criteria');
                     prt_comp.append('%s' % nozzle.stressComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.max_failure_criteria[j]);
                     
-            elif tag == 'KS_TEMPERATURE':
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);               
+            elif tag == 'KS_TEMPERATURE':             
                 for j in range(len(nozzle.tempComponentList)):
-                    if out_val:
-                        fil.write('%0.16f ks_temperature_%s\n' % (nozzle.ks_temperature[j],nozzle.tempComponentList[j]));
+                    fil.write('%0.16f ks_temperature_%s\n' % (nozzle.ks_temperature[j],nozzle.tempComponentList[j]));
                     prt_item.append('ks temperature');
                     prt_comp.append('%s' % nozzle.tempComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.ks_temperature[j]);
                     
-            elif tag == 'PN_TEMPERATURE':
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);               
+            elif tag == 'PN_TEMPERATURE':             
                 for j in range(len(nozzle.tempComponentList)):
-                    if out_val:
-                        fil.write('%0.16f pn_temperature_%s\n' % (nozzle.pn_temperature[j],nozzle.tempComponentList[j]));
+                    fil.write('%0.16f pn_temperature_%s\n' % (nozzle.pn_temperature[j],nozzle.tempComponentList[j]));
                     prt_item.append('pn temperature');
                     prt_comp.append('%s' % nozzle.tempComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.pn_temperature[j]);
                     
-            elif tag == 'MAX_TEMPERATURE':
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);               
+            elif tag == 'MAX_TEMPERATURE':             
                 for j in range(len(nozzle.tempComponentList)):
-                    if out_val:
-                        fil.write('%0.16f max_temperature_%s\n' % (nozzle.max_temperature[j],nozzle.tempComponentList[j]));
+                    fil.write('%0.16f max_temperature_%s\n' % (nozzle.max_temperature[j],nozzle.tempComponentList[j]));
                     prt_item.append('max temperature');
                     prt_comp.append('%s' % nozzle.tempComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.max_temperature[j]);  
                     
-            elif tag == 'KS_TEMP_RATIO':
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);               
+            elif tag == 'KS_TEMP_RATIO':              
                 for j in range(len(nozzle.tempComponentList)):
-                    if out_val:
-                        fil.write('%0.16f ks_temp_ratio_%s\n' % (nozzle.ks_temp_ratio[j],nozzle.tempComponentList[j]));
+                    fil.write('%0.16f ks_temp_ratio_%s\n' % (nozzle.ks_temp_ratio[j],nozzle.tempComponentList[j]));
                     prt_item.append('ks temp ratio');
                     prt_comp.append('%s' % nozzle.tempComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.ks_temp_ratio[j]);                    
 
-            elif tag == 'PN_TEMP_RATIO':
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);               
+            elif tag == 'PN_TEMP_RATIO':              
                 for j in range(len(nozzle.tempComponentList)):
-                    if out_val:
-                        fil.write('%0.16f pn_temp_ratio_%s\n' % (nozzle.pn_temp_ratio[j],nozzle.tempComponentList[j]));
+                    fil.write('%0.16f pn_temp_ratio_%s\n' % (nozzle.pn_temp_ratio[j],nozzle.tempComponentList[j]));
                     prt_item.append('pn temp ratio');
                     prt_comp.append('%s' % nozzle.tempComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.pn_temp_ratio[j]);
                     
-            elif tag == 'MAX_TEMP_RATIO':
-                if out_gra:
-                    sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                    sys.exit(1);               
+            elif tag == 'MAX_TEMP_RATIO':              
                 for j in range(len(nozzle.tempComponentList)):
-                    if out_val:
-                        fil.write('%0.16f max_temp_ratio_%s\n' % (nozzle.max_temp_ratio[j],nozzle.tempComponentList[j]));
+                    fil.write('%0.16f max_temp_ratio_%s\n' % (nozzle.max_temp_ratio[j],nozzle.tempComponentList[j]));
                     prt_item.append('max temp ratio');
                     prt_comp.append('%s' % nozzle.tempComponentList[j]);
                     prt_val.append('%0.16f' % nozzle.max_temp_ratio[j]);
@@ -3121,41 +3015,25 @@ class Nozzle:
                     j = stress_prefix.index(prefix);
                     
                     if tag == prefix + '_KS_TOTAL_STRESS':
-                        if out_val:
-                            fil.write('%0.16f ks_total_stress_%s\n' % (nozzle.ks_total_stress[j],prefix));
-                        if out_gra:
-                            sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                            sys.exit(1);   
+                        fil.write('%0.16f ks_total_stress_%s\n' % (nozzle.ks_total_stress[j],prefix));  
                         prt_item.append('ks total stress');
                         prt_comp.append('%s' % stress_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.ks_total_stress[j]);
                         
                     elif tag == prefix + '_PN_TOTAL_STRESS':
-                        if out_val:
-                            fil.write('%0.16f pn_total_stress_%s\n' % (nozzle.pn_total_stress[j],prefix));
-                        if out_gra:
-                            sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                            sys.exit(1);   
+                        fil.write('%0.16f pn_total_stress_%s\n' % (nozzle.pn_total_stress[j],prefix)); 
                         prt_item.append('pn total stress');
                         prt_comp.append('%s' % stress_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.pn_total_stress[j]);
                         
                     elif tag == prefix + '_MAX_TOTAL_STRESS':
-                        if out_val:
-                            fil.write('%0.16f max_total_stress_%s\n' % (nozzle.max_total_stress[j],prefix));
-                        if out_gra:
-                            sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                            sys.exit(1);   
+                        fil.write('%0.16f max_total_stress_%s\n' % (nozzle.max_total_stress[j],prefix));   
                         prt_item.append('max total stress');
                         prt_comp.append('%s' % stress_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.max_total_stress[j]);
                         
                     elif tag == prefix + '_MAX_THERMAL_STRESS':
-                        if out_val:
-                            fil.write('%0.16f max_thermal_stress_%s\n' % (nozzle.max_thermal_stress[j],prefix));
-                        if out_gra:
-                            sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                            sys.exit(1);   
+                        fil.write('%0.16f max_thermal_stress_%s\n' % (nozzle.max_thermal_stress[j],prefix));  
                         prt_item.append('max thermal stress');
                         prt_comp.append('%s' % stress_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.max_thermal_stress[j]);
@@ -3166,31 +3044,19 @@ class Nozzle:
                     j = stress_prefix.index(prefix);
                     
                     if tag == prefix + '_KS_FAILURE_CRITERIA':
-                        if out_val:
-                            fil.write('%0.16f ks_failure_criteria_%s\n' % (nozzle.ks_failure_criteria[j],prefix));
-                        if out_gra:
-                            sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                            sys.exit(1);   
+                        fil.write('%0.16f ks_failure_criteria_%s\n' % (nozzle.ks_failure_criteria[j],prefix)); 
                         prt_item.append('ks failure criteria');
                         prt_comp.append('%s' % stress_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.ks_failure_criteria[j]);
                         
                     elif tag == prefix + '_PN_FAILURE_CRITERIA':
-                        if out_val:
-                            fil.write('%0.16f pn_failure_criteria_%s\n' % (nozzle.pn_failure_criteria[j],prefix));
-                        if out_gra:
-                            sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                            sys.exit(1);   
+                        fil.write('%0.16f pn_failure_criteria_%s\n' % (nozzle.pn_failure_criteria[j],prefix));  
                         prt_item.append('pn failure criteria');
                         prt_comp.append('%s' % stress_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.pn_failure_criteria[j]);
                         
                     elif tag == prefix + '_MAX_FAILURE_CRITERIA':
-                        if out_val:
-                            fil.write('%0.16f max_failure_criteria_%s\n' % (nozzle.max_failure_criteria[j],prefix));
-                        if out_gra:
-                            sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                            sys.exit(1);   
+                        fil.write('%0.16f max_failure_criteria_%s\n' % (nozzle.max_failure_criteria[j],prefix));  
                         prt_item.append('max failure criteria');
                         prt_comp.append('%s' % stress_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.max_failure_criteria[j]);
@@ -3201,31 +3067,19 @@ class Nozzle:
                     j = temp_prefix.index(prefix);
                     
                     if tag == prefix + '_KS_TEMPERATURE':
-                        if out_val:
-                            fil.write('%0.16f ks_temperature_%s\n' % (nozzle.ks_temperature[j],prefix));
-                        if out_gra:
-                            sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                            sys.exit(1);   
+                        fil.write('%0.16f ks_temperature_%s\n' % (nozzle.ks_temperature[j],prefix));  
                         prt_item.append('ks temperature');
                         prt_comp.append('%s' % temp_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.ks_temperature[j]);
                         
                     elif tag == prefix + '_PN_TEMPERATURE':
-                        if out_val:
-                            fil.write('%0.16f pn_temperature_%s\n' % (nozzle.pn_temperature[j],prefix));
-                        if out_gra:
-                            sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                            sys.exit(1);   
+                        fil.write('%0.16f pn_temperature_%s\n' % (nozzle.pn_temperature[j],prefix)); 
                         prt_item.append('pn temperature');
                         prt_comp.append('%s' % temp_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.pn_temperature[j]);
                         
                     elif tag == prefix + '_MAX_TEMPERATURE':
-                        if out_val:
-                            fil.write('%0.16f max_temperature_%s\n' % (nozzle.max_temperature[j],prefix));
-                        if out_gra:
-                            sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                            sys.exit(1);   
+                        fil.write('%0.16f max_temperature_%s\n' % (nozzle.max_temperature[j],prefix)); 
                         prt_item.append('max temperature');
                         prt_comp.append('%s' % temp_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.max_temperature[j]);
@@ -3236,40 +3090,75 @@ class Nozzle:
                     j = temp_prefix.index(prefix);
                     
                     if tag == prefix + '_KS_TEMP_RATIO':
-                        if out_val:
-                            fil.write('%0.16f ks_temp_ratio_%s\n' % (nozzle.ks_temp_ratio[j],prefix));
-                        if out_gra:
-                            sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                            sys.exit(1);   
+                        fil.write('%0.16f ks_temp_ratio_%s\n' % (nozzle.ks_temp_ratio[j],prefix));  
                         prt_item.append('ks temp ratio');
                         prt_comp.append('%s' % temp_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.ks_temp_ratio[j]);
                         
                     elif tag == prefix + '_PN_TEMP_RATIO':
-                        if out_val:
-                            fil.write('%0.16f pn_temp_ratio_%s\n' % (nozzle.pn_temp_ratio[j],prefix));
-                        if out_gra:
-                            sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                            sys.exit(1);   
+                        fil.write('%0.16f pn_temp_ratio_%s\n' % (nozzle.pn_temp_ratio[j],prefix));   
                         prt_item.append('pn temp ratio');
                         prt_comp.append('%s' % temp_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.pn_temp_ratio[j]);
                         
                     elif tag == prefix + '_MAX_TEMP_RATIO':
-                        if out_val:
-                            fil.write('%0.16f max_temp_ratio_%s\n' % (nozzle.max_temp_ratio[j],prefix));
-                        if out_gra:
-                            sys.stdout.write('  ## ERROR: gradients not available for %s\n' % tag);
-                            sys.exit(1);   
+                        fil.write('%0.16f max_temp_ratio_%s\n' % (nozzle.max_temp_ratio[j],prefix));  
                         prt_item.append('max temp ratio');
                         prt_comp.append('%s' % temp_prefix[j]);
                         prt_val.append('%0.16f' % nozzle.max_temp_ratio[j]);
-      
+              
+        # Print function gradients next
+        for i in range(0, len(nozzle.Output_Tags)):
+            
+            tag = nozzle.Output_Tags[i];            
+            
+            # 6 Get Hessian, gradient, and value Get Hessian and gradient
+            # 5 Get Hessian and value
+            # 4 Get Hessian
+            # 3 Get gradient and value
+            # 2 Get gradient
+            # 1 Get value
+            # 0 No data required, function is inactive
+            code = nozzle.OutputCode[i];
+
+            if code == 1:
+            	continue; # skip assignment of gradients
+            elif code == 2:
+            	pass;
+            elif code == 3:
+            	pass;
+            else:
+                sys.stderr.write('\n ## ERROR : code %i in DV input file not available\n' % code);
+                sys.exit(1);
+                            
+            print "TAG %s CODE %d" % (tag, code)
+            
+            if tag == 'MASS':	
+				print nozzle.mass_grad;
+				fil.write('[ ');
+				for i in range(len(nozzle.mass_grad)):
+					print nozzle.mass_grad[i]
+					fil.write('%0.16e ' % (nozzle.mass_grad[i]));
+				fil.write(']\n');
+            
+            elif tag == 'THRUST':                
+				print nozzle.thrust_grad;
+				fil.write('[ ');
+				for i in range(len(nozzle.thrust_grad)):
+					print nozzle.thrust_grad[i]
+					fil.write('%0.16e ' % (nozzle.thrust_grad[i]));
+				fil.write(']\n');
+				
+            else:
+			    sys.stderr.write('\n ## ERRROR : gradients not implemented for %s\n' % tag);
+			    sys.exit(1);
+                
+        # Close output file
         if output == 'verbose':
             sys.stdout.write('\n');
         fil.close();
         
-        # --- Print summary
+        # Print summary (function values only)
         if output == 'verbose':
             sys.stdout.write('-' * 65);
             sys.stdout.write('\n%s | %s | %s\n' % ("Item".ljust(25), "Component".ljust(20),"Value".ljust(20)));
