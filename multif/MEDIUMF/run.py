@@ -23,7 +23,7 @@ def CheckOptions (nozzle):
 def Run( nozzle, output = 'verbose' ):
 
     # Obtain mass and volume
-    if nozzle.GetOutput['MASS'] == 1 or nozzle.getoutput['VOLUME'] == 1:
+    if nozzle.GetOutput['MASS'] == 1 or nozzle.GetOutput['VOLUME'] == 1:
         volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle) 
         nozzle.mass = np.sum(mass)
         nozzle.volume = np.sum(volume)
