@@ -20,5 +20,6 @@
                      	             0.304812 c15y
                      	             0.322134 c16y
                      	             0.324309 c17y
-                                         1 functions
-                                          3 ASV_1:Thrust
+                                         2 functions
+                                          3 ASV_1:Mass
+                                          3 ASV_2:Thrust
