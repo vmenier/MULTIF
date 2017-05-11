@@ -689,7 +689,9 @@ def runSU2 ( nozzle ):
 			else :
 				sys.stdout.write("  -- Info : Discrete adjoint solution converged.\n");
 				
-				nozzle.thrust_grad = np.loadtxt('./of_grad.dat', skiprows=1);
+				nozzle.thrust_grad = Read_Gradients_AD(nozzle);
+				
+				#nozzle.thrust_grad = np.loadtxt('./of_grad.dat', skiprows=1);
 		
 		elif ( nozzle.gradients_method == 'FINITE_DIFF'):
 			
@@ -1389,4 +1391,36 @@ def Compute_Thrust_Gradients_FD (nozzle):
 		thrust = np.loadtxt(thrust_filename);
 		thrust_grad[idv] = thrust-thrust_nodef;
 				
+	return thrust_grad;
+
+
+def Read_Gradients_AD (nozzle):
+
+	nbr_dv = max(nozzle.wall.dv)+1;
+	
+	hdl_grad = np.loadtxt('./of_grad.dat', skiprows=1);
+
+	thrust_grad = np.zeros(len(nozzle.DV_List))
+
+	iTag = -1;
+	for i in range(len(nozzle.DV_Tags)):
+		Tag = nozzle.DV_Tags[i];
+		if (Tag == "WALL"):
+			iTag = i;
+			break;
+
+	if ( iTag < 0 ):
+		sys.stderr.write("  ## ERROR SU2 adjoint computation: Wall parameterization not specified.\n");
+		sys.exit();
+
+	nbr_dv = max(nozzle.wall.dv)+1;
+
+	for i in range(nbr_dv):
+		id_dv = nozzle.DV_Head[iTag] + i;
+		thrust_grad[id_dv] = hdl_grad[i];
+		#print "id_dv %d val %lf" % (id_dv, nozzle.DV_List[id_dv])
+		
+
+
+		
 	return thrust_grad;

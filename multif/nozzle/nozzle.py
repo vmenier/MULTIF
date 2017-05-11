@@ -3134,18 +3134,16 @@ class Nozzle:
             print "TAG %s CODE %d" % (tag, code)
             
             if tag == 'MASS':	
-				print nozzle.mass_grad;
+				#print nozzle.mass_grad;
 				fil.write('[ ');
 				for i in range(len(nozzle.mass_grad)):
-					print nozzle.mass_grad[i]
 					fil.write('%0.16e ' % (nozzle.mass_grad[i]));
 				fil.write(']\n');
             
             elif tag == 'THRUST':                
-				print nozzle.thrust_grad;
+				#print nozzle.thrust_grad;
 				fil.write('[ ');
 				for i in range(len(nozzle.thrust_grad)):
-					print nozzle.thrust_grad[i]
 					fil.write('%0.16e ' % (nozzle.thrust_grad[i]));
 				fil.write(']\n');
 				

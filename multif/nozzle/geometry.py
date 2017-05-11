@@ -732,6 +732,10 @@ def calcMassGradientsFD(nozzle,fd_step):
     dmdx = [];
     
     # For each design variable
+    
+    #print len(nozzle.DV_List);
+    #sys.exit(1);
+    
     for i in range(len(nozzle.DV_List)):
         
         nozzle2 = copy.deepcopy(nozzle);
@@ -747,7 +751,7 @@ def calcMassGradientsFD(nozzle,fd_step):
         dmdxLocal = (mass2-mass)/fd_step;
         
         dmdx.append((mass2-mass)/fd_step);
-    
+    	
     return dmdx
 
 
