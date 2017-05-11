@@ -3294,6 +3294,8 @@ def NozzleSetup( config_name, flevel, output='verbose', partitions=1 ):
 
 	# --- Prepare gradients computation flags
 	
+	nozzle.output_gradients = 'NO';
+	
 	if 'OUTPUT_GRADIENTS' in config:
 		if config['OUTPUT_GRADIENTS'] == 'YES':
 			nozzle.output_gradients = 'YES';
