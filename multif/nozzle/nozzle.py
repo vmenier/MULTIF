@@ -1443,7 +1443,9 @@ class Nozzle:
             sys.exit(0);
                 
         if inputDVformat == 'PLAIN':
-			DV_List, OutputCode, Derivatives_DV = ParseDesignVariables_Plain(filename);    
+			DV_List, OutputCode, Derivatives_DV = ParseDesignVariables_Plain(filename); 
+			for i in range(len(nozzle.Output_Tags)):
+			    OutputCode.append(1); # output function value only   
 			NbrDV = len(DV_List);             
         elif inputDVformat == 'DAKOTA' :
 			DV_List, OutputCode, Derivatives_DV = ParseDesignVariables_Dakota(filename);    
@@ -2820,7 +2822,7 @@ class Nozzle:
         # For printing to screen
         prt_item = list();
         prt_comp = list();
-        prt_val = list();             
+        prt_val = list();         
 
         # Print function values first
         for i in range(0, len(nozzle.Output_Tags)):

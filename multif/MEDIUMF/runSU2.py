@@ -545,7 +545,6 @@ def runSU2 ( nozzle ):
 	    su2history = open('about.txt','a');
 	    su2history.write('SU2 calculation with baseline params unsuccessful.\n');
 	    su2history.close();
-	    sys.exit(1);
 	
 	# --- Check SU2 solution here
 	history, finalResidual, residualReduction = checkResidual(config);
