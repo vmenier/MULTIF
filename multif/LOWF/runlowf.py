@@ -8,11 +8,10 @@ Rick Fenrich 6/28/16
 import numpy as np
 import scipy.optimize
 import scipy.integrate
-import sys;
+import sys, os
 
 from .. import nozzle as nozzlemod
-#import lifetime
-#import geometry
+from multif.MEDIUMF.AEROSpostprocessing import PostProcess as AEROSPostProcess
 
 try:
     from multif.MEDIUMF.runAEROS import *
@@ -801,32 +800,14 @@ def Quasi1D(nozzle,output='verbose'):
         nozzle.wallResults = np.transpose(np.array([xPosition,Tinside,P]))
         nozzle.runAEROS = 0;
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
-            nozzle.runAEROS = 1;
-            
-#            try:
-#                from  multif.MEDIUMF.runAEROS import *
-#                if output == 'verbose':
-#                    print 'SUCCESS IMPORTING AEROS'
-#            except ImportError:
-#                nozzle.runAEROS = 0
-#                pass
-                
-        if output == 'verbose':
-            print "RUNAEROS = %d" % nozzle.runAEROS;
-        
-        if nozzle.runAEROS == 1:
             runAEROS(nozzle, output);
-        else :
-            sys.stdout.write('  -- Info: Skip call to AEROS.\n');        
+            AEROSPostProcess(nozzle, output);
 
     else: # do not perform structural analysis
-        pass
+        pass;
     
     # Calculate volume of nozzle material (approximately using trap. integ.)
-    #volume = nozzlemod.geometry.wallVolume(nozzle.wall.geometry,nozzle.wall.thickness)
     volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle)    
-    #volume = nozzlemod.geometry.wallVolume2Layer(nozzle.wall.geometry,       \
-    #  nozzle.wall.thermal_layer.thickness,nozzle.wall.load_layer.thickness)
     
     # Assign all data for output
     flowTuple = (M, U, density, P, Pstag, T, Tstag, Re)
@@ -839,82 +820,116 @@ def Quasi1D(nozzle,output='verbose'):
     
 # END OF analysis(nozzle,tol)
 
-def Run (nozzle,output='verbose'):
+
+def Run (nozzle,output='verbose',writeToFile=1):
     
     # Obtain mass and volume
-    if nozzle.GetOutput['MASS'] == 1 or nozzle.GetOutput['VOLUME'] == 1:
-        volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle) 
-        nozzle.mass = np.sum(mass)
-        nozzle.volume = np.sum(volume)
+    if 'MASS' in nozzle.responses or 'VOLUME' in nozzle.responses:
+        volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle)
+        if 'MASS' in nozzle.responses:
+            nozzle.responses['MASS'] = np.sum(mass)
+            #nozzle.mass = np.sum(mass)
+        if 'VOLUME' in nozzle.responses:
+            nozzle.responses['VOLUME'] = np.sum(volume)
+            #nozzle.volume = np.sum(volume)
         
-        # Calculate mass gradients if necessary
-        if nozzle.mass_gradients == 'YES' or nozzle.output_gradients == 'YES':
-            if ( nozzle.gradients_method == 'ADJOINT' ):
-                # Convergence study using B-spline coefs show finite difference mass gradients
-                # converge. Most accurate gradients use absolute step size 1e-8. RWF 5/10/17
-                nozzle.mass_grad = nozzlemod.geometry.calcMassGradientsFD(nozzle,1e-8);
-            elif ( nozzle.gradients_method == 'FINITE_DIFF' ):
-                sys.stderr.write('\n ## ERROR : No user-defined finite difference step has been defined\n');
-                sys.exit(1);
-                user_step = 1e-3;
-                nozzle.mass_grad = nozzlemod.geometry.calcMassGradientsFD(nozzle,user_step);
-            else:
-			    sys.stderr.write("  ## ERROR : Unknown gradients computation method.\n");
-			    sys.exit(1);
-			    
-            if nozzle.output_gradients == 'YES':
-			    np.savetxt(nozzle.output_gradients_filename, nozzle.mass_grad, delimiter='\n')
+    # Calculate mass gradients if necessary
+    if 'MASS' in nozzle.gradients and nozzle.gradients['MASS'] is not None:
+        if ( nozzle.gradients_method == 'ADJOINT' ):
+            # Convergence study using B-spline coefs show finite difference mass gradients
+            # converge. Most accurate gradients use absolute step size 1e-8. RWF 5/10/17
+            nozzle.gradients['MASS'] = nozzlemod.geometry.calcMassGradientsFD(nozzle,1e-8);
+        elif ( nozzle.gradients_method == 'FINITE_DIFF' ):
+            nozzle.gradients['MASS'] = nozzlemod.geometry.calcMassGradientsFD(\
+              nozzle,nozzle.fd_step_size);
+        else:
+		    sys.stderr.write('  ## ERROR : Unknown gradients computation '
+		      'method.\n');
+		    sys.exit(1);
+		    
+        if nozzle.output_gradients == 1:
+		    np.savetxt(nozzle.output_gradients_filename, nozzle.gradients['MASS'], delimiter='\n')
+	
+	# Calculate volume gradients if necessary
+    if 'VOLUME' in nozzle.gradients and nozzle.gradients['VOLUME'] is not None:
+        sys.stderr.write('\n ## ERROR : gradients for VOLUME are not supported\n\n');
+        sys.exit(1);
         
-    # Obtain mass of wall only if requested
-    if nozzle.GetOutput['MASS_WALL_ONLY'] == 1:
+    # Obtain mass of wall and gradients only if requested
+    if 'MASS_WALL_ONLY' in nozzle.responses:
         n_layers = len(nozzle.wall.layer);
-        nozzle.mass_wall_only = np.sum(performanceTuple[1][:n_layers]);    
-
-    # Run aero-thermal-structural analysis if other QoI are requested
-    otherQoI = ['MAX_TOTAL_STRESS','KS_TEMPERATURE','KS_TOTAL_STRESS','MAX_TEMP_RATIO', \
-        'KS_FAILURE_CRITERIA','WALL_PRESSURE','PN_TOTAL_STRESS','PN_TEMP_RATIO', \
-        'PN_TEMPERATURE','VELOCITY','MAX_THERMAL_STRESS','MAX_TEMPERATURE', \
-        'WALL_TEMPERATURE','MAX_FAILURE_CRITERIA','PRESSURE','PN_FAILURE_CRITERIA', \
-        'THRUST','KS_TEMP_RATIO','MAX_MECHANICAL_STRESS']
-    
-    nRequested = 0
-    for qoi in otherQoI:
-        nRequested += np.sum(nozzle.GetOutput[qoi])
+        nozzle.responses['MASS_WALL_ONLY'] = np.sum(performanceTuple[1][:n_layers]);
         
-    if nRequested > 0:
+    if 'MASS_WALL_ONLY' in nozzle.gradients and nozzle.gradients['MASS_WALL_ONLY'] is not None:
+        sys.stderr.write('\n ## ERROR : gradients for MASS_WALL_ONLY are not supported\n\n');
+        sys.exit(1);
+
+    # Run aero-thermal-structural analysis if necessary
+    runAeroThermalStructuralProblem = 0;
+    for k in nozzle.responses:
+        if k not in ['MASS','VOLUME','MASS_WALL_ONLY']:
+            runAeroThermalStructuralProblem = 1;    
+    
+    # Run aero-thermal-structural gradient analysis if necessary
+    if nozzle.output_gradients == 1:
+        runAeroThermalStructuralGradients = 0;        
+        for k in nozzle.gradients:
+            if k not in ['MASS','VOLUME','MASS_WALL_ONLY']:
+                if nozzle.gradients[k] is not None:
+                    runAeroThermalStructuralGradients = 1;  
+        
+    if runAeroThermalStructuralProblem:
+        
+        # Run aero analysis (+ 1D thermal analysis if requested)
         xPosition, flowTuple, heatTuple, geoTuple, \
             performanceTuple = Quasi1D(nozzle,output);
         
-        nozzle.thrust = performanceTuple[2];
+        # Assign function values
         
-        if nozzle.thrust_gradients == 'YES' or nozzle.output_gradients == 'YES':
+        if 'THRUST' in nozzle.responses:
+            nozzle.responses['THRUST'] = performanceTuple[2];
+            #nozzle.thrust = performanceTuple[2];
+            
+        if 'WALL_TEMPERATURE' in nozzle.responses:
+            nozzle.responses['WALL_TEMPERATURE'] = np.interp(\
+                nozzle.outputLocations['WALL_TEMPERATURE'], xPosition, heatTuple[0])
+            
+        if 'WALL_PRESSURE' in nozzle.responses:
+            nozzle.responses['WALL_PRESSURE'] = np.interp(\
+                nozzle.outputLocations['WALL_PRESSURE'], xPosition, flowTuple[3])
+            
+        if 'PRESSURE' in nozzle.responses:
+            nozzle.responses['PRESSURE'] = np.interp(\
+                nozzle.outputLocations['PRESSURE'][:,0], xPosition, flowTuple[3])
+            
+        if 'VELOCITY' in nozzle.responses:
+            nr, nc = nozzle.outputLocations['VELOCITY'].shape
+            nozzle.responses['VELOCITY'] = np.zeros((nr,3))
+            nozzle.responses['VELOCITY'][:,0] = np.interp(\
+                nozzle.outputLocations['VELOCITY'][:,0], xPosition, flowTuple[1])
+        
+        # Calculate gradients if necessary
+        if nozzle.output_gradients == 1 and runAeroThermalStructuralGradients:
+        
+            if ( output == 'verbose' ):
+                sys.stdout.write('Running gradient analysis\n');
+        
             if ( nozzle.gradients_method == 'ADJOINT' ):
-                sys.stderr.write('\n ## ERROR : Adjoint gradients for low-fidelity thrust calculation are not available.\n');
-                sys.exit(1);            
+                sys.stderr.write('\n ## ERROR : Adjoint gradients for low-fidelity '
+                  'thrust calculation are not available.\n');
+                sys.exit(1);
             elif ( nozzle.gradients_method == 'FINITE_DIFF' ):
-                sys.stderr.write('\n ## ERROR : Finite difference gradients for low-fidelity thrust calculation are not available.\n');
-                sys.exit(1);            
+                multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,output);           
             else:
-			    sys.stderr.write("  ## ERROR : Unknown gradients computation method.\n");
-			    sys.exit(1);            
-
-        if nozzle.GetOutput['WALL_TEMPERATURE'] == 1:
-            nozzle.wall_temperature = np.interp(nozzle.OutputLocations['WALL_TEMPERATURE'], \
-              xPosition, heatTuple[0])
-        if nozzle.GetOutput['WALL_PRESSURE'] == 1:
-            nozzle.wall_pressure = np.interp(nozzle.OutputLocations['WALL_PRESSURE'], \
-              xPosition, flowTuple[3])
-        if nozzle.GetOutput['PRESSURE'] == 1:
-            nozzle.pressure = np.interp(nozzle.OutputLocations['PRESSURE'][:,0], \
-              xPosition, flowTuple[3])
-        if nozzle.GetOutput['VELOCITY'] == 1:
-            nr, nc = nozzle.OutputLocations['VELOCITY'].shape
-            nozzle.velocity = np.zeros((nr,3))
-            nozzle.velocity[:,0] = np.interp(nozzle.OutputLocations['VELOCITY'][:,0], \
-              xPosition, flowTuple[1])
-    
+			    sys.stderr.write('  ## ERROR : Unknown gradients computation '
+			      'method.\n');
+			    sys.exit(1);             
+        
     # Write data
-    if nozzle.outputFormat == 'PLAIN':
-        nozzle.WriteOutputFunctions_Plain();
-    else:
-        nozzle.WriteOutputFunctions_Dakota();
+    if writeToFile:
+        if nozzle.outputFormat == 'PLAIN':
+            nozzle.WriteOutputFunctions_Plain();
+        else:
+            nozzle.WriteOutputFunctions_Dakota();
+        
+    return 0;

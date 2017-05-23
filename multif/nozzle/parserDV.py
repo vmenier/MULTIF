@@ -12,9 +12,9 @@ def ParseDesignVariables_Plain (filename):
 	
 	fil = open(filename, 'r');
 	
-	DV_List        = [];	# List of design variables
-	OutputCode     = [];  # List of request codes for the output functions
-	Derivatives_DV = [];  # identify the subset of variables that are active for deriv. computation
+	DV_List        = []; # List of design variables
+	OutputCode     = []; # List of request codes for the output functions
+	Derivatives_DV = []; # identify the subset of variables that are active for deriv. computation
 	
 	id_line = 0;
 	
@@ -28,6 +28,15 @@ def ParseDesignVariables_Plain (filename):
 			sys.exit(0);
 			
 		DV_List.append(float(hdl[0]));
+		
+	NbrVar = len(DV_List);
+	
+	# Unfortunately, we cannot assign OutputCode here since we do not know
+	# what functions are desired to be output
+	
+	# Assume (if derivatives are desired), all variables are active for deriv. computation
+	for i in range(1,NbrVar+1):
+		Derivatives_DV.append(i);	
 		
 	return DV_List, OutputCode, Derivatives_DV;
 	
@@ -162,7 +171,10 @@ def ParseDesignVariables_Dakota (filename):
 	
 	if NbrDer > 0 :
 		for i in range(id,id+NbrDer+1):
-			Derivatives_DV.append(int(FilTab[i][0]));	
+			Derivatives_DV.append(int(FilTab[i][0]));
+	elif NbrDer == -1 : # assume all variables are derivative variables
+	    for i in range(1,NbrVar+1):
+	        Derivatives_DV.append(i);	
 	
 	return DV_List, OutputCode, Derivatives_DV;
 	

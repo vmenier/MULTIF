@@ -723,7 +723,7 @@ def printNozzleDef(nozzle):
 # Calculate and return forward finite difference gradients of nozzle mass
 def calcMassGradientsFD(nozzle,fd_step):
 
-    mass = nozzle.mass;
+    mass = nozzle.responses['MASS'];
     
     # For parallel computation
     #print nozzle.partitions
@@ -733,14 +733,14 @@ def calcMassGradientsFD(nozzle,fd_step):
     
     # For each design variable
     
-    #print len(nozzle.DV_List);
+    #print len(nozzle.dvList);
     #sys.exit(1);
     
-    for i in range(len(nozzle.DV_List)):
+    for i in range(len(nozzle.dvList)):
         
         nozzle2 = copy.deepcopy(nozzle);
 
-        nozzle2.DV_List[i] += fd_step;
+        nozzle2.dvList[i] += fd_step;
         nozzle2.UpdateDV(output='quiet');
         nozzle2.SetupWall(output='quiet');
         
