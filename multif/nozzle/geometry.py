@@ -736,22 +736,41 @@ def calcMassGradientsFD(nozzle,fd_step):
     #print len(nozzle.DV_List);
     #sys.exit(1);
     
-    for i in range(len(nozzle.DV_List)):
-        
-        nozzle2 = copy.deepcopy(nozzle);
+    import time
 
-        nozzle2.DV_List[i] += fd_step;
-        nozzle2.UpdateDV(output='quiet');
-        nozzle2.SetupWall(output='quiet');
-        
-        volume2, mass2 = calcVolumeAndMass(nozzle2);
-        mass2 = np.sum(mass2);
-        volume2 = np.sum(volume2);
-        
-        dmdxLocal = (mass2-mass)/fd_step;
-        
-        dmdx.append((mass2-mass)/fd_step);
+    for i in range(len(nozzle.DV_List)):
+		
+		t0 = time.time()
+		
+		nozzle2 = copy.deepcopy(nozzle);
+		
+		t1 = time.time()
+		
+		nozzle2.DV_List[i] += fd_step;
+		nozzle2.UpdateDV(output='quiet');
+		
+		t2 = time.time()
+		
+		nozzle2.SetupWall(output='quiet');
+		
+		t3 = time.time()
+		
+		volume2, mass2 = calcVolumeAndMass(nozzle2);
+		
+		t4 = time.time()
+		
+		
+		mass2 = np.sum(mass2);
+		volume2 = np.sum(volume2);
+		
+		dmdxLocal = (mass2-mass)/fd_step;
+		
+		dmdx.append((mass2-mass)/fd_step);
+		
+		t5 = time.time()
     	
+		#print "DV %d : copy %lf sec , updateDV %lf sec , setupWall %lf sec , calcvol %lf sec , rest %lf " % (i, t1-t0, t2-t1, t3-t2, t4-t3, t5-t4 )
+
     return dmdx
 
 

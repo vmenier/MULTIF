@@ -33,7 +33,9 @@ def Run( nozzle, output = 'verbose' ):
             if ( nozzle.gradients_method == 'ADJOINT' ):
                 # Convergence study using B-spline coefs show finite difference mass gradients
                 # converge. Most accurate gradients use absolute step size 1e-8. RWF 5/10/17
+                sys.stdout.write("Compute mass gradients.\n");
                 nozzle.mass_grad = nozzlemod.geometry.calcMassGradientsFD(nozzle,1e-8);
+                sys.stdout.write("Done mass gradients.\n");				
             elif ( nozzle.gradients_method == 'FINITE_DIFF' ):
                 sys.stderr.write('\n ## ERROR : No user-defined finite difference step has been defined\n');
                 sys.exit(1);

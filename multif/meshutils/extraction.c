@@ -385,3 +385,63 @@ double * ExtractSolutionAtRef (Options *mshopt, Mesh *Msh, int *Ref, int NbrRef,
 
 
 
+int Extract_Vertices_Ref (Options *mshopt, Mesh *Msh, int Ref, double *Crd_Out, int *Vid_Out, int *Nbv)
+{
+	
+	int iEfr, iVer, v, cptVer=0, idx=0, iVar, i, flag=0;
+		
+	int *Tag = (int*) malloc(sizeof(int)*(Msh->NbrVer+1));
+	memset(Tag, 0, sizeof(int)*(Msh->NbrVer+1));
+	
+	//--- Tag vertices
+	
+
+	for (iEfr=1; iEfr<=Msh->NbrEfr; iEfr++) {
+		
+		
+		
+		if ( Msh->Efr[iEfr][2] != Ref )
+			continue;
+		
+		for (v=0; v<2; v++) {
+			iVer = Msh->Efr[iEfr][v];
+			Tag[iVer] = 1;
+		}	
+	}
+	
+	//--- Count vertices
+	
+	cptVer = 0;
+	for (iVer=1; iVer<=Msh->NbrVer; iVer++) {
+		if ( Tag[iVer] == 1 )
+			cptVer++;
+	}
+	
+	//Crd_Out = (double *) malloc(sizeof(double)*2*cptVer);
+	//Vid_Out = (int * ) malloc(sizeof(int)*cptVer);
+	
+	i=0;
+	for (iVer=1; iVer<=Msh->NbrVer; iVer++) {
+		if ( Tag[iVer] != 1 )
+			continue;
+		
+		idx = 3*i;
+		
+		Crd_Out[idx+0] = Msh->Ver[iVer][0];
+		Crd_Out[idx+1] = Msh->Ver[iVer][1];
+		Crd_Out[idx+2] = Msh->Ver[iVer][2];
+		
+		Vid_Out[i] = iVer;
+		
+		i++;
+	}
+	
+	//--- Free memory
+	
+	if (Tag)
+		free(Tag);
+	
+	*Nbv = cptVer;
+	
+	return 1;
+}

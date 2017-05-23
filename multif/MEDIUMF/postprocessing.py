@@ -354,10 +354,9 @@ def ExtractSolutionAtWall (nozzle):
 	for iFld in range(0,len(pyHeader)):
 		idHeader[pyHeader[iFld]] = iFld+2;
 	
-	
 	return OutResult, pyInfo, idHeader;
 	
-
+	
 def WriteGMFMesh2D(MshNam, Ver, Tri):
 	
 	f = open(MshNam, 'wb');

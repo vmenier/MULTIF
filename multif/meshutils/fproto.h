@@ -18,6 +18,7 @@ Victorien Menier Feb 2016
 int SolutionExtraction(Options *mshopt, Mesh *Msh);
 double * ExtractAlongLine (Options *mshopt, Mesh *Msh, double *box, int *NbrRes, int *Siz);
 double * ExtractSolutionAtRef (Options *mshopt, Mesh *Msh, int *Ref, int NbrRef,  int *NbrRes, int *Siz);
+int Extract_Vertices_Ref (Options *mshopt, Mesh *Msh, int Ref, double *Crd_Out, int *Vid_Out, int *Nbv);
 
 //--- GMFio.c
 int AddGMFMeshSize (char *MshNam, int *SizMsh);

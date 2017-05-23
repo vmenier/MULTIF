@@ -440,7 +440,7 @@ def runSU2 ( nozzle ):
 	solver_options.dv_coefs = [];
 	
 	# --- Specify wall variable data when adjoint gradients are requested
-	if( nozzle.gradients_method == 'ADJOINT' ):
+	if( nozzle.thrust_gradients == 'YES' and nozzle.gradients_method == 'ADJOINT' ):
 	
 	    iTag = -1;
 	    for i in range(len(nozzle.DV_Tags)):
@@ -513,7 +513,9 @@ def runSU2 ( nozzle ):
 
 	solver_options.Dimension = '2D';
 	
-	GenerateNozzleMesh(nozzle);
+	GenerateNozzleMesh_Deform(nozzle);
+	
+	#GenerateNozzleMesh(nozzle);
 	
 	config = SetupConfig(solver_options);
 	

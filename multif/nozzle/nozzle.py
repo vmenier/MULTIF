@@ -1485,7 +1485,7 @@ class Nozzle:
             out_gra = 0;
             out_val  = 0;
             
-            if code == 1:
+            if code == 1 or code == 0 :
             	out_val = 1;
             elif code == 2:
             	out_gra = 1;
@@ -2836,7 +2836,7 @@ class Nozzle:
             # 0 No data required, function is inactive
             code = nozzle.OutputCode[i];
             
-            if code == 1:
+            if code == 1 or code == 0:
             	pass;
             elif code == 2:
             	continue; # skip writing of function value to file
@@ -2846,7 +2846,7 @@ class Nozzle:
                 sys.stderr.write('\n ## ERROR : code %i in DV input file not available\n' % code);
                 sys.exit(1);
                             
-            print "TAG %s CODE %d" % (tag, code)
+            #print "TAG %s CODE %d" % (tag, code)
             
             if tag == 'MASS':	
                 fil.write('%0.16f mass\n' % nozzle.mass);
@@ -3121,7 +3121,7 @@ class Nozzle:
             # 0 No data required, function is inactive
             code = nozzle.OutputCode[i];
 
-            if code == 1:
+            if code == 1 or code == 0:
             	continue; # skip assignment of gradients
             elif code == 2:
             	pass;
@@ -3293,6 +3293,8 @@ def NozzleSetup( config_name, flevel, output='verbose', partitions=1 ):
 	# --- Prepare gradients computation flags
 	
 	nozzle.output_gradients = 'NO';
+	nozzle.mass_gradients = 'NO';
+	nozzle.thrust_gradients = 'NO';
 	
 	if 'OUTPUT_GRADIENTS' in config:
 		if config['OUTPUT_GRADIENTS'] == 'YES':
