@@ -43,24 +43,33 @@ def nozzleAnalysis(index, nozzle, output='verbose'):
 # Calculate and return forward finite difference gradients of nozzle QOI
 def calcGradientsFD(nozzle,fd_step,output='verbose'):
     
-    print
-    print nozzle.dvList
-    print nozzle.derivativesDV
-    print
+    # Check that there are enough finite difference steps if a different step
+    # size is provided for each variable
+    if isinstance(fd_step,list):
+        if len(nozzle.dvList) != len(fd_step):
+            sys.stderr.write('  ## ERROR: %i finite difference step sizes have '
+              'been provided for %i design variables. Please provide %i numbers'
+              ' in the FD_STEP_SIZE list.\n\n' % (len(fd_step), \
+              len(nozzle.dvList), len(nozzle.dvList)));
+            sys.exit(1);
     
     # Gradients w.r.t. to all variables may not be required:
     # 0-index which design variables should have derivatives taken w.r.t. them
     derivativesDV = [i-1 for i in nozzle.derivativesDV];
+    
     # Make local list of design variable 0-indexed indices
     dvList = []
     for i in derivativesDV:
         dvList.append(nozzle.dvList[i])
-    print dvList
+
     # Setup each nozzle instance required for evaluation
     nozzleEval = [];
     for i in range(len(derivativesDV)):
         nozzleEval.append(copy.deepcopy(nozzle));
-        nozzleEval[i].dvList[derivativesDV[i]] += fd_step;
+        if isinstance(fd_step,list):
+            nozzleEval[i].dvList[derivativesDV[i]] += fd_step[derivativesDV[i]];
+        else:
+            nozzleEval[i].dvList[derivativesDV[i]] += fd_step;
         nozzleEval[i].UpdateDV(output='quiet');
         nozzleEval[i].SetupWall(output='quiet');
         nozzleEval[i].output_gradients = 0; # do not request gradients
@@ -106,7 +115,10 @@ def calcGradientsFD(nozzle,fd_step,output='verbose'):
                 # Only calculate gradients that are requested, and avoid calculating 
                 # mass gradient since it has already been calculated
                 if nozzle.gradients[k] is not None and k not in ['MASS']:
-                    localGrad = (nozzleEval[i].responses[k] - nozzle.responses[k])/fd_step;
+                    if isinstance(fd_step,list):
+                        localGrad = (nozzleEval[i].responses[k] - nozzle.responses[k])/fd_step[derivativesDV[i]];
+                    else:
+                        localGrad = (nozzleEval[i].responses[k] - nozzle.responses[k])/fd_step;
                     nozzle.gradients[k].append(localGrad);
     
     # Run gradient evaluations in parallel            
@@ -147,9 +159,10 @@ def calcGradientsFD(nozzle,fd_step,output='verbose'):
                 # Only calculate gradients that are requested, and avoid calculating 
                 # mass gradient since it has already been calculated
                 if nozzle.gradients[k] is not None and k not in ['MASS']:
-                    #j = derivativesDV[i];
-                    #localGrad = (rEval[j].responses[k] - nozzle.responses[k])/fd_step;
-                    localGrad = (rEval[i].responses[k] - nozzle.responses[k])/fd_step;
+                    if isinstance(fd_step,list):
+                        localGrad = (rEval[i].responses[k] - nozzle.responses[k])/fd_step[derivativesDV[i]];
+                    else:
+                        localGrad = (rEval[i].responses[k] - nozzle.responses[k])/fd_step;                    
                     nozzle.gradients[k].append(localGrad);
     	
     return nozzle.gradients

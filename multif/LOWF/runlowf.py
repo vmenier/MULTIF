@@ -846,9 +846,6 @@ def Run (nozzle,output='verbose',writeToFile=1):
 		    sys.stderr.write('  ## ERROR : Unknown gradients computation '
 		      'method.\n');
 		    sys.exit(1);
-		    
-        if nozzle.output_gradients == 1:
-		    np.savetxt(nozzle.output_gradients_filename, nozzle.gradients['MASS'], delimiter='\n')
 	
 	# Calculate volume gradients if necessary
     if 'VOLUME' in nozzle.gradients and nozzle.gradients['VOLUME'] is not None:
@@ -923,7 +920,13 @@ def Run (nozzle,output='verbose',writeToFile=1):
             else:
 			    sys.stderr.write('  ## ERROR : Unknown gradients computation '
 			      'method.\n');
-			    sys.exit(1);             
+			    sys.exit(1);
+			    
+            # Write separate gradients file
+            gradFile = open(nozzle.output_gradients_filename,'w');
+            for k in nozzle.outputTags:
+			    np.savetxt(gradFile,nozzle.gradients[k]);
+            gradFile.close();          
         
     # Write data
     if writeToFile:

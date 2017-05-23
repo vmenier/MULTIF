@@ -2393,8 +2393,12 @@ class Nozzle:
                         nozzle.gradients_method = 'FINITE_DIFF';
 
                         if 'FD_STEP_SIZE' in config: # absolute forward finite difference step size
-                            # Allow this to also be a vector of values
-                            nozzle.fd_step_size = float(config['FD_STEP_SIZE']);
+                            nozzle.fd_step_size = config['FD_STEP_SIZE'].strip('()');
+                            if ',' in nozzle.fd_step_size: # Different step size for all vars
+                                nozzle.fd_step_size = nozzle.fd_step_size.split(',');
+                                nozzle.fd_step_size = [float(i) for i in nozzle.fd_step_size];
+                            else: # Single step size for all variables
+                                nozzle.fd_step_size = float(nozzle.fd_step_size);
                         else:
                             sys.stderr.write("  ## ERROR : FD_STEP_SIZE not specified in config file.\n\n");
                             sys.exit(1);
@@ -2404,8 +2408,12 @@ class Nozzle:
                         
                         # Some derivatives may need finite differencing
                         if 'FD_STEP_SIZE' in config: # absolute forward finite difference step size
-                            # Allow this to also be a vector of values
-                            nozzle.fd_step_size = float(config['FD_STEP_SIZE']); 
+                            nozzle.fd_step_size = config['FD_STEP_SIZE'].strip('()');
+                            if ',' in nozzle.fd_step_size: # Different step size for all vars
+                                nozzle.fd_step_size = nozzle.fd_step_size.split(',');
+                                nozzle.fd_step_size = [float(i) for i in nozzle.fd_step_size];
+                            else: # Single step size for all variables
+                                nozzle.fd_step_size = float(nozzle.fd_step_size); 
                         else:
                             sys.stdout.write('Even though ADJOINT gradients have been specified, '
                               'specifying FD_STEP_SIZE is a good idea too.');

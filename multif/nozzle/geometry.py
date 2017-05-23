@@ -740,7 +740,12 @@ def calcMassGradientsFD(nozzle,fd_step):
         
         nozzle2 = copy.deepcopy(nozzle);
         
-        nozzle2.dvList[nozzle.derivativesDV[i]-1] += fd_step;
+        if isinstance(fd_step,list):
+            dx = fd_step[nozzle.derivativesDV[i]-1];
+        else:
+            dx = fd_step;
+            
+        nozzle2.dvList[nozzle.derivativesDV[i]-1] += dx;
         nozzle2.UpdateDV(output='quiet');
         nozzle2.SetupWall(output='quiet');
         
@@ -748,9 +753,9 @@ def calcMassGradientsFD(nozzle,fd_step):
         mass2 = np.sum(mass2);
         volume2 = np.sum(volume2);
         
-        dmdxLocal = (mass2-mass)/fd_step;
+        dmdxLocal = (mass2-mass)/dx;
         
-        dmdx.append((mass2-mass)/fd_step);
+        dmdx.append((mass2-mass)/dx);
     	
     return dmdx
 
