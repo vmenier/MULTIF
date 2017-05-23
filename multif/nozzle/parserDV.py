@@ -14,17 +14,17 @@ def ParseDesignVariables_Plain (filename):
 	
 	DV_List        = []; # List of design variables
 	OutputCode     = []; # List of request codes for the output functions
-	Derivatives_DV = []; # identify the subset of variables that are active for deriv. computation
+	Derivatives_DV = []; # indexentify the subset of variables that are active for deriv. computation
 	
-	id_line = 0;
+	index_line = 0;
 	
 	for line in fil:
 		
-		id_line = id_line+1;
+		index_line = index_line+1;
 		hdl = line.split();
 		
 		if len(hdl) != 1 :
-			sys.stderr.write("  ## ERROR : Unexpected input design variables format (line %d of %s).\n\n" % (id_line, filename));
+			sys.stderr.write("  ## ERROR : Unexpected input design variables format (line %d of %s).\n\n" % (index_line, filename));
 			sys.exit(0);
 			
 		DV_List.append(float(hdl[0]));
@@ -54,7 +54,7 @@ def ParseDesignVariables_Dakota (filename):
 	
 	DV_List        = [];	# List of design variables
 	OutputCode     = [];  # List of request codes for the output functions
-	Derivatives_DV = [];  # identify the subset of variables that are active for deriv. computation
+	Derivatives_DV = [];  # indexentify the subset of variables that are active for deriv. computation
 	
 	# --- Regular expressions
 	
@@ -103,7 +103,7 @@ def ParseDesignVariables_Dakota (filename):
 		or FilTab[i][1] == 'DAKOTA_VARS'
 		):
 			NbrVar = int(FilTab[i][0]);
-			id = i;
+			index = i;
 			break;
 	
 	if NbrVar < 0 :
@@ -111,11 +111,11 @@ def ParseDesignVariables_Dakota (filename):
 		sys.exit(0);
 	
 	
-	if NbrLin < id+NbrVar+1 :
+	if NbrLin < index+NbrVar+1 :
 		sys.stderr.write("  ## ERROR : Wrong variable definition in %s\n\n" % filename);
 		sys.exit(0);
 	
-	for i in range(id+1,id+NbrVar+1):
+	for i in range(index+1,index+NbrVar+1):
 		#print "%s %s" % (FilTab[i][0],FilTab[i][1]);
 		DV_List.append(float(FilTab[i][0]));
 	
@@ -129,14 +129,14 @@ def ParseDesignVariables_Dakota (filename):
 		FilTab[i][1] == 'functions'
 		):
 			NbrOut = int(FilTab[i][0]);
-			id = i;
+			index = i;
 			break;
 	
 	if NbrOut < 0 :
 		sys.stderr.write("  ## ERROR : No output function given in %s\n\n" % filename);
 		sys.exit(0);
 	
-	if NbrLin < id+NbrOut+1 :
+	if NbrLin < index+NbrOut+1 :
 		sys.stderr.write("  ## ERROR : Wrong output function  definition in %s\n\n" % filename);
 		sys.exit(0);
 	
@@ -150,7 +150,7 @@ def ParseDesignVariables_Dakota (filename):
 	# 1 Get value
 	# 0 No data required, function is inactive
 	
-	for i in range(id+1,id+NbrOut+1):
+	for i in range(index+1,index+NbrOut+1):
 		
 		code = int(FilTab[i][0]);
 		OutputCode.append(code);
@@ -166,11 +166,11 @@ def ParseDesignVariables_Dakota (filename):
 		FilTab[i][1] == 'derivative_variables'
 		):
 			NbrDer = int(FilTab[i][0]);
-			id = i;
+			index = i;
 			break;
 	
 	if NbrDer > 0 :
-		for i in range(id,id+NbrDer+1):
+		for i in range(index+1,index+NbrDer+1):
 			Derivatives_DV.append(int(FilTab[i][0]));
 	elif NbrDer == -1 : # assume all variables are derivative variables
 	    for i in range(1,NbrVar+1):

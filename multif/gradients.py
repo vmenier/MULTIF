@@ -55,10 +55,10 @@ def calcGradientsFD(nozzle,fd_step,output='verbose'):
     dvList = []
     for i in derivativesDV:
         dvList.append(nozzle.dvList[i])
-    
+    print dvList
     # Setup each nozzle instance required for evaluation
     nozzleEval = [];
-    for i in range(len(dvList)):
+    for i in range(len(derivativesDV)):
         nozzleEval.append(copy.deepcopy(nozzle));
         nozzleEval[i].dvList[derivativesDV[i]] += fd_step;
         nozzleEval[i].UpdateDV(output='quiet');
@@ -74,7 +74,7 @@ def calcGradientsFD(nozzle,fd_step,output='verbose'):
     if nozzle.partitions <= 1:
     
         # For each design variable
-        for i in range(len(dvList)):
+        for i in range(len(derivativesDV)):
 
             # Create and enter new directory
             dirname = 'EVAL_' + str(i);
@@ -121,13 +121,13 @@ def calcGradientsFD(nozzle,fd_step,output='verbose'):
         # Setup list to hold results for nozzle evaluation
         mEval = [];
         rEval = [];
-        for i in range(len(dvList)):
+        for i in range(len(derivativesDV)):
             mEval.append(-1);
             rEval.append(-1);
             
         nozzleResults = []
         
-        for i in range(len(dvList)):
+        for i in range(len(derivativesDV)):
             if output == 'verbose':
                 sys.stdout.write('Adding analysis %i to the pool\n' % i);
             mEval[i] = pool.apply_async(nozzleAnalysis,(i,nozzleEval[i],output))
@@ -142,13 +142,14 @@ def calcGradientsFD(nozzle,fd_step,output='verbose'):
             rEval[i] = mEval[i].get();
             
         # Calculate gradients here
-        for i in range(len(dvList)):
+        for i in range(len(derivativesDV)):
             for k in nozzle.gradients:
                 # Only calculate gradients that are requested, and avoid calculating 
                 # mass gradient since it has already been calculated
                 if nozzle.gradients[k] is not None and k not in ['MASS']:
-                    j = derivativesDV[i];
-                    localGrad = (rEval[j].responses[k] - nozzle.responses[k])/fd_step;
+                    #j = derivativesDV[i];
+                    #localGrad = (rEval[j].responses[k] - nozzle.responses[k])/fd_step;
+                    localGrad = (rEval[i].responses[k] - nozzle.responses[k])/fd_step;
                     nozzle.gradients[k].append(localGrad);
     	
     return nozzle.gradients

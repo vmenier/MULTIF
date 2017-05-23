@@ -736,11 +736,11 @@ def calcMassGradientsFD(nozzle,fd_step):
     #print len(nozzle.dvList);
     #sys.exit(1);
     
-    for i in range(len(nozzle.dvList)):
+    for i in range(len(nozzle.derivativesDV)):
         
         nozzle2 = copy.deepcopy(nozzle);
-
-        nozzle2.dvList[i] += fd_step;
+        
+        nozzle2.dvList[nozzle.derivativesDV[i]-1] += fd_step;
         nozzle2.UpdateDV(output='quiet');
         nozzle2.SetupWall(output='quiet');
         
