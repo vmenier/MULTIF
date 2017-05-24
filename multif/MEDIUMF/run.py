@@ -96,7 +96,7 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
         
         # Assign thermal/structural QoI if required
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
-            AEROSpostprocessing.PostProcess(nozzle, output);                
+            AEROSpostprocessing.PostProcess(nozzle, output);             
         
         # Calculate gradients if necessary
         if nozzle.output_gradients == 1 and runAeroThermalStructuralGradients:

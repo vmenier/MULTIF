@@ -1635,7 +1635,11 @@ class Nozzle:
                 sys.exit(1);
         
         if output == 'verbose':
-            sys.stdout.write('Setup Parse Design Variables complete\n');        
+            sys.stdout.write('Setup Parse Design Variables complete\n'); 
+            
+        print nozzle.dvList
+        print nozzle.outputCode
+        print nozzle.derivativesDV       
         
     
     def UpdateDV(self, output='verbose'):
