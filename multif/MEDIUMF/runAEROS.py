@@ -8,7 +8,7 @@ import ctypes
 import numpy as np
 from .. import _nozzle_module
 
-from postprocessing import *
+from AEROSpostprocessing import *
 
 def runAEROS ( nozzle, output='verbose' ):
 
@@ -16,7 +16,8 @@ def runAEROS ( nozzle, output='verbose' ):
     
     # SolExtract : Solution (x, y, sol1, sol2, etc.)
     # Size : [NbrVer, SolSiz]
-    # idHeader : id of each solution field, e.g. mach_ver89 = SolExtract[89][idHeader['MACH']]
+    # idHeader : id of each solution field, 
+    #            e.g. mach_ver89 = SolExtract[89][idHeader['MACH']]
     if nozzle.method == 'NONIDEALNOZZLE':
         SolExtract = nozzle.wallResults;
         Size = [x for x in nozzle.wallResults.shape];
@@ -26,7 +27,9 @@ def runAEROS ( nozzle, output='verbose' ):
         
     ## How to get x, y, P, T :
     #for i in range(0,Size[0]):
-    #    print "VER %d : (x,y) = (%.*lf, %.*lf) , Pres = %lf, Temp = %lf" % (i, 16, SolExtract[i][0], 16, SolExtract[i][1], SolExtract[i][iPres], SolExtract[i][iTemp]);
+    #    print "VER %d : (x,y) = (%.*lf, %.*lf) , Pres = %lf, Temp = %lf" % \
+    #                    (i, 16, SolExtract[i][0], 16, SolExtract[i][1], \
+    #                    SolExtract[i][iPres], SolExtract[i][iTemp]);
 
     iPres = idHeader['Pressure'];
     iTemp = idHeader['Temperature'];
@@ -34,7 +37,8 @@ def runAEROS ( nozzle, output='verbose' ):
     # --- Assemble important points to align mesh with
     
     # merge lists
-    ends = [min(list(nozzle.wall.layer[0].thickness.nodes[0,:])), max(list(nozzle.wall.layer[0].thickness.nodes[0,:]))]
+    ends = [min(list(nozzle.wall.layer[0].thickness.nodes[0,:])), \
+            max(list(nozzle.wall.layer[0].thickness.nodes[0,:]))]
     #for i in range(len(ends)):
     #    print ' i = %d, ends[i] = %f' % (i, ends[i])
 
@@ -42,18 +46,23 @@ def runAEROS ( nozzle, output='verbose' ):
     #for j in range(len(vertices)):
     #    print ' j = %d, vertices[j] = %f' % (j, vertices[j])
 
-    points = sorted(list(set(vertices+[item[0] for item in SolExtract]+
-                             list(nozzle.wall.layer[0].thickness.nodes[0,:])+list(nozzle.wall.layer[2].thickness.nodes[0,:])+
-                             list(nozzle.wall.layer[3].thickness.nodes[0,:])+list(nozzle.wall.layer[4].thickness.nodes[0,:])+
-                             list(nozzle.stringers.thickness.nodes[0,:])+list(nozzle.stringers.height.nodes[0,:]))))
+    points = sorted(list(set(vertices+[item[0] for item in SolExtract]+ \
+                    list(nozzle.wall.layer[0].thickness.nodes[0,:])+ \
+                    list(nozzle.wall.layer[2].thickness.nodes[0,:])+ \
+                    list(nozzle.wall.layer[3].thickness.nodes[0,:])+ \
+                    list(nozzle.wall.layer[4].thickness.nodes[0,:])+ \
+                    list(nozzle.stringers.thickness.nodes[0,:])+ \
+                    list(nozzle.stringers.height.nodes[0,:]))))
     #for k in range(len(points)):
     #    print ' k = %d, points[k] = %f' % (k, points[k])
     
     # --- Set important flags
     
     # Determine how stringer height is defined:
-    #     0: stringer height is defined w.r.t. nozzle wall (specifically, the center of the load layers)
-    #     1: stringer height is defined w.r.t. the axis of rotation of the nozzle, i.e. total y coordinate
+    #     0: stringer height is defined w.r.t. nozzle wall 
+    #        (specifically, the center of the load layers)
+    #     1: stringer height is defined w.r.t. the axis of 
+    #        rotation of the nozzle, i.e. total y coordinate
     stringerFlag = nozzle.stringers.absoluteRadialCoord;   
     
     # Determine where nozzle boundary is fixed:
@@ -95,8 +104,10 @@ def runAEROS ( nozzle, output='verbose' ):
         Tn2 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[2,4]));
         Ln = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[2,4]));
         Mn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[40,55]));
-        Sn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[8,11]));
-    Ns   = max(2,nozzle.stringers.n); # number of panels (i.e. circumferential subdivisions of the mesh)
+        Sn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[8,11]));    
+    # Ns: number of panels (i.e. circumferential subdivisions of the mesh)        
+    Ns   = max(2,nozzle.stringers.n); 
+    
     #Mn   = max(2,(2*math.pi*nozzle.wall.geometry.radius(points[0])/Ns)/lc+1); # Number of nodes in circumferential direction per panel
     #if stringerFlag == 0: # height defined w.r.t. nozzle exterior wall
     #    Sn = max(nozzle.stringers.height.radius(0)/lc+1,2) if nozzle.stringers.n > 0 else 0; # number of nodes on radial edge of stringers
@@ -111,11 +122,14 @@ def runAEROS ( nozzle, output='verbose' ):
     for i in range(len(nozzle.wall.layer)):
         if i != 1: # skip the air gap layer
             M.append(materialNames.index(nozzle.wall.layer[i].material.name));
-    M = [materialNames.index(nozzle.wall.layer[i].material.name) for i in range(len(nozzle.wall.layer))]
+    M = [materialNames.index(nozzle.wall.layer[i].material.name) \
+         for i in range(len(nozzle.wall.layer))]
     # material id of baffles
-    Mb = materialNames.index(nozzle.baffles.material.name) if len(nozzle.baffles.location) > 0 else -1
+    Mb = materialNames.index(nozzle.baffles.material.name) if \
+         len(nozzle.baffles.location) > 0 else -1
     # material id of stringers
-    Ms = materialNames.index(nozzle.stringers.material.name) if nozzle.stringers.n > 0 else -1
+    Ms = materialNames.index(nozzle.stringers.material.name) if \
+         nozzle.stringers.n > 0 else -1
 
     # --- Write nozzle definition to file for Aero-S
     
@@ -123,25 +137,35 @@ def runAEROS ( nozzle, output='verbose' ):
     verboseFlag = 0.;
     if output == 'verbose':
         verboseFlag = 1.;
-    print >> f1, "%d %d %d %f %d %d %d %d %d %d %d" % (len(points), len(vertices), len(nozzle.materials), lc, boundaryFlag, thermalFlag, 3, 2, linearFlag, verboseFlag, stringerFlag);
+    print >> f1, "%d %d %d %f %d %d %d %d %d %d %d" % (len(points), \
+        len(vertices), len(nozzle.materials), lc, boundaryFlag, \
+        thermalFlag, 3, 2, linearFlag, verboseFlag, stringerFlag);
     
     # points
     for i in range(len(points)):
-        Tg = nozzle.wall.layer[1].thickness.radius(0.) # thickness of gap between thermal and load layers
-        Ts = nozzle.stringers.thickness.radius(points[i]) if nozzle.stringers.n > 0 else 0; # thickness of stringers
-        Ws = nozzle.stringers.height.radius(points[i]) if nozzle.stringers.n > 0 else 0; # height of stringer
-        print >> f1, "%0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e" % (points[i],
-                 nozzle.wall.geometry.radius(points[i]), nozzle.wall.geometry.radiusGradient(points[i]),
-                 nozzle.wall.layer[2].thickness.radius(points[i]), nozzle.wall.layer[3].thickness.radius(points[i]),
-                 nozzle.wall.layer[4].thickness.radius(points[i]), nozzle.wall.layer[0].thickness.radius(points[i]),
-                 Tg, Ts, Ws);
+        # Tg: thickness of gap between thermal and load layers
+        Tg = nozzle.wall.layer[1].thickness.radius(0.) 
+        # Ts: thickness of stringers
+        Ts = nozzle.stringers.thickness.radius(points[i]) if nozzle.stringers.n > 0 else 0; 
+        # Ws: # height of stringer
+        Ws = nozzle.stringers.height.radius(points[i]) if nozzle.stringers.n > 0 else 0; 
+        print >> f1, "%0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e" % (points[i],nozzle.wall.geometry.radius(points[i]),
+             nozzle.wall.geometry.radiusGradient(points[i]),
+             nozzle.wall.layer[2].thickness.radius(points[i]), 
+             nozzle.wall.layer[3].thickness.radius(points[i]),
+             nozzle.wall.layer[4].thickness.radius(points[i]), 
+             nozzle.wall.layer[0].thickness.radius(points[i]), Tg, Ts, Ws);
         
     # vertices
-    for i in range(len(vertices)):  
-        Wb = nozzle.baffles.height[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # height of baffle
-        #Nb = max(Wb/lc-Ns+1,2); # number of nodes on radial edge of baffle (not including overlap with stringer)
+    for i in range(len(vertices)): 
+        # Wb: height of baffle 
+        Wb = nozzle.baffles.height[nozzle.baffles.location.index(vertices[i])] \
+             if vertices[i] in nozzle.baffles.location else 0
+        # Nb: number of nodes on radial edge of baffle (not including overlap with stringer)
+        #Nb = max(Wb/lc-Ns+1,2); 
         Nb = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,1],[2,4]));
-        Tb = nozzle.baffles.thickness[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0 # thickness of baffle
+        Tb = nozzle.baffles.thickness[nozzle.baffles.location.index(vertices[i])] \
+             if vertices[i] in nozzle.baffles.location else 0 # thickness of baffle
         print >> f1, "%d %0.16e %d %d %0.16e" % (points.index(vertices[i]), Wb, Mb, Nb, Tb);
                  
     # panels
@@ -188,340 +212,6 @@ def runAEROS ( nozzle, output='verbose' ):
     os.system("aeros nozzle.aeros"); # execute the structural analysis
     os.system("aeros nozzle.aeros.cmc"); # execute the structural analysis of the cmc layer
     
-    nozzle.wallTemp = SolExtract[:,iTemp];
-    
-    AEROSPostProcessing ( nozzle, output );
-
-# Kreselmeier-Steinhauser function
-def ksFunction(x,p):
-    return (1./p)*np.log(np.sum(np.exp(p*x)));
-    
-# Modified P-norm function
-def pnFunction(x,p):
-    return ((1./len(x))*np.sum(np.power(x,p)))**(1./p)
-
-# Assign stresses
-def assignStress(nozzle, index, output='verbose'):
-    
-    # Mapping from MULTI-F internal ordering to AERO-S stress file suffixes
-    suffix = [0, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-
-    # KS and PN params for stresses
-    ks_param1 = 50.;
-    pn_param1 = 10.;
-
-    # Read stress data
-    filename = 'STRESS.' + str(suffix[index]);
-    try:
-        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-    except:
-        if output=='verbose':
-            sys.stdout.write('WARNING: could not open STRESS file for component %i\n' % index);
-        return 0;
-        
-    stress = data[:,-1];
-    
-    # Assign stresses
-    stemp = np.mean(stress);
-    nozzle.max_total_stress[index] = np.max(stress);
-    nozzle.ks_total_stress[index] = ksFunction(stress/stemp,ks_param1)*stemp;
-    nozzle.pn_total_stress[index] = pnFunction(stress/stemp,pn_param1)*stemp;
-
-    return 0;
-
-def assignFailureCriteria(nozzle, index, material, output='verbose'):
-    
-    # Mapping from MULTI-F internal ordering to AERO-S stress file suffixes
-    suffix = [0, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-    
-    # KS and PN params for failure criteria
-    ks_param2 = 50.;
-    pn_param2 = 10.;
-    
-    # Assign failure criteria
-    if not hasattr(material,'failureType'):
-        if output=='verbose':
-            sys.stdout.write('WARNING: no failure type for component %i\n' % index);
-        return 0;
-    elif material.failureType == 'VON_MISES':
-        # Von Mises is read in through the STRESS files
-        filename = 'STRESS.' + str(suffix[index]);
-        try: 
-            data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-        except IOError:
-            if output=='verbose':
-                sys.stdout.write('WARNING: could not open STRESS file for component %i\n' % index);
-            return 0;
-        stress = data[:,-1];        
-        # Assign failure criterion
-        yieldStress = material.yieldStress;        
-        nozzle.max_failure_criteria[index] = np.max(stress/yieldStress);
-        nozzle.ks_failure_criteria[index] = ksFunction(stress/yieldStress,ks_param2);
-        nozzle.pn_failure_criteria[index] = pnFunction(stress/yieldStress,pn_param2);
-    elif material.failureType == 'PRINCIPLE_FAILURE_STRAIN':
-        
-        if index != 0:
-            sys.stderr.write('\n ## ERROR: NOT IMPLEMENTED: principle failure strain failure type for component %i\n\n' % index);
-            sys.exit(0);            
-        filename = 'STRAINP1.0';
-        try:
-            data = np.loadtxt(filename,dtype=float,skiprows=3); # strains in 4th column (0-indexed)
-        except IOError:
-            if output=='verbose':
-                sys.stdout.write('WARNING: could not open STRAINP1.0 file for component %i\n' % index);
-            return 0;        
-        strainp1 = data[:,-1];   
-        
-        filename = 'STRAINP3.0';
-        try:
-            data = np.loadtxt(filename,dtype=float,skiprows=3); # strains in 4th column (0-indexed)
-        except IOError:
-            if output=='verbose':
-                sys.stdout.write('WARNING: could not open STRAINP2.0 file for component %i\n' % index);
-            return 0;        
-        strainp3 = data[:,-1];   
-        # Assign failure criterion
-        failureStrain = material.getFailureLimit();
-        failStrain = failureStrain;
-        strain = np.max(np.vstack((strainp1,strainp3)),axis=0)
-        nozzle.max_failure_criteria[index] = np.max(strain/failStrain);
-        nozzle.ks_failure_criteria[index] = ksFunction(strain/failStrain,ks_param2);
-        nozzle.pn_failure_criteria[index] = pnFunction(strain/failStrain,pn_param2);                 
-        
-    elif material.failureType == 'LOCAL_FAILURE_STRAIN':
-        # Local strains are read in through the STRAINXX and STRAINYY files
-        filename = 'STRAINXX.' + str(suffix[index]);
-        try:
-            data = np.loadtxt(filename,dtype=float,skiprows=3); # strains in 4th column (0-indexed)
-        except IOError:
-            if output=='verbose':
-                sys.stdout.write('WARNING: could not open STRAINXX file for component %i\n' % index);
-            return 0;        
-        strainxx = data[:,-1];
-        try:
-            filename = 'STRAINYY.' + str(suffix[index]);
-        except IOError:
-            if output=='verbose':
-                sys.stdout.write('WARNING: could not open STRAINYY file for component %i\n' % index);
-            return 0;            
-        data = np.loadtxt(filename,dtype=float,skiprows=3); # strains in 4th column (0-indexed)
-        strainyy = data[:,-1];
-        # Assign failure criterion
-        failureStrain = material.getFailureLimit();
-        failxx = np.empty((strainxx.size));
-        failyy = np.empty((strainyy.size));
-        for i in range(len(failxx)):
-            if strainxx[i] >= 0:
-                failxx = failureStrain[0];
-            else:
-                failxx = failureStrain[1];
-            if strainyy[i] >= 0:
-                failyy = failureStrain[2];
-            else:
-                failyy = failureStrain[3];
-        strain = np.vstack((strainxx,strainyy));
-        failStrain = np.vstack((failxx,failyy));
-        nozzle.max_failure_criteria[index] = np.max(strain/failStrain);
-        nozzle.ks_failure_criteria[index] = ksFunction(strain/failStrain,ks_param2);
-        nozzle.pn_failure_criteria[index] = pnFunction(strain/failStrain,pn_param2);        
-    else:
-        sys.stderr.write('\n ## ERROR: failure type not accepted.\n\n');
-        sys.exit(0);    
+    #nozzle.wallTemp = SolExtract[:,iTemp];
     
     return 0;
-    
-def AEROSPostProcessing ( nozzle, output='verbose' ):
-    
-    # ---- KS and modified P-norm parameters
-    ks_param = 50.;
-    pn_param = 10.;
-    
-    # ---- Indexing arrays
-    mat = [nozzle.wall.layer[q].material for q in range(5)];
-    mat.append(nozzle.stringers.material);
-    for i in range(nozzle.baffles.n):
-        mat.append(nozzle.baffles.material);
-        
-    # ---- Load and assign total stress results if necessary 
-    if ( sum(nozzle.GetOutput['MAX_TOTAL_STRESS']) > 0 or 
-         sum(nozzle.GetOutput['KS_TOTAL_STRESS']) > 0 or
-         sum(nozzle.GetOutput['PN_TOTAL_STRESS']) > 0):
-             
-        for i in range(len(nozzle.GetOutput['MAX_TOTAL_STRESS'])):
-            
-            if ( nozzle.GetOutput['MAX_TOTAL_STRESS'][i] >= 0 or
-                 nozzle.GetOutput['KS_TOTAL_STRESS'][i] >= 0 or
-                 nozzle.GetOutput['PN_TOTAL_STRESS'][i] >= 0):
-                     
-                     assignStress(nozzle, i, output);
-                     
-    # ---- Load and assign failure criteria results if necessary        
-    if ( sum( nozzle.GetOutput['MAX_FAILURE_CRITERIA']) > 0 or
-         sum( nozzle.GetOutput['KS_FAILURE_CRITERIA']) > 0 or
-         sum( nozzle.GetOutput['PN_FAILURE_CRITERIA']) > 0):
-             
-        for i in range(len(nozzle.GetOutput['MAX_FAILURE_CRITERIA'])):
-            
-            if ( nozzle.GetOutput['MAX_FAILURE_CRITERIA'][i] >= 0 or
-                 nozzle.GetOutput['KS_FAILURE_CRITERIA'][i] >= 0 or
-                 nozzle.GetOutput['PN_FAILURE_CRITERIA'][i] >= 0):
-                     
-                     assignFailureCriteria(nozzle, i, mat[i], output);
-    
-    # ---- Load and assign mechanical stress results if necessary
-    if sum(nozzle.GetOutput['MAX_MECHANICAL_STRESS']) > 0:
-        
-        # Thermal layer
-        filename = 'MECHANICAL_STRESS.0';
-        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-        stemp = np.mean(data[:,-1]);
-        nozzle.max_mechanical_stress[0] = np.max(data[:,-1]);
-        #nozzle.ks_mechanical_stress[0] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-        #nozzle.pn_mechanical_stress[0] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
-        
-        
-        # Inner load layer
-        filename = 'MECHANICAL_STRESS.1';
-        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-        stemp = np.mean(data[:,-1]);
-        nozzle.max_mechanical_stress[2] = np.max(data[:,-1]);
-        #nozzle.ks_mechanical_stress[2] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-        #nozzle.pn_mechanical_stress[2] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
-        
-        # Middle load layer
-        filename = 'MECHANICAL_STRESS.2';
-        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-        stemp = np.mean(data[:,-1]);
-        nozzle.max_mechanical_stress[3] = np.max(data[:,-1]);
-        #nozzle.ks_mechanical_stress[3] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-        #nozzle.pn_mechanical_stress[3] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;    
-        
-        # Upper load layer
-        filename = 'MECHANICAL_STRESS.3';
-        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-        stemp = np.mean(data[:,-1]);
-        nozzle.max_mechanical_stress[4] = np.max(data[:,-1]);
-        #nozzle.ks_mechanical_stress[4] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-        #nozzle.pn_mechanical_stress[4] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;  
-        
-        # Stringers
-        filename = 'MECHANICAL_STRESS.4';
-        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-        stemp = np.mean(data[:,-1]);
-        nozzle.max_mechanical_stress[5] = np.max(data[:,-1]);
-        #nozzle.ks_mechanical_stress[5] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-        #nozzle.pn_mechanical_stress[5] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
-    
-        # Each baffle
-        for i in range(7,nozzle.baffles.n+7):
-            filename = 'MECHANICAL_STRESS.' + str(i-2);
-            data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-            stemp = np.mean(data[:,-1]);
-            nozzle.max_mechanical_stress[i-1] = np.max(data[:,-1]);
-            #nozzle.ks_mechanical_stress[i-1] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-            #nozzle.pn_mechanical_stress[i-1] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
-    
-    # ---- Load and assign thermal stress results if necessary
-    if sum(nozzle.GetOutput['MAX_THERMAL_STRESS']) > 0:
-        
-        # Thermal layer
-        filename = 'THERMAL_STRESS.0';
-        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-        stemp = np.mean(data[:,-1]);
-        nozzle.max_thermal_stress[0] = np.max(data[:,-1]);
-        #nozzle.ks_mechanical_stress[0] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-        #nozzle.pn_mechanical_stress[0] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
-
-        # Inner load layer
-        filename = 'THERMAL_STRESS.1';
-        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-        stemp = np.mean(data[:,-1]);
-        nozzle.max_thermal_stress[2] = np.max(data[:,-1]);
-        #nozzle.ks_thermal_stress[2] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-        #nozzle.pn_thermal_stress[2] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
-        
-        # Middle load layer
-        filename = 'THERMAL_STRESS.2';
-        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-        stemp = np.mean(data[:,-1]);
-        nozzle.max_thermal_stress[3] = np.max(data[:,-1]);
-        #nozzle.ks_thermal_stress[3] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-        #nozzle.pn_thermal_stress[3] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;    
-        
-        # Upper load layer
-        filename = 'THERMAL_STRESS.3';
-        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-        stemp = np.mean(data[:,-1]);
-        nozzle.max_thermal_stress[4] = np.max(data[:,-1]);
-        #nozzle.ks_thermal_stress[4] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-        #nozzle.pn_thermal_stress[4] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;  
-        
-        # Stringers
-        filename = 'THERMAL_STRESS.4';
-        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-        stemp = np.mean(data[:,-1]);
-        nozzle.max_thermal_stress[5] = np.max(data[:,-1]);
-        #nozzle.ks_thermal_stress[5] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-        #nozzle.pn_thermal_stress[5] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
-    
-        # Each baffle
-        for i in range(7,nozzle.baffles.n+7):
-            filename = 'THERMAL_STRESS.' + str(i-2);
-            data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-            stemp = np.mean(data[:,-1]);
-            nozzle.max_thermal_stress[i-1] = np.max(data[:,-1]);
-            #nozzle.ks_thermal_stress[i-1] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-            #nozzle.pn_thermal_stress[i-1] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
-
-    # ---- Load and assign temperature results if necessary, AND
-    # load and assign temperature ratio results if necessary
-    if ( sum(nozzle.GetOutput['MAX_TEMPERATURE']) > 0 or 
-         sum(nozzle.GetOutput['KS_TEMPERATURE']) > 0 or
-         sum(nozzle.GetOutput['PN_TEMPERATURE']) > 0 or
-         sum(nozzle.GetOutput['MAX_TEMP_RATIO']) > 0 or
-         sum(nozzle.GetOutput['KS_TEMP_RATIO']) > 0 or
-         sum(nozzle.GetOutput['PN_TEMP_RATIO']) > 0):    
-
-        # Thermal layer
-        data = nozzle.wallTemp;
-        nozzle.max_temperature[0] = np.max(data);
-        nozzle.max_temp_ratio[0] = nozzle.max_temperature[0]/nozzle.wall.layer[0].material.Tmax;
-        stemp = np.mean(data);
-        nozzle.ks_temperature[0] = ksFunction(data/stemp,ks_param)*stemp;
-        nozzle.pn_temperature[0] = pnFunction(data/stemp,pn_param)*stemp;
-        nozzle.ks_temp_ratio[0] = ksFunction(data/nozzle.wall.layer[0].material.Tmax,ks_param);
-        nozzle.pn_temp_ratio[0] = pnFunction(data/nozzle.wall.layer[0].material.Tmax,pn_param);
-    
-        # Inner load layer
-        filename = 'TEMP.1';
-        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-        stemp = np.mean(data[:,-1]);
-        nozzle.max_temperature[2] = np.max(data[:,-1]);
-        nozzle.max_temp_ratio[2] = nozzle.max_temperature[2]/nozzle.wall.layer[2].material.Tmax;        
-        nozzle.ks_temperature[2] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-        nozzle.pn_temperature[2] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
-        nozzle.ks_temp_ratio[2] = ksFunction(data[:,-1]/nozzle.wall.layer[2].material.Tmax,ks_param);
-        nozzle.pn_temp_ratio[2] = pnFunction(data[:,-1]/nozzle.wall.layer[2].material.Tmax,pn_param);
-        
-        # Middle load layer
-        filename = 'TEMP.2';
-        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-        stemp = np.mean(data[:,-1]);
-        nozzle.max_temperature[3] = np.max(data[:,-1]);
-        nozzle.max_temp_ratio[3] = nozzle.max_temperature[3]/nozzle.wall.layer[3].material.Tmax;
-        nozzle.ks_temperature[3] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-        nozzle.pn_temperature[3] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;
-        nozzle.ks_temp_ratio[3] = ksFunction(data[:,-1]/nozzle.wall.layer[3].material.Tmax,ks_param);
-        nozzle.pn_temp_ratio[3] = pnFunction(data[:,-1]/nozzle.wall.layer[3].material.Tmax,pn_param);
-        
-        # Outer load layer
-        filename = 'TEMP.3';
-        data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-        stemp = np.mean(data[:,-1]);
-        nozzle.max_temperature[4] = np.max(data[:,-1]);
-        nozzle.max_temp_ratio[4] = nozzle.max_temperature[4]/nozzle.wall.layer[4].material.Tmax;
-        nozzle.ks_temperature[4] = ksFunction(data[:,-1]/stemp,ks_param)*stemp;
-        nozzle.pn_temperature[4] = pnFunction(data[:,-1]/stemp,pn_param)*stemp;    
-        nozzle.ks_temp_ratio[4] = ksFunction(data[:,-1]/nozzle.wall.layer[4].material.Tmax,ks_param);
-        nozzle.pn_temp_ratio[4] = pnFunction(data[:,-1]/nozzle.wall.layer[4].material.Tmax,pn_param);
-        

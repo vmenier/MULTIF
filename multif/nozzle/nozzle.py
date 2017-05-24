@@ -31,7 +31,8 @@ from parserDV import *
 class Nozzle:
     def __init__(self):
         pass
-    
+
+     
     def AssignListDV(self,config,dvList,key,NbrDV,sizeDV):
         if key in config:
     
@@ -167,7 +168,7 @@ class Nozzle:
                                 sys.exit(0);
             
             nozzle.DV_Tags = []; # tags: e.g. wall, tstag etc.
-            nozzle.DV_Head = []; # correspondance btw DV_Tags and DV_List
+            nozzle.DV_Head = []; # correspondance btw DV_Tags and dvList
             
             for i in range(0,2*dv_keys_size,2):
                 key = hdl[i];
@@ -1422,9 +1423,144 @@ class Nozzle:
 
         if output == 'verbose':
             sys.stdout.write('Setup Wall complete\n');
+            
+            
+    def InitializeOutput(self, qoi, value=-1, gradients=None):
+    
+        nozzle = self;
+        
+        # --- Define possible QOI names
 
+        # Requiring only nozzle shape info
+        shape_scalar = ['MASS', 'MASS_WALL_ONLY', 'VOLUME'];
+        
+        # Requiring aero analysis
+        aero_scalar = ['THRUST'];
+        aero_field = ['WALL_PRESSURE','PRESSURE','VELOCITY'];
+        
+        # Requiring structural analysis
+        struct_scalar = ['KS_TOTAL_STRESS', 'PN_TOTAL_STRESS', 
+                     'MAX_TOTAL_STRESS', 'MAX_MECHANICAL_STRESS',
+                     'MAX_THERMAL_STRESS', 'MAX_FAILURE_CRITERIA', 
+                     'KS_FAILURE_CRITERIA', 'PN_FAILURE_CRITERIA'];
+        
+        # Requiring thermal analysis
+        therm_scalar = ['KS_TEMPERATURE','PN_TEMPERATURE','MAX_TEMPERATURE',
+                     'KS_TEMP_RATIO','PN_TEMP_RATIO','MAX_TEMP_RATIO'];
+        therm_field = ['WALL_TEMPERATURE'];
 
-    def ParseDV (self, config, output='verbose'):
+        # Prefixes which can be appended to stress and temperature outputs
+        prefix = [];
+        for i in range(len(nozzle.wall.layer)):
+            prefix.append(nozzle.wall.layer[i].name);
+        if nozzle.stringers.n > 0:
+            prefix.append('STRINGERS');
+        for i in range(nozzle.baffles.n):
+            prefix.append('BAFFLE' + str(i+1));
+        nozzle.prefixLabels = prefix;
+        
+        # --- Check that QOI name is acceptable
+        generalResponseNames = shape_scalar + aero_scalar + aero_field + \
+            struct_scalar + therm_scalar + therm_field;
+        specificResponseNames = []
+        for p in prefix:
+            for item in struct_scalar:
+                specificResponseNames.append(p + '_' + item);
+        for p in prefix:
+            for item in therm_scalar:
+                specificResponseNames.append(p + '_' + item);
+        
+        # Initialize responses and gradients
+        if isinstance(qoi,list):
+            for item in qoi:
+                if (item in generalResponseNames) or (item in specificResponseNames):
+                    nozzle.responses[item] = value;
+                    nozzle.gradients[item] = gradients;
+                else: 
+                    sys.stderr.write('  ## ERROR : %s not accepted as output QOI\n\n' % item);
+                    sys.exit(1);
+        else:
+            if (qoi in generalResponseNames) or (qoi in specificResponseNames):
+                nozzle.responses[qoi] = value;
+                nozzle.gradients[qoi] = gradients;
+            else: 
+                sys.stderr.write('  ## ERROR : %s not accepted as output QOI\n\n' % qoi);
+                sys.exit(1);
+                
+        return;
+        
+        
+    def SetOutput(self, qoi, value=None, gradients=None):
+    
+        nozzle = self;
+        
+        if isinstance(qoi,list):
+            for i in range(len(qoi)):
+            
+                if value(i) is not None:
+                    if qoi(i) in nozzle.responses:
+                        nozzle.responses[qoi[i]] = value[i];
+                    else:
+                        sys.stderror.write('  ## ERROR : %s not initialized for output QOI response\n\n' % qoi[i]);
+                        sys.exit(1);
+                
+                if gradients[i] is not None:
+                    if qoi(i) in nozzle.gradients:
+                        nozzle.gradients[qoi[i]] = gradients[i];
+                    else:
+                        sys.stderror.write('  ## ERROR : %s not initialized for output QOI gradients\n\n' % qoi[i]);
+                        sys.exit(1);
+        else:
+
+            if value is not None:
+                if qoi in nozzle.responses:
+                    nozzle.responses[qoi] = value;
+                else:
+                    sys.stderror.write('  ## ERROR : %s not initialized for output QOI response\n\n' % qoi);
+                    sys.exit(1);
+            
+            if gradients is not None:
+                if qoi in nozzle.gradients:
+                    nozzle.gradients[qoi] = gradients;
+                else:
+                    sys.stderror.write('  ## ERROR : %s not initialized for output QOI gradients\n\n' % qoi);
+                    sys.exit(1);                    
+        return;
+
+        
+    def GetOutput(self, qoi):
+    
+        nozzle = self;
+        
+        if isinstance(qoi,list):
+            responseList = [];
+            gradientList = [];
+            for i in range(len(qoi)):            
+                responseList.append(nozzle.responses[qoi[i]]);
+                gradientList.append(nozzle.gradients[qoi[i]]);
+            
+            return responseList, gradientList;
+            
+        else:
+        
+            if nozzle.responses[qoi] is None and nozzle.gradients[qoi] is None:
+            
+                return None;
+                
+            elif nozzle.responses[qoi] is None:
+            
+                return nozzle.gradients;
+                
+            elif nozzle.gradients[qoi] is None:
+            
+                return nozzle.responses[qoi];
+                
+            else:
+
+                return nozzle.responses[qoi], nozzle.gradients[qoi];             
+            
+
+    def ParseDV(self, config, output='verbose'):
         
         nozzle = self;
         
@@ -1443,11 +1579,18 @@ class Nozzle:
             sys.exit(0);
                 
         if inputDVformat == 'PLAIN':
-			DV_List, OutputCode, Derivatives_DV = ParseDesignVariables_Plain(filename);    
-			NbrDV = len(DV_List);             
+			dvList, outputCode, derivativesDV = ParseDesignVariables_Plain(filename); 
+			# Must assign outputCode separately here
+			if nozzle.output_gradients == 1:
+			    for i in range(len(nozzle.outputTags)):
+			        outputCode.append(3); # output function value and gradient
+			else:
+			    for i in range(len(nozzle.outputTags)):
+			        outputCode.append(1); # output function value only   
+			NbrDV = len(dvList);
         elif inputDVformat == 'DAKOTA' :
-			DV_List, OutputCode, Derivatives_DV = ParseDesignVariables_Dakota(filename);    
-			NbrDV = len(DV_List);
+			dvList, outputCode, derivativesDV = ParseDesignVariables_Dakota(filename);    
+			NbrDV = len(dvList);
         else:
             sys.stderr.write('\n ## ERROR : Unknown DV input file format '    \
               '%s\n\n' % inputDVformat);
@@ -1460,15 +1603,13 @@ class Nozzle:
               (NbrDV, nozzle.NbrDVTot ));
             sys.exit(0);
         
-        nozzle.DV_List = DV_List;
-        nozzle.OutputCode = OutputCode;
-		
-        nozzle.thrust_gradients = 'NO'
-        nozzle.mass_gradients = 'NO'
+        nozzle.dvList = dvList;
+        nozzle.outputCode = outputCode;
+        nozzle.derivativesDV = derivativesDV;
 
-        for i in range(0, len(nozzle.Output_Tags)):     
+        for i in range(0, len(nozzle.outputTags)):     
             
-            tag  = nozzle.Output_Tags[i];
+            tag  = nozzle.outputTags[i];
             
             # 6 Get Hessian, gradient, and value Get Hessian and gradient
             # 5 Get Hessian and value
@@ -1477,39 +1618,23 @@ class Nozzle:
             # 2 Get gradient
             # 1 Get value
             # 0 No data required, function is inactive
-            if inputDVformat == 'PLAIN':
-                code = 1;
-            else:
-                code = nozzle.OutputCode[i];
+            code = nozzle.outputCode[i];
             
-            out_gra = 0;
-            out_val  = 0;
-            
-            if code == 1 or code == 0 :
-            	out_val = 1;
-            elif code == 2:
-            	out_gra = 1;
-            elif code == 3:
-            	out_val = 1;
-            	out_gra = 1;
+
+            if code == 1: # Output value only
+                nozzle.SetOutput(tag,value=-1,gradients=None);
+            elif code == 2: # Output gradients only
+                nozzle.SetOutput(tag,value=None,gradients=[]);
+            elif code == 3: # Output value and gradients
+                nozzle.SetOutput(tag,value=-1,gradients=[]);
+
             else:
+                # code = 0: no data required, function is inactive
+                # code = 4: get Hessian
+                # code = 5: get Hessian and value
+                # code = 6: get Hessian, gradient, and value
                 sys.stderr.write('\n ## ERROR : code %i in DV input file not available\n' % code);
                 sys.exit(1);
-            
-            # Check and set flags for gradient computation
-            if out_gra == 1:   
-            
-                if inputDVformat == 'PLAIN':
-                    sys.stderr.write('  ## ERROR : plain input file format currently does not support specifying calculation of gradients. Use Dakota input file format instead.\n');
-                    sys.exit(1); 
-                                        
-                if tag == 'THRUST':
-                    nozzle.thrust_gradients = 'YES';
-                elif tag == 'MASS':
-                    nozzle.mass_gradients = 'YES';
-                else:
-                    sys.stdout.write('  ## ERROR: gradient calculation for %s not available\n' % tag);
-                    sys.exit(1);
         
         if output == 'verbose':
             sys.stdout.write('Setup Parse Design Variables complete\n');        
@@ -1540,8 +1665,8 @@ class Nozzle:
                     if id_dv >= nozzle.DV_Head[iTag]:
                         prt_name.append('Bspline coef #%d' % (iCoef+1));
                         prt_basval.append('%.4lf'% nozzle.wall.coefs[iCoef]);
-                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                        nozzle.wall.coefs[iCoef] = nozzle.DV_List[id_dv];
+                        prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                        nozzle.wall.coefs[iCoef] = nozzle.dvList[id_dv];
                         NbrChanged = NbrChanged+1;
                 continue;
             
@@ -1557,14 +1682,14 @@ class Nozzle:
                     elif id_dv < nozzle.DV_Head[iTag]+brk:
                         prt_name.append('wall temp location #%d' % (iCoord+1));
                         prt_basval.append('%.4lf'% nozzle.wall.temperature.thicknessNodes[iCoord][0]);
-                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                        nozzle.wall.temperature.thicknessNodes[iCoord][0] = nozzle.DV_List[id_dv];
+                        prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                        nozzle.wall.temperature.thicknessNodes[iCoord][0] = nozzle.dvList[id_dv];
                         NbrChanged = NbrChanged+1;
                     else: # id_dv > nozzle.DV_Head[iTag]+brk
                         prt_name.append('wall temp value #%d' % (iCoord+1-lsize));
                         prt_basval.append('%.4lf'% nozzle.wall.temperature.thicknessNodes[iCoord-lsize][1]);
-                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                        nozzle.wall.temperature.thicknessNodes[iCoord-lsize][1] = nozzle.DV_List[id_dv];
+                        prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                        nozzle.wall.temperature.thicknessNodes[iCoord-lsize][1] = nozzle.dvList[id_dv];
                         NbrChanged = NbrChanged+1;
                 continue;
                 
@@ -1575,8 +1700,8 @@ class Nozzle:
                     id_dv = nozzle.DV_Head[iTag] + iCoord;
                     prt_name.append('wall temp location #%d' % (iCoord+1));
                     prt_basval.append('%.4lf'% nozzle.wall.temperature.thicknessNodes[iCoord][0]);
-                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                    nozzle.wall.temperature.thicknessNodes[iCoord][0] = nozzle.DV_List[id_dv];
+                    prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                    nozzle.wall.temperature.thicknessNodes[iCoord][0] = nozzle.dvList[id_dv];
                     NbrChanged = NbrChanged+1;
                 check = 1;
             elif Tag == 'WALL_TEMP_VALUES':
@@ -1584,8 +1709,8 @@ class Nozzle:
                     id_dv = nozzle.DV_Head[iTag] + iCoord;                  
                     prt_name.append('wall temp value #%d' % (iCoord+1));
                     prt_basval.append('%.4lf'% nozzle.wall.temperature.thicknessNodes[iCoord][1]);
-                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                    nozzle.wall.temperature.thicknessNodes[iCoord][1] = nozzle.DV_List[id_dv];
+                    prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                    nozzle.wall.temperature.thicknessNodes[iCoord][1] = nozzle.dvList[id_dv];
                     NbrChanged = NbrChanged+1;
                 check = 1;
             if check == 1:
@@ -1605,14 +1730,14 @@ class Nozzle:
                         elif id_dv < nozzle.DV_Head[iTag]+brk:
                             prt_name.append('%s thickness location #%d' % (nozzle.wall.layer[j].name,iCoord+1));
                             prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodes[iCoord][0]);
-                            prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                            nozzle.wall.layer[j].thicknessNodes[iCoord][0] = nozzle.DV_List[id_dv];
+                            prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                            nozzle.wall.layer[j].thicknessNodes[iCoord][0] = nozzle.dvList[id_dv];
                             NbrChanged = NbrChanged+1;
                         else: # id_dv > nozzle.DV_Head[iTag]+brk
                             prt_name.append('%s thickness value #%d' % (nozzle.wall.layer[j].name,iCoord+1-lsize));
                             prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodes[iCoord-lsize][1]);
-                            prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                            nozzle.wall.layer[j].thicknessNodes[iCoord-lsize][1] = nozzle.DV_List[id_dv];
+                            prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                            nozzle.wall.layer[j].thicknessNodes[iCoord-lsize][1] = nozzle.dvList[id_dv];
                             NbrChanged = NbrChanged+1;
                     check = 1;
             if check == 1:
@@ -1626,8 +1751,8 @@ class Nozzle:
                         id_dv = nozzle.DV_Head[iTag] + iCoord;
                         prt_name.append('%s thickness location #%d' % (nozzle.wall.layer[j].name,iCoord+1));
                         prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodes[iCoord][0]);
-                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                        nozzle.wall.layer[j].thicknessNodes[iCoord][0] = nozzle.DV_List[id_dv];
+                        prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                        nozzle.wall.layer[j].thicknessNodes[iCoord][0] = nozzle.dvList[id_dv];
                         NbrChanged = NbrChanged+1;
                     check = 1;
                 elif Tag == nozzle.wall.layer[j].name + '_THICKNESS_VALUES':
@@ -1635,8 +1760,8 @@ class Nozzle:
                         id_dv = nozzle.DV_Head[iTag] + iCoord;                  
                         prt_name.append('%s thickness value #%d' % (nozzle.wall.layer[j].name,iCoord+1));
                         prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodes[iCoord][1]);
-                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                        nozzle.wall.layer[j].thicknessNodes[iCoord][1] = nozzle.DV_List[id_dv];
+                        prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                        nozzle.wall.layer[j].thicknessNodes[iCoord][1] = nozzle.dvList[id_dv];
                         NbrChanged = NbrChanged+1;
                     check = 1;
             if check == 1:
@@ -1649,9 +1774,9 @@ class Nozzle:
                     id_dv = nozzle.DV_Head[iTag];
                     prt_name.append('%s thickness' % nozzle.wall.layer[j].name);
                     prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodes[0][1]);
-                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                    nozzle.wall.layer[j].thicknessNodes[0][1] = nozzle.DV_List[id_dv];
-                    nozzle.wall.layer[j].thicknessNodes[1][1] = nozzle.DV_List[id_dv];
+                    prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                    nozzle.wall.layer[j].thicknessNodes[0][1] = nozzle.dvList[id_dv];
+                    nozzle.wall.layer[j].thicknessNodes[1][1] = nozzle.dvList[id_dv];
                     NbrChanged = NbrChanged+1;
                     check = 1;
             if check == 1:
@@ -1669,36 +1794,36 @@ class Nozzle:
                     elif id_dv < nozzle.DV_Head[iTag] + brk1:
                         prt_name.append('baffle location #%d' % (iCoord+1));
                         prt_basval.append('%.4lf'% nozzle.baffles.locationNonDim[iCoord]);
-                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                        nozzle.baffles.locationNonDim[iCoord] = nozzle.DV_List[id_dv];
+                        prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                        nozzle.baffles.locationNonDim[iCoord] = nozzle.dvList[id_dv];
                         NbrChanged = NbrChanged+1;
                         # If stringer location dependent on baffle location
                         if (nozzle.stringerLocation == 'BAFFLES_LOCATION'):
                                 prt_name.append('stringer location #%d' % (iCoord+1));
                                 prt_basval.append('%.4lf'% nozzle.baffles.locationNonDim[iCoord]);
-                                prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                                nozzle.stringers.thicknessNodes[iCoord][0] = nozzle.DV_List[id_dv];
+                                prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                                nozzle.stringers.thicknessNodes[iCoord][0] = nozzle.dvList[id_dv];
                                 if (nozzle.stringerHeight == 'BAFFLES_HEIGHT'):
-                                    nozzle.stringers.heightNodes[iCoord][0] = nozzle.DV_List[id_dv];                        
+                                    nozzle.stringers.heightNodes[iCoord][0] = nozzle.dvList[id_dv];                        
                                 NbrChanged = NbrChanged+1;
                     elif id_dv < nozzle.DV_Head[iTag] + brk2:
                         prt_name.append('baffle thickness #%d' % (iCoord+1-lsize));
                         prt_basval.append('%.4lf'% nozzle.baffles.thickness[iCoord-lsize]);
-                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                        nozzle.baffles.thickness[iCoord-lsize] = nozzle.DV_List[id_dv];
+                        prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                        nozzle.baffles.thickness[iCoord-lsize] = nozzle.dvList[id_dv];
                         NbrChanged = NbrChanged+1;                        
                     else:
                         prt_name.append('baffle height #%d' % (iCoord+1-2*lsize));
                         prt_basval.append('%.4lf'% nozzle.baffles.height[iCoord-2*lsize]);
-                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                        nozzle.baffles.height[iCoord-2*lsize] = nozzle.DV_List[id_dv];
+                        prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                        nozzle.baffles.height[iCoord-2*lsize] = nozzle.dvList[id_dv];
                         NbrChanged = NbrChanged+1;   
                         # If stringer height depends on baffle height
                         if (nozzle.stringerHeight == 'BAFFLES_HEIGHT'):
                                 prt_name.append('stringer height #%d' % (iCoord+1-2*lsize));
                                 prt_basval.append('%.4lf'% nozzle.baffles.height[iCoord-2*lsize]);
-                                prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                                nozzle.stringers.heightNodes[iCoord-2*lsize][1] = nozzle.DV_List[id_dv];                     
+                                prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                                nozzle.stringers.heightNodes[iCoord-2*lsize][1] = nozzle.dvList[id_dv];                     
                                 NbrChanged = NbrChanged+1;                        
                 continue;
                 
@@ -1707,16 +1832,16 @@ class Nozzle:
                     id_dv = nozzle.DV_Head[iTag] + iCoord;
                     prt_name.append('baffle location #%d' % (iCoord+1));
                     prt_basval.append('%.4lf'% nozzle.baffles.locationNonDim[iCoord]);
-                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                    nozzle.baffles.locationNonDim[iCoord] = nozzle.DV_List[id_dv];
+                    prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                    nozzle.baffles.locationNonDim[iCoord] = nozzle.dvList[id_dv];
                     NbrChanged = NbrChanged+1;
                     # If stringer location dependent on baffle location
                     if (nozzle.stringerLocation == 'BAFFLES_LOCATION'):
                             prt_name.append('stringer location #%d' % (iCoord+1));
                             prt_basval.append('%.4lf'% nozzle.baffles.locationNonDim[iCoord]);
-                            prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                            nozzle.stringers.thicknessNodes[iCoord][0] = nozzle.DV_List[id_dv];
-                            nozzle.stringers.heightNodes[iCoord][0] = nozzle.DV_List[id_dv];                        
+                            prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                            nozzle.stringers.thicknessNodes[iCoord][0] = nozzle.dvList[id_dv];
+                            nozzle.stringers.heightNodes[iCoord][0] = nozzle.dvList[id_dv];                        
                             NbrChanged = NbrChanged+1;                    
                 continue;
                
@@ -1725,15 +1850,15 @@ class Nozzle:
                     id_dv = nozzle.DV_Head[iTag] + iCoord;
                     prt_name.append('baffle height #%d' % (iCoord+1));
                     prt_basval.append('%.4lf'% nozzle.baffles.height[iCoord]);
-                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                    nozzle.baffles.height[iCoord] = nozzle.DV_List[id_dv];
+                    prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                    nozzle.baffles.height[iCoord] = nozzle.dvList[id_dv];
                     NbrChanged = NbrChanged+1;
                     # If stringer height depends on baffle height
                     if (nozzle.stringerHeight == 'BAFFLES_HEIGHT'):
                             prt_name.append('stringer height #%d' % (iCoord+1));
                             prt_basval.append('%.4lf'% nozzle.baffles.height[iCoord]);
-                            prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                            nozzle.stringers.heightNodes[iCoord][1] = nozzle.DV_List[id_dv];                     
+                            prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                            nozzle.stringers.heightNodes[iCoord][1] = nozzle.dvList[id_dv];                     
                             NbrChanged = NbrChanged+1;
                 continue;
             
@@ -1742,8 +1867,8 @@ class Nozzle:
                     id_dv = nozzle.DV_Head[iTag] + iCoord;
                     prt_name.append('baffle thickness #%d' % (iCoord+1));
                     prt_basval.append('%.4lf'% nozzle.baffles.thickness[iCoord]);
-                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                    nozzle.baffles.thickness[iCoord] = nozzle.DV_List[id_dv];
+                    prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                    nozzle.baffles.thickness[iCoord] = nozzle.dvList[id_dv];
                     NbrChanged = NbrChanged+1;
                 continue;
                 
@@ -1759,21 +1884,21 @@ class Nozzle:
                     elif id_dv < nozzle.DV_Head[iTag]+brk1:
                         prt_name.append('stringer break location #%d' % (iCoord+1));
                         prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodes[iCoord][0]);
-                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                        nozzle.stringers.thicknessNodes[iCoord][0] = nozzle.DV_List[id_dv];
-                        nozzle.stringers.heightNodes[iCoord][0] = nozzle.DV_List[id_dv];
+                        prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                        nozzle.stringers.thicknessNodes[iCoord][0] = nozzle.dvList[id_dv];
+                        nozzle.stringers.heightNodes[iCoord][0] = nozzle.dvList[id_dv];
                         NbrChanged = NbrChanged+1;
                     elif id_dv < nozzle.DV_Head[iTag] + brk2:
                         prt_name.append('stringer height value #%d' % (iCoord+1-lsize));
                         prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodes[iCoord-lsize][1]);
-                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                        nozzle.stringers.heightNodes[iCoord-lsize][1] = nozzle.DV_List[id_dv];
+                        prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                        nozzle.stringers.heightNodes[iCoord-lsize][1] = nozzle.dvList[id_dv];
                         NbrChanged = NbrChanged+1;
                     else: # id_dv > nozzle.DV_Head[iTag]+brk
                         prt_name.append('stringer thickness value #%d' % (iCoord+1-2*lsize));
                         prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodes[iCoord-2*lsize][1]);
-                        prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                        nozzle.stringers.thicknessNodes[iCoord-2*lsize][1] = nozzle.DV_List[id_dv];
+                        prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                        nozzle.stringers.thicknessNodes[iCoord-2*lsize][1] = nozzle.dvList[id_dv];
                         NbrChanged = NbrChanged+1;
                 continue;    
                 
@@ -1783,9 +1908,9 @@ class Nozzle:
                     id_dv = nozzle.DV_Head[iTag] + iCoord;
                     prt_name.append('stringer break location #%d' % (iCoord+1));
                     prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodes[iCoord][0]);
-                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                    nozzle.stringers.thicknessNodes[iCoord][0] = nozzle.DV_List[id_dv];
-                    nozzle.stringers.heightNodes[iCoord][0] = nozzle.DV_List[id_dv];
+                    prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                    nozzle.stringers.thicknessNodes[iCoord][0] = nozzle.dvList[id_dv];
+                    nozzle.stringers.heightNodes[iCoord][0] = nozzle.dvList[id_dv];
                     NbrChanged = NbrChanged+1;
                     continue;
             
@@ -1794,8 +1919,8 @@ class Nozzle:
                     id_dv = nozzle.DV_Head[iTag] + iCoord;                  
                     prt_name.append('stringer height value #%d' % (iCoord+1));
                     prt_basval.append('%.4lf'% nozzle.stringers.heightNodes[iCoord][1]);
-                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                    nozzle.stringers.heightNodes[iCoord][1] = nozzle.DV_List[id_dv];
+                    prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                    nozzle.stringers.heightNodes[iCoord][1] = nozzle.dvList[id_dv];
                     NbrChanged = NbrChanged+1;
                     continue;
                     
@@ -1804,8 +1929,8 @@ class Nozzle:
                     id_dv = nozzle.DV_Head[iTag] + iCoord;                  
                     prt_name.append('stringer thickness value #%d' % (iCoord+1));
                     prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodes[iCoord][1]);
-                    prt_newval.append('%.4lf'% nozzle.DV_List[id_dv]);
-                    nozzle.stringers.thicknessNodes[iCoord][1] = nozzle.DV_List[id_dv];
+                    prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                    nozzle.stringers.thicknessNodes[iCoord][1] = nozzle.dvList[id_dv];
                     NbrChanged = NbrChanged+1;
                     continue;                    
                         
@@ -1823,13 +1948,13 @@ class Nozzle:
                     
                         prt_name.append('%s density' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].getDensity());
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                        nozzle.materials[k].setDensity(nozzle.DV_List[id_dv]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
+                        nozzle.materials[k].setDensity(nozzle.dvList[id_dv]);
 
                         prt_name.append('%s thermal conductivity' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].getThermalConductivity());
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);
-                        nozzle.materials[k].setThermalConductivity(nozzle.DV_List[id_dv+1]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+1]);
+                        nozzle.materials[k].setThermalConductivity(nozzle.dvList[id_dv+1]);
                         
                         NbrChanged = NbrChanged+2;
                         
@@ -1837,38 +1962,38 @@ class Nozzle:
                         
                         prt_name.append('%s density' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].getDensity());
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                        nozzle.materials[k].setDensity(nozzle.DV_List[id_dv]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
+                        nozzle.materials[k].setDensity(nozzle.dvList[id_dv]);
                         
                         prt_name.append('%s elastic modulus' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].getElasticModulus());
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);
-                        nozzle.materials[k].setElasticModulus(nozzle.DV_List[id_dv+1]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+1]);
+                        nozzle.materials[k].setElasticModulus(nozzle.dvList[id_dv+1]);
 
                         prt_name.append('%s poisson ratio' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].getPoissonRatio());
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+2]);
-                        nozzle.materials[k].setPoissonRatio(nozzle.DV_List[id_dv+2]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+2]);
+                        nozzle.materials[k].setPoissonRatio(nozzle.dvList[id_dv+2]);
 
                         prt_name.append('%s thermal conductivity' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].getThermalConductivity());
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+3]);
-                        nozzle.materials[k].setThermalConductivity(nozzle.DV_List[id_dv+3]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+3]);
+                        nozzle.materials[k].setThermalConductivity(nozzle.dvList[id_dv+3]);
 
                         prt_name.append('%s thermal expansion coef' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].getThermalExpansionCoef());
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+4]);
-                        nozzle.materials[k].setThermalExpansionCoef(nozzle.DV_List[id_dv+4]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+4]);
+                        nozzle.materials[k].setThermalExpansionCoef(nozzle.dvList[id_dv+4]);
                         
                         prt_name.append('%s failure limit' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].getFailureLimit());
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+5]);
-                        nozzle.materials[k].setFailureType(nozzle.materials[k].failureType,nozzle.DV_List[id_dv+5]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+5]);
+                        nozzle.materials[k].setFailureType(nozzle.materials[k].failureType,nozzle.dvList[id_dv+5]);
 
                         prt_name.append('%s max service temperature' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].Tmax);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+6]);
-                        nozzle.materials[k].setMaxServiceTemperature(nozzle.DV_List[id_dv+6]);                        
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+6]);
+                        nozzle.materials[k].setMaxServiceTemperature(nozzle.dvList[id_dv+6]);                        
                         
                         NbrChanged = NbrChanged+7;
                         
@@ -1876,57 +2001,57 @@ class Nozzle:
                         
                         prt_name.append('%s density' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].getDensity());
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                        nozzle.materials[k].setDensity(nozzle.DV_List[id_dv]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
+                        nozzle.materials[k].setDensity(nozzle.dvList[id_dv]);
 
                         ltemp = nozzle.materials[k].getElasticModulus();
                         prt_name.append('%s elastic modulus E1' % k);
                         prt_basval.append('%.2le' % ltemp[0]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+1]);
                         prt_name.append('%s elastic modulus E2' % k);
                         prt_basval.append('%.2le' % ltemp[1]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+2]);                        
-                        nozzle.materials[k].setElasticModulus(nozzle.DV_List[id_dv+1:id_dv+3]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+2]);                        
+                        nozzle.materials[k].setElasticModulus(nozzle.dvList[id_dv+1:id_dv+3]);
                         
                         prt_name.append('%s shear modulus' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].getShearModulus());
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+3]);
-                        nozzle.materials[k].setShearModulus(nozzle.DV_List[id_dv+3]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+3]);
+                        nozzle.materials[k].setShearModulus(nozzle.dvList[id_dv+3]);
                         
                         prt_name.append('%s poisson ratio' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].getPoissonRatio());
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+4]);
-                        nozzle.materials[k].setPoissonRatio(nozzle.DV_List[id_dv+4]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+4]);
+                        nozzle.materials[k].setPoissonRatio(nozzle.dvList[id_dv+4]);
                         
                         ltemp = nozzle.materials[k].getMutualInfluenceCoefs();
                         prt_name.append('%s mutual influence coef u1' % k);
                         prt_basval.append('%.2le' % ltemp[0]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+5]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+5]);
                         prt_name.append('%s mutual influence coef u2' % k);
                         prt_basval.append('%.2le' % ltemp[1]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+6]);                        
-                        nozzle.materials[k].setMutualInfluenceCoefs(nozzle.DV_List[id_dv+5:id_dv+7]);       
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+6]);                        
+                        nozzle.materials[k].setMutualInfluenceCoefs(nozzle.dvList[id_dv+5:id_dv+7]);       
                         
                         ltemp = nozzle.materials[k].getThermalConductivity();
                         prt_name.append('%s thermal conductivity k1' % k);
                         prt_basval.append('%.2le' % ltemp[0]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+7]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+7]);
                         prt_name.append('%s thermal conductivity k2' % k);
                         prt_basval.append('%.2le' % ltemp[1]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+8]);                        
-                        nozzle.materials[k].setThermalConductivity(nozzle.DV_List[id_dv+7:id_dv+9]);  
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+8]);                        
+                        nozzle.materials[k].setThermalConductivity(nozzle.dvList[id_dv+7:id_dv+9]);  
 
                         ltemp = nozzle.materials[k].getThermalExpansionCoef();
                         prt_name.append('%s thermal expansion coef a1' % k);
                         prt_basval.append('%.2le' % ltemp[0]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+9]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+9]);
                         prt_name.append('%s thermal expansion coef a2' % k);
                         prt_basval.append('%.2le' % ltemp[1]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+10]);           
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+10]);           
                         prt_name.append('%s thermal expansion coef a12' % k);
                         prt_basval.append('%.2le' % ltemp[2]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+11]);                         
-                        nozzle.materials[k].setThermalExpansionCoef(nozzle.DV_List[id_dv+9:id_dv+12]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+11]);                         
+                        nozzle.materials[k].setThermalExpansionCoef(nozzle.dvList[id_dv+9:id_dv+12]);
                         
                         NbrChanged = NbrChanged+12;
 
@@ -1939,208 +2064,208 @@ class Nozzle:
                 elif Tag == k + '_DENSITY':
                     prt_name.append('%s density' % k);
                     prt_basval.append('%.2le' % nozzle.materials[k].getDensity());
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                    nozzle.materials[k].setDensity(nozzle.DV_List[id_dv]);
+                    prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
+                    nozzle.materials[k].setDensity(nozzle.dvList[id_dv]);
                     NbrChanged = NbrChanged + 1;
                     check = 1;
                 elif Tag == k + '_ELASTIC_MODULUS':
                     if NbrDV == 1:
                         prt_name.append('%s elastic modulus' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].getElasticModulus());
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                        nozzle.materials[k].setElasticModulus(nozzle.DV_List[id_dv]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
+                        nozzle.materials[k].setElasticModulus(nozzle.dvList[id_dv]);
                         NbrChanged = NbrChanged + 1;
                     elif NbrDV == 2:
                         ltemp = nozzle.materials[k].getElasticModulus();
                         prt_name.append('%s elastic modulus E1' % k);
                         prt_basval.append('%.2le' % ltemp[0]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
                         prt_name.append('%s elastic modulus E2' % k);
                         prt_basval.append('%.2le' % ltemp[1]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);                        
-                        nozzle.materials[k].setElasticModulus(nozzle.DV_List[id_dv:id_dv+2]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+1]);                        
+                        nozzle.materials[k].setElasticModulus(nozzle.dvList[id_dv:id_dv+2]);
                         NbrChanged = NbrChanged + 2;
                     check = 1;                        
                 elif Tag == k + '_SHEAR_MODULUS':
                     prt_name.append('%s shear modulus' % k);
                     prt_basval.append('%.2le' % nozzle.materials[k].getShearModulus());
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                    nozzle.materials[k].setShearModulus(nozzle.DV_List[id_dv]);
+                    prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
+                    nozzle.materials[k].setShearModulus(nozzle.dvList[id_dv]);
                     NbrChanged = NbrChanged + 1;
                     check = 1;
                 elif Tag == k + '_POISSON_RATIO':
                     prt_name.append('%s poisson ratio' % k);
                     prt_basval.append('%.2le' % nozzle.materials[k].getPoissonRatio());
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                    nozzle.materials[k].setPoissonRatio(nozzle.DV_List[id_dv]);
+                    prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
+                    nozzle.materials[k].setPoissonRatio(nozzle.dvList[id_dv]);
                     NbrChanged = NbrChanged + 1;
                     check = 1;
                 elif Tag == k + '_MUTUAL_INFLUENCE_COEFS':
                     ltemp = nozzle.materials[k].getMutualInfluenceCoefs();
                     prt_name.append('%s mutual influence coef u1' % k);
                     prt_basval.append('%.2le' % ltemp[0]);
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                    prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
                     prt_name.append('%s mutual influence coef u2' % k);
                     prt_basval.append('%.2le' % ltemp[1]);
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]); 
+                    prt_newval.append('%.2le'% nozzle.dvList[id_dv+1]); 
                     if NbrDV == 1:
-                        nozzle.materials[k].setMutualInfluenceCoefs(nozzle.DV_List[id_dv]);  
+                        nozzle.materials[k].setMutualInfluenceCoefs(nozzle.dvList[id_dv]);  
                     elif NbrDV == 2:                                               
-                        nozzle.materials[k].setMutualInfluenceCoefs(nozzle.DV_List[id_dv:id_dv+2]);  
+                        nozzle.materials[k].setMutualInfluenceCoefs(nozzle.dvList[id_dv:id_dv+2]);  
                     NbrChanged = NbrChanged + 2;
                     check = 1;
                 elif Tag == k + '_THERMAL_CONDUCTIVITY':
                     if NbrDV == 1:
                         prt_name.append('%s thermal conductivity' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].getThermalConductivity());
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                        nozzle.materials[k].setThermalConductivity(nozzle.DV_List[id_dv]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
+                        nozzle.materials[k].setThermalConductivity(nozzle.dvList[id_dv]);
                         NbrChanged = NbrChanged + 1;
                         check = 1;
                     elif NbrDV == 2:
                         ltemp = nozzle.materials[k].getThermalConductivity();
                         prt_name.append('%s thermal conductivity k1' % k);
                         prt_basval.append('%.2le' % ltemp[0]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
                         prt_name.append('%s thermal conductivity k2' % k);
                         prt_basval.append('%.2le' % ltemp[1]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);                        
-                        nozzle.materials[k].setThermalConductivity(nozzle.DV_List[id_dv:id_dv+2]);    
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+1]);                        
+                        nozzle.materials[k].setThermalConductivity(nozzle.dvList[id_dv:id_dv+2]);    
                         NbrChanged = NbrChanged + 2;
                         check = 1;
                     elif NbrDV == 3:
                         ltemp = nozzle.materials[k].getThermalConductivity();
                         prt_name.append('%s thermal conductivity k1' % k);
                         prt_basval.append('%.2le' % ltemp[0]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
                         prt_name.append('%s thermal conductivity k2' % k);
                         prt_basval.append('%.2le' % ltemp[1]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);          
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+1]);          
                         prt_name.append('%s thermal conductivity k3' % k);
                         prt_basval.append('%.2le' % ltemp[2]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+2]);                                                
-                        nozzle.materials[k].setThermalConductivity(nozzle.DV_List[id_dv:id_dv+3]);    
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+2]);                                                
+                        nozzle.materials[k].setThermalConductivity(nozzle.dvList[id_dv:id_dv+3]);    
                         NbrChanged = NbrChanged + 3;
                         check = 1;                       
                 elif Tag == k + '_THERMAL_EXPANSION_COEF':
                     if NbrDV == 1:
                         prt_name.append('%s thermal expansion coef' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].getThermalExpansionCoef());
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                        nozzle.materials[k].setThermalExpansionCoef(nozzle.DV_List[id_dv]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
+                        nozzle.materials[k].setThermalExpansionCoef(nozzle.dvList[id_dv]);
                         NbrChanged = NbrChanged + 1;
                         check = 1;
                     elif NbrDV == 3:
                         ltemp = nozzle.materials[k].getThermalExpansionCoef();
                         prt_name.append('%s thermal expansion coef a1' % k);
                         prt_basval.append('%.2le' % ltemp[0]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
                         prt_name.append('%s thermal expansion coef a2' % k);
                         prt_basval.append('%.2le' % ltemp[1]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);           
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+1]);           
                         prt_name.append('%s thermal expansion coef a12' % k);
                         prt_basval.append('%.2le' % ltemp[2]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+2]);                         
-                        nozzle.materials[k].setThermalExpansionCoef(nozzle.DV_List[id_dv:id_dv+3]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+2]);                         
+                        nozzle.materials[k].setThermalExpansionCoef(nozzle.dvList[id_dv:id_dv+3]);
                         NbrChanged = NbrChanged + 3;
                         check = 1;
                 elif Tag == k + '_PRINCIPLE_FAILURE_STRAIN':
                     if NbrDV == 1:
                         prt_name.append('%s principal failure strain' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].failureStrain[0]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                        nozzle.materials[k].setFailureType('PRINCIPLE_FAILURE_STRAIN',nozzle.DV_List[id_dv]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
+                        nozzle.materials[k].setFailureType('PRINCIPLE_FAILURE_STRAIN',nozzle.dvList[id_dv]);
                         NbrChanged = NbrChanged + 1;
                         check = 1;
                     elif NbrDV == 2:
                         prt_name.append('%s principal failure strain (tension)' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].failureStrain[0]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
                         prt_name.append('%s principal failure strain (compression)' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].failureStrain[1]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);                        
-                        nozzle.materials[k].setFailureType('PRINCIPLE_FAILURE_STRAIN',nozzle.DV_List[id_dv:id_dv+2]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+1]);                        
+                        nozzle.materials[k].setFailureType('PRINCIPLE_FAILURE_STRAIN',nozzle.dvList[id_dv:id_dv+2]);
                         NbrChanged = NbrChanged + 2;
                         check = 1;                        
                     elif NbrDV == 5:
                         prt_name.append('%s principal failure strain e1 (tension)' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].failureStrain[0]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
                         prt_name.append('%s principal failure strain e1 (compression)' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].failureStrain[1]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);   
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+1]);   
                         prt_name.append('%s principal failure strain e2 (tension)' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].failureStrain[2]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+2]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+2]);
                         prt_name.append('%s principal failure strain e2 (compression)' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].failureStrain[3]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+3]);   
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+3]);   
                         prt_name.append('%s principal failure strain e12' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].failureStrain[4]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+4]);                          
-                        nozzle.materials[k].setFailureType('PRINCIPLE_FAILURE_STRAIN',nozzle.DV_List[id_dv:id_dv+5]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+4]);                          
+                        nozzle.materials[k].setFailureType('PRINCIPLE_FAILURE_STRAIN',nozzle.dvList[id_dv:id_dv+5]);
                         NbrChanged = NbrChanged + 5;
                         check = 1; 
                 elif Tag == k + '_LOCAL_FAILURE_STRAIN':
                     if NbrDV == 1:
                         prt_name.append('%s local failure strain' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].failureStrain[0]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                        nozzle.materials[k].setFailureType('LOCAL_FAILURE_STRAIN',nozzle.DV_List[id_dv]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
+                        nozzle.materials[k].setFailureType('LOCAL_FAILURE_STRAIN',nozzle.dvList[id_dv]);
                         NbrChanged = NbrChanged + 1;
                         check = 1;
                     elif NbrDV == 2:
                         prt_name.append('%s local failure strain (tension)' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].failureStrain[0]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
                         prt_name.append('%s local failure strain (compression)' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].failureStrain[1]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);                        
-                        nozzle.materials[k].setFailureType('LOCAL_FAILURE_STRAIN',nozzle.DV_List[id_dv:id_dv+2]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+1]);                        
+                        nozzle.materials[k].setFailureType('LOCAL_FAILURE_STRAIN',nozzle.dvList[id_dv:id_dv+2]);
                         NbrChanged = NbrChanged + 2;
                         check = 1;                        
                     elif NbrDV == 5:
                         prt_name.append('%s local failure strain e1 (tension)' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].failureStrain[0]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
                         prt_name.append('%s local failure strain e1 (compression)' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].failureStrain[1]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);   
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+1]);   
                         prt_name.append('%s local failure strain e2 (tension)' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].failureStrain[2]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+2]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+2]);
                         prt_name.append('%s local failure strain e2 (compression)' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].failureStrain[3]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+3]);   
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+3]);   
                         prt_name.append('%s local failure strain e12' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].failureStrain[4]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+4]);                          
-                        nozzle.materials[k].setFailureType('LOCAL_FAILURE_STRAIN',nozzle.DV_List[id_dv:id_dv+5]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+4]);                          
+                        nozzle.materials[k].setFailureType('LOCAL_FAILURE_STRAIN',nozzle.dvList[id_dv:id_dv+5]);
                         NbrChanged = NbrChanged + 5;
                         check = 1; 
                 elif Tag == k + '_YIELD_STRESS':
                     if NbrDV == 1:
                         prt_name.append('%s yield stress' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].yieldStress);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                        nozzle.materials[k].setFailureType('VON_MISES',nozzle.DV_List[id_dv]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
+                        nozzle.materials[k].setFailureType('VON_MISES',nozzle.dvList[id_dv]);
                         NbrChanged = NbrChanged + 1;
                         check = 1;
                     elif NbrDV == 2:
                         prt_name.append('%s yield stress direction 1' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].yieldStress[0]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
                         prt_name.append('%s yield stress direction 2' % k);
                         prt_basval.append('%.2le' % nozzle.materials[k].yieldStress[1]);
-                        prt_newval.append('%.2le'% nozzle.DV_List[id_dv+1]);                        
-                        nozzle.materials[k].setFailureType('VON_MISES',nozzle.DV_List[id_dv:id_dv+2]);
+                        prt_newval.append('%.2le'% nozzle.dvList[id_dv+1]);                        
+                        nozzle.materials[k].setFailureType('VON_MISES',nozzle.dvList[id_dv:id_dv+2]);
                         NbrChanged = NbrChanged + 2;
                         check = 1;                
                 elif Tag == k + '_MAX_SERVICE_TEMPERATURE':
                     prt_name.append('%s max service temp' % k);
                     prt_basval.append('%.2le' % nozzle.materials[k].Tmax);
-                    prt_newval.append('%.2le'% nozzle.DV_List[id_dv]);
-                    nozzle.materials[k].setMaxServiceTemperature(nozzle.DV_List[id_dv]);
+                    prt_newval.append('%.2le'% nozzle.dvList[id_dv]);
+                    nozzle.materials[k].setMaxServiceTemperature(nozzle.dvList[id_dv]);
                     NbrChanged = NbrChanged + 1;
                     check = 1;            
             if check == 1:
@@ -2150,8 +2275,8 @@ class Nozzle:
                 id_dv = nozzle.DV_Head[iTag];                
                 prt_name.append('Inlet stagnation pressure');
                 prt_basval.append('%.2lf'% nozzle.inlet.Pstag);
-                prt_newval.append('%.2lf'% nozzle.DV_List[id_dv]);                
-                nozzle.inlet.setPstag(nozzle.DV_List[id_dv]);
+                prt_newval.append('%.2lf'% nozzle.dvList[id_dv]);                
+                nozzle.inlet.setPstag(nozzle.dvList[id_dv]);
                 NbrChanged = NbrChanged + 1;
                 continue;
                 
@@ -2159,8 +2284,8 @@ class Nozzle:
                 id_dv = nozzle.DV_Head[iTag];                
                 prt_name.append('Inlet stagnation temperature');
                 prt_basval.append('%.2lf'% nozzle.inlet.Tstag);
-                prt_newval.append('%.2lf'% nozzle.DV_List[id_dv]);                
-                nozzle.inlet.setTstag(nozzle.DV_List[id_dv]);
+                prt_newval.append('%.2lf'% nozzle.dvList[id_dv]);                
+                nozzle.inlet.setTstag(nozzle.dvList[id_dv]);
                 NbrChanged = NbrChanged + 1;
                 continue;
 
@@ -2168,8 +2293,8 @@ class Nozzle:
                 id_dv = nozzle.DV_Head[iTag];                
                 prt_name.append('Atmospheric pressure');
                 prt_basval.append('%.2lf'% nozzle.environment.P);
-                prt_newval.append('%.2lf'% nozzle.DV_List[id_dv]);                
-                nozzle.environment.setPressure(nozzle.DV_List[id_dv]);
+                prt_newval.append('%.2lf'% nozzle.dvList[id_dv]);                
+                nozzle.environment.setPressure(nozzle.dvList[id_dv]);
                 NbrChanged = NbrChanged + 1;
                 continue;
                 
@@ -2177,8 +2302,8 @@ class Nozzle:
                 id_dv = nozzle.DV_Head[iTag];                
                 prt_name.append('Atmospheric temperature');
                 prt_basval.append('%.2lf'% nozzle.environment.T);
-                prt_newval.append('%.2lf'% nozzle.DV_List[id_dv]);                
-                nozzle.environment.setTemperature(nozzle.DV_List[id_dv]);
+                prt_newval.append('%.2lf'% nozzle.dvList[id_dv]);                
+                nozzle.environment.setTemperature(nozzle.dvList[id_dv]);
                 NbrChanged = NbrChanged + 1;
                 continue;
 
@@ -2186,8 +2311,8 @@ class Nozzle:
                 id_dv = nozzle.DV_Head[iTag];                
                 prt_name.append('Heat xfer coef. to environment');
                 prt_basval.append('%.2lf'% nozzle.environment.hInf);
-                prt_newval.append('%.2lf'% nozzle.DV_List[id_dv]);                
-                nozzle.environment.setHeatTransferCoefficient(nozzle.DV_List[id_dv]);
+                prt_newval.append('%.2lf'% nozzle.dvList[id_dv]);                
+                nozzle.environment.setHeatTransferCoefficient(nozzle.dvList[id_dv]);
                 NbrChanged = NbrChanged + 1;
                 continue;
         
@@ -2209,23 +2334,22 @@ class Nozzle:
           raise ValueError('keyword argument output can only be set to "verbose" or "quiet" mode')
           
         if output == 'verbose':
-            sys.stdout.write('Setup Update Design Variables complete\n');          
-        
-    def SetupOutputFunctions (self, config, output='verbose'):
+            sys.stdout.write('Setup Update Design Variables complete\n');
+
+            
+    def SetupResponsesAndGradients (self, config, output='verbose'):
         
         nozzle = self;
         
-        nozzle.Output_Tags = [];
+        nozzle.outputTags = []; # record output tags in config file
         
-        nozzle.GetOutput = dict();
-        
-        nozzle.OutputLocations = dict(); # for field variable outputs
+        nozzle.outputLocations = dict(); # for field variable outputs
         
         if 'OUTPUT_NAME' in config:
-            nozzle.Output_Name = config['OUTPUT_NAME'];
+            nozzle.outputName = config['OUTPUT_NAME'];
         else :
             sys.stderr.write("\n ## ERROR : Output function file name not "   \
-              "specified in config file. (OUTPUT_NAME expected)\n\n");
+              "specified in config file. (outputName expected)\n\n");
             sys.exit(0);
             
         if 'OUTPUT_FORMAT' in config:
@@ -2239,228 +2363,137 @@ class Nozzle:
                 sys.exit(0);                    
         else :
             nozzle.outputFormat = 'PLAIN';
-            
-        # Determine which components have stresses and/or temperatures calculated
-        nozzle.stressComponentList = list();
-        nozzle.tempComponentList = list();
-        # Add elements to stress component list
-        for i in range(len(nozzle.wall.layer)):
-            nozzle.stressComponentList.append(nozzle.wall.layer[i].name);
-        nozzle.stressComponentList.append('STRINGERS');
-        for i in range(nozzle.baffles.n):
-            nozzle.stressComponentList.append('BAFFLE' + str(i+1));
-        # Add elements to temperature component list
-        for i in range(len(nozzle.wall.layer)):
-            nozzle.tempComponentList.append(nozzle.wall.layer[i].name);
         
-        # --- Initialize outputs
-        nozzle.mass = -1;
-        nozzle.mass_wall_only = -1;
-        nozzle.volume = -1;
-        nozzle.thrust = -1;
-        nozzle.ks_total_stress = list();
-        nozzle.pn_total_stress = list();
-        nozzle.max_total_stress = list();
-        nozzle.max_thermal_stress = list();
-        nozzle.max_mechanical_stress = list();
-        nozzle.max_failure_criteria = list();
-        nozzle.ks_failure_criteria = list();
-        nozzle.pn_failure_criteria = list();
-        for i in range(len(nozzle.stressComponentList)):
-            nozzle.ks_total_stress.append(-1);
-            nozzle.pn_total_stress.append(-1);
-            nozzle.max_total_stress.append(-1);
-            nozzle.max_thermal_stress.append(-1);
-            nozzle.max_mechanical_stress.append(-1);
-            nozzle.max_failure_criteria.append(-1);
-            nozzle.ks_failure_criteria.append(-1);
-            nozzle.pn_failure_criteria.append(-1);
-        nozzle.ks_temperature = list();
-        nozzle.pn_temperature = list();
-        nozzle.max_temperature = list();
-        nozzle.ks_temp_ratio = list();
-        nozzle.pn_temp_ratio = list();
-        nozzle.max_temp_ratio = list();
-        for i in range(len(nozzle.tempComponentList)):
-            nozzle.ks_temperature.append(-1);
-            nozzle.pn_temperature.append(-1);
-            nozzle.max_temperature.append(-1); 
-            nozzle.ks_temp_ratio.append(-1);
-            nozzle.pn_temp_ratio.append(-1);
-            nozzle.max_temp_ratio.append(-1);
-        nozzle.wall_temperature = -1;
-        nozzle.wall_pressure = -1;
-        nozzle.pressure = -1;
-        nozzle.velocity = -1;
-        
+        outputTags = []
         if 'OUTPUT_FUNCTIONS' in config:
             
-            # Possible output functions
-            dv_scalar = ['MASS', 'MASS_WALL_ONLY', 'VOLUME', 'THRUST'];
-            dv_stress = ['KS_TOTAL_STRESS', 'PN_TOTAL_STRESS', 
-                         'MAX_TOTAL_STRESS', 'MAX_MECHANICAL_STRESS',
-                         'MAX_THERMAL_STRESS'];
-            dv_failure = ['MAX_FAILURE_CRITERIA', 'KS_FAILURE_CRITERIA',
-                          'PN_FAILURE_CRITERIA'];
-            dv_temp = ['KS_TEMPERATURE','PN_TEMPERATURE','MAX_TEMPERATURE'];
-            dv_tempRatio = ['KS_TEMP_RATIO','PN_TEMP_RATIO','MAX_TEMP_RATIO'];
-            dv_field = ['WALL_TEMPERATURE','WALL_PRESSURE','PRESSURE','VELOCITY'];
-            dv_keys = dv_scalar + dv_stress + dv_failure + dv_temp + \
-                      dv_tempRatio + dv_field;
-            
-            # Stress and temperature outputs can have prefixes appended to them
-            stress_prefix = [];
-            temp_prefix = [];
-            for i in range(len(nozzle.wall.layer)):
-                stress_prefix.append(nozzle.wall.layer[i].name);
-                temp_prefix.append(nozzle.wall.layer[i].name);
-            if nozzle.stringers.n > 0:
-                stress_prefix.append('STRINGERS');
-            for i in range(nozzle.baffles.n):
-                stress_prefix.append('BAFFLE' + str(i+1));
-                
-            for key in dv_keys:
-                if key in dv_scalar:
-                    nozzle.GetOutput[key] = 0;
-                elif key in dv_stress:
-                    nozzle.GetOutput[key] = [0]*len(stress_prefix);
-                elif key in dv_failure:
-                    nozzle.GetOutput[key] = [0]*len(stress_prefix);
-                elif key in dv_temp:
-                    nozzle.GetOutput[key] = [0]*len(temp_prefix);
-                elif key in dv_tempRatio:
-                    nozzle.GetOutput[key] = [0]*len(temp_prefix);
-                elif key in dv_field:
-                    nozzle.GetOutput[key] = 0;
-
+            # Obtain output functions of interest
             hdl = config['OUTPUT_FUNCTIONS'].strip('()');
             hdl = hdl.split(",");
             
             for i in range(len(hdl)):
-                
-                key = hdl[i].strip();
+                outputTags.append(hdl[i].strip());
+            nozzle.outputTags = outputTags;
+            
+	        # Initialize gradients computation flags	
+            nozzle.output_gradients = 0;
+            nozzle.gradients_method = 'NONE';
+	        
+            # Assign information for gradient calculation if necessary
+            if ('OUTPUT_GRADIENTS' in config) and (config['OUTPUT_GRADIENTS'] == 'YES'):
+
+                nozzle.output_gradients = 1;
+                if 'OUTPUT_GRADIENTS_FILENAME' in config:
+                    nozzle.output_gradients_filename = config['OUTPUT_GRADIENTS_FILENAME'];	
+                else:
+                    nozzle.output_gradients_filename = 'gradients.dat';		    
+
+                # Set gradient computation method & required information
+                if 'GRADIENTS_COMPUTATION_METHOD' in config:
+
+                    if config['GRADIENTS_COMPUTATION_METHOD'] == 'FINITE_DIFF': 
+                        nozzle.gradients_method = 'FINITE_DIFF';
+
+                        if 'FD_STEP_SIZE' in config: # absolute forward finite difference step size
+                            nozzle.fd_step_size = config['FD_STEP_SIZE'].strip('()');
+                            if ',' in nozzle.fd_step_size: # Different step size for all vars
+                                nozzle.fd_step_size = nozzle.fd_step_size.split(',');
+                                nozzle.fd_step_size = [float(i) for i in nozzle.fd_step_size];
+                            else: # Single step size for all variables
+                                nozzle.fd_step_size = float(nozzle.fd_step_size);
+                        else:
+                            sys.stderr.write("  ## ERROR : FD_STEP_SIZE not specified in config file.\n\n");
+                            sys.exit(1);
+
+                    elif config['GRADIENTS_COMPUTATION_METHOD'] == 'ADJOINT':
+                        nozzle.gradients_method = 'ADJOINT';
                         
-                if( key in dv_scalar ):
-                    nozzle.GetOutput[key] = 1;
-                    nozzle.Output_Tags.append(key);                                  
-                elif( key == 'MAX_THERMAL_STRESS' ):
-                    if nozzle.structuralFlag == 1 and nozzle.thermalFlag == 1:
-                        nozzle.GetOutput[key] = [1]*len(stress_prefix);
-                        nozzle.Output_Tags.append(key);
+                        # Some derivatives may need finite differencing
+                        if 'FD_STEP_SIZE' in config: # absolute forward finite difference step size
+                            nozzle.fd_step_size = config['FD_STEP_SIZE'].strip('()');
+                            if ',' in nozzle.fd_step_size: # Different step size for all vars
+                                nozzle.fd_step_size = nozzle.fd_step_size.split(',');
+                                nozzle.fd_step_size = [float(i) for i in nozzle.fd_step_size];
+                            else: # Single step size for all variables
+                                nozzle.fd_step_size = float(nozzle.fd_step_size); 
+                        else:
+                            sys.stdout.write('Even though ADJOINT gradients have been specified, '
+                              'specifying FD_STEP_SIZE is a good idea too.');
+
                     else:
-                        sys.stderr.write('\n ## ERROR : %s cannot be '        \
-                          'returned if THERMAL_ANALYSIS= 0 or '               \
-                          'STRUCTURAL_ANALYSIS= 0.\n\n' % key);
-                        sys.exit(0);  
-                elif( key in dv_stress ):
-                    if nozzle.structuralFlag == 1:
-                        nozzle.GetOutput[key] = [1]*len(stress_prefix);
-                        nozzle.Output_Tags.append(key);
-                    else:
-                        sys.stderr.write('\n ## ERROR : %s cannot be '        \
-                          'returned if STRUCTURAL_ANALYSIS= 0.\n\n' % key);
-                        sys.exit(0);        
-                elif( key in dv_failure ):
-                    if nozzle.structuralFlag == 1:
-                        nozzle.GetOutput[key] = [1]*len(stress_prefix);
-                        nozzle.Output_Tags.append(key);
-                    else:
-                        sys.stderr.write('\n ## ERROR : %s cannot be '        \
-                          'returned if STRUCTURAL_ANALYSIS= 0.\n\n' % key);
-                        sys.exit(0);                          
-                elif( key in dv_temp):
-                    if nozzle.thermalFlag == 1:
-                        nozzle.GetOutput[key] = [1]*len(temp_prefix);
-                        nozzle.Output_Tags.append(key);
-                    else:
-                        sys.stderr.write('\n ## ERROR : %s cannot be '        \
-                          'returned if THERMAL_ANALYSIS= 0\n\n' % key);  
-                elif( key in dv_tempRatio):
-                    if nozzle.thermalFlag == 1:
-                        nozzle.GetOutput[key] = [1]*len(temp_prefix);
-                        nozzle.Output_Tags.append(key);
-                    else:
-                        sys.stderr.write('\n ## ERROR : %s cannot be '        \
-                          'returned if THERMAL_ANALYSIS= 0\n\n' % key);   
-                elif( key in dv_field ):
-                    nozzle.GetOutput[key] = 1;
-                    nozzle.Output_Tags.append(key);
-                    # Also extract necessary information for field
-                    if( key+'_LOCATIONS' in config ):
-                        loc = config[key+'_LOCATIONS'].strip('()')
-                        loc = loc.split(';')
-                        try: # list of numbers given
-                            float(loc[0].split(',')[0])
-                            tmp = 1
-                        except: # filename given
-                            tmp = 0
-                        if( tmp ): # list of numbers given
-                            locList = []
-                            for item in loc:
-                                item2 = item.split(',')
-                                locList.append([float(e) for e in item2])
-                            nozzle.OutputLocations[key] = np.squeeze(np.array(locList))                        
-                        else: # filename given
-                            nozzle.OutputLocations[key] = np.loadtxt(loc[0])                               
-                    else:
-                        sys.stderr.write('\n ## ERROR : key %s_LOCATIONS ' \
-                          'not found in config file to specify location of ' \
-                          'requested output responses\n\n')
-                else: # cycle through all possible more specific names for stress and temp
-                    # check stress first         
-                    assigned = 0;
-                    for prefix in stress_prefix:
-                        for k in dv_stress:
-                            if key == prefix + '_' + k:
-                                nozzle.GetOutput[k][stress_prefix.index(prefix)] = 1;
-                                nozzle.Output_Tags.append(key);
-                                assigned = 1;
-                                continue;
-                    for prefix in stress_prefix:
-                        for k in dv_failure:
-                            if key == prefix + '_' + k:
-                                nozzle.GetOutput[k][stress_prefix.index(prefix)] = 1;
-                                nozzle.Output_Tags.append(key);
-                                assigned = 1;
-                                continue;                                
-                    for prefix in temp_prefix:
-                        for k in dv_temp:
-                            if key == prefix + '_' + k:
-                                nozzle.GetOutput[k][temp_prefix.index(prefix)] = 1;
-                                nozzle.Output_Tags.append(key);
-                                assigned = 1;
-                                continue;
-                    for prefix in temp_prefix:
-                        for k in dv_tempRatio:
-                            if key == prefix + '_' + k:
-                                nozzle.GetOutput[k][temp_prefix.index(prefix)] = 1;
-                                nozzle.Output_Tags.append(key);
-                                assigned = 1;
-                                continue;
-                    if assigned == 0:
-                        string = '';
-                        for k in dv_keys :
-                            string = "%s %s " % (string,k);
-                        sys.stderr.write('\n ## ERROR : Unknown output '          \
-                          'function name : %s\n' % key);
-                        sys.stderr.write('             Expected = %s\n\n' % string);
-                        sys.exit(0);
-                
-            # for i in keys
-        
-        if len(nozzle.Output_Tags) == 0 :
-            sys.stderr.write("\n  ## Error : No output function was given.\n\n");
-            sys.exit(0);
+                        sys.stderr.write("  ## ERROR : Invalid entry for GRADIENTS_COMPUTATION_METHOD option (expected: ADJOINT or FINITE_DIFF)\n");
+                        sys.exit(1);
+
+                # Initialize function values and gradients 
+                nozzle.InitializeOutput(outputTags,value=-1,gradients=None);
+	            
+            else:
+
+                # Intialize function values only
+                nozzle.InitializeOutput(outputTags,value=-1,gradients=None);
+
+#                elif( key in dv_field ):
+#                    nozzle.GetOutput[key] = 1;
+##                    nozzle.Output_Tags.append(key);
+ #                   # Also extract necessary information for field
+ #                   if( key+'_LOCATIONS' in config ):
+ #                       loc = config[key+'_LOCATIONS'].strip('()')
+ #                       loc = loc.split(';')
+ #                       try: # list of numbers given
+ ##                           float(loc[0].split(',')[0])
+  #                          tmp = 1
+  #                      except: # filename given
+  #                          tmp = 0
+  #                      if( tmp ): # list of numbers given
+  #                          locList = []
+  #                          for item in loc:
+  #                              item2 = item.split(',')
+  #                              locList.append([float(e) for e in item2])
+  #                          nozzle.outputLocations[key] = np.squeeze(np.array(locList))                        
+  #                      else: # filename given
+  #                          nozzle.outputLocations[key] = np.loadtxt(loc[0])                               
+  #                  else:
+  #                      sys.stderr.write('\n ## ERROR : key %s_LOCATIONS ' \
+  ##                        'not found in config file to specify location of ' \
+   #                       'requested output responses\n\n')
+   
+        # Initialize output locations for QoI internal to nozzle flow
+        for qoi in outputTags:
+            if qoi in ['WALL_PRESSURE', 'PRESSURE', 'VELOCITY', 'WALL_TEMPERATURE']:
+                if( qoi + '_LOCATIONS' in config ):
+                    loc = config[qoi+'_LOCATIONS'].strip('()')
+                    loc = loc.split(';')
+                    try: # list of numbers given
+                        float(loc[0].split(',')[0])
+                        tmp = 1
+                    except: # filename given
+                        tmp = 0
+                    if( tmp ): # list of numbers given
+                        locList = []
+                        for item in loc:
+                            item2 = item.split(',')
+                            locList.append([float(e) for e in item2])
+                        nozzle.outputLocations[qoi] = np.squeeze(np.array(locList))                        
+                    else: # filename given
+                        nozzle.outputLocations[qoi] = np.loadtxt(loc[0])                               
+                else:
+                    sys.stderr.write('\n ## ERROR : key %s_LOCATIONS '
+                      'not found in config file to specify location of '
+                      'requested output responses\n\n' % qoi)
+
+        if len(nozzle.outputTags) == 0 :
+            sys.stderr.write("\n  ## ERROR : No output function was given.\n\n");
+            sys.exit(1);
         
         if output == 'verbose':
-            sys.stdout.write('Setup Output Functions complete\n');
+            sys.stdout.write('Setup Responses and Gradients complete\n');  
 
 
     def WriteOutputFunctions_Plain (self, output='verbose'):
-      
+    
         nozzle = self;
 
-        filename = nozzle.Output_Name;
+        filename = nozzle.outputName;
         
         if output == 'verbose':
             sys.stdout.write('\n');
@@ -2470,362 +2503,34 @@ class Nozzle:
             sys.stdout.write(string);
             sys.stdout.write('-' * nch);
             sys.stdout.write('\n\n');
-        elif output == 'quiet':
-            pass
-        else:
-            raise ValueError('keyword argument output can only be set to '    \
-              '"verbose" or "quiet" mode')
         
         try:
             fil = open(filename, 'w');
         except:
             sys.stderr.write("  ## ERROR : Could not open output file %s\n" % filename);
-            sys.exit(0);
+            sys.exit(1);
   
         if output == 'verbose':
             sys.stdout.write('  -- Info : Output functions file : %s\n' % filename);
-        elif output == 'quiet':
-            pass
-        else:
-            raise ValueError('keyword argument output can only be set to '    \
-              '"verbose" or "quiet" mode')
               
         # Stress and temperature outputs can have prefixes appended to them
-        stress_prefix = [];
-        temp_prefix = [];
+        prefix = [];
         for i in range(len(nozzle.wall.layer)):
-            stress_prefix.append(nozzle.wall.layer[i].name);
-            temp_prefix.append(nozzle.wall.layer[i].name);
+            prefix.append(nozzle.wall.layer[i].name);
         if nozzle.stringers.n > 0:
-            stress_prefix.append('STRINGERS');
+            prefix.append('STRINGERS');
         for i in range(nozzle.baffles.n):
-            stress_prefix.append('BAFFLE' + str(i+1)); 
+            prefix.append('BAFFLE' + str(i+1)); 
 
         # For printing to screen
         prt_item = list();
         prt_comp = list();
-        prt_val = list();             
-
-        for i in range(0, len(nozzle.Output_Tags)):
-          
-            tag = nozzle.Output_Tags[i];
-
-            tag = nozzle.Output_Tags[i];
-    
-            if tag == 'MASS':
-                fil.write('%0.16f\n' % nozzle.mass);
-                prt_item.append('mass');
-                prt_comp.append('');
-                prt_val.append('%0.16f' % nozzle.mass); 
-                    
-            elif tag == 'MASS_WALL_ONLY':
-                fil.write('%0.16f\n' % nozzle.mass_wall_only);
-                prt_item.append('wall mass');
-                prt_comp.append('');
-                prt_val.append('%0.16f' % nozzle.mass_wall_only);                  
-                    
-            elif tag == 'VOLUME':
-                fil.write('%0.16f\n' % nozzle.volume);
-                prt_item.append('volume');
-                prt_comp.append('');
-                prt_val.append('%0.16f' % nozzle.volume); 
-                    
-            elif tag == 'THRUST':
-                fil.write('%0.16f\n' % nozzle.thrust);
-                prt_item.append('thrust');
-                prt_comp.append('');
-                prt_val.append('%0.16f' % nozzle.thrust); 
-
-            elif tag == 'WALL_TEMPERATURE':
-                for i in range(nozzle.wall_temperature.size):
-                    fil.write('%0.16f\n' % nozzle.wall_temperature[i]);
-                    prt_item.append('wall temp loc %i' % i);
-                    prt_comp.append('');
-                    prt_val.append('%0.16f' % nozzle.wall_temperature[i]);
-                    
-            elif tag == 'WALL_PRESSURE':
-                for i in range(nozzle.wall_pressure.size):
-                    fil.write('%0.16f\n' % nozzle.wall_pressure[i]);
-                    prt_item.append('wall pressure loc %i' % i);
-                    prt_comp.append('');
-                    prt_val.append('%0.16f' % nozzle.wall_pressure[i]);
-                    
-            elif tag == 'PRESSURE':
-                for i in range(nozzle.pressure.size):
-                    fil.write('%0.16f\n' % nozzle.pressure[i]);
-                    prt_item.append('pressure loc %i' % i);
-                    prt_comp.append('');
-                    prt_val.append('%0.16f' % nozzle.pressure[i]);  
-                    
-            elif tag == 'VELOCITY':
-                nr, nc = nozzle.velocity.shape
-                for i in range(nr):
-                    fil.write('%0.16f\n' % nozzle.velocity[i,0]);
-                    fil.write('%0.16f\n' % nozzle.velocity[i,1]);
-                    fil.write('%0.16f\n' % nozzle.velocity[i,2]);
-                    prt_item.append('velocity (x-dir) loc %i' % i);
-                    prt_item.append('velocity (y-dir) loc %i' % i);
-                    prt_item.append('velocity (z-dir) loc %i' % i);
-                    prt_comp.append('');
-                    prt_comp.append('');
-                    prt_comp.append('');
-                    prt_val.append('%0.16f' % nozzle.velocity[i,0]);    
-                    prt_val.append('%0.16f' % nozzle.velocity[i,1]);    
-                    prt_val.append('%0.16f' % nozzle.velocity[i,2]);    
-                                
-            elif tag == 'KS_TOTAL_STRESS':
-                for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f\n' % nozzle.ks_total_stress[j]);
-                    prt_item.append('ks total stress');
-                    prt_comp.append('%s' % nozzle.stressComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.ks_total_stress[j]);
-                    
-            elif tag == 'PN_TOTAL_STRESS':
-                for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f\n' % nozzle.pn_total_stress[j]);
-                    prt_item.append('pn total stress');
-                    prt_comp.append('%s' % nozzle.stressComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.pn_total_stress[j]);
-                    
-            elif tag == 'MAX_TOTAL_STRESS':
-                for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f\n' % nozzle.max_total_stress[j]);
-                    prt_item.append('max total stress');
-                    prt_comp.append('%s' % nozzle.stressComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.max_total_stress[j]);
-                    
-            elif tag == 'MAX_THERMAL_STRESS':
-                for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f\n' % nozzle.max_thermal_stress[j]);
-                    prt_item.append('max thermal stress');
-                    prt_comp.append('%s' % nozzle.stressComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.max_thermal_stress[j]);
-                    
-            elif tag == 'MAX_MECHANICAL_STRESS':
-                for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f\n' % nozzle.max_mechanical_stress[j]);
-                    prt_item.append('max mechanical stress');
-                    prt_comp.append('%s' % nozzle.stressComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.max_mechanical_stress[j]);
-                    
-            elif tag == 'KS_FAILURE_CRITERIA':
-                for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f\n' % nozzle.ks_failure_criteria[j]);
-                    prt_item.append('ks failure criteria');
-                    prt_comp.append('%s' % nozzle.stressComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.ks_failure_criteria[j]);
-                    
-            elif tag == 'PN_FAILURE_CRITERIA':
-                for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f\n' % nozzle.pn_failure_criteria[j]);
-                    prt_item.append('pn failure criteria');
-                    prt_comp.append('%s' % nozzle.stressComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.pn_failure_criteria[j]);
-                    
-            elif tag == 'MAX_FAILURE_CRITERIA':
-                for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f\n' % nozzle.max_failure_criteria[j]);
-                    prt_item.append('max failure criteria');
-                    prt_comp.append('%s' % nozzle.stressComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.max_failure_criteria[j]);
-                    
-            elif tag == 'KS_TEMPERATURE':
-                for j in range(len(nozzle.tempComponentList)):
-                    fil.write('%0.16f\n' % nozzle.ks_temperature[j]);
-                    prt_item.append('ks temperature');
-                    prt_comp.append('%s' % nozzle.tempComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.ks_temperature[j]);
-                    
-            elif tag == 'PN_TEMPERATURE':
-                for j in range(len(nozzle.tempComponentList)):
-                    fil.write('%0.16f\n' % nozzle.pn_temperature[j]);
-                    prt_item.append('pn temperature');
-                    prt_comp.append('%s' % nozzle.tempComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.pn_temperature[j]);
-                    
-            elif tag == 'MAX_TEMPERATURE':
-                for j in range(len(nozzle.tempComponentList)):
-                    fil.write('%0.16f\n' % nozzle.max_temperature[j]);
-                    prt_item.append('max temperature');
-                    prt_comp.append('%s' % nozzle.tempComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.max_temperature[j]);  
-                    
-            elif tag == 'KS_TEMP_RATIO':
-                for j in range(len(nozzle.tempComponentList)):
-                    fil.write('%0.16f\n' % nozzle.ks_temp_ratio[j]);
-                    prt_item.append('ks temp ratio');
-                    prt_comp.append('%s' % nozzle.tempComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.ks_temp_ratio[j]);                    
-
-            elif tag == 'PN_TEMP_RATIO':
-                for j in range(len(nozzle.tempComponentList)):
-                    fil.write('%0.16f\n' % nozzle.pn_temp_ratio[j]);
-                    prt_item.append('pn temp ratio');
-                    prt_comp.append('%s' % nozzle.tempComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.pn_temp_ratio[j]);
-                    
-            elif tag == 'MAX_TEMP_RATIO':
-                for j in range(len(nozzle.tempComponentList)):
-                    fil.write('%0.16f\n' % nozzle.max_temp_ratio[j]);
-                    prt_item.append('max temp ratio');
-                    prt_comp.append('%s' % nozzle.tempComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.max_temp_ratio[j]);
-                    
-            else:
-                # Cycle through all possible specific stress outputs
-                for prefix in stress_prefix:
-                    j = stress_prefix.index(prefix);
-                    if tag == prefix + '_KS_TOTAL_STRESS':
-                        fil.write('%0.16f\n' % nozzle.ks_total_stress[j]);
-                        prt_item.append('ks total stress');
-                        prt_comp.append('%s' % stress_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.ks_total_stress[j]);
-                    elif tag == prefix + '_PN_TOTAL_STRESS':
-                        fil.write('%0.16f\n' % nozzle.pn_total_stress[j]);
-                        prt_item.append('pn total stress');
-                        prt_comp.append('%s' % stress_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.pn_total_stress[j]);
-                    elif tag == prefix + '_MAX_TOTAL_STRESS':
-                        fil.write('%0.16f\n' % nozzle.max_total_stress[j]);
-                        prt_item.append('max total stress');
-                        prt_comp.append('%s' % stress_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.max_total_stress[j]);
-                    elif tag == prefix + '_MAX_THERMAL_STRESS':
-                        fil.write('%0.16f\n' % nozzle.max_thermal_stress[j]);
-                        prt_item.append('max thermal stress');
-                        prt_comp.append('%s' % stress_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.max_thermal_stress[j]);
-                # Cycle through all possible specific failure criteria outputs
-                for prefix in stress_prefix:
-                    j = stress_prefix.index(prefix);
-                    if tag == prefix + '_KS_FAILURE_CRITERIA':
-                        fil.write('%0.16f\n' % nozzle.ks_failure_criteria[j]);
-                        prt_item.append('ks failure criteria');
-                        prt_comp.append('%s' % stress_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.ks_failure_criteria[j]);
-                    elif tag == prefix + '_PN_FAILURE_CRITERIA':
-                        fil.write('%0.16f\n' % nozzle.pn_failure_criteria[j]);
-                        prt_item.append('pn failure criteria');
-                        prt_comp.append('%s' % stress_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.pn_failure_criteria[j]);
-                    elif tag == prefix + '_MAX_FAILURE_CRITERIA':
-                        fil.write('%0.16f\n' % nozzle.max_failure_criteria[j]);
-                        prt_item.append('max failure criteria');
-                        prt_comp.append('%s' % stress_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.max_failure_criteria[j]);
-                # Cycle through all possible specific temperature outputs
-                for prefix in temp_prefix:
-                    j = temp_prefix.index(prefix);
-                    if tag == prefix + '_KS_TEMPERATURE':
-                        fil.write('%0.16f\n' % nozzle.ks_temperature[j]);
-                        prt_item.append('ks temperature');
-                        prt_comp.append('%s' % temp_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.ks_temperature[j]);
-                    elif tag == prefix + '_PN_TEMPERATURE':
-                        fil.write('%0.16f\n' % nozzle.pn_temperature[j]);
-                        prt_item.append('pn temperature');
-                        prt_comp.append('%s' % temp_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.pn_temperature[j]);
-                    elif tag == prefix + '_MAX_TEMPERATURE':
-                        fil.write('%0.16f\n' % nozzle.max_temperature[j]);
-                        prt_item.append('max temperature');
-                        prt_comp.append('%s' % temp_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.max_temperature[j]);
-                # Cycle through all possible specific temperature ratio outputs
-                for prefix in temp_prefix:
-                    j = temp_prefix.index(prefix);
-                    if tag == prefix + '_KS_TEMP_RATIO':
-                        fil.write('%0.16f\n' % nozzle.ks_temp_ratio[j]);
-                        prt_item.append('ks temp ratio');
-                        prt_comp.append('%s' % temp_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.ks_temp_ratio[j]);
-                    elif tag == prefix + '_PN_TEMP_RATIO':
-                        fil.write('%0.16f\n' % nozzle.pn_temp_ratio[j]);
-                        prt_item.append('pn temp ratio');
-                        prt_comp.append('%s' % temp_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.pn_temp_ratio[j]);
-                    elif tag == prefix + '_MAX_TEMP_RATIO':
-                        fil.write('%0.16f\n' % nozzle.max_temp_ratio[j]);
-                        prt_item.append('max temp ratio');
-                        prt_comp.append('%s' % temp_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.max_temp_ratio[j]);
-      
-        if output == 'verbose':
-            sys.stdout.write('\n');
-        fil.close();
-        
-        # --- Print summary
-        if output == 'verbose':
-            sys.stdout.write('-' * 65);
-            sys.stdout.write('\n%s | %s | %s\n' % ("Item".ljust(25), "Component".ljust(20),"Value".ljust(20)));
-            sys.stdout.write('-' * 65);
-            sys.stdout.write('\n');
-            for i in range(0,len(prt_item)):
-                sys.stdout.write('%s | %s | %s\n' % (prt_item[i].ljust(25), prt_comp[i].ljust(20),prt_val[i].ljust(20)));
-            sys.stdout.write('-' * 65);    
-            sys.stdout.write('\n\n');            
-        elif output == 'quiet':
-            pass
-        else:
-            raise ValueError('keyword argument output can only be set to "verbose" or "quiet" mode')        
-
-        
-    def WriteOutputFunctions_Dakota (self,output='verbose'):
-    
-        nozzle = self;
-
-        filename = nozzle.Output_Name;
-
-        print "FILENAME %s" % nozzle.Output_Name
-        
-        if output == 'verbose':
-            sys.stdout.write('\n');
-            string = " Post-processing ";
-            nch = (60-len(string))/2;
-            sys.stdout.write('-' * nch);
-            sys.stdout.write(string);
-            sys.stdout.write('-' * nch);
-            sys.stdout.write('\n\n');
-        elif output == 'quiet':
-            pass
-        else:
-            raise ValueError('keyword argument output can only be set to '    \
-              '"verbose" or "quiet" mode')
-        
-        try:
-            fil = open(filename, 'w');
-        except:
-            sys.stderr.write("  ## ERROR : Could not open output file %s\n" % filename);
-            sys.exit(0);
-  
-        if output == 'verbose':
-            sys.stdout.write('  -- Info : Output functions file : %s\n' % filename);
-        elif output == 'quiet':
-            pass
-        else:
-            raise ValueError('keyword argument output can only be set to '    \
-              '"verbose" or "quiet" mode')
-              
-        # Stress and temperature outputs can have prefixes appended to them
-        stress_prefix = [];
-        temp_prefix = [];
-        for i in range(len(nozzle.wall.layer)):
-            stress_prefix.append(nozzle.wall.layer[i].name);
-            temp_prefix.append(nozzle.wall.layer[i].name);
-        if nozzle.stringers.n > 0:
-            stress_prefix.append('STRINGERS');
-        for i in range(nozzle.baffles.n):
-            stress_prefix.append('BAFFLE' + str(i+1)); 
-
-        # For printing to screen
-        prt_item = list();
-        prt_comp = list();
-        prt_val = list();             
+        prt_val = list(); 
 
         # Print function values first
-        for i in range(0, len(nozzle.Output_Tags)):
+        for i in range(0, len(nozzle.outputTags)):
             
-            tag = nozzle.Output_Tags[i];            
+            tag = nozzle.outputTags[i];            
             
             # 6 Get Hessian, gradient, and value Get Hessian and gradient
             # 5 Get Hessian and value
@@ -2834,8 +2539,154 @@ class Nozzle:
             # 2 Get gradient
             # 1 Get value
             # 0 No data required, function is inactive
-            code = nozzle.OutputCode[i];
+            code = nozzle.outputCode[i];
             
+            if code == 1:
+            	pass;
+            elif code == 2:
+            	continue; # skip writing of function value to file
+            elif code == 3:
+            	pass;
+            else:
+                sys.stderr.write('\n ## ERROR : code %i in DV input file not available\n' % code);
+                sys.exit(1);
+            
+            # Write response values to file
+            if code == 1 or code == 3 or code == 5:
+            
+                if isinstance(nozzle.responses[tag],list):
+                    for i in range(len(nozzle.responses[tag])):
+                        fil.write('%0.16f\n' % nozzle.responses[tag][i]);
+                        prt_item.append('%s %i' % (nozzle.responses[tag][i],i));
+                        prt_comp.append('%s' % nozzle.prefixLabels[i]);
+                        prt_val.append('%0.16f' % nozzle.responses[tag][i]);
+                elif isinstance(nozzle.responses[tag],np.ndarray):
+                    arrayShape = nozzle.responses[tag].shape;
+                    if len(arrayShape) == 1:
+                        nr = arrayShape[0];
+                        for i in range(nr):
+                            fil.write('%0.16f\n' % nozzle.responses[tag][i]);
+                            prt_item.append('%s loc %i' % (tag,i));
+                            prt_comp.append('');
+                            prt_val.append('%0.16f' % nozzle.responses[tag][i]);
+                    elif len(arrayShape) == 2:
+                        nr, nc = arrayShape;      
+                        for i in range(nr):
+                            for j in range(nc):
+                                fil.write('%0.16f\n' % nozzle.responses[tag][i,j]);
+                                prt_item.append('%s loc %i %i' % (tag,i,j));
+                                prt_comp.append('');
+                                prt_val.append('%0.16f' % nozzle.responses[tag][i,j]);                                  
+                else:
+                    fil.write('%0.16f\n' % nozzle.responses[tag]);
+                    prt_item.append('%s' % tag);
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.responses[tag]);                
+            
+            # Write response gradients to file
+            if code == 2 or code == 3 or code == 6:
+                
+                print tag
+                print nozzle.gradients[tag]
+                
+                if isinstance(nozzle.gradients[tag][0],list):
+                
+                    sys.stderr.write('Currently outputting gradients for a vector QOI '
+                      'is not enabled\n');
+                    sys.exit(1);
+                    
+                    for i in range(len(nozzle.responses[tag])):
+                        fil.write('%0.16f %s_%i\n' % (nozzle.responses[tag][i],tag,i));
+                        prt_item.append('%s %i' % (nozzle.responses[tag][i],i));
+                        prt_comp.append('%s' % nozzle.prefixLabels[i]);
+                        prt_val.append('%0.16f' % nozzle.responses[tag][i]);
+                        
+                else:
+                
+                    fil.write('[ ');
+                    for i in range(len(nozzle.gradients[tag])):
+                        fil.write('%0.16e ' % nozzle.gradients[tag][i]);
+                        #prt_item.append('%s %i' % (nozzle.gradients[tag][i],i));
+                        #prt_comp.append('%s' % nozzle.prefixLabels[i]);
+                        #prt_val.append('%0.16f' % nozzle.gradients[tag][i]);
+                    fil.write(']\n');		
+                
+        # Close output file
+        if output == 'verbose':
+            sys.stdout.write('\n');
+        fil.close();
+        
+        # Print summary (function values only)
+        if output == 'verbose':
+            sys.stdout.write('-' * 85);
+            sys.stdout.write('\n%s | %s | %s\n' % ("Item".ljust(40), "Component".ljust(20),"Value".ljust(20)));
+            sys.stdout.write('-' * 85);
+            sys.stdout.write('\n');
+            for i in range(0,len(prt_item)):
+                sys.stdout.write('%s | %s | %s\n' % (prt_item[i].ljust(40), prt_comp[i].ljust(20),prt_val[i].ljust(20)));
+            sys.stdout.write('-' * 85);    
+            sys.stdout.write('\n\n');            
+        elif output == 'quiet':
+            pass
+        else:
+            raise ValueError('keyword argument output can only be set to "verbose" or "quiet" mode')          
+
+        
+    def WriteOutputFunctions_Dakota (self,output='verbose'):
+    
+        nozzle = self;
+
+        filename = nozzle.outputName;
+        
+        if output == 'verbose':
+            sys.stdout.write('\n');
+            string = " Post-processing ";
+            nch = (60-len(string))/2;
+            sys.stdout.write('-' * nch);
+            sys.stdout.write(string);
+            sys.stdout.write('-' * nch);
+            sys.stdout.write('\n\n');
+        
+        try:
+            fil = open(filename, 'w');
+        except:
+            sys.stderr.write("  ## ERROR : Could not open output file %s\n" % filename);
+            sys.exit(1);
+  
+        if output == 'verbose':
+            sys.stdout.write('  -- Info : Output functions file : %s\n' % filename);
+              
+        # Stress and temperature outputs can have prefixes appended to them
+        prefix = [];
+        for i in range(len(nozzle.wall.layer)):
+            prefix.append(nozzle.wall.layer[i].name);
+        if nozzle.stringers.n > 0:
+            prefix.append('STRINGERS');
+        for i in range(nozzle.baffles.n):
+            prefix.append('BAFFLE' + str(i+1)); 
+
+        # For printing to screen
+        prt_item = list();
+        prt_comp = list();
+        prt_val = list(); 
+		
+
+        # Print function values first
+        for i in range(0, len(nozzle.outputTags)):
+            
+            tag = nozzle.outputTags[i];  
+
+            
+            # 6 Get Hessian, gradient, and value Get Hessian and gradient
+            # 5 Get Hessian and value
+            # 4 Get Hessian
+            # 3 Get gradient and value
+            # 2 Get gradient
+            # 1 Get value
+            # 0 No data required, function is inactive
+            code = nozzle.outputCode[i];
+            
+            print "TAG %s CODE %d" % (tag, code)
             if code == 1 or code == 0:
             	pass;
             elif code == 2:
@@ -2845,311 +2696,68 @@ class Nozzle:
             else:
                 sys.stderr.write('\n ## ERROR : code %i in DV input file not available\n' % code);
                 sys.exit(1);
-                            
-            #print "TAG %s CODE %d" % (tag, code)
-            
-            if tag == 'MASS':	
-                fil.write('%0.16f mass\n' % nozzle.mass);
-                prt_item.append('mass');
-                prt_comp.append('');
-                prt_val.append('%0.16f' % nozzle.mass); 
-                    
-            elif tag == 'MASS_WALL_ONLY':
-                fil.write('%0.16f mass_wall_only\n' % nozzle.mass_wall_only);                   
-                prt_item.append('wall mass');
-                prt_comp.append('');
-                prt_val.append('%0.16f' % nozzle.mass_wall_only);                  
-                    
-            elif tag == 'VOLUME':
-                fil.write('%0.16f volume\n' % nozzle.volume);                   
-                prt_item.append('volume');
-                prt_comp.append('');
-                prt_val.append('%0.16f' % nozzle.volume); 
-                    
-            elif tag == 'THRUST':                
-                fil.write('%0.16f thrust\n' % nozzle.thrust);
-                prt_item.append('thrust');
-                prt_comp.append('');
-                prt_val.append('%0.16f' % nozzle.thrust); 
-                
-            elif tag == 'WALL_TEMPERATURE':                      
-                for i in range(nozzle.wall_temperature.size):
-                    fil.write('%0.16f wall_temp_%i\n' % (nozzle.wall_temperature[i],i));
-                    prt_item.append('wall temp loc %i' % i);
-                    prt_comp.append('');
-                    prt_val.append('%0.16f' % nozzle.wall_temperature[i]);
-                    
-            elif tag == 'WALL_PRESSURE':  
-                for i in range(nozzle.wall_pressure.size):
-                    fil.write('%0.16f wall_pressure_%i\n' % (nozzle.wall_pressure[i],i));
-                    prt_item.append('wall pressure loc %i' % i);
-                    prt_comp.append('');
-                    prt_val.append('%0.16f' % nozzle.wall_pressure[i]);
-                    
-            elif tag == 'PRESSURE':               
-                for i in range(nozzle.pressure.size):
-                    fil.write('%0.16f pressure_%i\n' % (nozzle.pressure[i],i));
-                    prt_item.append('pressure loc %i' % i);
-                    prt_comp.append('');
-                    prt_val.append('%0.16f' % nozzle.pressure[i]);  
-                    
-            elif tag == 'VELOCITY':
-                nr, nc = nozzle.velocity.shape                  
-                for i in range(nr):
-                    fil.write('%0.16f velocity_x_%i\n' % (nozzle.velocity[i,0],i));
-                    fil.write('%0.16f velocity_y_%i\n' % (nozzle.velocity[i,1],i));
-                    fil.write('%0.16f velocity_z_%i\n' % (nozzle.velocity[i,2],i));
-                    prt_item.append('velocity (x-dir) loc %i' % i);
-                    prt_item.append('velocity (y-dir) loc %i' % i);
-                    prt_item.append('velocity (z-dir) loc %i' % i);
-                    prt_comp.append('');
-                    prt_comp.append('');
-                    prt_comp.append('');
-                    prt_val.append('%0.16f' % nozzle.velocity[i,0]);    
-                    prt_val.append('%0.16f' % nozzle.velocity[i,1]);    
-                    prt_val.append('%0.16f' % nozzle.velocity[i,2]);                 
-                                
-            elif tag == 'KS_TOTAL_STRESS': 
-                for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f ks_total_stress_%s\n' % (nozzle.ks_total_stress[j],nozzle.stressComponentList[j]));
-                    prt_item.append('ks total stress');
-                    prt_comp.append('%s' % nozzle.stressComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.ks_total_stress[j]);
-                    
-            elif tag == 'PN_TOTAL_STRESS':               
-                for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f pn_total_stress_%s\n' % (nozzle.pn_total_stress[j],nozzle.stressComponentList[j]));
-                    prt_item.append('pn total stress');
-                    prt_comp.append('%s' % nozzle.stressComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.pn_total_stress[j]);
-                    
-            elif tag == 'MAX_TOTAL_STRESS':                
-                for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f max_total_stress_%s\n' % (nozzle.max_total_stress[j],nozzle.stressComponentList[j]));
-                    prt_item.append('max total stress');
-                    prt_comp.append('%s' % nozzle.stressComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.max_total_stress[j]);
-                    
-            elif tag == 'MAX_THERMAL_STRESS':             
-                for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f max_thermal_stress_%s\n' % (nozzle.max_thermal_stress[j],nozzle.stressComponentList[j]));
-                    prt_item.append('max thermal stress');
-                    prt_comp.append('%s' % nozzle.stressComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.max_thermal_stress[j]);
-                    
-            elif tag == 'MAX_MECHANICAL_STRESS':             
-                for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f max_mechanical_stress_%s\n' % (nozzle.max_mechanical_stress[j],nozzle.stressComponentList[j]));
-                    prt_item.append('max mechanical stress');
-                    prt_comp.append('%s' % nozzle.stressComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.max_mechanical_stress[j]);
-                    
-            elif tag == 'KS_FAILURE_CRITERIA':              
-                for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f ks_failure_criteria_%s\n' % (nozzle.ks_failure_criteria[j],nozzle.stressComponentList[j]));
-                    prt_item.append('ks failure criteria');
-                    prt_comp.append('%s' % nozzle.stressComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.ks_failure_criteria[j]);
-                    
-            elif tag == 'PN_FAILURE_CRITERIA':              
-                for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f pn_failure_criteria_%s\n' % (nozzle.pn_failure_criteria[j],nozzle.stressComponentList[j]));
-                    prt_item.append('pn failure criteria');
-                    prt_comp.append('%s' % nozzle.stressComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.pn_failure_criteria[j]);
-                    
-            elif tag == 'MAX_FAILURE_CRITERIA':              
-                for j in range(len(nozzle.stressComponentList)):
-                    fil.write('%0.16f max_failure_criteria_%s\n' % (nozzle.max_failure_criteria[j],nozzle.stressComponentList[j]));
-                    prt_item.append('max failure criteria');
-                    prt_comp.append('%s' % nozzle.stressComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.max_failure_criteria[j]);
-                    
-            elif tag == 'KS_TEMPERATURE':             
-                for j in range(len(nozzle.tempComponentList)):
-                    fil.write('%0.16f ks_temperature_%s\n' % (nozzle.ks_temperature[j],nozzle.tempComponentList[j]));
-                    prt_item.append('ks temperature');
-                    prt_comp.append('%s' % nozzle.tempComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.ks_temperature[j]);
-                    
-            elif tag == 'PN_TEMPERATURE':             
-                for j in range(len(nozzle.tempComponentList)):
-                    fil.write('%0.16f pn_temperature_%s\n' % (nozzle.pn_temperature[j],nozzle.tempComponentList[j]));
-                    prt_item.append('pn temperature');
-                    prt_comp.append('%s' % nozzle.tempComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.pn_temperature[j]);
-                    
-            elif tag == 'MAX_TEMPERATURE':             
-                for j in range(len(nozzle.tempComponentList)):
-                    fil.write('%0.16f max_temperature_%s\n' % (nozzle.max_temperature[j],nozzle.tempComponentList[j]));
-                    prt_item.append('max temperature');
-                    prt_comp.append('%s' % nozzle.tempComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.max_temperature[j]);  
-                    
-            elif tag == 'KS_TEMP_RATIO':              
-                for j in range(len(nozzle.tempComponentList)):
-                    fil.write('%0.16f ks_temp_ratio_%s\n' % (nozzle.ks_temp_ratio[j],nozzle.tempComponentList[j]));
-                    prt_item.append('ks temp ratio');
-                    prt_comp.append('%s' % nozzle.tempComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.ks_temp_ratio[j]);                    
 
-            elif tag == 'PN_TEMP_RATIO':              
-                for j in range(len(nozzle.tempComponentList)):
-                    fil.write('%0.16f pn_temp_ratio_%s\n' % (nozzle.pn_temp_ratio[j],nozzle.tempComponentList[j]));
-                    prt_item.append('pn temp ratio');
-                    prt_comp.append('%s' % nozzle.tempComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.pn_temp_ratio[j]);
-                    
-            elif tag == 'MAX_TEMP_RATIO':              
-                for j in range(len(nozzle.tempComponentList)):
-                    fil.write('%0.16f max_temp_ratio_%s\n' % (nozzle.max_temp_ratio[j],nozzle.tempComponentList[j]));
-                    prt_item.append('max temp ratio');
-                    prt_comp.append('%s' % nozzle.tempComponentList[j]);
-                    prt_val.append('%0.16f' % nozzle.max_temp_ratio[j]);
-                    
-            else:
             
-                # Cycle through all possible specific stress outputs
-                for prefix in stress_prefix:
-                
-                    j = stress_prefix.index(prefix);
-                    
-                    if tag == prefix + '_KS_TOTAL_STRESS':
-                        fil.write('%0.16f ks_total_stress_%s\n' % (nozzle.ks_total_stress[j],prefix));  
-                        prt_item.append('ks total stress');
-                        prt_comp.append('%s' % stress_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.ks_total_stress[j]);
-                        
-                    elif tag == prefix + '_PN_TOTAL_STRESS':
-                        fil.write('%0.16f pn_total_stress_%s\n' % (nozzle.pn_total_stress[j],prefix)); 
-                        prt_item.append('pn total stress');
-                        prt_comp.append('%s' % stress_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.pn_total_stress[j]);
-                        
-                    elif tag == prefix + '_MAX_TOTAL_STRESS':
-                        fil.write('%0.16f max_total_stress_%s\n' % (nozzle.max_total_stress[j],prefix));   
-                        prt_item.append('max total stress');
-                        prt_comp.append('%s' % stress_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.max_total_stress[j]);
-                        
-                    elif tag == prefix + '_MAX_THERMAL_STRESS':
-                        fil.write('%0.16f max_thermal_stress_%s\n' % (nozzle.max_thermal_stress[j],prefix));  
-                        prt_item.append('max thermal stress');
-                        prt_comp.append('%s' % stress_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.max_thermal_stress[j]);
-                        
-                # Cycle through all possible specific failure criteria outputs
-                for prefix in stress_prefix:
-                
-                    j = stress_prefix.index(prefix);
-                    
-                    if tag == prefix + '_KS_FAILURE_CRITERIA':
-                        fil.write('%0.16f ks_failure_criteria_%s\n' % (nozzle.ks_failure_criteria[j],prefix)); 
-                        prt_item.append('ks failure criteria');
-                        prt_comp.append('%s' % stress_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.ks_failure_criteria[j]);
-                        
-                    elif tag == prefix + '_PN_FAILURE_CRITERIA':
-                        fil.write('%0.16f pn_failure_criteria_%s\n' % (nozzle.pn_failure_criteria[j],prefix));  
-                        prt_item.append('pn failure criteria');
-                        prt_comp.append('%s' % stress_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.pn_failure_criteria[j]);
-                        
-                    elif tag == prefix + '_MAX_FAILURE_CRITERIA':
-                        fil.write('%0.16f max_failure_criteria_%s\n' % (nozzle.max_failure_criteria[j],prefix));  
-                        prt_item.append('max failure criteria');
-                        prt_comp.append('%s' % stress_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.max_failure_criteria[j]);
-                        
-                # Cycle through all possible specific temperature outputs
-                for prefix in temp_prefix:
-                
-                    j = temp_prefix.index(prefix);
-                    
-                    if tag == prefix + '_KS_TEMPERATURE':
-                        fil.write('%0.16f ks_temperature_%s\n' % (nozzle.ks_temperature[j],prefix));  
-                        prt_item.append('ks temperature');
-                        prt_comp.append('%s' % temp_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.ks_temperature[j]);
-                        
-                    elif tag == prefix + '_PN_TEMPERATURE':
-                        fil.write('%0.16f pn_temperature_%s\n' % (nozzle.pn_temperature[j],prefix)); 
-                        prt_item.append('pn temperature');
-                        prt_comp.append('%s' % temp_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.pn_temperature[j]);
-                        
-                    elif tag == prefix + '_MAX_TEMPERATURE':
-                        fil.write('%0.16f max_temperature_%s\n' % (nozzle.max_temperature[j],prefix)); 
-                        prt_item.append('max temperature');
-                        prt_comp.append('%s' % temp_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.max_temperature[j]);
-                        
-                # Cycle through all possible specific temperature ratio outputs
-                for prefix in temp_prefix:
-                
-                    j = temp_prefix.index(prefix);
-                    
-                    if tag == prefix + '_KS_TEMP_RATIO':
-                        fil.write('%0.16f ks_temp_ratio_%s\n' % (nozzle.ks_temp_ratio[j],prefix));  
-                        prt_item.append('ks temp ratio');
-                        prt_comp.append('%s' % temp_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.ks_temp_ratio[j]);
-                        
-                    elif tag == prefix + '_PN_TEMP_RATIO':
-                        fil.write('%0.16f pn_temp_ratio_%s\n' % (nozzle.pn_temp_ratio[j],prefix));   
-                        prt_item.append('pn temp ratio');
-                        prt_comp.append('%s' % temp_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.pn_temp_ratio[j]);
-                        
-                    elif tag == prefix + '_MAX_TEMP_RATIO':
-                        fil.write('%0.16f max_temp_ratio_%s\n' % (nozzle.max_temp_ratio[j],prefix));  
-                        prt_item.append('max temp ratio');
-                        prt_comp.append('%s' % temp_prefix[j]);
-                        prt_val.append('%0.16f' % nozzle.max_temp_ratio[j]);
-              
-        # Print function gradients next
-        for i in range(0, len(nozzle.Output_Tags)):
+            # Write response values to file
+            if code == 1 or code == 3 or code == 5:
             
-            tag = nozzle.Output_Tags[i];            
+                if isinstance(nozzle.responses[tag],list):
+                    for i in range(len(nozzle.responses[tag])):
+                        fil.write('%0.16f %s_%i\n' % (nozzle.responses[tag][i],tag,i));
+                        prt_item.append('%s %i' % (nozzle.responses[tag][i],i));
+                        prt_comp.append('%s' % nozzle.prefixLabels[i]);
+                        prt_val.append('%0.16f' % nozzle.responses[tag][i]);
+                elif isinstance(nozzle.responses[tag],np.ndarray):
+                    arrayShape = nozzle.responses[tag].shape;
+                    if len(arrayShape) == 1:
+                        nr = arrayShape[0];
+                        for i in range(nr):
+                            fil.write('%0.16f %s_%i\n' % (nozzle.responses[tag][i],tag,i));
+                            prt_item.append('%s loc %i' % (tag,i));
+                            prt_comp.append('');
+                            prt_val.append('%0.16f' % nozzle.responses[tag][i]);
+                    elif len(arrayShape) == 2:
+                        nr, nc = arrayShape;      
+                        for i in range(nr):
+                            for j in range(nc):
+                                fil.write('%0.16f %s_%i_%i\n' % (nozzle.responses[tag][i,j],tag,i,j));
+                                prt_item.append('%s loc %i %i' % (tag,i,j));
+                                prt_comp.append('');
+                                prt_val.append('%0.16f' % nozzle.responses[tag][i,j]);                                  
+                else:
+                    fil.write('%0.16f %s\n' % (nozzle.responses[tag],tag));
+                    prt_item.append('%s' % tag);
+                    prt_comp.append('');
+                    prt_val.append('%0.16f' % nozzle.responses[tag]);                
             
-            # 6 Get Hessian, gradient, and value Get Hessian and gradient
-            # 5 Get Hessian and value
-            # 4 Get Hessian
-            # 3 Get gradient and value
-            # 2 Get gradient
-            # 1 Get value
-            # 0 No data required, function is inactive
-            code = nozzle.OutputCode[i];
+            # Write response gradients to file
+            if code == 2 or code == 3 or code == 6:
+                
+                print tag
+                print nozzle.gradients[tag]
+                
+                if isinstance(nozzle.gradients[tag][0],list):
+                
+                    sys.stderr.write('Currently outputting gradients for a vector QOI '
+                      'is not enabled\n');
+                    sys.exit(1);
+                    
+                    for i in range(len(nozzle.responses[tag])):
+                        fil.write('%0.16f %s_%i\n' % (nozzle.responses[tag][i],tag,i));
+                        prt_item.append('%s %i' % (nozzle.responses[tag][i],i));
+                        prt_comp.append('%s' % nozzle.prefixLabels[i]);
+                        prt_val.append('%0.16f' % nozzle.responses[tag][i]);
+                        
+                else:
+                
+                    fil.write('[ ');
+                    for i in range(len(nozzle.gradients[tag])):
+                        fil.write('%0.16e ' % nozzle.gradients[tag][i]);
+                        #prt_item.append('%s %i' % (nozzle.gradients[tag][i],i));
+                        #prt_comp.append('%s' % nozzle.prefixLabels[i]);
+                        #prt_val.append('%0.16f' % nozzle.gradients[tag][i]);
+                    fil.write(']\n');		
 
-            if code == 1 or code == 0:
-            	continue; # skip assignment of gradients
-            elif code == 2:
-            	pass;
-            elif code == 3:
-            	pass;
-            else:
-                sys.stderr.write('\n ## ERROR : code %i in DV input file not available\n' % code);
-                sys.exit(1);
-                            
-            print "TAG %s CODE %d" % (tag, code)
-            
-            if tag == 'MASS':	
-				#print nozzle.mass_grad;
-				fil.write('[ ');
-				for i in range(len(nozzle.mass_grad)):
-					fil.write('%0.16e ' % (nozzle.mass_grad[i]));
-				fil.write(']\n');
-            
-            elif tag == 'THRUST':                
-				#print nozzle.thrust_grad;
-				fil.write('[ ');
-				for i in range(len(nozzle.thrust_grad)):
-					fil.write('%0.16e ' % (nozzle.thrust_grad[i]));
-				fil.write(']\n');
-				
-            else:
-			    sys.stderr.write('\n ## ERRROR : gradients not implemented for %s\n' % tag);
-			    sys.exit(1);
                 
         # Close output file
         if output == 'verbose':
@@ -3158,13 +2766,13 @@ class Nozzle:
         
         # Print summary (function values only)
         if output == 'verbose':
-            sys.stdout.write('-' * 65);
-            sys.stdout.write('\n%s | %s | %s\n' % ("Item".ljust(25), "Component".ljust(20),"Value".ljust(20)));
-            sys.stdout.write('-' * 65);
+            sys.stdout.write('-' * 85);
+            sys.stdout.write('\n%s | %s | %s\n' % ("Item".ljust(40), "Component".ljust(20),"Value".ljust(20)));
+            sys.stdout.write('-' * 85);
             sys.stdout.write('\n');
             for i in range(0,len(prt_item)):
-                sys.stdout.write('%s | %s | %s\n' % (prt_item[i].ljust(25), prt_comp[i].ljust(20),prt_val[i].ljust(20)));
-            sys.stdout.write('-' * 65);    
+                sys.stdout.write('%s | %s | %s\n' % (prt_item[i].ljust(40), prt_comp[i].ljust(20),prt_val[i].ljust(20)));
+            sys.stdout.write('-' * 85);    
             sys.stdout.write('\n\n');            
         elif output == 'quiet':
             pass
@@ -3271,9 +2879,6 @@ def NozzleSetup( config_name, flevel, output='verbose', partitions=1 ):
     nozzle = multif.nozzle.nozzle.Nozzle()
     
     config = SU2.io.Config(config_name)
-    
-    if output == 'verbose':
-        print config;
 
     nozzle.mesh_name    =  'nozzle.su2';
     nozzle.restart_name =  'nozzle.dat';
@@ -3289,36 +2894,6 @@ def NozzleSetup( config_name, flevel, output='verbose', partitions=1 ):
             nozzle.runDir = '';
     else:
         nozzle.runDir = '';
-
-	# --- Prepare gradients computation flags
-	
-	nozzle.output_gradients = 'NO';
-	nozzle.mass_gradients = 'NO';
-	nozzle.thrust_gradients = 'NO';
-	
-	if 'OUTPUT_GRADIENTS' in config:
-		if config['OUTPUT_GRADIENTS'] == 'YES':
-			nozzle.output_gradients = 'YES';
-			if 'OUTPUT_GRADIENTS_FILENAME' in config:
-				nozzle.output_gradients_filename = config['OUTPUT_GRADIENTS_FILENAME'];	
-			else:
-			    nozzle.output_gradients_filename = 'gradients.dat';		
-		elif config['OUTPUT_GRADIENTS'] == 'NO':
-			nozzle.output_gradients = 'NO';
-		else :
-			sys.stderr.write("  ## ERROR : Invalid entry for OUTPUT_GRADIENTS option (expected: YES or NO)\n");
-			sys.exit(1);
-
-	if 'GRADIENTS_COMPUTATION_METHOD' in config:
-		if config['GRADIENTS_COMPUTATION_METHOD'] == 'FINITE_DIFF':
-		    nozzle.gradients_method = 'FINITE_DIFF';
-		elif config['GRADIENTS_COMPUTATION_METHOD'] == 'ADJOINT':
-			nozzle.gradients_method = 'ADJOINT';
-		else :
-			sys.stderr.write("  ## ERROR : Invalid entry for GRADIENTS_COMPUTATION_METHOD option (expected: ADJOINT or FINITE_DIFF)\n");
-			sys.exit(1);
-	else:
-	    nozzle.gradients_method = 'NONE';
     
     # --- Path to SU2 exe
     
@@ -3331,6 +2906,10 @@ def NozzleSetup( config_name, flevel, output='verbose', partitions=1 ):
         nozzle.su2_output_format = config['SU2_OUTPUT_FORMAT'];
     else:
         nozzle.su2_output_format = 'TECPLOT';
+        
+    # --- Setup outputs
+    nozzle.responses = {}
+    nozzle.gradients = {}
     
     # --- Parse fidelity levels
     
@@ -3364,24 +2943,24 @@ def NozzleSetup( config_name, flevel, output='verbose', partitions=1 ):
     
     nozzle.SetupStringers(config,output);
     
-    # --- Get output functions to be returned
+    # --- Get function responses and gradients to be returned
     
-    nozzle.SetupOutputFunctions(config,output);
+    nozzle.SetupResponsesAndGradients(config,output);        
 
     # --- Setup DV definition
-    nozzle.DV_List = [];
-    nozzle.OutputCode = [0] * len(nozzle.Output_Tags);
+    nozzle.dvList = [];
+    nozzle.outputCode = [1] * len(nozzle.outputTags); # default: output values
     nozzle.SetupDV(config,output);
     
     # --- If input DV are provided, parse them and update nozzle
-    
+    print 'NbrDVTot = %i' % nozzle.NbrDVTot
     if nozzle.NbrDVTot > 0 :
         
         # Parse DV from input DV file (plain or dakota format)
         nozzle.ParseDV(config,output);
         
         # Update DV using values provided in input DV file
-        nozzle.UpdateDV(output);       
+        nozzle.UpdateDV(output);
     
     # --- Computer inner wall's B-spline and thermal and load layer thicknesses
     #     B-spline coefs, and thickness node arrays may have been updated by

@@ -723,7 +723,7 @@ def printNozzleDef(nozzle):
 # Calculate and return forward finite difference gradients of nozzle mass
 def calcMassGradientsFD(nozzle,fd_step):
 
-    mass = nozzle.mass;
+    mass = nozzle.responses['MASS'];
     
     # For parallel computation
     #print nozzle.partitions
@@ -733,41 +733,31 @@ def calcMassGradientsFD(nozzle,fd_step):
     
     # For each design variable
     
-    #print len(nozzle.DV_List);
+    #print len(nozzle.dvList);
     #sys.exit(1);
     
-    import time
 
-    for i in range(len(nozzle.DV_List)):
-		
-		t0 = time.time()
-		
-		nozzle2 = copy.deepcopy(nozzle);
-		
-		t1 = time.time()
-		
-		nozzle2.DV_List[i] += fd_step;
-		nozzle2.UpdateDV(output='quiet');
-		
-		t2 = time.time()
-		
-		nozzle2.SetupWall(output='quiet');
-		
-		t3 = time.time()
-		
-		volume2, mass2 = calcVolumeAndMass(nozzle2);
-		
-		t4 = time.time()
-		
-		
-		mass2 = np.sum(mass2);
-		volume2 = np.sum(volume2);
-		
-		dmdxLocal = (mass2-mass)/fd_step;
-		
-		dmdx.append((mass2-mass)/fd_step);
-		
-		t5 = time.time()
+    for i in range(len(nozzle.derivativesDV)):
+        
+        nozzle2 = copy.deepcopy(nozzle);
+        
+        if isinstance(fd_step,list):
+            dx = fd_step[nozzle.derivativesDV[i]-1];
+        else:
+            dx = fd_step;
+            
+        nozzle2.dvList[nozzle.derivativesDV[i]-1] += dx;
+        nozzle2.UpdateDV(output='quiet');
+        nozzle2.SetupWall(output='quiet');
+        
+        volume2, mass2 = calcVolumeAndMass(nozzle2);
+        mass2 = np.sum(mass2);
+        volume2 = np.sum(volume2);
+        
+        dmdxLocal = (mass2-mass)/dx;
+        
+        dmdx.append((mass2-mass)/dx);
+
     	
 		#print "DV %d : copy %lf sec , updateDV %lf sec , setupWall %lf sec , calcvol %lf sec , rest %lf " % (i, t1-t0, t2-t1, t3-t2, t4-t3, t5-t4 )
 

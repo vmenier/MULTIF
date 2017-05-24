@@ -7,7 +7,6 @@ import textwrap
 import multif
 
 from meshgeneration import *
-from postprocessing import *
 from .. import SU2
 
 class Solver_Options:
@@ -25,7 +24,7 @@ def CheckSU2Version(nozzle):
     
     nozzle.SU2Version = '';
     
-    print "EXE = %s" % su2_exe;
+    #print "EXE = %s" % su2_exe;
     
     try :
         cmd = [su2_exe];
@@ -44,7 +43,32 @@ def CheckSU2Version(nozzle):
             nozzle.LocalRelax = 'NO';
             nozzle.SU2Version = 'NOT_OK';
             
+            
+def CheckSU2Convergence ( history_filename, field_name ) :
 
+	#plot_format	  = con.OUTPUT_FORMAT;
+	#plot_extension   = SU2.io.get_extension(plot_format)
+	#history_filename = nozzle.CONV_FILENAME + plot_extension
+	#special_cases	= SU2.io.get_specialCases(config)
+
+	history	  = SU2.io.read_history( history_filename )
+	
+	plot = SU2.io.read_plot(history_filename);
+
+	Res = history[field_name];	
+	
+	NbrIte = len(Res);
+	
+	if ( NbrIte < 1 ):
+		IniRes = 0;
+		FinRes = 0;
+	else :
+		IniRes = Res[0];
+		FinRes = Res[NbrIte-1];
+
+	#print "Initial res = %le, Final res = %lf, DIFF = %lf\n" % (IniRes, FinRes, ResDif);
+	return IniRes, FinRes;
+            
 
 def SetupConfig_old (solver_options):
     
@@ -166,6 +190,7 @@ def SetupConfig_old (solver_options):
                 
     return config;
 
+
 def SetupConfig (solver_options):
 
     config = SU2.io.Config();
@@ -250,13 +275,12 @@ def SetupConfig (solver_options):
         config.LINEAR_SOLVER_ERROR= '1E-4';
         config.LINEAR_SOLVER_ITER= '3';
 
-
     config.MATH_PROBLEM= 'DIRECT';
     config.RESTART_SOL= 'NO';
     config.SYSTEM_MEASUREMENTS= 'SI';
     config.REGIME_TYPE= 'COMPRESSIBLE';
 
-    config.EXT_ITER= NbrIte;
+    config.EXT_ITER= 5;# NbrIte;
 
     config.RK_ALPHA_COEFF= "( 0.66667, 0.66667, 1.000000 )";
 
@@ -294,8 +318,6 @@ def SetupConfig (solver_options):
         #MARKER_FAR= ( PhysicalSurface17, PhysicalSurface18, PhysicalSurface21 )
         #MARKER_SYM= ( PhysicalSurface19, PhysicalSurface20 )
         #MARKER_OUTLET= ( PhysicalSurface22, 7505.2400000)
-		
-
 
     # --- Slope limiter
 
@@ -412,6 +434,7 @@ def checkResidual(config):
 
 def runSU2 ( nozzle ):
 	
+	# --- Setup solver options
 	solver_options = Solver_Options();
 	
 	solver_options.Method = nozzle.method;
@@ -430,7 +453,7 @@ def runSU2 ( nozzle ):
 	solver_options.output_format = nozzle.OUTPUT_FORMAT;
 	
 	solver_options.SU2_RUN = nozzle.SU2_RUN;
-	print 'SU2_RUN is %s' % nozzle.SU2_RUN
+	#print 'SU2_RUN is %s' % nozzle.SU2_RUN
 	
 	solver_options.mesh_name    = nozzle.mesh_name;
 	solver_options.restart_name = nozzle.restart_name;
@@ -440,7 +463,7 @@ def runSU2 ( nozzle ):
 	solver_options.dv_coefs = [];
 	
 	# --- Specify wall variable data when adjoint gradients are requested
-	if( nozzle.thrust_gradients == 'YES' and nozzle.gradients_method == 'ADJOINT' ):
+	if( nozzle.gradients_method == 'ADJOINT' ):
 	
 	    iTag = -1;
 	    for i in range(len(nozzle.DV_Tags)):
@@ -457,15 +480,14 @@ def runSU2 ( nozzle ):
 
 	    for i in range(nbr_dv):
 		    id_dv = nozzle.DV_Head[iTag] + i;
-		    print "id_dv %d val %lf" % (id_dv, nozzle.DV_List[id_dv])
-		    solver_options.dv_coefs.append(nozzle.DV_List[id_dv]);
-	
+		    print "id_dv %d val %lf" % (id_dv, nozzle.dvList[id_dv])
+		    solver_options.dv_coefs.append(nozzle.dvList[id_dv]);
 	
 	    #for iCoef in range(len(nozzle.wall.dv)):
 	    #	id_dv = nozzle.DV_Head[iTag] + nozzle.wall.dv[iCoef];  
 	    #	if id_dv >= nozzle.DV_Head[iTag]:
-	    #		print "id_dv %d val %lf" % (id_dv, nozzle.DV_List[id_dv])
-	    #		solver_options.dv_coefs.append(nozzle.DV_List[id_dv]);
+	    #		print "id_dv %d val %lf" % (id_dv, nozzle.dvList[id_dv])
+	    #		solver_options.dv_coefs.append(nozzle.dvList[id_dv]);
 	    #
 	    solver_options.gradients     = nozzle.gradients_method;
 	    solver_options.wall_coefs    = nozzle.wall.coefs;
@@ -519,27 +541,23 @@ def runSU2 ( nozzle ):
 	
 	config = SetupConfig(solver_options);
 	
-	#nozzle.OUTPUT_FORMAT = config['OUTPUT_FORMAT'];
-	#nozzle.CONV_FILENAME = config['CONV_FILENAME'];
-	#
-	#config.OBJECTIVE_FUNCTION= 'THRUST_NOZZLE'
-	#
-	#info = SU2.run.CFD(config);
-	#
-	
 	nozzle.OUTPUT_FORMAT = config['OUTPUT_FORMAT'];
 	nozzle.CONV_FILENAME = config['CONV_FILENAME'];
 	
 	config.OBJECTIVE_FUNCTION= 'THRUST_NOZZLE'
 	
-	# --- remove thrust file if it exists
+	# --- Remove thrust file if it exists
+	
 	if os.path.exists("thrust_nodef.dat"): os.remove("thrust_nodef.dat")
 	
+	# --- Setup file and flags to record SU2's progress
 	
-	# Setup file to record SU2's progress
 	su2history = open('about.txt','w');
 	su2history.close();
+	gradCalc = 0; # 0 = failure, 1 = success
 
+    # --- Run SU2
+    
 	try:
 	    info = SU2.run.CFD(config);
 	except:
@@ -547,9 +565,9 @@ def runSU2 ( nozzle ):
 	    su2history = open('about.txt','a');
 	    su2history.write('SU2 calculation with baseline params unsuccessful.\n');
 	    su2history.close();
-	    sys.exit(1);
 	
 	# --- Check SU2 solution here
+	
 	history, finalResidual, residualReduction = checkResidual(config);
 	    
 	su2history = open('about.txt','a');
@@ -558,7 +576,7 @@ def runSU2 ( nozzle ):
 	su2history.close();
 	
 	# SU2 diverged
-	if( finalResidual > 0 ): # SU2 diverged
+	if( finalResidual > 0 ):
 	
 	    if( config.PHYSICAL_PROBLEM=='EULER' and config.RELAXATION_LOCAL=='YES'):
 	        
@@ -659,56 +677,40 @@ def runSU2 ( nozzle ):
 	        su2history.write('SU2 did not reach requested accuracy. Continuing...\n');
 	        su2history.close();  
 		
-	# --- Adjoint computation
+	# --- Adjoint computation (if required)
 	
-	nozzle.thrust_grad = [];
-	
-	if nozzle.thrust_gradients == 'YES' or nozzle.output_gradients == 'YES':
+	if nozzle.gradients['THRUST'] is not None and nozzle.output_gradients == 1:
 		
 		if ( nozzle.gradients_method == 'ADJOINT' ):
 			
-			# --- AD
-			
+			# --- AD			
 			config_AD = setupConfig_AD (solver_options);
 			info = SU2.run.CFD(config_AD);
 			
-			# --- DOT
-			
-			config_DOT = setupConfig_DOT (solver_options);
-			
-			sys.stdout.write("  -- Running SU2_DOT\n");
-			
+			# --- DOT			
+			config_DOT = setupConfig_DOT (solver_options);			
+			sys.stdout.write("  -- Running SU2_DOT\n");			
 			info = SU2.run.DOT(config_DOT);
 			
-			# --- Check convergence
-			
+			# --- Check convergence			
 			IniRes, FinRes = CheckSU2Convergence("history_adj.dat", "Res_AdjFlow[0]");
 			
 			if IniRes < FinRes:
-				sys.stdout.write("  ## WARNING: Discrete adjoint solution is NOT converged.\nRun Finite Differences instead.\n");
-				
-				nozzle.thrust_grad = Compute_Thrust_Gradients_FD (nozzle);
+				sys.stdout.write("  ## WARNING: Discrete adjoint solution is NOT converged. Finite differences will be run instead.\n");				
 			else :
 				sys.stdout.write("  -- Info : Discrete adjoint solution converged.\n");
-				
-				nozzle.thrust_grad = Read_Gradients_AD(nozzle);
-				
-				#nozzle.thrust_grad = np.loadtxt('./of_grad.dat', skiprows=1);
-		
-		elif ( nozzle.gradients_method == 'FINITE_DIFF'):
-			
-			nozzle.thrust_grad = Compute_Thrust_Gradients_FD (nozzle);
-		
+				gradCalc = 1; # Successful gradient calculation
+				# Assumes gradient of thrust w.r.t. all design variables not governing nozzle wall are 0
+				nozzle.gradients['THRUST'] = [0]*len(nozzle.derivativesDV);
+				nozzle.gradients['THRUST'][0:max(nozzle.wall.dv)+1] = Read_Gradients_AD(nozzle);
+						
 		else:
-			
-			sys.stderr.write("  ## ERROR : Unknown gradients computation method.\n");
-			sys.exit(1);
-		
-		
-		if nozzle.output_gradients == 'YES':
-			np.savetxt(nozzle.output_gradients_filename, nozzle.thrust_grad, delimiter='\n')
-	
-	#return info;
+		    
+		    # Estimate gradients via finite difference after return call 
+		    sys.stdout.write('  ## WARNING: thrust gradients are desired, but adjoint will not be used. Are you sure?\n');
+		   	
+	return gradCalc;
+
 
 def setupConfig_AD (solver_options):
 	# ---
@@ -1267,15 +1269,15 @@ def Compute_Thrust_Gradients_FD (nozzle):
 	
 	for i in range(nbr_dv):
 		id_dv = nozzle.DV_Head[iTag] + i;
-		print "id_dv %d val %lf" % (id_dv, nozzle.DV_List[id_dv])
-		solver_options.dv_coefs.append(nozzle.DV_List[id_dv]);
+		print "id_dv %d val %lf" % (id_dv, nozzle.dvList[id_dv])
+		solver_options.dv_coefs.append(nozzle.dvList[id_dv]);
 	
 	
 	#for iCoef in range(len(nozzle.wall.dv)):
 	#	id_dv = nozzle.DV_Head[iTag] + nozzle.wall.dv[iCoef];  
 	#	if id_dv >= nozzle.DV_Head[iTag]:
-	#		print "id_dv %d val %lf" % (id_dv, nozzle.DV_List[id_dv])
-	#		solver_options.dv_coefs.append(nozzle.DV_List[id_dv]);
+	#		print "id_dv %d val %lf" % (id_dv, nozzle.dvList[id_dv])
+	#		solver_options.dv_coefs.append(nozzle.dvList[id_dv]);
 	
 	solver_options.gradients     = nozzle.gradients_method;
 	solver_options.wall_coefs    = nozzle.wall.coefs;
@@ -1402,7 +1404,7 @@ def Read_Gradients_AD (nozzle):
 	
 	hdl_grad = np.loadtxt('./of_grad.dat', skiprows=1);
 
-	thrust_grad = np.zeros(len(nozzle.DV_List))
+	thrust_grad = np.zeros(len(nozzle.dvList))
 
 	iTag = -1;
 	for i in range(len(nozzle.DV_Tags)):
@@ -1420,9 +1422,6 @@ def Read_Gradients_AD (nozzle):
 	for i in range(nbr_dv):
 		id_dv = nozzle.DV_Head[iTag] + i;
 		thrust_grad[id_dv] = hdl_grad[i];
-		#print "id_dv %d val %lf" % (id_dv, nozzle.DV_List[id_dv])
-		
-
-
+		#print "id_dv %d val %lf" % (id_dv, nozzle.dvList[id_dv])
 		
 	return thrust_grad;

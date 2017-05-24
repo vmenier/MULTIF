@@ -1,27 +1,15 @@
 # -*- coding: utf-8 -*-
 
-import os, time, sys, shutil, copy
-from optparse import OptionParser
-import textwrap
-import multif
+import os, sys
 from .. import SU2
 
-from .. import _meshutils_module
-import ctypes
 import numpy as np
+from scipy.interpolate import interp1d 
 
-
-
-from scipy.interpolate import interp1d  
-from scipy.interpolate import interp2d  
-
-
-from .. import nozzle as nozzlemod
-
-
+from .. import _meshutils_module
 from multif import _mshint_module
 
-def PostProcessing (nozzle):
+def PostProcess ( nozzle, output ):
 	
 	# --- Check residual convergence
 	
@@ -32,68 +20,66 @@ def PostProcessing (nozzle):
 	# --- Interpolate and extract all the solution fields along the nozzle exit
 	# SolExtract : Solution (x, y, sol1, sol2, etc.)
 	# Size : [NbrVer, SolSiz]
-	# Header : Name of the solution fields (Conservative_1, Mach, etc.)
-	
-	SolExtract, Size, Header  = ExtractSolutionAtExit(nozzle);
-	
+	# Header : Name of the solution fields (Conservative_1, Mach, etc.)	
+	#SolExtract, Size, Header  = ExtractSolutionAtExit(nozzle);
 
-	if nozzle.GetOutput['THRUST'] == 1:			
-		#nozzle.thrust = ComputeThrust ( nozzle, SolExtract, Size, Header );
-		nozzle.thrust = Get_Thrust_File(nozzle);
-	
-	if nozzle.GetOutput['VOLUME'] == 1 or nozzle.GetOutput['MASS'] == 1 or nozzle.GetOutput['MASS_WALL_ONLY'] == 1:
-
-		  volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle);
-		  nozzle.volume = np.sum(volume);
-		  nozzle.mass = np.sum(mass);
-		  n_layers = len(nozzle.wall.layer);
-		  nozzle.mass_wall_only = np.sum(mass[:n_layers]);
-
-	SolExtract, Size, idHeader  = ExtractSolutionAtWall(nozzle);
-
-
-	iPres = idHeader['Pressure'];
-	iTemp = idHeader['Temperature'];
-
-	Pres = SolExtract[:,iPres];
-	Temp = SolExtract[:,iTemp];
-	
-	if nozzle.GetOutput['WALL_PRESSURE'] == 1:		
-		nozzle.wall_pressure = np.zeros((nozzle.OutputLocations['WALL_PRESSURE'].size,1))
-		func = interp1d(SolExtract[:,0],  Pres, kind='linear');
-		nozzle.wall_pressure = func(nozzle.OutputLocations['WALL_PRESSURE']);
-		nozzle.wall_pressure = np.squeeze(nozzle.wall_pressure);
+    # Extract solution at wall
+	SolExtract_w, Size_w, idHeader_w  = ExtractSolutionAtWall(nozzle);
+	iPres = idHeader_w['Pressure'];
+	iTemp = idHeader_w['Temperature'];
+	Pres = SolExtract_w[:,iPres];
+	Temp = SolExtract_w[:,iTemp];
 		
+	# --- Assign responses
+	if 'THRUST' in nozzle.responses:
+        #nozzle.thrust = ComputeThrust ( nozzle, SolExtract, Size, Header );
+		nozzle.responses['THRUST'] = Get_Thrust_File(nozzle);
+		print nozzle.responses['THRUST']
+		
+        
+	if 'WALL_TEMPERATURE' in nozzle.responses:
+		sys.stderr.write(' ## ERROR : WALL_TEMPERATURE not currently available from SU2\n\n');
+		sys.exit(1);
+        #nozzle.responses['WALL_TEMPERATURE'] = 0;
+        
+	if 'WALL_PRESSURE' in nozzle.responses:
+    
+		func = interp1d(SolExtract[:,0],  Pres, kind='linear');        
+		nozzle.responses['WALL_PRESSURE'] = np.squeeze(func(nozzle.outputLocations['WALL_PRESSURE']));
+
 		# --- CHECK INTERPOLATION :
 		#import matplotlib.pyplot as plt
 		#plt.plot(SolExtract[:,0], Pres, "-", label="EXTRACT")
-		#plt.plot(nozzle.OutputLocations['WALL_PRESSURE'], nozzle.wall_pressure, "-", label="OUTPUT")
+		#plt.plot(nozzle.outputLocations['WALL_PRESSURE'], nozzle.responses['WALL_PRESSURE'], "-", label="OUTPUT")
 		#plt.legend()
 		#plt.show();
 		#sys.exit(1);
+        
+	if 'PRESSURE' in nozzle.responses:
+            
+		x = nozzle.outputLocations['PRESSURE'][:,0];
+		y = nozzle.outputLocations['PRESSURE'][:,1];
+		
+		nozzle.responses['PRESSURE'] = np.squeeze(ExtractSolutionAtXY (x, y, ["Pressure"]));
+        
+	if 'VELOCITY' in nozzle.responses:
 
-	if nozzle.GetOutput['PRESSURE'] == 1:
-		
-		x = nozzle.OutputLocations['PRESSURE'][:,0];
-		y = nozzle.OutputLocations['PRESSURE'][:,1];
-		nozzle.pressure = ExtractSolutionAtXY (x, y, ["Pressure"]);
-		
-		nozzle.pressure = np.squeeze(nozzle.pressure);
-		  
-	if nozzle.GetOutput['VELOCITY'] == 1:
-		
-		x = nozzle.OutputLocations['VELOCITY'][:,0];
-		y = nozzle.OutputLocations['VELOCITY'][:,1];
+		x = nozzle.outputLocations['VELOCITY'][:,0];
+		y = nozzle.outputLocations['VELOCITY'][:,1];
 		cons = ExtractSolutionAtXY (x, y, ["Conservative_1","Conservative_2","Conservative_3"]);
 		
-		nozzle.velocity = np.zeros((len(cons),3));
 		for i in range(len(cons)):
-			nozzle.velocity[i][0] = cons[i][1]/cons[i][0]; 
-			nozzle.velocity[i][1] = cons[i][2]/cons[i][0]; 
-			nozzle.velocity[i][2] = 0.0;
+			nozzle.responses['VELOCITY'][0].append(cons[i][1]/cons[i][0]); 
+			nozzle.responses['VELOCITY'][1].append(cons[i][2]/cons[i][0]); 
+			nozzle.responses['VELOCITY'][2].append(0.0); 
+
+	if output == 'verbose':
+		sys.stdout.write('SU2 responses obtained\n');
+    
+	return 0;  
+		
  
-def CheckConvergence ( nozzle ) :
-	
+def CheckConvergence ( nozzle ) :	
 
 	plot_format	  = nozzle.OUTPUT_FORMAT;
 	plot_extension   = SU2.io.get_extension(plot_format)
@@ -101,7 +87,6 @@ def CheckConvergence ( nozzle ) :
 	#special_cases	= SU2.io.get_specialCases(config)
 	
 	history	  = SU2.io.read_history( history_filename )
-
 	
 	plot = SU2.io.read_plot(history_filename);
 	
@@ -113,36 +98,9 @@ def CheckConvergence ( nozzle ) :
 		
 	#print "Initial res = %le, Final res = %lf, DIFF = %lf\n" % (IniRes, FinRes, ResDif);
 	return IniRes, FinRes;
-	
-def CheckSU2Convergence ( history_filename, field_name ) :
 
-
-	#plot_format	  = con.OUTPUT_FORMAT;
-	#plot_extension   = SU2.io.get_extension(plot_format)
-	#history_filename = nozzle.CONV_FILENAME + plot_extension
-	#special_cases	= SU2.io.get_specialCases(config)
-
-	history	  = SU2.io.read_history( history_filename )
-	
-	plot = SU2.io.read_plot(history_filename);
-
-	Res = history[field_name];
-	
-	
-	NbrIte = len(Res);
-	
-	if ( NbrIte < 1 ):
-		IniRes = 0;
-		FinRes = 0;
-	else :
-		IniRes = Res[0];
-		FinRes = Res[NbrIte-1];
-
-	#print "Initial res = %le, Final res = %lf, DIFF = %lf\n" % (IniRes, FinRes, ResDif);
-	return IniRes, FinRes;
 	
 def ExtractSolutionAtExit ( nozzle ):
-
 
 	mesh_name	= nozzle.mesh_name;
 
@@ -303,8 +261,7 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
 		
 		fil.write("%lf %lf %lf %lf\n" % (ynew[i], rho, rhoU, Pres));
 					
-		Thrust = Thrust + dy*(rhoU*(U-U0)+Pres-P0);
-	
+		Thrust = Thrust + dy*(rhoU*(U-U0)+Pres-P0);	
 	
 	fil.close();
 	
@@ -313,8 +270,7 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
 	
 def ExtractSolutionAtWall (nozzle):
 	
-	# --- Extract CFD solution at the inner wall
-	
+	# --- Extract CFD solution at the inner wall	
 
 	mesh_name	= nozzle.mesh_name;
 
@@ -353,7 +309,7 @@ def ExtractSolutionAtWall (nozzle):
 	idHeader = dict();
 	for iFld in range(0,len(pyHeader)):
 		idHeader[pyHeader[iFld]] = iFld+2;
-	
+
 	return OutResult, pyInfo, idHeader;
 	
 	
@@ -443,8 +399,7 @@ def ExtractSolutionAtXY (x, y, tagField):
 	for iTab in range(NbrFld):
 		
 		tag = tagField[iTab];
-		iFld = -1
-		
+		iFld = -1		
 		
 		for i in range(0,len(Header)):
 			if ( Header[i] == tag ):
