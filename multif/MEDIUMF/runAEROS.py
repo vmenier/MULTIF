@@ -9,6 +9,7 @@ import numpy as np
 from .. import _nozzle_module
 
 from AEROSpostprocessing import *
+from SU2postprocessing import ExtractSolutionAtWall
 
 def runAEROS ( nozzle, output='verbose' ):
 

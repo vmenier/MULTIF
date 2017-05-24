@@ -66,9 +66,9 @@ def ParseDesignVariables_Dakota (filename):
 	tag = '\\w+(?::\\w+)*'                               # text tag field
 	
 	# for aprepro parameters format
-	aprepro_regex = re.compile('^\s*\{\s*(' + tag + ')\s*=\s*(' + value +')\s*\}$')
+	aprepro_regex = re.compile('^\s*\{\s*(' + tag + ')\s*=\s*(' + value +')\s*\}\s*$')
 	# for standard parameters format
-	standard_regex = re.compile('^\s*(' + value +')\s+(' + tag + ')$')
+	standard_regex = re.compile('^\s*(' + value +')\s+(' + tag + ')\s*$')
 	
 	#--- Extract data from file
 	
