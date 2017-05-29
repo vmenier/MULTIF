@@ -2379,7 +2379,7 @@ class Nozzle:
             
 	        # Initialize gradients computation flags	
             nozzle.output_gradients = 0;
-            nozzle.gradients_method = 'NONE';
+            nozzle.gradients_method = 'FINITE_DIFF';
 	        
             # Assign information for gradient calculation if necessary
             if ('OUTPUT_GRADIENTS' in config) and (config['OUTPUT_GRADIENTS'] == 'YES'):
@@ -2458,7 +2458,7 @@ class Nozzle:
   #                      sys.stderr.write('\n ## ERROR : key %s_LOCATIONS ' \
   ##                        'not found in config file to specify location of ' \
    #                       'requested output responses\n\n')
-   
+
         # Initialize output locations for QoI internal to nozzle flow
         for qoi in outputTags:
             if qoi in ['WALL_PRESSURE', 'PRESSURE', 'VELOCITY', 'WALL_TEMPERATURE']:
@@ -2587,9 +2587,6 @@ class Nozzle:
             
             # Write response gradients to file
             if code == 2 or code == 3 or code == 6:
-                
-                print tag
-                print nozzle.gradients[tag]
                 
                 if isinstance(nozzle.gradients[tag][0],list):
                 
@@ -2730,9 +2727,6 @@ class Nozzle:
             
             # Write response gradients to file
             if code == 2 or code == 3 or code == 6:
-                
-                print tag
-                print nozzle.gradients[tag]
                 
                 if isinstance(nozzle.gradients[tag][0],list):
                 
@@ -2948,17 +2942,17 @@ def NozzleSetup( config_name, flevel, output='verbose', partitions=1 ):
     nozzle.dvList = [];
     nozzle.outputCode = [1] * len(nozzle.outputTags); # default: output values
     nozzle.SetupDV(config,output);
-    
+  
     # --- If input DV are provided, parse them and update nozzle
     print 'NbrDVTot = %i' % nozzle.NbrDVTot
     if nozzle.NbrDVTot > 0 :
-        
+
         # Parse DV from input DV file (plain or dakota format)
         nozzle.ParseDV(config,output);
-        
+
         # Update DV using values provided in input DV file
         nozzle.UpdateDV(output);
-    
+
     # --- Computer inner wall's B-spline and thermal and load layer thicknesses
     #     B-spline coefs, and thickness node arrays may have been updated by
     #     the design variables input file; update exterior geometry & baffles

@@ -34,7 +34,7 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
         if 'VOLUME' in nozzle.responses:
             nozzle.responses['VOLUME'] = np.sum(volume)
             #nozzle.volume = np.sum(volume)
-        
+
     # Calculate mass gradients if necessary
     if 'MASS' in nozzle.gradients and nozzle.gradients['MASS'] is not None:
         if ( nozzle.gradients_method == 'ADJOINT' ):
@@ -100,7 +100,7 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
         
         # Calculate gradients if necessary
         if nozzle.output_gradients == 1 and runAeroThermalStructuralGradients:
-        
+
             if ( nozzle.gradients_method == 'ADJOINT' ):
                 if gradCalc == 0: # i.e. failed adjoint calculation, use finite differences
                     multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,output);

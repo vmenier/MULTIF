@@ -874,7 +874,7 @@ def Run (nozzle,output='verbose',writeToFile=1):
             if k not in ['MASS','VOLUME','MASS_WALL_ONLY']:
                 if nozzle.gradients[k] is not None:
                     runAeroThermalStructuralGradients = 1;  
-        
+   
     if runAeroThermalStructuralProblem:
         
         # Run aero analysis (+ 1D thermal analysis if requested)
@@ -907,6 +907,8 @@ def Run (nozzle,output='verbose',writeToFile=1):
         
         # Calculate gradients if necessary
         if nozzle.output_gradients == 1 and runAeroThermalStructuralGradients:
+        
+            print 'entered low-fi gradient calculation'
         
             if ( output == 'verbose' ):
                 sys.stdout.write('Running gradient analysis\n');
