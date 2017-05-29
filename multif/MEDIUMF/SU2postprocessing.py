@@ -32,7 +32,8 @@ def PostProcess ( nozzle, output ):
 		
 	# --- Assign responses
 	if 'THRUST' in nozzle.responses:
-        #nozzle.thrust = ComputeThrust ( nozzle, SolExtract, Size, Header );
+		#SolExtract, Size, Header  = ExtractSolutionAtExit(nozzle);
+		#nozzle.responses['THRUST'] = ComputeThrust ( nozzle, SolExtract, Size, Header );
 		nozzle.responses['THRUST'] = Get_Thrust_File(nozzle);
         
 	if 'WALL_TEMPERATURE' in nozzle.responses:
