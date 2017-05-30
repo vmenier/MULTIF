@@ -32,9 +32,9 @@ def PostProcess ( nozzle, output ):
 		
 	# --- Assign responses
 	if 'THRUST' in nozzle.responses:
-		#SolExtract, Size, Header  = ExtractSolutionAtExit(nozzle);
-		#nozzle.responses['THRUST'] = ComputeThrust ( nozzle, SolExtract, Size, Header );
-		nozzle.responses['THRUST'] = Get_Thrust_File(nozzle);
+		SolExtract, Size, Header  = ExtractSolutionAtExit(nozzle);
+		nozzle.responses['THRUST'] = ComputeThrust ( nozzle, SolExtract, Size, Header );
+		#nozzle.responses['THRUST'] = Get_Thrust_File(nozzle);
         
 	if 'WALL_TEMPERATURE' in nozzle.responses:
 		sys.stderr.write(' ## ERROR : WALL_TEMPERATURE not currently available from SU2\n\n');
