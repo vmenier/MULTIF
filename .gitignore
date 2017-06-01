@@ -19,7 +19,7 @@ autom4te.cache
 *.la
 *.a
 
-*.su2
+nozzle*.su2
 
 # Python files
 *.pyc

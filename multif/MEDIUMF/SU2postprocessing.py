@@ -308,10 +308,10 @@ def ExtractSolutionAtWall (nozzle):
 	idHeader = dict();
 	for iFld in range(0,len(pyHeader)):
 		idHeader[pyHeader[iFld]] = iFld+2;
-		
+
 	return OutResult, pyInfo, idHeader;
 	
-
+	
 def WriteGMFMesh2D(MshNam, Ver, Tri):
 	
 	f = open(MshNam, 'wb');
@@ -434,4 +434,62 @@ def ExtractSolutionAtXY (x, y, tagField):
 		
 	return OutSol;
 
+	
+def VerificationPostPro(nozzle):
+	
+	# --- Load validation data
+	
+	pathsrc = "%s/verification_data/" % (os.path.dirname(os.path.abspath(__file__)));
+	
+	#--- Extract boundary vertices from mesh
+	
+	wall_name	= "%swall_%s_%s.dat" % (pathsrc, nozzle.method, nozzle.meshsize);
+	
+	wall_hdl = np.loadtxt(wall_name);
+	
+	# --- Extract CFD solution at the inner wall	
+	
+	mesh_name	= nozzle.mesh_name;
+
+	restart_name = nozzle.restart_name;
+	
+	pyResult = [];
+	pyInfo   = [];
+	pyHeader = [];
+	
+	pyRef = [1];
+	
+	_meshutils_module.py_ExtractAtRef (mesh_name, restart_name, pyRef, pyResult, pyInfo, pyHeader);
+	
+	NbrRes = pyInfo[0];
+	ResSiz = pyInfo[1];
+		
+	Result = np.asarray(pyResult);
+	
+	OutResult = np.reshape(Result,(NbrRes, ResSiz));
+	
+	# --- Get solution field indices
+		
+	idHeader = dict();
+	for iFld in range(0,len(pyHeader)):
+		idHeader[pyHeader[iFld]] = iFld+2;
+	
+	Pres = OutResult[:,idHeader['Pressure']];
+	Temp = OutResult[:,idHeader['Temperature']];
+	
+	fil = open("extraction_wall_valid.dat",'w');
+	
+	for i in range(len(wall_hdl)):
+		fil.write("%lf %lf %lf %lf\n" % (wall_hdl[i,0], wall_hdl[i,1], wall_hdl[i,2], wall_hdl[i,3]));
+	fil.close();
+		
+	fil = open("extraction_wall.dat",'w');
+	
+	for i in range(len(Pres)):
+		fil.write("%lf %lf %lf %lf\n" % (OutResult[i,0], OutResult[i,1], Pres[i], Temp[i]));
+	fil.close();
+	
+	
+	
+	
 	
