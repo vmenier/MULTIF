@@ -3646,6 +3646,7 @@ SWIGINTERN PyObject *_wrap_py_ReadMesh(PyObject *SWIGUNUSEDPARM(self), PyObject 
   PyObject *arg4 = (PyObject *) 0 ;
   PyObject *arg5 = (PyObject *) 0 ;
   PyObject *arg6 = (PyObject *) 0 ;
+  PyObject *arg7 = (PyObject *) 0 ;
   int res1 ;
   char *buf1 = 0 ;
   int alloc1 = 0 ;
@@ -3658,8 +3659,9 @@ SWIGINTERN PyObject *_wrap_py_ReadMesh(PyObject *SWIGUNUSEDPARM(self), PyObject 
   PyObject * obj3 = 0 ;
   PyObject * obj4 = 0 ;
   PyObject * obj5 = 0 ;
+  PyObject * obj6 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOOOOO:py_ReadMesh",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5)) SWIG_fail;
+  if (!PyArg_ParseTuple(args,(char *)"OOOOOOO:py_ReadMesh",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6)) SWIG_fail;
   res1 = SWIG_AsCharPtrAndSize(obj0, &buf1, NULL, &alloc1);
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "py_ReadMesh" "', argument " "1"" of type '" "char *""'");
@@ -3674,7 +3676,8 @@ SWIGINTERN PyObject *_wrap_py_ReadMesh(PyObject *SWIGUNUSEDPARM(self), PyObject 
   arg4 = obj3;
   arg5 = obj4;
   arg6 = obj5;
-  py_ReadMesh(arg1,arg2,arg3,arg4,arg5,arg6);
+  arg7 = obj6;
+  py_ReadMesh(arg1,arg2,arg3,arg4,arg5,arg6,arg7);
   resultobj = SWIG_Py_Void();
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
   if (alloc2 == SWIG_NEWOBJ) free((char*)buf2);

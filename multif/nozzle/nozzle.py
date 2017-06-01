@@ -2672,15 +2672,13 @@ class Nozzle:
         # For printing to screen
         prt_item = list();
         prt_comp = list();
-        prt_val = list(); 
-		
+        prt_val  = list(); 
 
         # Print function values first
         for i in range(0, len(nozzle.outputTags)):
             
             tag = nozzle.outputTags[i];  
-
-            
+			
             # 6 Get Hessian, gradient, and value Get Hessian and gradient
             # 5 Get Hessian and value
             # 4 Get Hessian
@@ -2701,7 +2699,6 @@ class Nozzle:
                 sys.stderr.write('\n ## ERROR : code %i in DV input file not available\n' % code);
                 sys.exit(1);
 
-            
             # Write response values to file
             if code == 1 or code == 3 or code == 5:
             
@@ -2873,23 +2870,24 @@ class Nozzle:
         
         sys.stdout.write("  -- Info : nozzle.svg OPENED.\n\n");
 
-def NozzleSetup( config_name, flevel, output='verbose', partitions=1 ):
+def NozzleSetup( config, flevel, output='verbose', partitions=1 ):
     import tempfile
         
-    if not os.path.isfile(config_name) :
-        sys.stderr.write("  ## ERROR : could not find configuration file %s\n\ns" % config_name);
-        sys.exit(0);
-    
+    #if not os.path.isfile(config_name) :
+    #    sys.stderr.write("  ## ERROR : could not find configuration file %s\n\ns" % config_name);
+    #    sys.exit(0);
+    #
     nozzle = multif.nozzle.nozzle.Nozzle()
     
-    config = SU2.io.Config(config_name)
+    #config = SU2.io.Config(config_name)
 
     nozzle.mesh_name    =  'nozzle.su2';
     nozzle.restart_name =  'nozzle.dat';
-    nozzle.CONV_FILENAME = 'history'
-
-    nozzle.config_name = config_name;
+    nozzle.CONV_FILENAME = 'history';
+ 	
     nozzle.partitions = partitions;
+
+    nozzle.verification = False;
     
     if 'TEMP_RUN_DIR' in config:
         if config['TEMP_RUN_DIR'] == 'YES':
@@ -2912,6 +2910,7 @@ def NozzleSetup( config_name, flevel, output='verbose', partitions=1 ):
         nozzle.su2_output_format = 'TECPLOT';
         
     # --- Setup outputs
+	
     nozzle.responses = {}
     nozzle.gradients = {}
     
@@ -2973,3 +2972,96 @@ def NozzleSetup( config_name, flevel, output='verbose', partitions=1 ):
     nozzle.SetupWall(output);
         
     return nozzle;    
+
+
+def SetupVerificationConfig ():
+	
+	# --- 
+	
+	config = SU2.io.Config();
+	
+	print "SetupVerificationConfig"
+	
+	config.FIDELITY_LEVELS_TAGS                   = '(model1,model2,model3)'
+	config.DEF_model1                             = '(EULER,2D,COARSE,AERO,LINEAR,0.5)'
+	config.DEF_model2                             = '(EULER,2D,MEDIUM,AERO,LINEAR,0.75)'
+	config.DEF_model3                             = '(EULER,2D,FINE,AERO,LINEAR,0.75)'
+	config.MISSION                                = 0
+	config.SU2_OUTPUT_FORMAT                      = 'PARAVIEW'
+	config.SU2_MAX_ITERATIONS                     = 500
+	config.SU2_CONVERGENCE_ORDER                  = 6
+	config.SU2_RUN                                = '/Users/menier/codes/SU2_dev/su2-install/bin'
+	config.OUTPUT_GRADIENTS                       = 'NO'
+	config.OUTPUT_GRADIENTS_FILENAME              = 'grad.dat'
+	config.INPUT_DV_FORMAT                        = 'DAKOTA'
+	config.OUTPUT_FUNCTIONS                       = '(MASS, THRUST)'
+	config.OUTPUT_NAME                            = 'results.out'
+	config.OUTPUT_FORMAT                          = 'DAKOTA'
+	config.WALL                                   = '(BSPLINE)'
+	config.WALL_COEFS                             = '(0.0000, 0.0000, 0.1500, 0.1700, 0.1900, 0.2124, 0.2269, 0.2734, 0.3218, 0.3218, 0.3230, 0.3343, 0.3474, 0.4392, 0.4828, 0.5673, 0.6700, 0.6700, 0.3255, 0.3255, 0.3255, 0.3255, 0.3255, 0.3238, 0.2981, 0.2817, 0.2787, 0.2787, 0.2787, 0.2797, 0.2807, 0.2936, 0.2978, 0.3049, 0.3048, 0.3048)'
+	config.WALL_COEFS_DV                          = '(0, 0, 0, 0, 0, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 11, 0, 0, 0, 0, 0, 12, 13, 14, 15, 15, 15, 16, 17, 18, 19, 20, 21, 21)'
+	config.LAYER1                                 = '(THERMAL_LAYER, PIECEWISE_LINEAR, CMC)'
+	config.LAYER1_THICKNESS_LOCATIONS             = '(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0)'
+	config.LAYER1_THICKNESS_VALUES                = '(0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03)'
+	config.LAYER1_DV                              = '(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)'
+	config.LAYER2                                 = '(AIR_GAP, CONSTANT, AIR)'
+	config.LAYER2_THICKNESS                       = '0.005'
+	config.LAYER3                                 = '(LOAD_LAYER_INSIDE, PIECEWISE_LINEAR, GR-BMI)'
+	config.LAYER3_THICKNESS_LOCATIONS             = '(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0)'
+	config.LAYER3_THICKNESS_VALUES                = '(0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002)'
+	config.LAYER3_DV                              = '(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)'
+	config.LAYER4                                 = '(LOAD_LAYER_MIDDLE, PIECEWISE_LINEAR, TI-HC)'
+	config.LAYER4_THICKNESS_LOCATIONS             = '(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0)'
+	config.LAYER4_THICKNESS_VALUES                = '(0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 0.013)'
+	config.LAYER4_DV                              = '(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)'
+	config.LAYER5                                 = '(LOAD_LAYER_OUTSIDE, PIECEWISE_LINEAR, GR-BMI)'
+	config.LAYER5_THICKNESS_LOCATIONS             = '(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0)'
+	config.LAYER5_THICKNESS_VALUES                = '(0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002)'
+	config.LAYER5_DV                              = '(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)'
+	config.STRINGERS                              = '(4,GR-BMI)'
+	config.STRINGERS_BREAK_LOCATIONS              = 'BAFFLES_LOCATION'
+	config.STRINGERS_HEIGHT_VALUES                = 'BAFFLES_HEIGHT'
+	config.STRINGERS_THICKNESS_VALUES             = '(0.01, 0.01, 0.01, 0.01, 0.01, 0.01)'
+	config.BAFFLES                                = '(6,PANEL)'
+	config.BAFFLES_LOCATION                       = '(0, 0.2, 0.4, 0.6, 0.8, 1)'
+	config.BAFFLES_THICKNESS                      = '(0.01, 0.01, 0.01, 0.01, 0.01, 0.01)'
+	config.BAFFLES_HEIGHT                         = '(0.2, 0.2, 0.2, 0.2, 0.2, 0.2)'
+	config.BAFFLES_DV                             = '(0, 1, 2, 3, 4, 0, 5, 6, 7, 8, 9, 10, 0, 0, 0, 0, 0, 0)'
+	config.MATERIAL1                              = '(CMC, ISOTROPIC)'
+	config.MATERIAL1_DENSITY                      = '2410'
+	config.MATERIAL1_ELASTIC_MODULUS              = '67.1e9'
+	config.MATERIAL1_POISSON_RATIO                = '0.33'
+	config.MATERIAL1_THERMAL_CONDUCTIVITY         = '1.41'
+	config.MATERIAL1_THERMAL_EXPANSION_COEF       = '0.24e-6'
+	config.MATERIAL1_PRINCIPLE_FAILURE_STRAIN     = '0.0007'
+	config.MATERIAL1_MAX_SERVICE_TEMPERATURE      = '973'
+	config.MATERIAL2                              = '(GR-BMI, ANISOTROPIC_SHELL)'
+	config.MATERIAL2_DENSITY                      = '1568'
+	config.MATERIAL2_ELASTIC_MODULUS              = '(60e9, 60e9)'
+	config.MATERIAL2_SHEAR_MODULUS                = '23.31e9'
+	config.MATERIAL2_POISSON_RATIO                = '0.344'
+	config.MATERIAL2_MUTUAL_INFLUENCE_COEFS       = '(0.0, 0.0)'
+	config.MATERIAL2_THERMAL_CONDUCTIVITY         = '(3.377, 3.377, 3.414)'
+	config.MATERIAL2_THERMAL_EXPANSION_COEF       = '(1.2e-6, 1.2e-6, 0.0)'
+	config.MATERIAL2_LOCAL_FAILURE_STRAIN         = '(0.0075, -0.0052, 0.0075, -0.0052, 0.0017)'
+	config.MATERIAL2_MAX_SERVICE_TEMPERATURE      = '505'
+	config.MATERIAL3                              = '(TI-HC, ISOTROPIC)'
+	config.MATERIAL3_DENSITY                      = '179.57'
+	config.MATERIAL3_ELASTIC_MODULUS              = '0.190e9'
+	config.MATERIAL3_POISSON_RATIO                = '0.178'
+	config.MATERIAL3_THERMAL_CONDUCTIVITY         = '0.708'
+	config.MATERIAL3_THERMAL_EXPANSION_COEF       = '2.97e-6'
+	config.MATERIAL3_YIELD_STRESS                 = '12.9e6'
+	config.MATERIAL3_MAX_SERVICE_TEMPERATURE      = '755'
+	config.MATERIAL4                              = '(PANEL, FIXED_RATIO_PANEL)'
+	config.MATERIAL4_LAYERS                       = '(GR-BMI, TI-HC, GR-BMI)'
+	config.MATERIAL4_THICKNESS_RATIOS             = '(0.2, 0.6, 0.2)'
+	config.MATERIAL4_YIELD_STRESS                 = '324e6'
+	config.MATERIAL5                              = '(AIR, ISOTROPIC)'
+	config.MATERIAL5_DENSITY                      = '0.0'
+	config.MATERIAL5_THERMAL_CONDUCTIVITY         = '0.0425'
+	config.HEAT_XFER_COEF_TO_ENV                  = '12.62'
+
+
+	return config;
+	

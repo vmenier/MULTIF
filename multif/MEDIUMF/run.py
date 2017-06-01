@@ -25,6 +25,8 @@ except ImportError:
 
 def Run( nozzle, output = 'verbose', writeToFile=1 ):
 
+    verification = nozzle.verification;
+
     # Obtain mass and volume
     if 'MASS' in nozzle.responses or 'VOLUME' in nozzle.responses:
         volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle)
@@ -146,7 +148,10 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
             for k in nozzle.outputTags:
 			    np.savetxt(gradFile,nozzle.gradients[k]);
             gradFile.close();   			
-        
+    
+    if verification:
+    	SU2postprocessing.VerificationPostPro(nozzle);
+
     # Write data
     if writeToFile:
         if nozzle.outputFormat == 'PLAIN':

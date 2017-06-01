@@ -131,8 +131,8 @@ def py_Extract_Vertices_Ref(MshNam, pyRefs, PyCrd_Out, PyVid_Out, PyRef_Tab):
     return _meshutils_module.py_Extract_Vertices_Ref(MshNam, pyRefs, PyCrd_Out, PyVid_Out, PyRef_Tab)
 py_Extract_Vertices_Ref = _meshutils_module.py_Extract_Vertices_Ref
 
-def py_ReadMesh(MshNam, SolNam, pyVer, pyTri, pyTet, pyEdg):
-    return _meshutils_module.py_ReadMesh(MshNam, SolNam, pyVer, pyTri, pyTet, pyEdg)
+def py_ReadMesh(MshNam, SolNam, pyVer, pyTri, pyTet, pyEdg, pySol):
+    return _meshutils_module.py_ReadMesh(MshNam, SolNam, pyVer, pyTri, pyTet, pyEdg, pySol)
 py_ReadMesh = _meshutils_module.py_ReadMesh
 # This file is compatible with both classic and new-style classes.
 

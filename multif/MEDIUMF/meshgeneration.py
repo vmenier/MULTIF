@@ -809,7 +809,6 @@ def NozzleGeoFile(FilNam, Mesh_options):
 		fil.write('Physical Line(8)  = {13};                           \n');
 		#fil.write('Physical Line(9)  = {16};                           \n');
 		
-		
 		fil.write('Physical Surface(21) = {14};                          \n');
 
 
