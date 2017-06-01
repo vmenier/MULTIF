@@ -535,9 +535,9 @@ def runSU2 ( nozzle ):
 
 	solver_options.Dimension = '2D';
 	
-	#GenerateNozzleMesh_Deform(nozzle);
+	GenerateNozzleMesh_Deform(nozzle);
 	
-	GenerateNozzleMesh(nozzle);
+	#GenerateNozzleMesh(nozzle);
 	
 	config = SetupConfig(solver_options);
 	
