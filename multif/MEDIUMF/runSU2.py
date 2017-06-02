@@ -17,7 +17,7 @@ class Solver_Options:
 def CheckSU2Version(nozzle):
     import subprocess;
     su2_exe = '%s/SU2_CFD' % nozzle.SU2_RUN;
-        
+
     #sys.path.append("/Users/menier/codes/SU2_DARPA/SU2_CFD/bin/");
     #sys.pythonpath.append("/Users/menier/codes/SU2_DARPA/SU2_CFD/bin/");
     #os.environ['PATH'] = ':'.join('/Users/menier/codes/SU2_DARPA/SU2_CFD/bin/')
@@ -534,10 +534,11 @@ def runSU2 ( nozzle ):
 		solver_options.wall_temp_values = nozzle.wall.temperature.thicknessNodes;
 
 	solver_options.Dimension = '2D';
-	
-	GenerateNozzleMesh_Deform(nozzle);
-	
-	#GenerateNozzleMesh(nozzle);
+
+        if ( nozzle.mesh_deformation ):
+	    GenerateNozzleMesh_Deform(nozzle);
+	else:
+	    GenerateNozzleMesh(nozzle);
 	
 	config = SetupConfig(solver_options);
 	

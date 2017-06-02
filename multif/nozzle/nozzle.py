@@ -2984,7 +2984,7 @@ def SetupVerificationConfig ():
 	config.SU2_OUTPUT_FORMAT                      = 'PARAVIEW'
 	config.SU2_MAX_ITERATIONS                     = 500
 	config.SU2_CONVERGENCE_ORDER                  = 6
-	config.SU2_RUN                                = '/Users/menier/codes/SU2_dev/su2-install/bin'
+	#config.SU2_RUN                                = '/Users/menier/codes/SU2_dev/su2-install/bin'
 	config.OUTPUT_GRADIENTS                       = 'NO'
 	config.OUTPUT_GRADIENTS_FILENAME              = 'grad.dat'
 	config.INPUT_DV_FORMAT                        = 'DAKOTA'

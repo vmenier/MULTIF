@@ -2,6 +2,8 @@
 
 import os, time, sys, shutil, copy
 
+sys.path.append('/home/rick/Documents/Research/MULTIF')
+
 from optparse import OptionParser
 import textwrap
 
@@ -36,9 +38,12 @@ def main():
 	parser.add_option("-l", "--flevel", dest="flevel", default=0,
 	                  help="fidelity level to run", metavar="FLEVEL")   
 	
-	parser.add_option("-v", "--verif",
-	                  action="store_true", dest="verification", default=False,
+	parser.add_option("-v", "--verif", dest="verification", default=False,
 	                  help="Run verification test case?")
+	                  
+	parser.add_option("-d", "--deform",
+	                  dest="deform", default=False,
+	                  help="Use mesh deformation?")
 	
 	(options, args)=parser.parse_args()
 	
@@ -50,25 +55,20 @@ def main():
 	    sys.stderr.write("  ## ERROR : Please choose a fidelity level to run (option -l or --flevel)");
 	    sys.exit(0);
 	
-	
-	if options.verification == True:
-		
-		# ---
-		
+	if int(options.verification):
 		config = multif.nozzle.SetupVerificationConfig();
-		options.flevel = 0;
-		
-	else :
-		
+		options.flevel = 0;		
+	else :		
 		if not os.path.isfile(options.filename) :
 		    sys.stderr.write("  ## ERROR : could not find configuration file %s\n\ns" % config_name);
 		    sys.exit(0);
 		
 		config = SU2.io.Config(options.filename)
-	
+		
 	nozzle = multif.nozzle.NozzleSetup( config, options.flevel, output, options.partitions );
 	
 	nozzle.verification = options.verification;
+	nozzle.mesh_deformation = int(options.deform)
 	
 	if nozzle.method == 'NONIDEALNOZZLE' :
 	    multif.LOWF.Run(nozzle, output);
