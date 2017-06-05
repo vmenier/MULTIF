@@ -25,8 +25,6 @@ except ImportError:
 
 def Run( nozzle, output = 'verbose', writeToFile=1 ):
 
-    verification = nozzle.verification;
-
     # Obtain mass and volume
     if 'MASS' in nozzle.responses or 'VOLUME' in nozzle.responses:
         volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle)
@@ -104,13 +102,13 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
         if nozzle.output_gradients == 1 and runAeroThermalStructuralGradients:
 
             if ( nozzle.gradients_method == 'ADJOINT' ):
-#<<<<<<< HEAD
+
 #                # Convergence study using B-spline coefs show finite difference mass gradients
 #                # converge. Most accurate gradients use absolute step size 1e-8. RWF 5/10/17
 #                sys.stdout.write("Compute mass gradients.\n");
 #                nozzle.mass_grad = nozzlemod.geometry.calcMassGradientsFD(nozzle,1e-8);
 #                sys.stdout.write("Done mass gradients.\n");				
-#=======
+
                 if gradCalc == 0: # i.e. failed adjoint calculation, use finite differences
                     multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,output);
                 else:
@@ -133,7 +131,6 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
                         multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,output);
                         nozzle.gradients['THRUST'] = saveThrustGradients;
                         
-#>>>>>>> 0944018948532f685893b7119158e1498ed840fb
             elif ( nozzle.gradients_method == 'FINITE_DIFF' ):
             
                 multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,output);  
@@ -149,7 +146,7 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
 			    np.savetxt(gradFile,nozzle.gradients[k]);
             gradFile.close();   			
     
-    if verification:
+    if nozzle.verification:
     	SU2postprocessing.VerificationPostPro(nozzle);
 
     # Write data

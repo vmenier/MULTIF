@@ -2,8 +2,6 @@
 
 import os, time, sys, shutil, copy
 
-sys.path.append('/home/rick/Documents/Research/MULTIF')
-
 from optparse import OptionParser
 import textwrap
 
@@ -67,7 +65,7 @@ def main():
 		
 	nozzle = multif.nozzle.NozzleSetup( config, options.flevel, output, options.partitions );
 	
-	nozzle.verification = options.verification;
+	nozzle.verification = int(options.verification);
 	nozzle.mesh_deformation = int(options.deform)
 	
 	if nozzle.method == 'NONIDEALNOZZLE' :
