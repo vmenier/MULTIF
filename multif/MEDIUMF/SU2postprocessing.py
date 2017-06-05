@@ -42,8 +42,8 @@ def PostProcess ( nozzle, output ):
         #nozzle.responses['WALL_TEMPERATURE'] = 0;
         
 	if 'WALL_PRESSURE' in nozzle.responses:
-    
-		func = interp1d(SolExtract[:,0],  Pres, kind='linear');        
+
+		func = interp1d(SolExtract_w[:,0],  Pres, kind='linear');        
 		nozzle.responses['WALL_PRESSURE'] = np.squeeze(func(nozzle.outputLocations['WALL_PRESSURE']));
 
 		# --- CHECK INTERPOLATION :
@@ -67,6 +67,7 @@ def PostProcess ( nozzle, output ):
 		y = nozzle.outputLocations['VELOCITY'][:,1];
 		cons = ExtractSolutionAtXY (x, y, ["Conservative_1","Conservative_2","Conservative_3"]);
 		
+		nozzle.responses['VELOCITY'] = [[],[],[]]
 		for i in range(len(cons)):
 			nozzle.responses['VELOCITY'][0].append(cons[i][1]/cons[i][0]); 
 			nozzle.responses['VELOCITY'][1].append(cons[i][2]/cons[i][0]); 

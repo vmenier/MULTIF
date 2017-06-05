@@ -277,7 +277,7 @@ class Nozzle:
     def SetupFidelityLevels (self, config, flevel, output='verbose'):
         
         nozzle = self;
-        
+        print config
         fidelity_tags = config['FIDELITY_LEVELS_TAGS'].strip('()');
         fidelity_tags = fidelity_tags.split(",");
 
@@ -2555,13 +2555,18 @@ class Nozzle:
             
             # Write response values to file
             if code == 1 or code == 3 or code == 5:
-            
+
                 if isinstance(nozzle.responses[tag],list):
                     for i in range(len(nozzle.responses[tag])):
-                        fil.write('%0.16f\n' % nozzle.responses[tag][i]);
-                        prt_item.append('%s %i' % (nozzle.responses[tag][i],i));
-                        prt_comp.append('%s' % nozzle.prefixLabels[i]);
-                        prt_val.append('%0.16f' % nozzle.responses[tag][i]);
+                        if isinstance(nozzle.responses[tag][i],list): # i.e. nested list
+                            for j in range(len(nozzle.responses[tag][i])):
+                                fil.write('%0.16f %s_%i_%i\n' % (nozzle.responses[tag][i][j],tag,i,j));
+                                # Do not print anything to the screen
+                        else:
+                            fil.write('%0.16f\n' % nozzle.responses[tag][i]);
+                            prt_item.append('%s %i' % (nozzle.responses[tag][i],i));
+                            prt_comp.append('%s' % nozzle.prefixLabels[i]);
+                            prt_val.append('%0.16f' % nozzle.responses[tag][i]);
                 elif isinstance(nozzle.responses[tag],np.ndarray):
                     arrayShape = nozzle.responses[tag].shape;
                     if len(arrayShape) == 1:
@@ -2698,10 +2703,15 @@ class Nozzle:
             
                 if isinstance(nozzle.responses[tag],list):
                     for i in range(len(nozzle.responses[tag])):
-                        fil.write('%0.16f %s_%i\n' % (nozzle.responses[tag][i],tag,i));
-                        prt_item.append('%s %i' % (nozzle.responses[tag][i],i));
-                        prt_comp.append('%s' % nozzle.prefixLabels[i]);
-                        prt_val.append('%0.16f' % nozzle.responses[tag][i]);
+                        if isinstance(nozzle.responses[tag][i],list): # i.e. nested list
+                            for j in range(len(nozzle.responses[tag][i])):
+                                fil.write('%0.16f %s_%i_%i\n' % (nozzle.responses[tag][i][j],tag,i,j));
+                                # Do not print anything to the screen
+                        else:
+                            fil.write('%0.16f %s_%i\n' % (nozzle.responses[tag][i],tag,i));
+                            prt_item.append('%s %i' % (nozzle.responses[tag][i],i));
+                            prt_comp.append('%s' % nozzle.prefixLabels[i]);
+                            prt_val.append('%0.16f' % nozzle.responses[tag][i]);
                 elif isinstance(nozzle.responses[tag],np.ndarray):
                     arrayShape = nozzle.responses[tag].shape;
                     if len(arrayShape) == 1:
