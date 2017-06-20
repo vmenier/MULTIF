@@ -170,7 +170,7 @@ def DEF(config):
     base='';
     if 'SU2_RUN' in config:
     	print "SU2_RUN IN DICT";
-    	base = "{0}".format(config['SU2_RUN']);
+    	base = "{0}/".format(config['SU2_RUN']);
     	del config['SU2_RUN'];
 
 
@@ -184,9 +184,12 @@ def DEF(config):
     
     the_Command = 'SU2_DEF ' + tempname
 	
-    the_Command = '%s/%s' % (base,the_Command);
+    the_Command = '%s%s' % (base,the_Command);
 	
     the_Command = build_command( the_Command , processes )
+
+    print the_Command
+
     run_command( the_Command )
     
     #os.remove(tempname)

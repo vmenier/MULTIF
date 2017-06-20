@@ -17,7 +17,7 @@ class Solver_Options:
 def CheckSU2Version(nozzle):
     import subprocess;
     su2_exe = '%s/SU2_CFD' % nozzle.SU2_RUN;
-        
+
     #sys.path.append("/Users/menier/codes/SU2_DARPA/SU2_CFD/bin/");
     #sys.pythonpath.append("/Users/menier/codes/SU2_DARPA/SU2_CFD/bin/");
     #os.environ['PATH'] = ':'.join('/Users/menier/codes/SU2_DARPA/SU2_CFD/bin/')
@@ -280,7 +280,7 @@ def SetupConfig (solver_options):
     config.SYSTEM_MEASUREMENTS= 'SI';
     config.REGIME_TYPE= 'COMPRESSIBLE';
 
-    config.EXT_ITER= NbrIte;
+    config.EXT_ITER=  NbrIte;
 
     config.RK_ALPHA_COEFF= "( 0.66667, 0.66667, 1.000000 )";
 
@@ -291,7 +291,7 @@ def SetupConfig (solver_options):
     config.FREESTREAM_PRESSURE='%lf' % Pres;
     config.FREESTREAM_TEMPERATURE='%lf' % Temp;
     config.REF_DIMENSIONALIZATION= 'DIMENSIONAL';
-
+	
     # --- Boundary conditions
 
     if Dim == '2D':
@@ -534,8 +534,11 @@ def runSU2 ( nozzle ):
 		solver_options.wall_temp_values = nozzle.wall.temperature.thicknessNodes;
 
 	solver_options.Dimension = '2D';
-	
-	GenerateNozzleMesh(nozzle);
+
+        if ( nozzle.mesh_deformation ):
+	    GenerateNozzleMesh_Deform(nozzle);
+	else:
+	    GenerateNozzleMesh(nozzle);
 	
 	config = SetupConfig(solver_options);
 	

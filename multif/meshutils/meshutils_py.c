@@ -269,24 +269,21 @@ int py_BSplineGeo3LowF (PyObject *pyknots, PyObject *pycoefs, PyObject *pyx, PyO
 
 
 
-void py_ReadMesh (char *MshNam, char *SolNam, PyObject *pyVer, PyObject *pyTri, PyObject *pyTet, PyObject *pyEdg)
+void py_ReadMesh (char *MshNam, char *SolNam, PyObject *pyVer, PyObject *pyTri, PyObject *pyTet, PyObject *pyEdg, PyObject *pySol)
 {
 	int i, j, d;
-	
 	
 	Options *mshopt = AllocOptions();
 	
 	strcpy(mshopt->InpNam,MshNam);
 	strcpy(mshopt->SolNam,SolNam);
 	
-	
 	//--- Open mesh/solution file
 	Mesh *Msh = NULL;
 	Msh = SetupMeshAndSolution (mshopt->InpNam, mshopt->SolNam);
 	
 	//PrintMeshInfo (Msh);
-	
-//if ( !Msh->Sol ) {
+  //if ( !Msh->Sol ) {
 	//	printf("  ## ERROR SolutionExtraction : A solution must be provided.\n");
 	//	return;
 	//}
@@ -301,7 +298,6 @@ void py_ReadMesh (char *MshNam, char *SolNam, PyObject *pyVer, PyObject *pyTri, 
 			PyList_Append(pyTri, PyFloat_FromDouble(Msh->Tri[i][j]));
 	}
 	
-	
 	for (i=1; i<=Msh->NbrTet; i++){
 		for (j=0; j<4; j++)
 			PyList_Append(pyTet, PyFloat_FromDouble(Msh->Tet[i][j]));
@@ -310,6 +306,18 @@ void py_ReadMesh (char *MshNam, char *SolNam, PyObject *pyVer, PyObject *pyTri, 
 	for (i=1; i<=Msh->NbrEfr; i++){
 		for (j=0; j<2; j++)
 			PyList_Append(pyEdg, PyFloat_FromDouble(Msh->Efr[i][j]));
+	}
+	
+	if ( Msh->Sol ) {
+		
+		//--- Output solution
+		int iVer;
+		for (iVer=1; iVer<=Msh->NbrVer; iVer++) {
+			for (i=0; i<Msh->SolSiz; i++) {
+				PyList_Append(pySol, PyFloat_FromDouble(Msh->Sol[iVer*Msh->SolSiz+i]));
+			}
+		}
+		
 	}
 	
 	
@@ -373,7 +381,6 @@ void py_ExtractAlongLine (char *MshNam, char *SolNam, PyObject *pyBox,  PyObject
 	for (i=0; i<Msh->SolSiz; i++){
 		PyList_Append(pyHeader, PyString_FromString(Msh->SolTag[i]));
 	}
-	
 	
 	
 	if (result)
@@ -445,6 +452,92 @@ void py_ExtractAtRef (char *MshNam, char *SolNam, PyObject *pyRefs,  PyObject *p
 	
 	if (result)
 		free(result);
+	
+	if ( Msh )
+ 		FreeMesh(Msh);
+	
+}
+
+
+
+void py_Extract_Vertices_Ref (char *MshNam, PyObject * pyRefs , PyObject * PyCrd_Out, PyObject * PyVid_Out, PyObject * PyRef_Tab)
+{
+	int i, iRef, j, idx;
+	
+	int *Ref = NULL;
+	int size_Ref = 0;
+	
+	//--- Get box
+	
+	if ( PyList_Check(pyRefs) )
+  {
+	
+			size_Ref = PyList_Size(pyRefs);
+      Ref = (int*) malloc( size_Ref * sizeof(int));
+			
+			for (i=0; i<size_Ref; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyRefs,i);
+       	if ( PyInt_Check(oo) )
+       	{
+					Ref[i] = (int) PyInt_AS_LONG(oo);
+       	}
+      }
+  }
+
+	Options *mshopt = AllocOptions();
+	strcpy(mshopt->InpNam,MshNam);
+	strcpy(mshopt->SolNam,"");
+
+	//--- Open mesh/solution file
+	Mesh *Msh = NULL;
+	Msh = SetupMeshAndSolution (mshopt->InpNam, "");
+	
+	double * Crd_Out = (double *) malloc(sizeof(double)*3*Msh->NbrVer);
+	int    * Vid_Out = (int * ) malloc(sizeof(int)*Msh->NbrVer);
+	
+	int Nbv=0;
+	
+	for (iRef=0; iRef<size_Ref; iRef++)
+  {
+		
+		Extract_Vertices_Ref (mshopt, Msh, Ref[iRef], Crd_Out, Vid_Out, &Nbv);
+		
+		for (i=0; i<Nbv; i++) {
+			idx = 3*i;
+			for (j=0; j<3; j++)
+				PyList_Append(PyCrd_Out, PyFloat_FromDouble(Crd_Out[idx+j]));
+			PyList_Append(PyVid_Out, PyInt_FromLong(Vid_Out[i]));
+		}
+		
+		
+		PyList_Append(PyRef_Tab, PyInt_FromLong(Ref[iRef]));
+		PyList_Append(PyRef_Tab, PyInt_FromLong(Nbv));
+		
+  }
+
+	//
+	////double * ExtractSolutionAtRef (Options *mshopt, Mesh *Msh, int *Ref, int NbrRef,  int *NbrRes, int *Siz)
+	//int NbrRes=0, Siz=0;
+	//double *result = ExtractSolutionAtRef(mshopt,Msh, Ref, size_Ref,  &NbrRes, &Siz);
+	//
+	//for (i=0; i<NbrRes*Siz; i++){
+	//	PyList_Append(pyResult, PyFloat_FromDouble(result[i]));
+	//}
+	//
+	//PyList_Append(PyInfo, PyInt_FromLong(NbrRes));
+	//PyList_Append(PyInfo, PyInt_FromLong(Siz));
+	//
+	//for (i=0; i<Msh->SolSiz; i++){
+	//	PyList_Append(pyHeader, PyString_FromString(Msh->SolTag[i]));
+	//}
+	
+	
+	if (Crd_Out)
+		free(Crd_Out);
+		
+	if (Vid_Out)
+		free(Vid_Out);
 	
 	if ( Msh )
  		FreeMesh(Msh);

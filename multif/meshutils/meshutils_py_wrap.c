@@ -3602,6 +3602,42 @@ fail:
 }
 
 
+SWIGINTERN PyObject *_wrap_py_Extract_Vertices_Ref(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  char *arg1 = (char *) 0 ;
+  PyObject *arg2 = (PyObject *) 0 ;
+  PyObject *arg3 = (PyObject *) 0 ;
+  PyObject *arg4 = (PyObject *) 0 ;
+  PyObject *arg5 = (PyObject *) 0 ;
+  int res1 ;
+  char *buf1 = 0 ;
+  int alloc1 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  PyObject * obj2 = 0 ;
+  PyObject * obj3 = 0 ;
+  PyObject * obj4 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OOOOO:py_Extract_Vertices_Ref",&obj0,&obj1,&obj2,&obj3,&obj4)) SWIG_fail;
+  res1 = SWIG_AsCharPtrAndSize(obj0, &buf1, NULL, &alloc1);
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "py_Extract_Vertices_Ref" "', argument " "1"" of type '" "char *""'");
+  }
+  arg1 = (char *)(buf1);
+  arg2 = obj1;
+  arg3 = obj2;
+  arg4 = obj3;
+  arg5 = obj4;
+  py_Extract_Vertices_Ref(arg1,arg2,arg3,arg4,arg5);
+  resultobj = SWIG_Py_Void();
+  if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
+  return resultobj;
+fail:
+  if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
+  return NULL;
+}
+
+
 SWIGINTERN PyObject *_wrap_py_ReadMesh(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   char *arg1 = (char *) 0 ;
@@ -3610,6 +3646,7 @@ SWIGINTERN PyObject *_wrap_py_ReadMesh(PyObject *SWIGUNUSEDPARM(self), PyObject 
   PyObject *arg4 = (PyObject *) 0 ;
   PyObject *arg5 = (PyObject *) 0 ;
   PyObject *arg6 = (PyObject *) 0 ;
+  PyObject *arg7 = (PyObject *) 0 ;
   int res1 ;
   char *buf1 = 0 ;
   int alloc1 = 0 ;
@@ -3622,8 +3659,9 @@ SWIGINTERN PyObject *_wrap_py_ReadMesh(PyObject *SWIGUNUSEDPARM(self), PyObject 
   PyObject * obj3 = 0 ;
   PyObject * obj4 = 0 ;
   PyObject * obj5 = 0 ;
+  PyObject * obj6 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOOOOO:py_ReadMesh",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5)) SWIG_fail;
+  if (!PyArg_ParseTuple(args,(char *)"OOOOOOO:py_ReadMesh",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6)) SWIG_fail;
   res1 = SWIG_AsCharPtrAndSize(obj0, &buf1, NULL, &alloc1);
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "py_ReadMesh" "', argument " "1"" of type '" "char *""'");
@@ -3638,7 +3676,8 @@ SWIGINTERN PyObject *_wrap_py_ReadMesh(PyObject *SWIGUNUSEDPARM(self), PyObject 
   arg4 = obj3;
   arg5 = obj4;
   arg6 = obj5;
-  py_ReadMesh(arg1,arg2,arg3,arg4,arg5,arg6);
+  arg7 = obj6;
+  py_ReadMesh(arg1,arg2,arg3,arg4,arg5,arg6,arg7);
   resultobj = SWIG_Py_Void();
   if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
   if (alloc2 == SWIG_NEWOBJ) free((char*)buf2);
@@ -3659,6 +3698,7 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"py_BSplineGeo3LowF", _wrap_py_BSplineGeo3LowF, METH_VARARGS, NULL},
 	 { (char *)"py_ExtractAlongLine", _wrap_py_ExtractAlongLine, METH_VARARGS, NULL},
 	 { (char *)"py_ExtractAtRef", _wrap_py_ExtractAtRef, METH_VARARGS, NULL},
+	 { (char *)"py_Extract_Vertices_Ref", _wrap_py_Extract_Vertices_Ref, METH_VARARGS, NULL},
 	 { (char *)"py_ReadMesh", _wrap_py_ReadMesh, METH_VARARGS, NULL},
 	 { NULL, NULL, 0, NULL }
 };
