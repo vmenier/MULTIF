@@ -18,6 +18,42 @@ class optionsmesh:
 		pass
 
 
+
+def ComputeDs(nozzle):
+	
+	yplus = nozzle.bl_yplus;
+	
+	
+	gam   = 1.4;
+	R     = 287.06;
+	Cv    = 717.645;
+	Su    = 110.4;
+	
+	M      = nozzle.mission.mach;
+	Ps     = nozzle.environment.P;
+	Ts     = nozzle.environment.T;
+	D      = nozzle.wall.geometry.radius(nozzle.wall.geometry.length);
+	
+	mu     = 1.716e-5*((Ts/273.15)**1.5)*(273.15 + Su)/(Ts + Su);      # Sutherland law 
+	rho    = Ps / ( (gam-1.) * Cv * Ts )                               # density
+	c      = np.sqrt( gam * (Ps/rho));                                 # speed of sound
+	U      = M*c                                                       # velocity
+	Rey    = rho*U*D/mu;                                               # Reynolds number
+	
+	Re_x = rho * U * D / mu;
+	Cf = 0.026/math.pow(Re_x,1./7.);
+	
+	tau_w = 0.5*Cf*rho*U*U;
+	Ufric = np.sqrt(tau_w/rho);
+	
+	ds = yplus*mu/(Ufric*rho);
+	
+	print "yplus %lf Re_x %lf " % (yplus, Re_x)
+	
+	return ds;
+	
+	
+
 def GenerateNozzleMesh (nozzle):
 	import tempfile
 	
@@ -35,7 +71,11 @@ def GenerateNozzleMesh (nozzle):
 	mesh_options.hl     = nozzle.meshhl; 
 	mesh_options.method = nozzle.method; # Euler or RANS
 	
-	mesh_options.ds          = nozzle.bl_ds;
+	# --- Compute ds based on y+ value
+	
+	mesh_options.ds = ComputeDs(nozzle);	
+	#mesh_options.ds          = nozzle.bl_ds;
+	
 	mesh_options.ratio       = nozzle.bl_ratio 
 	mesh_options.thickness   = nozzle.bl_thickness; 
 	
@@ -51,6 +91,15 @@ def GenerateNozzleMesh (nozzle):
 	except:
 		print "\n  ## ERROR : Mesh generation failed.\n";
 		sys.exit(0);
+	
+	if nozzle.method == "RANS":
+		import subprocess
+		gmsh_executable = 'gmsh';
+		try :
+			cmd = [gmsh_executable, '-2', "exit.geo", '-o', "exit.mesh"];
+			out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=None)
+		except:
+			raise;
 	
 	## --- Mesh preprocessing
 	#try :
@@ -682,6 +731,8 @@ def NozzleGeoFile(FilNam, Mesh_options):
 	
 	# --- Add B-Spline control points
 
+	crdThrust = [0.0,0.0]
+
 	vid = 11;
 	for i in range(0,nx) :
 		vid=vid+1;
@@ -689,8 +740,9 @@ def NozzleGeoFile(FilNam, Mesh_options):
 		
 		if ( math.fabs(x_thrust-xwall[nx-i-1]) < 1e-6 ):
 			exit_vid = vid;
+			
 			print "x %lf exit_vid = %d" % (xwall[nx-i-1], exit_vid)
-
+			crdThrust = [xwall[nx-i-1], ywall[nx-i-1]]
 	if ( exit_vid == -1 ):
 		print " ## ERROR : Coordinates for the thrust computation don't match.";
 		sys.exit(1);
@@ -783,7 +835,6 @@ def NozzleGeoFile(FilNam, Mesh_options):
 		fil.write('Field[%d].thickness = %le;         \n' % ((NbrFld+2), thickness));
 		fil.write('BoundaryLayer Field = %d;           \n' % (NbrFld+2));
 		
-		
 		#fil.write('Physical Line(1)  = {1};                             \n');
 		#fil.write('Physical Line(2)  = {2};                             \n');
 		#fil.write('Physical Line(3)  = {3};                             \n');
@@ -811,6 +862,61 @@ def NozzleGeoFile(FilNam, Mesh_options):
 		
 		fil.write('Physical Surface(21) = {14};                          \n');
 
+		#---- Create mesh of exit line for further interpolation
+		
+		exitNam = "exit.geo";
+		sizExit = 0.5*(CrdBox[8][0]-crdThrust[0]);
+		
+		try:
+			filExit = open(exitNam, 'w');
+		except:
+			sys.stderr.write("  ## ERROR : Could not open %s\n" % exitNam);
+			sys.exit(0);
+
+		sys.stdout.write("%s OPENED.\n" % exitNam);
+		
+		filExit.write('Point(1) = {%lf, %lf, 0, %lf};\n' % (crdThrust[0], crdThrust[1], sizExit));
+		filExit.write('Point(2) = {%lf, %lf, 0, %lf};\n' % (crdThrust[0], 0.0, sizExit));
+		
+		x0 = 2*crdThrust[0]-CrdBox[8][0];
+		
+		filExit.write('Point(3) = {%lf, %lf, 0, %lf};\n' % (x0, crdThrust[1], sizExit));
+		filExit.write('Point(4) = {%lf, %lf, 0, %lf};\n' % (x0, 0.0, sizExit));
+		
+		filExit.write('Point(5) = {%lf, %lf, 0, %lf};\n' % (CrdBox[8][0], crdThrust[1], sizExit));
+		filExit.write('Point(6) = {%lf, %lf, 0, %lf};\n' % (CrdBox[8][0], 0.0, sizExit));
+		
+		filExit.write('Line(1)  = {1, 2};\n');
+		filExit.write('Line(2)  = {3, 4};\n');
+		filExit.write('Line(3)  = {5, 6};\n');
+		filExit.write('Line(4)  = {3, 1};\n');
+		filExit.write('Line(5)  = {1, 5};\n');
+		filExit.write('Line(6)  = {4, 2};\n');
+		filExit.write('Line(7)  = {2, 6};\n');
+		
+		filExit.write('Line Loop(1) = {1,-6,-2,4};\n');
+		filExit.write('Plane Surface(1) = {1};\n');
+		
+		filExit.write('Line Loop(2) = {5,3,-7,-1};\n');
+		filExit.write('Plane Surface(2) = {2};\n');
+		
+		filExit.write('Physical Line(1)  = {1};                             \n');
+		filExit.write('Physical Line(2)  = {2};                             \n');
+		filExit.write('Physical Line(3)  = {3};                             \n');
+		filExit.write('Physical Line(4)  = {4};                             \n');
+		filExit.write('Physical Line(5)  = {5};                             \n');
+		filExit.write('Physical Line(6)  = {6};                             \n');
+		filExit.write('Physical Line(7)  = {7};                             \n');
+		
+		filExit.write('Physical Surface(1) = {1};                          \n');
+		filExit.write('Physical Surface(2) = {2};                          \n');
+		
+		filExit.close();
+		
+		filExit = open("%s.opt"%exitNam,'w');
+		filExit.write("Mesh.SaveElementTagType = 2;\n");
+		filExit.close();
+		
 
 	else :
     

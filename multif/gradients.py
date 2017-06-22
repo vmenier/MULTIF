@@ -110,6 +110,7 @@ def calcGradientsFD(nozzle,fd_step,output='verbose'):
             # Exit directory
             os.chdir('..');
             
+
             # Calculate gradients here
             for k in nozzle.gradients:
                 # Only calculate gradients that are requested, and avoid calculating 

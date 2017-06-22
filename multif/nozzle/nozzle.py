@@ -448,7 +448,8 @@ class Nozzle:
                     
                     nozzle.bl_ds        = 0.000007;
                     nozzle.bl_ratio     = 1.3; 
-                    nozzle.bl_thickness = 0.02;
+                    nozzle.bl_thickness = 0.015;
+                    nozzle.bl_yplus     = 1.0;
 					
                     if ( method == "EULER" ):
                     	scaleMesh = 1.0;
@@ -462,13 +463,16 @@ class Nozzle:
                     	scaleMesh = 1.0;
                     	if meshsize == 'COARSE':
                     	    scaleMesh = 2.5;
+                    	    nozzle.bl_yplus = 3.0;
                     	elif meshsize == 'MEDIUM':
                     	    scaleMesh = 1.5;
+                    	    nozzle.bl_yplus = 2.0;
                     	elif meshsize == 'FINE':
                     	    scaleMesh = 0.9;
+                    	    nozzle.bl_yplus = 1.0;	
 
                     nozzle.meshhl = scaleMesh*np.asarray([0.1, 0.07, 0.06, 0.006, 0.0108]);
-
+					
                     # Set analysis type
                     try:
                         analysisType = cfgLvl[3];
@@ -1469,7 +1473,7 @@ class Nozzle:
         for p in prefix:
             for item in therm_scalar:
                 specificResponseNames.append(p + '_' + item);
-        
+				
         # Initialize responses and gradients
         if isinstance(qoi,list):
             for item in qoi:
@@ -1486,9 +1490,11 @@ class Nozzle:
             else: 
                 sys.stderr.write('  ## ERROR : %s not accepted as output QOI\n\n' % qoi);
                 sys.exit(1);
-                
-        return;
         
+        #print nozzle.gradients
+        #sys.exit(1)
+        return;
+      
         
     def SetOutput(self, qoi, value=None, gradients=None):
     
@@ -2741,6 +2747,9 @@ class Nozzle:
             # Write response gradients to file
             if code == 2 or code == 3 or code == 6:
                 
+                print tag
+                print nozzle.gradients[tag]
+				
                 if isinstance(nozzle.gradients[tag][0],list):
                 
                     sys.stderr.write('Currently outputting gradients for a vector QOI '
