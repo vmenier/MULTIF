@@ -32,9 +32,15 @@ def PostProcess ( nozzle, output ):
 		
 	# --- Assign responses
 	if 'THRUST' in nozzle.responses:
-		SolExtract, Size, Header  = ExtractSolutionAtExit(nozzle);
-		nozzle.responses['THRUST'] = ComputeThrust ( nozzle, SolExtract, Size, Header );
-		#nozzle.responses['THRUST'] = Get_Thrust_File(nozzle);
+				
+		if nozzle.method == "EULER":
+			SolExtract, Size, Header  = ExtractSolutionAtExit(nozzle);
+			nozzle.responses['THRUST'] = ComputeThrust ( nozzle, SolExtract, Size, Header );
+			#nozzle.responses['THRUST'] = Get_Thrust_File(nozzle);
+		else :
+			SolExtract, Size, Header  = ExtractExitRANS (nozzle);
+			nozzle.responses['THRUST'] = ComputeThrust ( nozzle, SolExtract, Size, Header );
+			#nozzle.responses['THRUST'] = ComputeThrust_RANS (nozzle);
         
 	if 'WALL_TEMPERATURE' in nozzle.responses:
 		sys.stderr.write(' ## ERROR : WALL_TEMPERATURE not currently available from SU2\n\n');
@@ -124,7 +130,14 @@ def ExtractSolutionAtExit ( nozzle ):
 	
 	Out_sort = OutResult[OutResult[:,1].argsort()]
 	
-	return Out_sort, pyInfo, pyHeader;
+	idHeader = dict();
+	for iFld in range(0,len(pyHeader)):
+		idHeader[pyHeader[iFld]] = iFld+2;
+
+	return OutResult, pyInfo, idHeader;
+	
+	
+	#return Out_sort, pyInfo, pyHeader;
 
 
 def Get_Thrust_File(nozzle):
@@ -151,31 +164,43 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
 		sys.stderr.write("  ## ERROR : ComputeThrust : Inconsistent solution header.\n");
 		sys.exit(0);
 	
-	# --- Get solution field indices
+	## --- Get solution field indices
+	#
+	#iMach  = -1;
+	#iTem   = -1;
+	#iCons1 = -1;
+	#iCons2 = -1;
+	#iCons3 = -1;
+	#iCons4 = -1;
+	#iPres  = -1;
+	#
+	#
+	#for iFld in range(0,len(Header)):
+	#	print Header[iFld]
+	#	if Header[iFld] == 'Mach':
+	#		iMach = iFld;
+	#	elif Header[iFld] == 'Temperature':
+	#		iTem = iFld;
+	#	elif Header[iFld] == 'Conservative_1':
+	#		iCons1 = iFld;
+	#	elif Header[iFld] == 'Conservative_2':
+	#		iCons2 = iFld;
+	#	elif Header[iFld] == 'Conservative_3':
+	#		iCons3 = iFld;
+	#	elif Header[iFld] == 'Conservative_4':
+	#		iCons4 = iFld;
+	#	elif Header[iFld] == 'Pressure':
+	#		iPres = iFld;
 	
-	iMach  = -1;
-	iTem   = -1;
-	iCons1 = -1;
-	iCons2 = -1;
-	iCons3 = -1;
-	iCons4 = -1;
-	iPres  = -1;
+	print Header
 	
-	for iFld in range(0,len(Header)):
-		if Header[iFld] == 'Mach':
-			iMach = iFld;
-		elif Header[iFld] == 'Temperature':
-			iTem = iFld;
-		elif Header[iFld] == 'Conservative_1':
-			iCons1 = iFld;
-		elif Header[iFld] == 'Conservative_2':
-			iCons2 = iFld;
-		elif Header[iFld] == 'Conservative_3':
-			iCons3 = iFld;
-		elif Header[iFld] == 'Conservative_4':
-			iCons4 = iFld;
-		elif Header[iFld] == 'Pressure':
-			iPres = iFld;
+	iMach  = Header['Mach'];
+	iTem   = Header['Temperature'];
+	iCons1 = Header['Conservative_1'];
+	iCons2 = Header['Conservative_2'];
+	iCons3 = Header['Conservative_3'];
+	iCons4 = Header['Conservative_4'];
+	iPres  = Header['Pressure'];
 	
 	# --- Compute thrust	
 		
@@ -231,9 +256,9 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
 	for i in range(0,NbrVer):
 		y[i] = float(SolExtract[i][1]);
 		
-		sol[i][0] = float(SolExtract[i][2+iCons1]);
-		sol[i][1] = float(SolExtract[i][2+iCons2]);
-		sol[i][2] = float(SolExtract[i][2+iPres]);
+		sol[i][0] = float(SolExtract[i][iCons1]);
+		sol[i][1] = float(SolExtract[i][iCons2]);
+		sol[i][2] = float(SolExtract[i][iPres]);
 	
 	fsol = [];
 	for j in range(0,3):
@@ -266,8 +291,68 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
 	fil.close();
 	
 	return Thrust;
+
+def ExtractExitRANS (nozzle)	:
+	
+	exitNam = "exit.mesh";
+	
+	# --- Interpolate solution
+	
+	info = [];
+	Crd  = [];
+	Tri  = [];
+	Tet  = [];
+	Sol  = [];
+	Header = [];
+	
+	out = _mshint_module.py_Interpolation (exitNam, "nozzle.su2", "nozzle.dat",\
+		info, Crd, Tri, Tet, Sol, Header);
 	
 	
+	# --- Extract CFD solution at the inner wall	
+
+	pyResult = [];
+	pyInfo   = [];
+	pyHeader = [];
+	
+	pyRef = [1];
+	
+	_meshutils_module.py_ExtractAtRef ("exit.mesh", "exit.solb", pyRef, pyResult, pyInfo, pyHeader);
+	
+	NbrRes = pyInfo[0];
+	ResSiz = pyInfo[1];
+		
+	Result = np.asarray(pyResult);
+	
+	OutResult = np.reshape(Result,(NbrRes, ResSiz));
+		
+	print "%d results" % NbrRes;
+	
+	for i in range(0,10):
+		print "%d : (%lf,%lf) : rho = %lf" % (i, OutResult[i][0], OutResult[i][1], OutResult[i][2]);
+	
+	# --- Get solution field indices
+	
+	iMach  = -1;
+	iTem   = -1;
+	iCons1 = -1;
+	iCons2 = -1;
+	iCons3 = -1;
+	iCons4 = -1;
+	iPres  = -1;
+	
+	print Header
+	
+	idHeader = dict();
+	for iFld in range(0,len(Header)):
+		idHeader[Header[iFld]] = iFld+2;
+
+	return OutResult, pyInfo, idHeader;
+
+
+
+
+
 def ExtractSolutionAtWall (nozzle):
 	
 	# --- Extract CFD solution at the inner wall	
@@ -309,10 +394,10 @@ def ExtractSolutionAtWall (nozzle):
 	idHeader = dict();
 	for iFld in range(0,len(pyHeader)):
 		idHeader[pyHeader[iFld]] = iFld+2;
-		
+
 	return OutResult, pyInfo, idHeader;
 	
-
+	
 def WriteGMFMesh2D(MshNam, Ver, Tri):
 	
 	f = open(MshNam, 'wb');
@@ -435,4 +520,62 @@ def ExtractSolutionAtXY (x, y, tagField):
 		
 	return OutSol;
 
+	
+def VerificationPostPro(nozzle):
+	
+	# --- Load validation data
+	
+	pathsrc = "%s/verification_data/" % (os.path.dirname(os.path.abspath(__file__)));
+	
+	#--- Extract boundary vertices from mesh
+	
+	wall_name	= "%swall_%s_%s.dat" % (pathsrc, nozzle.method, nozzle.meshsize);
+	
+	wall_hdl = np.loadtxt(wall_name);
+	
+	# --- Extract CFD solution at the inner wall	
+	
+	mesh_name	= nozzle.mesh_name;
+
+	restart_name = nozzle.restart_name;
+	
+	pyResult = [];
+	pyInfo   = [];
+	pyHeader = [];
+	
+	pyRef = [1];
+	
+	_meshutils_module.py_ExtractAtRef (mesh_name, restart_name, pyRef, pyResult, pyInfo, pyHeader);
+	
+	NbrRes = pyInfo[0];
+	ResSiz = pyInfo[1];
+		
+	Result = np.asarray(pyResult);
+	
+	OutResult = np.reshape(Result,(NbrRes, ResSiz));
+	
+	# --- Get solution field indices
+		
+	idHeader = dict();
+	for iFld in range(0,len(pyHeader)):
+		idHeader[pyHeader[iFld]] = iFld+2;
+	
+	Pres = OutResult[:,idHeader['Pressure']];
+	Temp = OutResult[:,idHeader['Temperature']];
+	
+	fil = open("extraction_wall_valid.dat",'w');
+	
+	for i in range(len(wall_hdl)):
+		fil.write("%lf %lf %lf %lf\n" % (wall_hdl[i,0], wall_hdl[i,1], wall_hdl[i,2], wall_hdl[i,3]));
+	fil.close();
+		
+	fil = open("extraction_wall.dat",'w');
+	
+	for i in range(len(Pres)):
+		fil.write("%lf %lf %lf %lf\n" % (OutResult[i,0], OutResult[i,1], Pres[i], Temp[i]));
+	fil.close();
+	
+	
+	
+	
 	

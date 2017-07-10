@@ -108,6 +108,7 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
 #                sys.stdout.write("Compute mass gradients.\n");
 #                nozzle.mass_grad = nozzlemod.geometry.calcMassGradientsFD(nozzle,1e-8);
 #                sys.stdout.write("Done mass gradients.\n");				
+
                 if gradCalc == 0: # i.e. failed adjoint calculation, use finite differences
                     multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,output);
                 else:
@@ -144,6 +145,9 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
             for k in nozzle.outputTags:
 			    np.savetxt(gradFile,nozzle.gradients[k]);
             gradFile.close();   			
+    
+    if nozzle.verification:
+    	SU2postprocessing.VerificationPostPro(nozzle);
 
     # Write data
     if writeToFile:

@@ -8,13 +8,51 @@ import numpy as np
 
 import multif
 
+from scipy import interpolate as itp
+from scipy.interpolate import splev, splrep
 
-
+from .. import SU2
 
 class optionsmesh:
 	def __init__(self):
 		pass
 
+
+
+def ComputeDs(nozzle):
+	
+	yplus = nozzle.cfd.bl_yplus;
+	
+	
+	gam   = 1.4;
+	R     = 287.06;
+	Cv    = 717.645;
+	Su    = 110.4;
+	
+	M      = nozzle.mission.mach;
+	Ps     = nozzle.environment.P;
+	Ts     = nozzle.environment.T;
+	D      = nozzle.wall.geometry.radius(nozzle.wall.geometry.length);
+	
+	mu     = 1.716e-5*((Ts/273.15)**1.5)*(273.15 + Su)/(Ts + Su);      # Sutherland law 
+	rho    = Ps / ( (gam-1.) * Cv * Ts )                               # density
+	c      = np.sqrt( gam * (Ps/rho));                                 # speed of sound
+	U      = M*c                                                       # velocity
+	Rey    = rho*U*D/mu;                                               # Reynolds number
+	
+	Re_x = rho * U * D / mu;
+	Cf = 0.026/math.pow(Re_x,1./7.);
+	
+	tau_w = 0.5*Cf*rho*U*U;
+	Ufric = np.sqrt(tau_w/rho);
+	
+	ds = yplus*mu/(Ufric*rho);
+	
+	print "yplus %lf Re_x %lf " % (yplus, Re_x)
+	
+	return ds;
+	
+	
 
 def GenerateNozzleMesh (nozzle):
 	import tempfile
@@ -32,15 +70,19 @@ def GenerateNozzleMesh (nozzle):
 	mesh_options.ywall  = nozzle.cfd.y_wall;
 	mesh_options.hl     = nozzle.cfd.meshhl; 
 	mesh_options.method = nozzle.method; # Euler or RANS
+
+	# --- Compute ds based on y+ value
 	
-	mesh_options.ds          = nozzle.cfd.bl_ds;
+	mesh_options.ds = ComputeDs(nozzle);	
+	#mesh_options.ds          = nozzle.cfd.bl_ds;
+	
 	mesh_options.ratio       = nozzle.cfd.bl_ratio 
 	mesh_options.thickness   = nozzle.cfd.bl_thickness; 
 	
 	mesh_options.x_thrust = nozzle.cfd.x_thrust;  	
 	
-	#NozzleGeoFile(nozzle.tmpGeoNam, mesh_options);
-	NozzleGeoFileRoundedEdges(nozzle.tmpGeoNam, mesh_options);
+	NozzleGeoFile(nozzle.tmpGeoNam, mesh_options);
+	#NozzleGeoFileRoundedEdges(nozzle.tmpGeoNam, mesh_options);
 	
 	# --- Call Gmsh
 	
@@ -51,12 +93,388 @@ def GenerateNozzleMesh (nozzle):
 		print "\n  ## ERROR : Mesh generation failed.\n";
 		sys.exit(0);
 	
+	if nozzle.method == "RANS":
+		import subprocess
+		gmsh_executable = 'gmsh';
+		try :
+			cmd = [gmsh_executable, '-2', "exit.geo", '-o', "exit.mesh"];
+			out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=None)
+		except:
+			raise;
+	
 	## --- Mesh preprocessing
 	#try :
 	#	MeshPrepro(nozzle);
 	#except :
 	#	print "\n  ## ERROR : Mesh preprocessing failed.\n";
 	#	sys.exit(0);
+
+
+
+
+def Project_Wall (nozzle, motion):
+	
+	Nbv = len(motion);
+	
+	# --- Project baseline surface onto the new CAD model
+	
+	x=[];
+	for i in range(0,Nbv):	
+		x.append(float(motion[i][1]))
+	
+	ynew = [];
+	dydx = [];
+	
+	# --- Get baseline length
+	
+	lenBas = max(x)-min(x);
+	#print "LENGTH BASELINE : %lf" % lenBas
+	
+	lenCur = nozzle.wall.geometry.length;
+	
+	scax = lenCur/lenBas;
+	
+	xnew = [];	
+	for i in range(0,Nbv):
+		xnew.append(0.9999*scax*x[i])
+	
+	xwall  = nozzle.xwall;
+	ywall  = nozzle.ywall;
+	
+	#print "MAX xwall %lf, max xnew %lf" % (max(xwall), max(xnew))
+	
+	#from scipy.interpolate import interp1d
+	#f = interp1d(xwall, ywall)
+	#xx = np.linspace(0, max(xwall), num=41, endpoint=True)
+	#import matplotlib.pyplot as plt
+	#plt.plot(xwall, ywall, '-', xx, f(xx), 'o', xnew, f(xnew), 'o')
+	#plt.show()
+	
+	#sys.exit(1)
+	
+	_meshutils_module.py_BSplineGeo3LowF (nozzle.wall.knots, nozzle.wall.coefs, xnew, ynew, dydx);
+	
+	motion_new = [];
+	for i in range(0,Nbv):
+		#motion_new.append([motion[i][0],xnew[i],f(xnew[i])])
+		#print "%lf %lf" % (xnew[i],f(xnew[i]))
+		motion_new.append([motion[i][0],xnew[i],ynew[i]])
+	
+	return motion_new;
+
+
+def Extract_Boundary_Vertices(mesh_name, pyRefs):
+	
+	
+	from .. import _meshutils_module
+	
+	#--- Extract boundary vertices from mesh
+	
+	PyVid_Out = [];
+	PyCrd_Out = [];
+	PyRef_Tab = [];
+		
+	_meshutils_module.py_Extract_Vertices_Ref (mesh_name, pyRefs, PyCrd_Out, PyVid_Out, PyRef_Tab);
+		
+	refmax=-1;
+	for iRef in range(len(PyRef_Tab)/2):
+		refmax = max(refmax,PyRef_Tab[2*iRef]);
+	
+	Bdr = [[] for x in range((refmax+1))];
+	
+	idv=0;
+	for iRef in range(len(PyRef_Tab)/2):
+				
+		Nbv = PyRef_Tab[2*iRef+1];
+		
+		for i in range(Nbv):
+			
+			vid = PyVid_Out[idv];
+			
+			x = PyCrd_Out[3*idv+0];
+			y = PyCrd_Out[3*idv+1];
+			z = PyCrd_Out[3*idv+2];
+			
+			Bdr[PyRef_Tab[2*iRef]].append([vid,x,y,z])
+			idv=idv+1;
+	
+	return Bdr;
+	
+
+def GenerateNozzleMesh_Deform (nozzle):
+
+	from .. import _meshutils_module
+	
+	sys.stdout.write(" -- Generate nozzle mesh (deform)\n")
+	
+	h_tip = 0.012;
+	
+	motion_hdl = [];
+	
+	pathsrc = "%s/baseline_meshes/" % (os.path.dirname(os.path.abspath(__file__)));
+	
+	#--- Extract boundary vertices from mesh
+	
+	mesh_name	= "%sbaseline_%s_%s.su2" % (pathsrc, nozzle.method, nozzle.meshsize);
+	
+	print mesh_name
+	
+	if not os.path.exists(mesh_name):
+		sys.stderr.write("  ## ERROR mesh generation deform: baseline mesh not found!\n \
+		Expected: %s\n" % mesh_name);
+		sys.exit(1);
+	
+	pyRefs = [1, 2, 3, 9];
+	
+	Bdr = Extract_Boundary_Vertices(mesh_name, pyRefs);
+		
+	#fil = open("mesh_motion.dat", "w");
+	
+	xwall  = nozzle.xwall;
+	ywall  = nozzle.ywall;
+	
+	xwall_max = max(xwall);
+	
+	#for iref in range(len(Bdr)):
+	#	Nbv = len(Bdr[iref]);
+	#	
+	#	if Nbv < 1 :
+	#		continue;
+	#		
+	#	sys.stdout.write("- Ref %d : \n" % iref);
+	#	
+	#	for i in range(Nbv):
+	#		sys.stdout.write("\t Ver %d : %lf %lf\n" % (Bdr[iref][i][0], Bdr[iref][i][1], Bdr[iref][i][2]));
+	#	
+	#sys.exit(1)
+	
+	#--- Write outside of nozzle's deformation file
+	
+	ref_outside = 3;
+	
+	xbas_max = max(float(l[1]) for l in Bdr[ref_outside])
+	xbas_min = min(float(l[1]) for l in Bdr[ref_outside])
+	
+	xx = [-0.67 , -0.65 , 0.1548, xwall[-1]];
+	yy = [0.4244, 0.4244, 0.41,   ywall[-1]+h_tip]
+	
+	tck = splrep(xx, yy, xb=xx[0], xe=xx[-1], k=2)
+	
+	f_outside = itp.interp1d(xx, yy, kind='cubic')
+	
+	######## BEGIN PLOT
+	###x3 = np.linspace(xx[0], xx[-1], 200)
+	###y3 = splev(x3, tck)
+	###
+	###y32 = f_outside(x3)
+	###
+	###import matplotlib.pyplot as plt
+	###plt.plot(x3,y3, '-')
+	###plt.plot(x3,y32, '-')
+	###plt.plot(xx,yy, 'o')
+	###plt.show()
+	###
+	###sys.exit(1);
+	###
+	######## END PLOT
+	
+	Nbv = len(Bdr[ref_outside]);
+	
+	for i in range(Nbv):
+		
+		vid = Bdr[ref_outside][i][0];
+		x = Bdr[ref_outside][i][1];
+		
+		#print "x %lf xbax in %lf %lf xwall in %lf %lf " % (x, xbas_min, xbas_max, xx[0], xwall_max)
+		xnew = xx[0] + (x-xbas_min)/(xbas_max-xbas_min)*(xwall_max-xx[0]);
+		#print "xnew %lf x %lf xbax in %lf %lf xwall in %lf %lf " % (xnew, x, xbas_min, xbas_max, xx[0], xwall_max)
+		
+		ynew = f_outside(xnew);
+		
+		motion_hdl.append([vid-1, xnew, ynew, Bdr[ref_outside][i][1], Bdr[ref_outside][i][2]]);
+		
+		#fil.write("%d %le %le\n" % (vid-1, xnew, ynew));
+
+	#--- Project tip of nozzle
+	
+	ref_tip = 2;
+	
+	Nbv = len(Bdr[ref_tip]);
+	
+	ymax = max(float(l[2]) for l in Bdr[ref_tip])
+	ymin = min(float(l[2]) for l in Bdr[ref_tip])
+	
+	for i in range(Nbv):
+		
+		vid = Bdr[ref_tip][i][0];
+		x   = Bdr[ref_tip][i][1];
+		y   = Bdr[ref_tip][i][2];
+		
+		#print "x %lf xbax in %lf %lf xwall in %lf %lf " % (x, xbas_min, xbas_max, xx[0], xwall_max)
+		xnew = xwall[-1];
+		#print "xnew %lf x %lf xbax in %lf %lf xwall in %lf %lf " % (xnew, x, xbas_min, xbas_max, xx[0], xwall_max)
+		ynew = ywall[-1] + (y-ymin)/(ymax-ymin)*h_tip;
+		
+		#print "ref %d : ver %d : (%lf %lf) -> (%lf %lf)" % (ref_tip, vid, x, y, xnew, ynew)
+		
+		motion_hdl.append([vid-1, xnew, ynew, Bdr[ref_tip][i][1], Bdr[ref_tip][i][2]]);
+		#fil.write("%d %le %le\n" % (vid-1, xnew, ynew));
+		
+	# --- Project inner wall
+	
+	ref_wall = 1;
+	
+	Nbv = len(Bdr[ref_wall]);
+	
+	xnew_tab = [];
+	ynew_tab = [];
+	dydx = [];
+	
+	xmin = min(float(l[1]) for l in Bdr[ref_wall])
+	xmax = max(float(l[1]) for l in Bdr[ref_wall])
+	
+	for i in range(Nbv):		
+		x = Bdr[ref_wall][i][1];
+		xnew = xwall[0] + (x-xmin)/(xmax-xmin)*(xwall[-1]-xwall[0]);
+		xnew_tab.append(xnew);
+		
+	_meshutils_module.py_BSplineGeo3LowF (nozzle.wall.knots, nozzle.wall.coefs, xnew_tab, ynew_tab, dydx);
+	
+	for i in range(Nbv):
+		
+		vid = Bdr[ref_wall][i][0];
+		
+		#print "ref %d : (%lf %lf) -> (%lf %lf)" % (ref_wall, Bdr[ref_wall][i][1], Bdr[ref_wall][i][2], xnew_tab[i], ynew_tab[i])
+		
+		motion_hdl.append([vid-1, xnew_tab[i], ynew_tab[i], Bdr[ref_wall][i][1], Bdr[ref_wall][i][2]]);
+		#fil.write("%d %le %le\n" % (vid-1, xnew_tab[i], ynew_tab[i]));
+		
+	# --- Project thrust marker
+	
+	ref_thrust = 9;
+	
+	Nbv = len(Bdr[ref_thrust]);
+	
+	x = Bdr[ref_thrust][0][1];
+	xnew = xx[0] + (x-xbas_min)/(xbas_max-xbas_min)*(xwall_max-xx[0]);
+	
+	xnew_tab = [xnew];
+	ynew_tab = [];
+	dydx = [];
+	_meshutils_module.py_BSplineGeo3LowF (nozzle.wall.knots, nozzle.wall.coefs, xnew_tab, ynew_tab, dydx);
+	
+	ymax = ynew_tab[0];
+	
+	ymax_bas =  max(float(l[2]) for l in Bdr[ref_thrust])
+	
+	for i in range(Nbv):
+		
+		vid = Bdr[ref_thrust][i][0];
+		y   = Bdr[ref_thrust][i][2];
+		
+		ynew = y/ymax_bas*ymax;
+		
+		motion_hdl.append([vid-1, xnew, ynew, Bdr[ref_thrust][i][1], Bdr[ref_thrust][i][2]]);
+		#fil.write("%d %le %le\n" % (vid-1, xnew, ynew));
+	
+	
+	#--- Write mesh motion file
+	
+	fil = open("mesh_motion.dat", "w");
+	
+	for i in range(len(motion_hdl)):
+		fil.write("%d %le %le\n" % (motion_hdl[i][0], motion_hdl[i][1], motion_hdl[i][2]));
+	
+	fil.close();
+	
+	
+	###--- Debug : plot boundary
+	##
+	##import matplotlib.pyplot as plt
+	##
+	##x0 = []
+	##x1 = []
+	##y0 = []
+	##y1 = []
+    ##
+	##for i in range(0,len(motion_hdl)):
+	##	x0.append(float(motion_hdl[i][1]))
+	##	y0.append(float(motion_hdl[i][2]))
+	##	
+	##	x1.append(float(motion_hdl[i][3]))
+	##	y1.append(float(motion_hdl[i][4]))
+	##	
+	##
+	##plt.plot(x1,y1, ".", label="Initial")
+	##plt.plot(x0,y0, ".", label="Moved")
+	##plt.legend()
+	##plt.show();
+
+
+
+	# --- Setup config file
+
+	config = SU2.io.Config();
+
+	# -- Note : the values don't matter. All markers must be defined otherwise SU2 exits.
+	config.MARKER_HEATFLUX = "( PhysicalLine6, 0.0, PhysicalLine7, 0.0 )"
+	config.MARKER_INLET    = "( PhysicalLine1, 955.000000, 97585.000000, 1.0, 0.0, 0.0 )"
+	config.MARKER_FAR      = "( ( PhysicalLine5, PhysicalLine4 ) )"
+	config.MARKER_SYM      = "( ( PhysicalLine2 ) )"
+	config.MARKER_OUTLET   = "( PhysicalLine3, 18754.000000)"
+
+	config.MESH_FILENAME= "baseline_coarse.su2"
+	config.DV_KIND= "SURFACE_FILE"
+	config.DV_MARKER= "( PhysicalLine7 )"
+	config.MOTION_FILENAME= "mesh_motion.dat"
+
+	config.DEFORM_LINEAR_SOLVER  = "FGMRES"
+	config.DEFORM_LINEAR_ITER    = "500"
+	config.DEFORM_NONLINEAR_ITER = "5"
+	config.DEFORM_CONSOLE_OUTPUT = "YES"
+	config.DEFORM_TOL_FACTOR     = "1e-6"
+	config.DEFORM_STIFFNESS_TYPE = "WALL_DISTANCE"
+
+	config.HOLD_GRID_FIXED       = "NO"
+	config.HOLD_GRID_FIXED_COORD = "(-1e6,-1e6,-1e6,1e6,1e6,1e6)"
+	config.VISUALIZE_DEFORMATION = "YES"
+	config.MARKER_MOVING         = "( PhysicalLine7 )"
+	
+
+	config.NUMBER_PART = 1;
+
+
+	config.MESH_FILENAME          = mesh_name
+	config.DV_KIND                = 'SURFACE_FILE'
+	config.DV_MARKER              = '( ( PhysicalLine3, PhysicalLine2, PhysicalLine1, PhysicalLine9 ) )'
+	config.MOTION_FILENAME        = 'mesh_motion.dat'
+	config.DEFORM_LINEAR_SOLVER   = 'FGMRES'
+	config.DEFORM_LINEAR_ITER     = 500
+	config.DEFORM_NONLINEAR_ITER  = 10
+	config.DEFORM_CONSOLE_OUTPUT  = 'YES'
+	config.DEFORM_TOL_FACTOR      = 1e-06
+	config.DEFORM_STIFFNESS_TYPE  = 'WALL_DISTANCE'
+	config.HOLD_GRID_FIXED        = 'NO'
+	config.HOLD_GRID_FIXED_COORD  = '(-1e6,-1e6,-1e6,1e6,1e6,1e6)'
+	config.VISUALIZE_DEFORMATION  = 'YES'
+	config.MARKER_MOVING          = '( PhysicalLine3, PhysicalLine2, PhysicalLine1, PhysicalLine9 )'
+	config.NUMBER_PART            =  1
+	config.MARKER_EULER           = '( ( PhysicalLine1, PhysicalLine2, PhysicalLine3 ) )'
+	config.MARKER_INLET           = '( PhysicalLine8, 955.000000, 97585.000000, 1.0, 0.0, 0.0, PhysicalLine4,  228.016984, 22181.944264, 1.0, 0.0, 0.0 )'
+	config.MARKER_FAR             = '( ( PhysicalLine5 ) )'
+	config.MARKER_SYM             = '( ( PhysicalLine7 ) )'
+	config.MARKER_OUTLET          = '( PhysicalLine6, 18754.000000)'
+	config.MARKER_THRUST          = '( PhysicalLine9 )'
+	config.MESH_OUT_FILENAME      = nozzle.mesh_name;
+	
+	config.SU2_RUN = nozzle.SU2_RUN;
+
+
+	# --- Run SU2
+
+	info = SU2.run.DEF(config)
+
+
 	
 
 def CallGmsh (nozzle):
@@ -261,8 +679,7 @@ def NozzleGeoFile(FilNam, Mesh_options):
 	ywall  = Mesh_options.ywall;
  	hl     = Mesh_options.hl;
 	method = Mesh_options.method;
-
-
+	
 	ds        =  Mesh_options.ds;       
 	ratio     =  Mesh_options.ratio;   
 	thickness =  Mesh_options.thickness;
@@ -279,8 +696,10 @@ def NozzleGeoFile(FilNam, Mesh_options):
 
 	CrdBox[1][0] = 0;          CrdBox[1][1] = 0;
 	CrdBox[2][0] = length;     CrdBox[2][1] = 0;
-	CrdBox[3][0] = 1.5;        CrdBox[3][1] = 0;
-	CrdBox[4][0] = 1.5;        CrdBox[4][1] = 2.5;
+#	CrdBox[3][0] = 1.5;        CrdBox[3][1] = 0;
+#	CrdBox[4][0] = 1.5;        CrdBox[4][1] = 2.5;
+	CrdBox[3][0] = 4.6;        CrdBox[3][1] = 0;
+	CrdBox[4][0] = 4.6;        CrdBox[4][1] = 2.5;
 	CrdBox[5][0] = -0.67;      CrdBox[5][1] = 2.5;
 	CrdBox[6][0] = -0.67;      CrdBox[6][1] = 0.4244;
 	CrdBox[7][0] = 0.1548;     CrdBox[7][1] = 0.4244;
@@ -312,8 +731,10 @@ def NozzleGeoFile(FilNam, Mesh_options):
 	fil.write('Point(9)  = {%lf, %lf, 0, %lf};\n'% (CrdBox[3][0], CrdBox[8][1], sizWal));
 	fil.write('Point(10) = {%lf, %lf, 0, %lf};\n'% (CrdBox[3][0], CrdBox[7][1]+0.25*CrdBox[8][1], sizWal));
 	fil.write('Point(11) = {%lf, %lf, 0, %lf};\n'% (CrdBox[6][0], CrdBox[7][1]+0.25*CrdBox[8][1], sizWal));
-
+	
 	# --- Add B-Spline control points
+
+	crdThrust = [0.0,0.0]
 
 	vid = 11;
 	for i in range(0,nx) :
@@ -322,8 +743,9 @@ def NozzleGeoFile(FilNam, Mesh_options):
 		
 		if ( math.fabs(x_thrust-xwall[nx-i-1]) < 1e-6 ):
 			exit_vid = vid;
+			
 			print "x %lf exit_vid = %d" % (xwall[nx-i-1], exit_vid)
-
+			crdThrust = [xwall[nx-i-1], ywall[nx-i-1]]
 	if ( exit_vid == -1 ):
 		print " ## ERROR : Coordinates for the thrust computation don't match.";
 		sys.exit(1);
@@ -416,7 +838,6 @@ def NozzleGeoFile(FilNam, Mesh_options):
 		fil.write('Field[%d].thickness = %le;         \n' % ((NbrFld+2), thickness));
 		fil.write('BoundaryLayer Field = %d;           \n' % (NbrFld+2));
 		
-		
 		#fil.write('Physical Line(1)  = {1};                             \n');
 		#fil.write('Physical Line(2)  = {2};                             \n');
 		#fil.write('Physical Line(3)  = {3};                             \n');
@@ -442,9 +863,63 @@ def NozzleGeoFile(FilNam, Mesh_options):
 		fil.write('Physical Line(8)  = {13};                           \n');
 		#fil.write('Physical Line(9)  = {16};                           \n');
 		
-		
 		fil.write('Physical Surface(21) = {14};                          \n');
 
+		#---- Create mesh of exit line for further interpolation
+		
+		exitNam = "exit.geo";
+		sizExit = 0.5*(CrdBox[8][0]-crdThrust[0]);
+		
+		try:
+			filExit = open(exitNam, 'w');
+		except:
+			sys.stderr.write("  ## ERROR : Could not open %s\n" % exitNam);
+			sys.exit(0);
+
+		sys.stdout.write("%s OPENED.\n" % exitNam);
+		
+		filExit.write('Point(1) = {%lf, %lf, 0, %lf};\n' % (crdThrust[0], crdThrust[1], sizExit));
+		filExit.write('Point(2) = {%lf, %lf, 0, %lf};\n' % (crdThrust[0], 0.0, sizExit));
+		
+		x0 = 2*crdThrust[0]-CrdBox[8][0];
+		
+		filExit.write('Point(3) = {%lf, %lf, 0, %lf};\n' % (x0, crdThrust[1], sizExit));
+		filExit.write('Point(4) = {%lf, %lf, 0, %lf};\n' % (x0, 0.0, sizExit));
+		
+		filExit.write('Point(5) = {%lf, %lf, 0, %lf};\n' % (CrdBox[8][0], crdThrust[1], sizExit));
+		filExit.write('Point(6) = {%lf, %lf, 0, %lf};\n' % (CrdBox[8][0], 0.0, sizExit));
+		
+		filExit.write('Line(1)  = {1, 2};\n');
+		filExit.write('Line(2)  = {3, 4};\n');
+		filExit.write('Line(3)  = {5, 6};\n');
+		filExit.write('Line(4)  = {3, 1};\n');
+		filExit.write('Line(5)  = {1, 5};\n');
+		filExit.write('Line(6)  = {4, 2};\n');
+		filExit.write('Line(7)  = {2, 6};\n');
+		
+		filExit.write('Line Loop(1) = {1,-6,-2,4};\n');
+		filExit.write('Plane Surface(1) = {1};\n');
+		
+		filExit.write('Line Loop(2) = {5,3,-7,-1};\n');
+		filExit.write('Plane Surface(2) = {2};\n');
+		
+		filExit.write('Physical Line(1)  = {1};                             \n');
+		filExit.write('Physical Line(2)  = {2};                             \n');
+		filExit.write('Physical Line(3)  = {3};                             \n');
+		filExit.write('Physical Line(4)  = {4};                             \n');
+		filExit.write('Physical Line(5)  = {5};                             \n');
+		filExit.write('Physical Line(6)  = {6};                             \n');
+		filExit.write('Physical Line(7)  = {7};                             \n');
+		
+		filExit.write('Physical Surface(1) = {1};                          \n');
+		filExit.write('Physical Surface(2) = {2};                          \n');
+		
+		filExit.close();
+		
+		filExit = open("%s.opt"%exitNam,'w');
+		filExit.write("Mesh.SaveElementTagType = 2;\n");
+		filExit.close();
+		
 
 	else :
     

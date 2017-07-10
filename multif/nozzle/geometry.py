@@ -890,6 +890,7 @@ def calcMassGradientsFD(nozzle,fd_step):
     #print len(nozzle.dvList);
     #sys.exit(1);
     
+
     for i in range(len(nozzle.derivativesDV)):
         
         nozzle2 = copy.deepcopy(nozzle);
@@ -910,7 +911,10 @@ def calcMassGradientsFD(nozzle,fd_step):
         dmdxLocal = (mass2-mass)/dx;
         
         dmdx.append((mass2-mass)/dx);
+
     	
+		#print "DV %d : copy %lf sec , updateDV %lf sec , setupWall %lf sec , calcvol %lf sec , rest %lf " % (i, t1-t0, t2-t1, t3-t2, t4-t3, t5-t4 )
+
     return dmdx
 
 
