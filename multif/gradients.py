@@ -27,7 +27,7 @@ def nozzleAnalysis(index, nozzle, output='verbose'):
         MEDIUMF.Run(nozzle,output,writeToFile=1);
     else:
         sys.stderr.write('  ## ERROR: Only NONIDEALNOZZLE, EULER, or RANS are accepted'
-          ' as nozzle methods\n\n');
+          ' as nozzle.methods\n\n');
         sys.exit(1);
                     
     if output == 'verbose':
@@ -101,7 +101,7 @@ def calcGradientsFD(nozzle,fd_step,output='verbose'):
                 MEDIUMF.Run(nozzleEval[i],output,writeToFile=1);
             else:
                 sys.stderr.write('  ## ERROR: Only NONIDEALNOZZLE, EULER, or RANS are accepted'
-                  ' as nozzle methods\n\n');
+                  ' as nozzle.methods\n\n');
                 sys.exit(1);
 
             if output == 'verbose':

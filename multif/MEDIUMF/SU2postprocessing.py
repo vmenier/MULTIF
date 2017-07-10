@@ -81,9 +81,9 @@ def PostProcess ( nozzle, output ):
  
 def CheckConvergence ( nozzle ) :	
 
-	plot_format	  = nozzle.OUTPUT_FORMAT;
+	plot_format	  = nozzle.cfd.output_format;
 	plot_extension   = SU2.io.get_extension(plot_format)
-	history_filename = nozzle.CONV_FILENAME + plot_extension
+	history_filename = nozzle.cfd.conv_filename + plot_extension
 	#special_cases	= SU2.io.get_specialCases(config)
 	
 	history	  = SU2.io.read_history( history_filename )
@@ -102,16 +102,16 @@ def CheckConvergence ( nozzle ) :
 	
 def ExtractSolutionAtExit ( nozzle ):
 
-	mesh_name	= nozzle.mesh_name;
+	mesh_name	= nozzle.cfd.mesh_name;
 
-	restart_name = nozzle.restart_name;
+	restart_name = nozzle.cfd.restart_name;
 	
 	pyResult = [];
 	pyInfo   = [];
 	pyHeader = [];
 	
 	#pyBox = [nozzle.length,nozzle.length,0,nozzle.height+1e-20];
-	pyBox = [nozzle.x_thrust,nozzle.x_thrust,-1e-20,nozzle.y_thrust+1e-20];
+	pyBox = [nozzle.cfd.x_thrust,nozzle.cfd.x_thrust,-1e-20,nozzle.cfd.y_thrust+1e-20];
 	
 	_meshutils_module.py_ExtractAlongLine (mesh_name, restart_name, pyBox, pyResult, pyInfo, pyHeader);
 	
@@ -272,9 +272,9 @@ def ExtractSolutionAtWall (nozzle):
 	
 	# --- Extract CFD solution at the inner wall	
 
-	mesh_name	= nozzle.mesh_name;
+	mesh_name	= nozzle.cfd.mesh_name;
 
-	restart_name = nozzle.restart_name;
+	restart_name = nozzle.cfd.restart_name;
 	
 	pyResult = [];
 	pyInfo   = [];

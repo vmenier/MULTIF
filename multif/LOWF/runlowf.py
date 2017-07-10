@@ -835,11 +835,11 @@ def Run (nozzle,output='verbose',writeToFile=1):
         
     # Calculate mass gradients if necessary
     if 'MASS' in nozzle.gradients and nozzle.gradients['MASS'] is not None:
-        if ( nozzle.gradients_method == 'ADJOINT' ):
+        if ( nozzle.gradientsMethod == 'ADJOINT' ):
             # Convergence study using B-spline coefs show finite difference mass gradients
             # converge. Most accurate gradients use absolute step size 1e-8. RWF 5/10/17
             nozzle.gradients['MASS'] = nozzlemod.geometry.calcMassGradientsFD(nozzle,1e-8);
-        elif ( nozzle.gradients_method == 'FINITE_DIFF' ):
+        elif ( nozzle.gradientsMethod == 'FINITE_DIFF' ):
             nozzle.gradients['MASS'] = nozzlemod.geometry.calcMassGradientsFD(\
               nozzle,nozzle.fd_step_size);
         else:
@@ -868,7 +868,7 @@ def Run (nozzle,output='verbose',writeToFile=1):
             runAeroThermalStructuralProblem = 1;    
     
     # Run aero-thermal-structural gradient analysis if necessary
-    if nozzle.output_gradients == 1:
+    if nozzle.gradientsFlag == 1:
         runAeroThermalStructuralGradients = 0;        
         for k in nozzle.gradients:
             if k not in ['MASS','VOLUME','MASS_WALL_ONLY']:
@@ -906,18 +906,18 @@ def Run (nozzle,output='verbose',writeToFile=1):
                 nozzle.outputLocations['VELOCITY'][:,0], xPosition, flowTuple[1])
         
         # Calculate gradients if necessary
-        if nozzle.output_gradients == 1 and runAeroThermalStructuralGradients:
+        if nozzle.gradientsFlag == 1 and runAeroThermalStructuralGradients:
         
             print 'entered low-fi gradient calculation'
         
             if ( output == 'verbose' ):
                 sys.stdout.write('Running gradient analysis\n');
         
-            if ( nozzle.gradients_method == 'ADJOINT' ):
+            if ( nozzle.gradientsMethod == 'ADJOINT' ):
                 sys.stderr.write('\n ## ERROR : Adjoint gradients for low-fidelity '
                   'thrust calculation are not available.\n');
                 sys.exit(1);
-            elif ( nozzle.gradients_method == 'FINITE_DIFF' ):
+            elif ( nozzle.gradientsMethod == 'FINITE_DIFF' ):
                 multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,output);           
             else:
 			    sys.stderr.write('  ## ERROR : Unknown gradients computation '
@@ -925,7 +925,7 @@ def Run (nozzle,output='verbose',writeToFile=1):
 			    sys.exit(1);
 			    
             # Write separate gradients file
-            gradFile = open(nozzle.output_gradients_filename,'w');
+            gradFile = open(nozzle.gradientsFile,'w');
             for k in nozzle.outputTags:
 			    np.savetxt(gradFile,nozzle.gradients[k]);
             gradFile.close();          

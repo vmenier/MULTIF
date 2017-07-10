@@ -144,14 +144,14 @@
 < 	
 236,238c178,180
 < 
-< 	solver_options.NbrIte = nozzle.su2_max_iterations;
+< 	solver_options.NbrIte = nozzle.cfd.su2_max_iterations;
 < 		
 ---
 > 	
 > 	solver_options.NbrIte = int(nozzle.NbrIte);
 > 	
 240d181
-< 	solver_options.su2_output_format = nozzle.su2_output_format; 
+< 	solver_options.su2_output_format = nozzle.cfd.su2_output_format; 
 247,264c188
 < 	gam   = 1.4;
 < 	R     = 287.06;
@@ -172,7 +172,7 @@
 < 	solver_options.Reynolds_length = D;
 < 	solver_options.Reynolds        = Rey;
 ---
-> 	solver_options.MaxCFL = nozzle.MaxCFL;
+> 	solver_options.MaxCFL = nozzle.cfd.max_cfl;
 266,267d189
 < 	#print "Rey %lf mu %lf rho %lf  T %lf  P %lf  D %lf" % (Rey, mu, rho, Ts, Ps,  D)
 < 	#sys.exit(1)

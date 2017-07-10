@@ -50,15 +50,17 @@ def main():
 
     nozzle = multif.nozzle.NozzleSetup( options.filename, options.flevel, output, options.partitions );
 	
-    nozzle.mesh_deformation = int(options.deform)
+    nozzle.meshDeformationFlag = int(options.deform)
     
-    if nozzle.method == 'NONIDEALNOZZLE' :
+    if nozzle.method == 'NONIDEALNOZZLE': # inherently 1D
 	    multif.LOWF.Run(nozzle, output);
-    elif nozzle.method == 'EULER' or nozzle.method == 'RANS':
+    elif nozzle.dim == '2D': # nozzle.method should be EULER or RANS
 	    multif.MEDIUMF.Run(nozzle, output);
+	elif nozzle.dim == '3D': # nozzle.method should be RANS
+	    multif.HIGHF.Run(nozzle, output);
 	
 	# --- Print warning in case the wrong SU2 version was run
-    if nozzle.method != 'NONIDEALNOZZLE' and nozzle.SU2Version != 'OK':
+    if nozzle.method != 'NONIDEALNOZZLE' and nozzle.cfd.su2_version != 'OK':
 	    sys.stdout.write('\n');
 	    sys.stdout.write('#' * 90);
 	    sys.stdout.write('\n  ## WARNING : You are not using the right version of SU2. This may have caused robustness issues.\n');

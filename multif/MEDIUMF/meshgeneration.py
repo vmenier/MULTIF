@@ -28,22 +28,23 @@ def GenerateNozzleMesh (nozzle):
 	# --- Write geo file
 	
 	mesh_options = optionsmesh();
-	mesh_options.xwall  = nozzle.xwall;
-	mesh_options.ywall  = nozzle.ywall;
-	mesh_options.hl     = nozzle.meshhl; 
+	mesh_options.xwall  = nozzle.cfd.x_wall;
+	mesh_options.ywall  = nozzle.cfd.y_wall;
+	mesh_options.hl     = nozzle.cfd.meshhl; 
 	mesh_options.method = nozzle.method; # Euler or RANS
 	
-	mesh_options.ds          = nozzle.bl_ds;
-	mesh_options.ratio       = nozzle.bl_ratio 
-	mesh_options.thickness   = nozzle.bl_thickness; 
+	mesh_options.ds          = nozzle.cfd.bl_ds;
+	mesh_options.ratio       = nozzle.cfd.bl_ratio 
+	mesh_options.thickness   = nozzle.cfd.bl_thickness; 
 	
-	mesh_options.x_thrust = nozzle.x_thrust;  	
+	mesh_options.x_thrust = nozzle.cfd.x_thrust;  	
 	
 	#NozzleGeoFile(nozzle.tmpGeoNam, mesh_options);
 	NozzleGeoFileRoundedEdges(nozzle.tmpGeoNam, mesh_options);
 	
 	# --- Call Gmsh
 	
+	CallGmsh(nozzle);
 	try :   
 		CallGmsh(nozzle);
 	except:
@@ -71,7 +72,7 @@ def CallGmsh (nozzle):
 def MeshPrepro (nozzle):
 	from .. import _meshutils_module
 	
-	out = _meshutils_module.py_MeshPrepro2D (nozzle.tmpMshNam, nozzle.mesh_name);
+	out = _meshutils_module.py_MeshPrepro2D (nozzle.tmpMshNam, nozzle.cfd.mesh_name);
 	
 	if ( out == 0 ) :
 		raise;
@@ -520,8 +521,10 @@ def NozzleGeoFileRoundedEdges(FilNam, Mesh_options):
 
 	CrdBox[1][0] = 0;          CrdBox[1][1] = 0;
 	CrdBox[2][0] = length;     CrdBox[2][1] = 0;
-	CrdBox[3][0] = 1.5;        CrdBox[3][1] = 0;
-	CrdBox[4][0] = 1.5;        CrdBox[4][1] = 2.5;
+#	CrdBox[3][0] = 1.5;        CrdBox[3][1] = 0;
+	CrdBox[3][0] = 4.5;        CrdBox[3][1] = 0; 
+#	CrdBox[4][0] = 1.5;        CrdBox[4][1] = 2.5;
+	CrdBox[4][0] = 4.5;        CrdBox[4][1] = 2.5;
 	CrdBox[5][0] = -0.67;      CrdBox[5][1] = 2.5;
 	CrdBox[6][0] = -0.67;      CrdBox[6][1] = 0.4244;
 	CrdBox[7][0] = 0.1548;     CrdBox[7][1] = 0.4244;

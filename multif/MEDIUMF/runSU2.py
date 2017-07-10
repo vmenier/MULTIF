@@ -16,13 +16,13 @@ class Solver_Options:
 
 def CheckSU2Version(nozzle):
     import subprocess;
-    su2_exe = '%s/SU2_CFD' % nozzle.SU2_RUN;
+    su2_exe = '%s/SU2_CFD' % nozzle.cfd.su2_run;
         
     #sys.path.append("/Users/menier/codes/SU2_DARPA/SU2_CFD/bin/");
     #sys.pythonpath.append("/Users/menier/codes/SU2_DARPA/SU2_CFD/bin/");
     #os.environ['PATH'] = ':'.join('/Users/menier/codes/SU2_DARPA/SU2_CFD/bin/')
     
-    nozzle.SU2Version = '';
+    nozzle.cfd.su2_version = '';
     
     #print "EXE = %s" % su2_exe;
     
@@ -32,23 +32,23 @@ def CheckSU2Version(nozzle):
     except subprocess.CalledProcessError as err: 
         if ( 'DARPA' in err.output ):
             sys.stdout.write('Check SU2 version : OK\n');
-            nozzle.LocalRelax = 'YES';
-            nozzle.SU2Version = 'OK';
+            nozzle.cfd.local_relax = 'YES';
+            nozzle.cfd.su2_version = 'OK';
         else:
             sys.stdout.write('\n');
             sys.stdout.write('#' * 90);
             sys.stdout.write('\n  ## WARNING : You are not using the right version of SU2. This may cause robustness issues.\n');
             sys.stdout.write('#' * 90);
             sys.stdout.write('\n\n');
-            nozzle.LocalRelax = 'NO';
-            nozzle.SU2Version = 'NOT_OK';
+            nozzle.cfd.local_relax = 'NO';
+            nozzle.cfd.su2_version = 'NOT_OK';
             
             
 def CheckSU2Convergence ( history_filename, field_name ) :
 
 	#plot_format	  = con.OUTPUT_FORMAT;
 	#plot_extension   = SU2.io.get_extension(plot_format)
-	#history_filename = nozzle.CONV_FILENAME + plot_extension
+	#history_filename = nozzle.cfd.conv_filename + plot_extension
 	#special_cases	= SU2.io.get_specialCases(config)
 
 	history	  = SU2.io.read_history( history_filename )
@@ -446,24 +446,24 @@ def runSU2 ( nozzle ):
 	solver_options.InletPstag = nozzle.inlet.Pstag;
 	solver_options.InletTstag = nozzle.inlet.Tstag;
 	
-	solver_options.LocalRelax = nozzle.LocalRelax;
+	solver_options.LocalRelax = nozzle.cfd.local_relax;
 	
-	solver_options.NbrIte = int(nozzle.su2_max_iterations);
+	solver_options.NbrIte = int(nozzle.cfd.su2_max_iterations);
 	
-	solver_options.output_format = nozzle.OUTPUT_FORMAT;
+	solver_options.output_format = nozzle.cfd.output_format;
 	
-	solver_options.SU2_RUN = nozzle.SU2_RUN;
-	#print 'SU2_RUN is %s' % nozzle.SU2_RUN
+	solver_options.SU2_RUN = nozzle.cfd.su2_run;
+	#print 'SU2_RUN is %s' % nozzle.cfd.su2_run
 	
-	solver_options.mesh_name    = nozzle.mesh_name;
-	solver_options.restart_name = nozzle.restart_name;
+	solver_options.mesh_name    = nozzle.cfd.mesh_name;
+	solver_options.restart_name = nozzle.cfd.restart_name;
 	
-	solver_options.convergence_order = nozzle.su2_convergence_order;
+	solver_options.convergence_order = nozzle.cfd.su2_convergence_order;
 	
 	solver_options.dv_coefs = [];
 	
 	# --- Specify wall variable data when adjoint gradients are requested
-	if( nozzle.gradients_method == 'ADJOINT' ):
+	if( nozzle.gradientsMethod == 'ADJOINT' ):
 	
 	    iTag = -1;
 	    for i in range(len(nozzle.DV_Tags)):
@@ -489,13 +489,13 @@ def runSU2 ( nozzle ):
 	    #		print "id_dv %d val %lf" % (id_dv, nozzle.dvList[id_dv])
 	    #		solver_options.dv_coefs.append(nozzle.dvList[id_dv]);
 	    #
-	    solver_options.gradients     = nozzle.gradients_method;
+	    solver_options.gradients     = nozzle.gradientsMethod;
 	    solver_options.wall_coefs    = nozzle.wall.coefs;
 	    solver_options.wall_coefs_dv = nozzle.wall.dv;
 	    
 	else:
 	
-	    solver_options.gradients     = nozzle.gradients_method;
+	    solver_options.gradients     = nozzle.gradientsMethod;
 	
 	gam   = 1.4;
 	R     = 287.06;
@@ -526,11 +526,11 @@ def runSU2 ( nozzle ):
 	solver_options.wall_temp = 0;
 	solver_options.wall_temp_values = [];
 	
-	if ( nozzle.wall_temp == 1 ) :
+	if ( nozzle.wallTempFlag == 1 ) :
 		if ( nozzle.method != 'RANS' ):
 			sys.stderr.write('  ## ERROR : Wall temperature distribution only available for RANS.\n');
 			sys.exit(1);
-		solver_options.wall_temp = nozzle.wall_temp;
+		solver_options.wall_temp = nozzle.wallTempFlag;
 		solver_options.wall_temp_values = nozzle.wall.temperature.thicknessNodes;
 
 	solver_options.Dimension = '2D';
@@ -539,8 +539,8 @@ def runSU2 ( nozzle ):
 	
 	config = SetupConfig(solver_options);
 	
-	nozzle.OUTPUT_FORMAT = config['OUTPUT_FORMAT'];
-	nozzle.CONV_FILENAME = config['CONV_FILENAME'];
+	nozzle.cfd.output_format = config['OUTPUT_FORMAT'];
+	nozzle.cfd.conv_filename = config['CONV_FILENAME'];
 	
 	config.OBJECTIVE_FUNCTION= 'THRUST_NOZZLE'
 	
@@ -677,9 +677,9 @@ def runSU2 ( nozzle ):
 		
 	# --- Adjoint computation (if required)
 	
-	if nozzle.gradients['THRUST'] is not None and nozzle.output_gradients == 1:
+	if nozzle.gradients['THRUST'] is not None and nozzle.gradientsFlag == 1:
 		
-		if ( nozzle.gradients_method == 'ADJOINT' ):
+		if ( nozzle.gradientsMethod == 'ADJOINT' ):
 			
 			# --- AD			
 			config_AD = setupConfig_AD (solver_options);
@@ -1237,18 +1237,18 @@ def Compute_Thrust_Gradients_FD (nozzle):
 	solver_options.InletPstag = nozzle.inlet.Pstag;
 	solver_options.InletTstag = nozzle.inlet.Tstag;
 	
-	solver_options.LocalRelax = nozzle.LocalRelax;
+	solver_options.LocalRelax = nozzle.cfd.local_relax;
 	
-	solver_options.NbrIte = int(nozzle.su2_max_iterations);
+	solver_options.NbrIte = int(nozzle.cfd.su2_max_iterations);
 	
-	solver_options.output_format = nozzle.OUTPUT_FORMAT;
+	solver_options.output_format = nozzle.cfd.output_format;
 	
-	solver_options.SU2_RUN = nozzle.SU2_RUN;
+	solver_options.SU2_RUN = nozzle.cfd.su2_run;
 	
-	solver_options.mesh_name    = nozzle.mesh_name;
-	solver_options.restart_name = nozzle.restart_name;
+	solver_options.mesh_name    = nozzle.cfd.mesh_name;
+	solver_options.restart_name = nozzle.cfd.restart_name;
 	
-	solver_options.convergence_order = nozzle.su2_convergence_order;
+	solver_options.convergence_order = nozzle.cfd.su2_convergence_order;
 	
 	solver_options.dv_coefs = [];
 	
@@ -1277,7 +1277,7 @@ def Compute_Thrust_Gradients_FD (nozzle):
 	#		print "id_dv %d val %lf" % (id_dv, nozzle.dvList[id_dv])
 	#		solver_options.dv_coefs.append(nozzle.dvList[id_dv]);
 	
-	solver_options.gradients     = nozzle.gradients_method;
+	solver_options.gradients     = nozzle.gradientsMethod;
 	solver_options.wall_coefs    = nozzle.wall.coefs;
 	solver_options.wall_coefs_dv = nozzle.wall.dv;
 	
@@ -1310,11 +1310,11 @@ def Compute_Thrust_Gradients_FD (nozzle):
 	solver_options.wall_temp = 0;
 	solver_options.wall_temp_values = [];
 	
-	if ( nozzle.wall_temp == 1 ) :
+	if ( nozzle.wallTempFlag == 1 ) :
 		if ( nozzle.method != 'RANS' ):
 			sys.stderr.write('  ## ERROR : Wall temperature distribution only available for RANS.\n');
 			sys.exit(1);
-		solver_options.wall_temp = nozzle.wall_temp;
+		solver_options.wall_temp = nozzle.wallTempFlag;
 		solver_options.wall_temp_values = nozzle.wall.temperature.thicknessNodes;
 	
 	#print "Rey %lf mu %lf rho %lf  T %lf  P %lf  D %lf" % (Rey, mu, rho, Ts, Ps,  D)
@@ -1325,8 +1325,8 @@ def Compute_Thrust_Gradients_FD (nozzle):
 	
 	config = SetupConfig(solver_options);
 	
-	nozzle.OUTPUT_FORMAT = config['OUTPUT_FORMAT'];
-	nozzle.CONV_FILENAME = config['CONV_FILENAME'];
+	nozzle.cfd.output_format = config['OUTPUT_FORMAT'];
+	nozzle.cfd.conv_filename = config['CONV_FILENAME'];
 	
 	config_DEF = SetupConfig_DEF (solver_options);
 	
