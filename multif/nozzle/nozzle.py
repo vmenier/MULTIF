@@ -97,7 +97,11 @@ class Nozzle:
         
     def SetupDV (self, config, output='verbose'):
         nozzle = self;
-                       
+        
+        nozzle.DV_Tags = []; # tags: e.g. wall, tstag etc.
+        nozzle.DV_Head = []; # correspondence b/w DV_Tags and dvList
+        NbrDVTot = 0; # keep track of number of DV            
+             
         if 'DV_LIST' in config:
 
             # Build a list of all possible expected keys. The list contains
@@ -250,10 +254,6 @@ class Nozzle:
                                 'cannot both be specified in DV_LIST\n\n' % \
                                 (k[0],k[i]));
                                 sys.exit(0);
-            
-            nozzle.DV_Tags = []; # tags: e.g. wall, tstag etc.
-            nozzle.DV_Head = []; # correspondence b/w DV_Tags and dvList
-            NbrDVTot = 0; # keep track of number of DV  
             
             # Loop through all user-specified design variables and assign
             for i in range(0,2*dv_keys_size,2):
@@ -947,27 +947,20 @@ class Nozzle:
             
         elif definition == 'PIECEWISE_LINEAR':
                         
-            try:
-                thicknessNodes = self.ParseThicknessLinear(config,'WALL_TEMP',loc='_LOCATIONS',val='_VALUES');
-            except:
-                try:
-                    xCoordFile = config['WALL_TEMP_LOCATIONS'].strip('()');
-                    yCoordFile = config['WALL_TEMP_VALUES'].strip('()');
-                    xCoord = np.loadtxt(xCoordFile);
-                    yCoord = np.loadtxt(yCoordFile);
-                    thicknessNodes = [[0 for i in range(2)] for j in range(yCoord.size)];
-                    
-                    for i in range(xCoord.size):
-                        thicknessNodes[i][0] = xCoord[i];
-                        thicknessNodes[i][1] = yCoord[i];                    
-                except:                        
-                    sys.stderr.write('\n ## ERROR : Piecewise linear definition ' \
-                         'could not be parsed for WALL_TEMP.\n\n');
-                    sys.exit(0);
+            loc = config['WALL_TEMP_LOCATIONS'].strip('()');
+            val = config['WALL_TEMP_VALUES'].strip('()');
+            if ',' not in loc:
+                xCoord = np.loadtxt(loc);
+                yCoord = np.loadtxt(val);
+            else:
+                xCoord = np.array([float(a) for a in loc.split(',')]);
+                yCoord = np.array([float(a) for a in val.split(',')]);
+            thicknessNodes = np.transpose(np.array([xCoord,yCoord]));
                 
             nozzle.wall.temperature = component.Distribution('WALL_TEMP');
             nozzle.wall.temperature.param = 'PIECEWISE_LINEAR';
-            nozzle.wall.temperature.thicknessNodes = thicknessNodes;                
+            nozzle.wall.temperature.thicknessNodes = thicknessNodes; 
+            nozzle.wall.temperature.nBreaks = xCoord.size;                            
                 
         else:
             sys.stderr.write('\n ## ERROR: %s wall temp definition not '      \
@@ -1650,12 +1643,9 @@ class Nozzle:
                 sys.exit(0);
             else: # assume 2D parameterization           
                 if nozzle.wall.temperature.param == 'PIECEWISE_LINEAR':
-                    tsize = len(nozzle.wall.temperature.thicknessNodes);
-                    thicknessNodeArray = np.zeros(shape=(2,tsize));
-                    for j in range(tsize):
-                        thicknessNodeArray[0][j] = nozzle.wall.temperature.thicknessNodes[j][0]*nozzle.length;
-                        thicknessNodeArray[1][j] = nozzle.wall.temperature.thicknessNodes[j][1];
-                    nozzle.wall.temperature.geometry = geometry.PiecewiseLinear(thicknessNodeArray);                
+                    nozzle.wall.temperature.thicknessNodes[:,0] *= nozzle.length;
+                    nozzle.wall.temperature.geometry = \
+                      geometry.PiecewiseLinear(nozzle.wall.temperature.thicknessNodes);                
                 elif nozzle.wall.temperature.param == 'KLE':
                     sys.stderr.write('\n ## ERROR: KLE not implemented yet for '  \
                       'inner nozzle wall temperature definition.\n\n');
