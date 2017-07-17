@@ -875,9 +875,12 @@ def printNozzleDef(nozzle):
     
 
 # Calculate and return forward finite difference gradients of nozzle mass
-def calcMassGradientsFD(nozzle,fd_step):
-
-    mass = nozzle.responses['MASS'];
+def calcMassGradientsFD(nozzle,fd_step,components='all'):
+    
+    if components == 'all': # calculate mass of nozzle wall & structure
+        mass = nozzle.responses['MASS'];
+    elif components == 'wall-only': # calculate mass of wall layers only
+        mass = nozzle.responses['MASS_WALL_ONLY'];
     
     # For parallel computation
     #print nozzle.partitions
@@ -905,8 +908,13 @@ def calcMassGradientsFD(nozzle,fd_step):
         nozzle2.SetupWall(output='quiet');
         
         volume2, mass2 = calcVolumeAndMass(nozzle2);
-        mass2 = np.sum(mass2);
-        volume2 = np.sum(volume2);
+        if components == 'all': # calcuate mass of nozzle wall & structure
+            mass2 = np.sum(mass2);
+            volume2 = np.sum(volume2);
+        elif components == 'wall-only': # calculate mass of wall layers only
+            n_layers = len(nozzle.wall.layer);
+            mass2 = np.sum(mass2[:n_layers]);
+            volume2 = np.sum(volume2[:n_layers]);
         
         dmdxLocal = (mass2-mass)/dx;
         

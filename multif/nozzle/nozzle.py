@@ -3614,7 +3614,7 @@ def NozzleSetup( config, flevel, output='verbose'):
     
     # --- Get function responses and gradients to be returned
     
-    nozzle.SetupResponsesAndGradients(config,output);        
+    nozzle.SetupResponsesAndGradients(config,output);
 
     # --- Setup DV definition
     nozzle.dvList = [];

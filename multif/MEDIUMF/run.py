@@ -49,19 +49,29 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
 		      'method.\n');
 		    sys.exit(1);
 	
-	# Calculate volume gradients if necessary
+    # Calculate volume gradients if necessary
     if 'VOLUME' in nozzle.gradients and nozzle.gradients['VOLUME'] is not None:
         sys.stderr.write('\n ## ERROR : gradients for VOLUME are not supported\n\n');
         sys.exit(1);
         
     # Obtain mass of wall and gradients only if requested
     if 'MASS_WALL_ONLY' in nozzle.responses:
+        volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle)
         n_layers = len(nozzle.wall.layer);
-        nozzle.responses['MASS_WALL_ONLY'] = np.sum(performanceTuple[1][:n_layers]);
+        nozzle.responses['MASS_WALL_ONLY'] = np.sum(mass[:n_layers]);
         
     if 'MASS_WALL_ONLY' in nozzle.gradients and nozzle.gradients['MASS_WALL_ONLY'] is not None:
-        sys.stderr.write('\n ## ERROR : gradients for MASS_WALL_ONLY are not supported\n\n');
-        sys.exit(1);
+        if ( nozzle.gradientsMethod == 'ADJOINT' ):
+            # Convergence study using B-spline coefs show finite difference mass gradients
+            # converge. Most accurate gradients use absolute step size 1e-8. RWF 5/10/17
+            nozzle.gradients['MASS_WALL_ONLY'] = nozzlemod.geometry.calcMassGradientsFD(nozzle,1e-8,components='wall-only');
+        elif ( nozzle.gradientsMethod == 'FINITE_DIFF' ):
+            nozzle.gradients['MASS_WALL_ONLY'] = nozzlemod.geometry.calcMassGradientsFD(\
+              nozzle,nozzle.fd_step_size,components='wall-only');
+        else:
+		    sys.stderr.write('  ## ERROR : Unknown gradients computation '
+		      'method.\n');
+		    sys.exit(1);
 
     # Run aero-thermal-structural analysis if necessary
     runAeroThermalStructuralProblem = 0;

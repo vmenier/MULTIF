@@ -18,7 +18,7 @@ try:
 except ImportError:
     print 'Error importing all functions from runAEROS.\n'
 
-#from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt
 
 #==============================================================================
 # Sutherland's Law of dynamic viscosity of air
@@ -104,33 +104,42 @@ def nozzleState(nozzle,pressureRatio,PsT,TsT,PsE,TsE):
 # Solve for location where M = 1 (location of apparent throat)
 #==============================================================================
 def findApparentThroat(nozzle,tol,params):
+
+    n = 10000
+    x = np.linspace(0,nozzle.length,n)
     
+    # First, determine approximate throat location by minimum area point
+    minInd = np.argmin(nozzle.wall.geometry.area(x))
+    xMinArea = x[minInd]    
+    
+    # Next, search in area of throat for exact location.
     # Find axial location in nozzle where dM^2/dx first becomes positive given
     # M = 1+delta. This is the location of the apparent throat. If dM^2/dx < 0
     # when M = 1+delta, then M will have a tendency to decrease and will choke
     # the flow again. We require M to increase after this point.
-
-    n = 10000
-    x = np.linspace(0,nozzle.length,n)
     dM2dx = np.zeros((n,))
-    #params = (xInterp,Cf,Tstag,dTstagdx);
+    #params = (xInterp,Cf,Tstag,dTstagdx);    
+    xRight = nozzle.length
     
-    xThroat = nozzle.length
-    for i in range(0,n):
+    # Search to the right:
+    frac = 0.1 # fraction of nozzle length to search around min area point
+    for i in range(minInd,int(minInd+frac*n)):
         dM2dx[i] = dM2dxForward(x[i], 1.0001**2, nozzle.fluid.gam, \
            nozzle.wall.geometry, params)
         if dM2dx[i] > 0: # reached point of increase for Mach at M = 1
             if i == 0:
-                xThroat = x[i]
+                xRight = x[i]
                 break
             else:
-                xThroat = (x[i]+x[i-1])/2
+                xRight = (x[i]+x[i-1])/2
                 break
             
-    #plt.plot(x,dM2dx,'b')
-    #plt.plot(x,np.zeros((n,)),'r')
-    #plt.show()
-    #sys.exit()
+    xThroat = xRight
+    
+#    plt.plot(x,dM2dx,'b')
+#    plt.plot(x,np.zeros((n,)),'r')
+#    plt.show()
+#    sys.exit()
 
 #    relTol = tol["solverApparentThroatLocation"]
 #
@@ -902,12 +911,22 @@ def Run (nozzle,output='verbose',writeToFile=1):
         
     # Obtain mass of wall and gradients only if requested
     if 'MASS_WALL_ONLY' in nozzle.responses:
+        volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle)
         n_layers = len(nozzle.wall.layer);
-        nozzle.responses['MASS_WALL_ONLY'] = np.sum(performanceTuple[1][:n_layers]);
-        
+        nozzle.responses['MASS_WALL_ONLY'] = np.sum(mass[:n_layers]);
+
     if 'MASS_WALL_ONLY' in nozzle.gradients and nozzle.gradients['MASS_WALL_ONLY'] is not None:
-        sys.stderr.write('\n ## ERROR : gradients for MASS_WALL_ONLY are not supported\n\n');
-        sys.exit(1);
+        if ( nozzle.gradientsMethod == 'ADJOINT' ):
+            # Convergence study using B-spline coefs show finite difference mass gradients
+            # converge. Most accurate gradients use absolute step size 1e-8. RWF 5/10/17
+            nozzle.gradients['MASS_WALL_ONLY'] = nozzlemod.geometry.calcMassGradientsFD(nozzle,1e-8,components='wall-only');
+        elif ( nozzle.gradientsMethod == 'FINITE_DIFF' ):
+            nozzle.gradients['MASS_WALL_ONLY'] = nozzlemod.geometry.calcMassGradientsFD(\
+              nozzle,nozzle.fd_step_size,components='wall-only');
+        else:
+		    sys.stderr.write('  ## ERROR : Unknown gradients computation '
+		      'method.\n');
+		    sys.exit(1);
 
     # Run aero-thermal-structural analysis if necessary
     runAeroThermalStructuralProblem = 0;
