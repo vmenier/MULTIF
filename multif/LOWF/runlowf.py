@@ -103,79 +103,115 @@ def nozzleState(nozzle,pressureRatio,PsT,TsT,PsE,TsE):
 #==============================================================================
 # Solve for location where M = 1 (location of apparent throat)
 #==============================================================================
-def findApparentThroat(nozzle,tol,(xInterp,Cf,Tstag,dTstagdx)):
-    gam = nozzle.fluid.gam
-    relTol = tol["solverApparentThroatLocation"]
+def findApparentThroat(nozzle,tol,params):
+    
+    # Find axial location in nozzle where dM^2/dx first becomes positive given
+    # M = 1+delta. This is the location of the apparent throat. If dM^2/dx < 0
+    # when M = 1+delta, then M will have a tendency to decrease and will choke
+    # the flow again. We require M to increase after this point.
 
-    dMdxCoeffFunc = lambda x: -nozzle.wall.geometry.areaGradient(x)/         \
-      nozzle.wall.geometry.area(x) + 2*gam*np.interp(x,xInterp,Cf)/          \
-      nozzle.wall.geometry.diameter(x) + (1+gam)*np.interp(x,xInterp,        \
-      dTstagdx)/(2*np.interp(x,xInterp,Tstag))
-      
-    # Find sign changes in dMdxCoeffFunc
-    xFind = np.linspace(0.,nozzle.wall.geometry.length-1e-4,1000.)
-    coeffFind = dMdxCoeffFunc(xFind)
-    coeffFindSign = np.sign(coeffFind)
-    coeffFindSignChange = ((np.roll(coeffFindSign,1) - coeffFindSign)        \
-      != 0).astype(int)
-    coeffFindSignChange[0] = 0
-    signChangeLocations = np.nonzero(coeffFindSignChange)[0]
+    n = 10000
+    x = np.linspace(0,nozzle.length,n)
+    dM2dx = np.zeros((n,))
+    #params = (xInterp,Cf,Tstag,dTstagdx);
     
-    if( signChangeLocations.size == 0 ):
-        throatGuess = nozzle.wall.geometry.findMinimumRadius()[0]
-    else:
-        minInd = np.argmin(nozzle.wall.geometry.area(xFind[signChangeLocations]))
-        throatGuess = xFind[signChangeLocations[minInd]]
-        
-        # Check to make sure each following possible throat is far enough away
-        ind = signChangeLocations[minInd]
-        indKeep = ind
-        for ii in range(minInd+1,signChangeLocations.size):
-            currentInd = signChangeLocations[ii]
-            dx = xFind[currentInd] - xFind[ind]
+    xThroat = nozzle.length
+    for i in range(0,n):
+        dM2dx[i] = dM2dxForward(x[i], 1.0001**2, nozzle.fluid.gam, \
+           nozzle.wall.geometry, params)
+        if dM2dx[i] > 0: # reached point of increase for Mach at M = 1
+            if i == 0:
+                xThroat = x[i]
+                break
+            else:
+                xThroat = (x[i]+x[i-1])/2
+                break
             
-            #dAdxbar = nozzle.wall.geometry.area(xFind[ind])
-            dAdxbarEst = (nozzle.wall.geometry.area(xFind[currentInd]) -     \
-              nozzle.wall.geometry.area(xFind[ind]))/dx
-            
-            dTstagdxbar = np.interp(xFind[currentInd],xInterp,dTstagdx)
-            Abar = nozzle.wall.geometry.area(xFind[ind])
-            Tstagbar = np.interp(xFind[ind],xInterp,Tstag)
-            Cfbar = np.interp(xFind[ind],xInterp,Cf)
-            Dbar = nozzle.wall.geometry.diameter(xFind[ind])
-            
-            RHS = dTstagdxbar*Abar*(1+gam)/(2*Tstagbar) + 2*gam*Abar*Cfbar/Dbar
-            
-            if( dAdxbarEst <= RHS ):
-                throatGuess = xFind[currentInd]
-                indKeep = currentInd
-            
-        # END OF for ii in range(minInd,signChangeLocations.size)
-            
-    xApparentThroat = scipy.optimize.fsolve(func=dMdxCoeffFunc,              \
-      x0=throatGuess,xtol=relTol)[0]
-    
-    # Perform some error checking for the apparent throat location
-    if( np.isnan(xApparentThroat) or                                         \
-      xApparentThroat > nozzle.wall.geometry.length):
-        xApparentThroat = nozzle.wall.geometry.length
-        print "Mach = 1 at exit\n"
-    
-    if( nozzle.wall.geometry.diameter(xApparentThroat) >                      \
-      nozzle.wall.geometry.diameter(nozzle.wall.geometry.length)):
-        xApparentThroat = nozzle.wall.geometry.length
-        
-    if( indKeep != len(xFind) and indKeep != 0 and 
-      (xApparentThroat > xFind[indKeep+1] or xApparentThroat < xFind[indKeep-1]) ):
-      print 'scipy fsolve found wrong apparent throat at %f' % xApparentThroat
-      # Reset apparent throat to a linear interpolation between the 2 points
-      # Sign change index of 1 implies sign change between indices 0 and 1
-      slope = (coeffFind[indKeep] - coeffFind[indKeep-1])/(xFind[indKeep] -   \
-        xFind[indKeep-1])
-      xApparentThroat = xFind[indKeep] - coeffFind[indKeep]/slope
-      print 'apparent throat interpolated and set to %f' % xApparentThroat
+    #plt.plot(x,dM2dx,'b')
+    #plt.plot(x,np.zeros((n,)),'r')
+    #plt.show()
+    #sys.exit()
 
-    return xApparentThroat
+#    relTol = tol["solverApparentThroatLocation"]
+#
+#    dMdxCoeffFunc = lambda x: -nozzle.wall.geometry.areaGradient(x)/         \
+#      nozzle.wall.geometry.area(x) + 2*gam*np.interp(x,xInterp,Cf)/          \
+#      nozzle.wall.geometry.diameter(x) + (1+gam)*np.interp(x,xInterp,        \
+#      dTstagdx)/(2*np.interp(x,xInterp,Tstag))
+#      
+#    # Find sign changes in dMdxCoeffFunc
+#    xFind = np.linspace(0.,nozzle.wall.geometry.length-1e-4,1000.)
+#    coeffFind = dMdxCoeffFunc(xFind)
+#    coeffFindSign = np.sign(coeffFind)
+#    coeffFindSignChange = ((np.roll(coeffFindSign,1) - coeffFindSign)        \
+#      != 0).astype(int)
+#    coeffFindSignChange[0] = 0
+#    signChangeLocations = np.nonzero(coeffFindSignChange)[0]
+#    
+#    indKeep = 0
+#    if( signChangeLocations.size == 0 ):
+#        throatGuess = nozzle.wall.geometry.findMinimumRadius()[0]
+#    else:
+#        minInd = np.argmin(nozzle.wall.geometry.area(xFind[signChangeLocations]))
+#        throatGuess = xFind[signChangeLocations[minInd]]
+#        
+#        # Check to make sure each following possible throat is far enough away
+#        ind = signChangeLocations[minInd]
+#        indKeep = ind
+#        for ii in range(minInd+1,signChangeLocations.size):
+#            currentInd = signChangeLocations[ii]
+#            dx = xFind[currentInd] - xFind[ind]
+#            
+#            #dAdxbar = nozzle.wall.geometry.area(xFind[ind])
+#            dAdxbarEst = (nozzle.wall.geometry.area(xFind[currentInd]) -     \
+#              nozzle.wall.geometry.area(xFind[ind]))/dx
+#            
+#            dTstagdxbar = np.interp(xFind[currentInd],xInterp,dTstagdx)
+#            Abar = nozzle.wall.geometry.area(xFind[ind])
+#            Tstagbar = np.interp(xFind[ind],xInterp,Tstag)
+#            Cfbar = np.interp(xFind[ind],xInterp,Cf)
+#            Dbar = nozzle.wall.geometry.diameter(xFind[ind])
+#            
+#            RHS = dTstagdxbar*Abar*(1+gam)/(2*Tstagbar) + 2*gam*Abar*Cfbar/Dbar
+#            
+#            if( dAdxbarEst <= RHS ):
+#                throatGuess = xFind[currentInd]
+#                indKeep = currentInd
+#            
+#        # END OF for ii in range(minInd,signChangeLocations.size)
+#            
+#    xApparentThroat = scipy.optimize.fsolve(func=dMdxCoeffFunc,              \
+#      x0=throatGuess,xtol=relTol)[0]
+#    
+#    # Perform some error checking for the apparent throat location
+#    if( np.isnan(xApparentThroat) or                                         \
+#      xApparentThroat > nozzle.wall.geometry.length):
+#        xApparentThroat = nozzle.wall.geometry.length
+#        print "Mach = 1 at exit\n"
+#    
+#    if( nozzle.wall.geometry.diameter(xApparentThroat) >                      \
+#      nozzle.wall.geometry.diameter(nozzle.wall.geometry.length)):
+#        xApparentThroat = nozzle.wall.geometry.length
+#        
+#    if( indKeep != len(xFind) and indKeep != 0 and 
+#      (xApparentThroat > xFind[indKeep+1] or xApparentThroat < xFind[indKeep-1]) ):
+#      print 'scipy fsolve found wrong apparent throat at %f' % xApparentThroat
+#      # Reset apparent throat to a linear interpolation between the 2 points
+#      # Sign change index of 1 implies sign change between indices 0 and 1
+#      slope = (coeffFind[indKeep] - coeffFind[indKeep-1])/(xFind[indKeep] -   \
+#        xFind[indKeep-1])
+#      xApparentThroat = xFind[indKeep] - coeffFind[indKeep]/slope
+#      print 'apparent throat interpolated and set to %f' % xApparentThroat
+#    
+#    print
+#    print 'Throat originally at: %f' % xApparentThroat
+#    minInd = np.argmin(nozzle.wall.geometry.area(xFind))
+#    throatGuess = xFind[minInd]
+#    xApparentThroat = throatGuess
+#    print 'Throat at: %f' % xApparentThroat
+#    print
+    
+    return xThroat
 
 #==============================================================================
 # Define non-ideal quasi-1D equations of motion for forward integration    
@@ -188,7 +224,7 @@ def dM2dxForward(x,M2,gam,geo,(xInterp,CfInterp,TstagInterp,dTstagdxInterp)):
     Tstag = np.interp(x,xInterp,TstagInterp)
     dTstagdx = np.interp(x,xInterp,dTstagdxInterp)
     dM2dx = (2*M2*(1+(gam-1)*M2/2)/(1-M2))*(-dAdx/A + 2*gam*M2*Cf/D +        \
-      (1+gam*M2)*dTstagdx/(2*Tstag))
+      (1+gam*M2)*dTstagdx/(2*Tstag))    
     return dM2dx
 
 #==============================================================================
@@ -261,7 +297,7 @@ def integrateODEwithEvents(ode,dt,tfinal,ycrit,direction):
             while ode.successful() and ode.t < tfinal - dt/2:
                 
                 yTemp = ode.integrate(ode.t+dt)
-                
+                #print yTemp
                 if( yTemp < ycrit + delta ):
                     y[x.size-ii-1] = yTemp
                     break # critical y reached
@@ -274,7 +310,7 @@ def integrateODEwithEvents(ode,dt,tfinal,ycrit,direction):
             while ode.successful() and ode.t < tfinal - dt/2:
                 
                 yTemp = ode.integrate(ode.t+dt)
-                
+                #print yTemp
                 if( yTemp > ycrit - delta ):
                     y[x.size-ii-1] = yTemp
                     break # critical y reached
@@ -289,7 +325,7 @@ def integrateODEwithEvents(ode,dt,tfinal,ycrit,direction):
             while ode.successful() and ode.t < tfinal - dt/2:
                 
                 yTemp = ode.integrate(ode.t+dt)
-                
+                #print yTemp
                 if( yTemp < ycrit + delta ):
                     y[ii] = yTemp
                     break # critical y reached
@@ -302,7 +338,7 @@ def integrateODEwithEvents(ode,dt,tfinal,ycrit,direction):
             while ode.successful() and ode.t < tfinal - dt/2:
                 
                 yTemp = ode.integrate(ode.t+dt)
-                
+                #print yTemp
                 if( yTemp > ycrit - delta ):
                     y[ii] = yTemp
                     break # critical y reached
@@ -405,7 +441,7 @@ def integrateSupersonic(nozzle,tol,params,xThroat,nPartitions):
         
     # If nozzle converges only, assume choked flow at the exit    
     if( nozzle.wall.geometry.length - xThroat < 1e-12 ):
-        M0 = 0.9999 # start integration from this Mach number
+        M0 = 0.999 # start integration from this Mach number
         
         b = scipy.integrate.ode(dM2dxBackward,jac=None).set_integrator(      \
           'dopri5',atol=tol["solverAbsTol"],rtol=tol["solverRelTol"])
@@ -415,6 +451,10 @@ def integrateSupersonic(nozzle,tol,params,xThroat,nPartitions):
         dt = nozzle.wall.geometry.length/nPartitions
         tfinal = 0.
         (xIntegrate,M2,eventIndex) = integrateODEwithEvents(b,dt,tfinal,1.,"b")
+        
+#        plt.plot(xIntegrate,M2)
+#        plt.show()
+#        sys.exit()
                 
         if( eventIndex != xIntegrate.size ):
             raise RuntimeError(("Integration terminated early while ",
@@ -422,11 +462,10 @@ def integrateSupersonic(nozzle,tol,params,xThroat,nPartitions):
 
     # Else, assume nozzle is choked at throat, integrate forwards & backwards
     else:
-        UpperM = 1.001 # start integration at this Mach number for aft portion
-        LowerM = 0.999 # start integ. at this Mach number for fore portion
-        dx = 1e-3 # 1e-5 for 0.9999 to 1.0001 or 1e-4 for 0.999 to 1.001
         
         # Integrate forward from throat
+        UpperM = 1.001 # start integration at this Mach number for aft portion
+        dx = 1e-4 # 1e-5 for 0.9999 to 1.0001 or 1e-4 for 0.999 to 1.001        
         f = scipy.integrate.ode(dM2dxForward,jac=None).set_integrator(       \
           'dopri5',atol=tol["solverAbsTol"],rtol=tol["solverRelTol"])
         f.set_initial_value(UpperM**2,xThroat+dx/2)
@@ -437,8 +476,9 @@ def integrateSupersonic(nozzle,tol,params,xThroat,nPartitions):
         (xF,M2F,eventIndex) = integrateODEwithEvents(f,dt,tfinal,1.,"f")
         
         if( eventIndex != xF.size ): # Relax UpperM and try again
-            print 'Integration terminated early while integrating forwards from throat'
+            print 'Integration terminated early while integrating forwards from throat, trying again...'
             UpperM = 1.01
+            dx = 1e-3
             f = scipy.integrate.ode(dM2dxForward,jac=None).set_integrator(       \
               'dopri5',atol=tol["solverAbsTol"],rtol=tol["solverRelTol"])
             f.set_initial_value(UpperM**2,xThroat+dx/2)
@@ -452,6 +492,8 @@ def integrateSupersonic(nozzle,tol,params,xThroat,nPartitions):
                                    "integrating forwards from the throat"))
         
         # Integrate backward from throat
+        LowerM = 0.999 # start integ. at this Mach number for fore portion
+        dx = 1e-4 # 1e-5 for 0.9999 to 1.0001 or 1e-4 for 0.999 to 1.001
         b = scipy.integrate.ode(dM2dxBackward,jac=None).set_integrator(      \
           'dopri5',atol=tol["solverAbsTol"],rtol=tol["solverRelTol"])
         b.set_initial_value(LowerM**2,xThroat-dx/2)
@@ -462,8 +504,9 @@ def integrateSupersonic(nozzle,tol,params,xThroat,nPartitions):
         (xB,M2B,eventIndex) = integrateODEwithEvents(b,dt,tfinal,1.,"b")
                 
         if( eventIndex != xB.size ): # Relax LowerM and try again
-            print 'Integration terminated early while integrating backwards from throat'
+            print 'Integration terminated early while integrating backwards from throat, trying again...'
             LowerM = 0.99
+            dx = 1e-3
             b = scipy.integrate.ode(dM2dxBackward,jac=None).set_integrator(      \
               'dopri5',atol=tol["solverAbsTol"],rtol=tol["solverRelTol"])
             b.set_initial_value(LowerM**2,xThroat-dx/2)
@@ -610,9 +653,14 @@ def Quasi1D(nozzle,output='verbose'):
               xApparentThroat,nOdeIntegrationSteps)
               
         # Check output
-        if( np.isnan(M2.any()) or M2.any() < 0. or np.isinf(M2.any()) ):
-            raise RuntimeError("Unrealistic Mach number calculated")      
-        
+        if any(M2<0.):
+            print 'Impossible flow scenario: Square of Mach number < 0'
+            print 'No flow in nozzle.'
+            sys.exit(0);
+            
+        if( np.isnan(M2.any()) or np.isinf(M2.any()) ):
+            raise RuntimeError("Unrealistic Mach number calculated")    
+
         # Calculate geometric properties
         D = nozzle.wall.geometry.diameter(xPosition)
         A = nozzle.wall.geometry.area(xPosition)
