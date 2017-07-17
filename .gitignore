@@ -21,6 +21,14 @@ autom4te.cache
 
 nozzle*.su2
 
+# Latex files
+*.aux
+*.bbl
+*.blg
+*.lot
+*.toc
+./docs/auto
+
 # Python files
 *.pyc
 *_py_wrap.c
