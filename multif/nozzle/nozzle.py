@@ -676,21 +676,29 @@ class Nozzle:
                   
         # Setup thermal and structural analysis
         if analysisType == 'AEROTHERMOSTRUCTURAL':
+            nozzle.aeroFlag = 1;
             nozzle.thermalFlag = 1;
             nozzle.structuralFlag = 1;
         elif analysisType == 'AEROTHERMAL':
+            nozzle.aeroFlag = 1;
             nozzle.thermalFlag = 1;
             nozzle.structuralFlag = 0;
         elif analysisType == 'AEROSTRUCTURAL':
+            nozzle.aeroFlag = 1;
             nozzle.thermalFlag = 0;
             nozzle.structuralFlag = 1;
+        elif analysisType == 'THERMOSTRUCTURAL':
+            nozzle.aeroFlag = 0;
+            nozzle.thermalFlag = 1;
+            nozzle.structuralFlag = 1;
         elif analysisType == 'AERO':
+            nozzle.aeroFlag = 1;
             nozzle.thermalFlag = 0;
             nozzle.structuralFlag = 0;
         else:
             sys.stderr.write('\n ## ERROR: AEROTHERMOSTRUCTURAL, '        \
-              'AEROTHERMAL, AEROSTRUCTURAL, or AERO must be '        \
-              'provided as a keyword for analyis '    \
+              'THERMOSTRUCTURAL, AEROTHERMAL, AEROSTRUCTURAL, or AERO ' \
+              'must be provided as a keyword for analyis '    \
               'type. %s provided instead.\n\n' % analysisType);
             sys.exit(0);                  
         
