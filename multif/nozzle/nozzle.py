@@ -1923,11 +1923,13 @@ class Nozzle:
         struct_scalar = ['KS_TOTAL_STRESS', 'PN_TOTAL_STRESS', 
                      'MAX_TOTAL_STRESS', 'MAX_MECHANICAL_STRESS',
                      'MAX_THERMAL_STRESS', 'MAX_FAILURE_CRITERIA', 
-                     'KS_FAILURE_CRITERIA', 'PN_FAILURE_CRITERIA'];
+                     'KS_FAILURE_CRITERIA', 'PN_FAILURE_CRITERIA',
+                     'FAILURE_CRITERIA'];
         
         # Requiring thermal analysis
         therm_scalar = ['KS_TEMPERATURE','PN_TEMPERATURE','MAX_TEMPERATURE',
-                     'KS_TEMP_RATIO','PN_TEMP_RATIO','MAX_TEMP_RATIO'];
+                     'KS_TEMP_RATIO','PN_TEMP_RATIO','MAX_TEMP_RATIO',
+                     'TEMP_RATIO'];
         therm_field = ['WALL_TEMPERATURE'];
 
         # Prefixes which can be appended to stress and temperature outputs
@@ -3132,7 +3134,9 @@ class Nozzle:
 
         # Initialize output locations for QoI internal to nozzle flow
         for qoi in outputTags:
-            if qoi in ['WALL_PRESSURE', 'PRESSURE', 'VELOCITY', 'WALL_TEMPERATURE']:
+            if qoi in ['WALL_PRESSURE', 'PRESSURE', 'VELOCITY', 'WALL_TEMPERATURE'] or \
+               ('FAILURE_CRITERIA' in qoi and qoi not in ['KS','PN','MAX']) or \
+               ('TEMP_RATIO' in qoi and qoi not in ['KS','PN','MAX']):
                 
                 if nozzle.param == '3D':
                     sys.stdout.write('\nWARNING: Parameterization is 3D but ' \
@@ -3159,6 +3163,15 @@ class Nozzle:
                     sys.stderr.write('\n ## ERROR : key %s_LOCATIONS '
                       'not found in config file to specify location of '
                       'requested output responses\n\n' % qoi)
+                      
+        # Initialize output locations for QoI on structural mesh
+        for qoi in outputTags:
+            # Nodes are specified
+            if( qoi + '_NODES' in config ):
+                loc = config[qoi+'_NODES'].strip('()')
+                loc = loc.split(',')
+                loc = [float(e) for e in loc]
+                nozzle.outputLocations[qoi] = np.squeeze(np.array(loc))
 
         if len(nozzle.outputTags) == 0 :
             sys.stderr.write("\n  ## ERROR : No output function was given.\n\n");
