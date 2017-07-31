@@ -1,3 +1,6 @@
+import os, sys
+import numpy as np
+
 from .. import SU2
 from meshgeneration import *
 from runSU2 import *
@@ -89,13 +92,14 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
     
     if runAeroThermalStructuralProblem:
         
-        # Run aero analysis (and thrust adjoint if necessary)  
         CheckSU2Version(nozzle);	
-	    #CheckOptions (nozzle);
-        curDir = os.path.dirname(os.path.realpath(__file__));	
-        if nozzle.runDir != '':
-	        os.chdir(nozzle.runDir);	
-        gradCalc = runSU2 (nozzle);
+        if nozzle.aeroFlag == 1:
+            # Run aero analysis (and thrust adjoint if necessary)  
+    	    #CheckOptions (nozzle);
+            curDir = os.path.dirname(os.path.realpath(__file__));	
+            if nozzle.runDir != '':
+    	        os.chdir(nozzle.runDir);	
+            gradCalc = runSU2 (nozzle);
 	
 	    # Run thermal/structural analyses
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:

@@ -283,9 +283,15 @@ def runAEROS ( nozzle, output='verbose' ):
         
         f2 = open("BOUNDARY.txt", 'w');
         print >> f2, "%d" % (Size[0]);
-        for i in range(0,Size[0]):
-            print >> f2, "%0.16e %0.16e %0.16e %0.16e" % (SolExtract[i][0], SolExtract[i][iPres], SolExtract[i][iTemp], nozzle.environment.T);
-        f2.close();
+        if nozzle.wallTempFlag == 1: # wall temperature is assigned by user
+            for i in range(0,Size[0]):
+                Temp = nozzle.wall.temperature.geometry.radius(SolExtract[i][0])
+                print >> f2, "%0.16e %0.16e %0.16e %0.16e" % (SolExtract[i][0], SolExtract[i][iPres], Temp, nozzle.environment.T);
+            f2.close();        
+        else: # wall temperature is extracted from flow
+            for i in range(0,Size[0]):
+                print >> f2, "%0.16e %0.16e %0.16e %0.16e" % (SolExtract[i][0], SolExtract[i][iPres], SolExtract[i][iTemp], nozzle.environment.T);
+            f2.close();
         
         _nozzle_module.generate();       # generate the meshes for thermal and structural analyses
     
