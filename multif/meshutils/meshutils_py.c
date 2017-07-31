@@ -1,6 +1,211 @@
 #include "meshutils.h"
 #include "Python.h"
 
+
+
+
+int py_ProjectNozzleWall3D( char *MshNam,  
+ PyObject *pyRefUp,  PyObject *pyRefDown,
+ PyObject *pyKnots_center, PyObject *pyCoefs_center,
+ PyObject *pyKnots_r1, PyObject *pyCoefs_r1,
+ PyObject *pyKnots_r2, PyObject *pyCoefs_r2, 
+ char *OutNam ) 
+{
+	
+	int i;
+	int *RefUp = NULL, *RefDown = NULL;
+	int sizRefUp=0, sizRefDown=0;
+	
+	double  *Knots_center=NULL, *Coefs_center=NULL;
+	double  *Knots_r1=NULL, *Coefs_r1=NULL;
+	double  *Knots_r2=NULL, *Coefs_r2=NULL;
+	
+	int nKnots_center=0, nCoefs_center=0;
+	int nKnots_r1=0, nCoefs_r1=0;
+	int nKnots_r2=0, nCoefs_r2=0;
+	
+	CadNozzle *CadNoz = NULL;
+					
+	//--- Get nozzle patch references to re-project
+	
+	if ( PyList_Check(pyRefUp) )
+  {
+			sizRefUp = PyList_Size(pyRefUp);
+      RefUp = (int*) malloc( sizRefUp * sizeof(int));
+			for (i=0; i<sizRefUp; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyRefUp,i);
+       	if ( PyInt_Check(oo) )
+       	{
+					RefUp[i] = (int) PyInt_AS_LONG(oo);
+       	}
+      }
+  }
+
+	if ( PyList_Check(pyRefDown) )
+  {
+			sizRefDown = PyList_Size(pyRefDown);
+      RefDown = (int*) malloc( sizRefDown * sizeof(int));
+			for (i=0; i<sizRefDown; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyRefDown,i);
+       	if ( PyInt_Check(oo) )
+       	{
+					RefDown[i] = (int) PyInt_AS_LONG(oo);
+       	}
+      }
+  }
+
+	//---
+	//--- Get coefs and knots of the 3 b-splines defining the nozzle
+	//---
+	
+	//--- center knots and coefs
+	
+	if ( PyList_Check(pyKnots_center) )
+  {
+			nKnots_center = PyList_Size(pyKnots_center);
+						
+      Knots_center = (double*) malloc( nKnots_center * sizeof(double));
+			for (i=0; i<nKnots_center; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyKnots_center,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					Knots_center[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+
+	if ( PyList_Check(pyCoefs_center) )
+  {
+			nCoefs_center = PyList_Size(pyCoefs_center);
+      Coefs_center = (double*) malloc( nCoefs_center * sizeof(double));
+			for (i=0; i<nCoefs_center; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyCoefs_center,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					Coefs_center[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+
+	//--- r1 coefs and knots
+
+	if ( PyList_Check(pyKnots_r1) )
+  {
+			nKnots_r1 = PyList_Size(pyKnots_r1);
+      Knots_r1 = (double*) malloc( nKnots_r1 * sizeof(double));
+			for (i=0; i<nKnots_r1; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyKnots_r1,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					Knots_r1[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+
+	if ( PyList_Check(pyCoefs_r1) )
+  {
+			nCoefs_r1 = PyList_Size(pyCoefs_r1);
+      Coefs_r1 = (double*) malloc( nCoefs_r1 * sizeof(double));
+			for (i=0; i<nCoefs_r1; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyCoefs_r1,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					Coefs_r1[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+
+	//--- r2 coefs and knots
+
+	if ( PyList_Check(pyKnots_r2) )
+  {
+			nKnots_r2 = PyList_Size(pyKnots_r2);
+      Knots_r2 = (double*) malloc( nKnots_r2 * sizeof(double));
+			for (i=0; i<nKnots_r2; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyKnots_r2,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					Knots_r2[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+
+	if ( PyList_Check(pyCoefs_r2) )
+  {
+			nCoefs_r2 = PyList_Size(pyCoefs_r2);
+      Coefs_r2 = (double*) malloc( nCoefs_r2 * sizeof(double));
+			for (i=0; i<nCoefs_r2; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyCoefs_r2,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					Coefs_r2[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+
+	//--- Alloc nozzle CAD data structure
+	
+	Options *mshopt = AllocOptions();
+	
+	strcpy(mshopt->OutNam,OutNam);
+	strcpy(mshopt->InpNam,MshNam);
+	strcpy(mshopt->SolNam,"");
+	
+	if ( !CheckOptions(mshopt) ) {
+		return 0;
+	}
+	
+	//--- Open mesh/solution file
+	Mesh *Msh = NULL;
+	Msh = SetupMeshAndSolution (mshopt->InpNam, mshopt->SolNam);
+	
+	//--- Setup nozzle CAD
+	
+	int SizCad[MaxKwdNozzleSize];
+	memset(SizCad, 0, sizeof(int)*MaxKwdNozzleSize);
+	
+	SizCad[KwdnCoefs_center] = nCoefs_center;
+	SizCad[KwdnKnots_center] = nKnots_center;
+	SizCad[KwdnCoefs_r1]     = nCoefs_r1;
+	SizCad[KwdnKnots_r1]     = nKnots_r1;
+	SizCad[KwdnCoefs_r2]     = nCoefs_r2;
+	SizCad[KwdnKnots_r2]     = nKnots_r2;
+
+	CadNoz = AllocCadNozzle (SizCad);
+	
+	SetCadBspline (CadNoz->Bsp_center, Knots_center,  nKnots_center, Coefs_center, nCoefs_center);
+	SetCadBspline (CadNoz->Bsp_r1, Knots_r1, nKnots_r1, Coefs_r1, nCoefs_r1);
+	SetCadBspline (CadNoz->Bsp_r2, Knots_r2, nKnots_r2, Coefs_r2, nCoefs_r2);
+	
+	WriteCadBspline ("centerline", CadNoz->Bsp_center);
+	WriteCadBspline ("r1", CadNoz->Bsp_r1);
+	WriteCadBspline ("r2", CadNoz->Bsp_r2);
+	
+	//--- Project
+	
+	NozzleWallProjection (mshopt, Msh, CadNoz,  RefUp[0], RefDown[0], OutNam);
+	
+	//--- Free memory
+	
+	if ( Msh )
+ 		FreeMesh(Msh);
+	
+	if ( RefUp )
+		free(RefUp);
+	
+	if ( RefDown )
+		free(RefDown);
+	
+}
+
 int py_ConvertGMFToSU2( char *MshNam, char *SolNam, char *OutNam ) 
 {
 	
@@ -320,7 +525,6 @@ void py_ReadMesh (char *MshNam, char *SolNam, PyObject *pyVer, PyObject *pyTri, 
 		
 	}
 	
-	
 	if ( Msh )
  		FreeMesh(Msh);
 	
@@ -390,6 +594,72 @@ void py_ExtractAlongLine (char *MshNam, char *SolNam, PyObject *pyBox,  PyObject
  		FreeMesh(Msh);
 	
 }
+
+
+//void py_NozzleWallProjection (char *MshNam, char *SolNam, PyObject *pyMeshMotion,  PyObject *pyDV)
+//{
+//	int i;
+//	
+//	int *Ref = NULL;
+//	int size_Ref = 0;
+//	
+//	////--- Get box
+//	//
+//	//if ( PyList_Check(pyRefs) )
+//  //{
+//	//
+//	//		size_Ref = PyList_Size(pyRefs);
+//  //    Ref = (int*) malloc( size_Ref * sizeof(int));
+//	//		
+//	//		for (i=0; i<size_Ref; i++)
+//  //    {
+//  //     	PyObject *oo = PyList_GetItem(pyRefs,i);
+//  //     	if ( PyInt_Check(oo) )
+//  //     	{
+//	//				Ref[i] = (int) PyInt_AS_LONG(oo);
+//  //     	}
+//  //    }
+//  //}
+//  //
+//	Options *mshopt = AllocOptions();
+//	//
+//	strcpy(mshopt->InpNam,MshNam);
+//	strcpy(mshopt->SolNam,SolNam);
+//	//
+//	//
+//	//--- Open mesh/solution file
+//	Mesh *Msh = NULL;
+//	Msh = SetupMeshAndSolution (mshopt->InpNam, mshopt->SolNam);
+//	
+//	PrintMeshInfo(Msh);
+//	
+//	int RefUp = 9;
+//	int RefDown = 10;
+//	
+//	NozzleWallProjection (mshopt,Msh, &RefUp, &RefDown);
+//	
+//	////double * ExtractSolutionAtRef (Options *mshopt, Mesh *Msh, int *Ref, int NbrRef,  int *NbrRes, int *Siz)
+//	//int NbrRes=0, Siz=0;
+//	//double *result = ExtractSolutionAtRef(mshopt,Msh, Ref, size_Ref,  &NbrRes, &Siz);
+//	//
+//	//for (i=0; i<NbrRes*Siz; i++){
+//	//	PyList_Append(pyResult, PyFloat_FromDouble(result[i]));
+//	//}
+//	//
+//	//PyList_Append(PyInfo, PyInt_FromLong(NbrRes));
+//	//PyList_Append(PyInfo, PyInt_FromLong(Siz));
+//	//
+//	//for (i=0; i<Msh->SolSiz; i++){
+//	//	PyList_Append(pyHeader, PyString_FromString(Msh->SolTag[i]));
+//	//}
+//	//
+//	
+//	
+//	if ( Msh )
+// 		FreeMesh(Msh);
+//	
+//}
+
 
 
 void py_ExtractAtRef (char *MshNam, char *SolNam, PyObject *pyRefs,  PyObject *pyResult, PyObject *PyInfo, PyObject *pyHeader)

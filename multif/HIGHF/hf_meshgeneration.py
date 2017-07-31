@@ -1361,7 +1361,71 @@ def HF_GenerateMesh(nozzle):
 	except:
 		raise;
 	
+	
+	
+	
 
+
+def HF_GenerateMesh_Deform(nozzle):
 	
+	print "HF_GenerateMesh_Deform"	
 	
+	from .. import _meshutils_module
 	
+	RefUp   = [9];
+	RefDown = [10];
+	
+	Knots_center =  nozzle.wall.centerline.knots;
+	Coefs_center =  nozzle.wall.centerline.coefs;
+	Knots_r1     =  nozzle.wall.majoraxis.knots;
+	Coefs_r1     =  nozzle.wall.majoraxis.coefs;
+	Knots_r2     =  nozzle.wall.minoraxis.knots;
+	Coefs_r2     =  nozzle.wall.minoraxis.coefs;
+	
+	pathsrc = "%s/baseline_meshes/" % (os.path.dirname(os.path.abspath(__file__)));
+	basNam	= "%sbaseline_%s_%s.su2" % (pathsrc, nozzle.method, nozzle.cfd.mesh_size);
+	
+	_meshutils_module.py_ProjectNozzleWall3D(basNam, RefUp, RefDown,
+	Knots_center, Coefs_center,
+	Knots_r1, Coefs_r1  ,
+	Knots_r2, Coefs_r2  ,
+	 "mesh_motion.dat");
+	
+	# --- Call SU2_DEF to deform baseline mesh
+	
+	# --- Setup config file
+	
+	from .. import SU2
+	
+	config = SU2.io.Config();
+	
+	# -- Note : the values don't matter. All markers must be defined otherwise SU2 exits.
+	config.MARKER_EULER  = '( 7, 8, 9, 10, 12, 13, 14, 15, 16)'
+	config.MARKER_INLET  = '(11, 601, 275000, 1.0, 0.0, 0.0 )'
+	config.MARKER_FAR    = '( 1, 2, 3, 5, 6)'
+	config.MARKER_SYM    = '( 4 )'
+		
+	config.MESH_FILENAME= basNam;
+	config.DV_KIND= "SURFACE_FILE"
+	config.DV_MARKER= "( 9, 10 )"
+	config.MOTION_FILENAME= "mesh_motion.dat"
+	
+	config.DEFORM_LINEAR_SOLVER  = "FGMRES"
+	config.DEFORM_LINEAR_ITER    = "500"
+	config.DEFORM_NONLINEAR_ITER = "5"
+	config.DEFORM_CONSOLE_OUTPUT = "YES"
+	config.DEFORM_TOL_FACTOR     = "1e-6"
+	config.DEFORM_STIFFNESS_TYPE = "WALL_DISTANCE"
+	
+	config.HOLD_GRID_FIXED       = "NO"
+	config.HOLD_GRID_FIXED_COORD = "(-1e6,-1e6,-1e6,1e6,1e6,1e6)"
+	config.VISUALIZE_DEFORMATION = "YES"
+	config.MARKER_MOVING         = "( 9, 10 )"
+	
+	config.MESH_OUT_FILENAME      = nozzle.cfd.mesh_name;
+	
+	config.NUMBER_PART = nozzle.partitions;
+	
+	# --- Run SU2
+	
+	info = SU2.run.DEF(config)

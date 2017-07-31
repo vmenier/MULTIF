@@ -5,7 +5,7 @@ import numpy as np
 from .. import SU2
 from hf_meshgeneration import *
 from hf_runSU2 import *
-from hf_postprocessing import *
+import hf_postprocessing
 
 try:
     from runAEROS import *
@@ -19,7 +19,7 @@ def CheckOptions (nozzle):
         sys.stderr.write("\n  ## ERROR : High-fidelity is 3D.\n\n");
         sys.exit(0);
     
-def Run( nozzle, output = 'verbose' ):
+def Run( nozzle, output = 'verbose', writeToFile=1 ):
     
     # Introduction to this function and available data
     print
@@ -158,12 +158,12 @@ def Run( nozzle, output = 'verbose' ):
 	        os.chdir(nozzle.runDir);
         # XXX Ensure high-fidelity SU2 analysis runs correctly
         gradCalc = HF_runSU2(nozzle);
-	
+		
 	   # Run thermal/structural analyses
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
              # XXX Ensure high-fidelity AEROS analysis runs correctly
 	        runAEROS(nozzle, output);
-	        
+		
         # Assign aero QoI if required
         # XXX Fill in this PostProcess function to return correct outputs
         hf_postprocessing.PostProcess(nozzle, output);
@@ -217,7 +217,7 @@ def Run( nozzle, output = 'verbose' ):
             for k in nozzle.outputTags:
 			    np.savetxt(gradFile,nozzle.gradients[k]);
             gradFile.close();   			
-
+	
     # Write data
     if writeToFile:
         if nozzle.outputFormat == 'PLAIN':

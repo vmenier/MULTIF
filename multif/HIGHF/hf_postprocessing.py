@@ -1,6 +1,9 @@
 from multif import _mshint_module
 import numpy as np
 import sys
+import os
+
+from .. import SU2
 
 def PostProcess ( nozzle, output ):
 	
@@ -97,6 +100,9 @@ def CheckConvergence ( nozzle ) :
 	#print "Initial res = %le, Final res = %lf, DIFF = %lf\n" % (IniRes, FinRes, ResDif);
 	return IniRes, FinRes;
 
+
+
+
 def HF_Compute_Thrust (nozzle):
 	
 	info = [];
@@ -106,7 +112,9 @@ def HF_Compute_Thrust (nozzle):
 	Sol  = [];
 	Header = [];
 	
-	out = _mshint_module.py_Interpolation (nozzle.cfd.exit_mesh_name, nozzle.cfd.mesh_name, nozzle.cfd.restart_name,\
+	exitNam = "%s/baseline_meshes/nozzle_exit.mesh" % (os.path.dirname(os.path.abspath(__file__)));
+	
+	out = _mshint_module.py_Interpolation (exitNam, nozzle.cfd.mesh_name, nozzle.cfd.restart_name,\
 	info, Crd, Tri, Tet, Sol, Header);
 	
 	dim    = info[0];
@@ -114,7 +122,6 @@ def HF_Compute_Thrust (nozzle):
 	NbrTri = info[2];
 	NbrTet = info[3];
 	SolSiz = info[4];
-	
 	
 	#for i in range(1,59):
 	#	idx = (i-1)*dim;
@@ -236,7 +243,6 @@ def HF_Compute_Thrust (nozzle):
 		except :
 			Thrust = -1;
 		#Thrust = Thrust + area*(rhoU*(U*U0-U0)+P0*Pres-P0);
-	
-	print "TOTAL AREA = %lf\n" % areatot;
+		
 	return Thrust;
 	

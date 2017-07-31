@@ -565,7 +565,7 @@ int writeAEROS(GModel *g,
     fprintf(fp, "stressvm 14 7 \"STRESS.4\" 1 NG 4 median nodalpartialgroup\n");
   for(int k = 0; k < baffleCount; ++k) 
     fprintf(fp, "stressvm 14 7 \"STRESS.%d\" 1 NG %d median nodalpartialgroup\n", 5+k, 5+k);
-  /*  if(lf == 1) {
+  if(lf == 1) {
     fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS\" 1 lower thermal\n");
     fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.1\" 1 NG 2 lower nodalpartialgroup thermal\n");
     fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.2\" 1 NG 2 median nodalpartialgroup thermal\n");
@@ -582,7 +582,7 @@ int writeAEROS(GModel *g,
       fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.4\" 1 NG 4 median nodalpartialgroup mechanical\n");
     for(int k = 0; k < baffleCount; ++k)
       fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.%d\" 1 NG %d median nodalpartialgroup mechanical\n", 5+k, 5+k);
-      }*/
+  }
   // 1st principal stress
   fprintf(fp, "stressp1 14 7 \"STRESSP1\" 1 lower\n");
   fprintf(fp, "stressp1 14 7 \"STRESSP1.1\" 1 NG 2 lower nodalpartialgroup\n");
@@ -592,7 +592,7 @@ int writeAEROS(GModel *g,
     fprintf(fp, "stressp1 14 7 \"STRESSP1.4\" 1 NG 4 median nodalpartialgroup\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressp1 14 7 \"STRESSP1.%d\" 1 NG %d median nodalpartialgroup\n", 5+k, 5+k);
-  /*  if(lf == 1) {
+  if(lf == 1) {
     fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1\" 1 lower thermal\n");
     fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.1\" 1 NG 2 lower nodalpartialgroup thermal\n");
     fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.2\" 1 NG 2 median nodalpartialgroup thermal\n");
@@ -609,7 +609,7 @@ int writeAEROS(GModel *g,
       fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.4\" 1 NG 4 median nodalpartialgroup mechanical\n");
     for(int k = 0; k < baffleCount; ++k)
       fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.%d\" 1 NG %d median nodalpartialgroup mechanical\n", 5+k, 5+k);
-      } */
+  }
   // 2nd principal stress
   fprintf(fp, "stressp2 14 7 \"STRESSP2\" 1 lower\n");
   fprintf(fp, "stressp2 14 7 \"STRESSP2.1\" 1 NG 2 lower nodalpartialgroup\n");
@@ -619,7 +619,7 @@ int writeAEROS(GModel *g,
     fprintf(fp, "stressp2 14 7 \"STRESSP2.4\" 1 NG 4 median nodalpartialgroup\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressp2 14 7 \"STRESSP2.%d\" 1 NG %d median nodalpartialgroup\n", 5+k, 5+k);
-  /*  if(lf == 1) {
+  if(lf == 1) {
     fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2\" 1 lower thermal\n");
     fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.1\" 1 NG 2 lower nodalpartialgroup thermal\n");
     fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.2\" 1 NG 2 median nodalpartialgroup thermal\n");
@@ -636,7 +636,7 @@ int writeAEROS(GModel *g,
       fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.4\" 1 NG 4 median nodalpartialgroup mechanical\n");
     for(int k = 0; k < baffleCount; ++k)
       fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.%d\" 1 NG %d median nodalpartialgroup mechanical\n", 5+k, 5+k);
-      } */
+  }
   // 3rd principal stress
   fprintf(fp, "stressp3 14 7 \"STRESSP3\" 1 lower\n");
   fprintf(fp, "stressp3 14 7 \"STRESSP3.1\" 1 NG 2 lower nodalpartialgroup\n");
@@ -646,7 +646,7 @@ int writeAEROS(GModel *g,
     fprintf(fp, "stressp3 14 7 \"STRESSP3.4\" 1 NG 4 median nodalpartialgroup\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressp3 14 7 \"STRESSP3.%d\" 1 NG %d median nodalpartialgroup\n", 5+k, 5+k);
-  /*  if(lf == 1) {
+  if(lf == 1) {
     fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3\" 1 lower thermal\n");
     fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.1\" 1 NG 2 lower nodalpartialgroup thermal\n");
     fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.2\" 1 NG 2 median nodalpartialgroup thermal\n");
@@ -663,7 +663,7 @@ int writeAEROS(GModel *g,
       fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.4\" 1 NG 4 median nodalpartialgroup mechanical\n");
     for(int k = 0; k < baffleCount; ++k)
       fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.%d\" 1 NG %d median nodalpartialgroup mechanical\n", 5+k, 5+k);
-      } */
+  }
   // stresses and strains in the x and y directions of the material coordinate frame (layers 1 and 3 only)
   fprintf(fp, "stressxx 14 7 \"STRESSXX.1\" 1 NG 2 lower nodalpartialgroup matfrm\n");
   fprintf(fp, "stressxx 14 7 \"STRESSXX.3\" 1 NG 2 upper nodalpartialgroup matfrm\n");
@@ -1027,39 +1027,39 @@ int writeAEROS2(GModel *g,
   // von mises stress
   fprintf(fp, "stressvm 14 7 \"STRESS.cmc\" 1\n");
   fprintf(fp, "stressvm 14 7 \"STRESS.0\" 1 NG 1\n");
-  /*  if(lf == 1) {
+  if(lf == 1) {
     fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.cmc\" 1 thermal\n");
     fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.0\" 1 NG 1 thermal\n");
     fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.cmc\" 1 mechanical\n");
     fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.0\" 1 NG 1 mechanical\n");
-    } */
+  }
   // 1st principal stress
   fprintf(fp, "stressp1 14 7 \"STRESSP1.cmc\" 1\n");
   fprintf(fp, "stressp1 14 7 \"STRESSP1.0\" 1 NG 1\n");
-  /*  if(lf == 1) {
+  if(lf == 1) {
     fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.cmc\" 1 thermal\n");
     fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.0\" 1 NG 1 thermal\n");
     fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.cmc\" 1 mechanical\n");
     fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.0\" 1 NG 1 mechanical\n");
-    } */
+  }
   // 2nd principal stress
   fprintf(fp, "stressp2 14 7 \"STRESSP2.cmc\" 1\n");
   fprintf(fp, "stressp2 14 7 \"STRESSP2.0\" 1 NG 1\n");
-  /*  if(lf == 1) {
+  if(lf == 1) {
     fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.cmc\" 1 thermal\n");
     fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.0\" 1 NG 1 thermal\n");
     fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.cmc\" 1 mechanical\n");
     fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.0\" 1 NG 1 mechanical\n");
-    } */
+  }
   // 3rd principal stress
   fprintf(fp, "stressp3 14 7 \"STRESSP3.cmc\" 1\n");
   fprintf(fp, "stressp3 14 7 \"STRESSP3.0\" 1 NG 1\n");
-  /*  if(lf == 1) {
+  if(lf == 1) {
     fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.cmc\" 1 thermal\n");
     fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.0\" 1 NG 1 thermal\n");
     fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.cmc\" 1 mechanical\n");
     fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.0\" 1 NG 1 mechanical\n");
-    } */
+  }
   // 1st principal strain
   fprintf(fp, "strainp1 14 7 \"STRAINP1.cmc\" 1\n");
   fprintf(fp, "strainp1 14 7 \"STRAINP1.0\" 1 NG 1\n");

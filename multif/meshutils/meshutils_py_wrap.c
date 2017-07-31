@@ -3309,6 +3309,67 @@ SWIG_AsVal_int (PyObject * obj, int *val)
 #ifdef __cplusplus
 extern "C" {
 #endif
+SWIGINTERN PyObject *_wrap_py_ProjectNozzleWall3D(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  char *arg1 = (char *) 0 ;
+  PyObject *arg2 = (PyObject *) 0 ;
+  PyObject *arg3 = (PyObject *) 0 ;
+  PyObject *arg4 = (PyObject *) 0 ;
+  PyObject *arg5 = (PyObject *) 0 ;
+  PyObject *arg6 = (PyObject *) 0 ;
+  PyObject *arg7 = (PyObject *) 0 ;
+  PyObject *arg8 = (PyObject *) 0 ;
+  PyObject *arg9 = (PyObject *) 0 ;
+  char *arg10 = (char *) 0 ;
+  int res1 ;
+  char *buf1 = 0 ;
+  int alloc1 = 0 ;
+  int res10 ;
+  char *buf10 = 0 ;
+  int alloc10 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  PyObject * obj2 = 0 ;
+  PyObject * obj3 = 0 ;
+  PyObject * obj4 = 0 ;
+  PyObject * obj5 = 0 ;
+  PyObject * obj6 = 0 ;
+  PyObject * obj7 = 0 ;
+  PyObject * obj8 = 0 ;
+  PyObject * obj9 = 0 ;
+  int result;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OOOOOOOOOO:py_ProjectNozzleWall3D",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6,&obj7,&obj8,&obj9)) SWIG_fail;
+  res1 = SWIG_AsCharPtrAndSize(obj0, &buf1, NULL, &alloc1);
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "py_ProjectNozzleWall3D" "', argument " "1"" of type '" "char *""'");
+  }
+  arg1 = (char *)(buf1);
+  arg2 = obj1;
+  arg3 = obj2;
+  arg4 = obj3;
+  arg5 = obj4;
+  arg6 = obj5;
+  arg7 = obj6;
+  arg8 = obj7;
+  arg9 = obj8;
+  res10 = SWIG_AsCharPtrAndSize(obj9, &buf10, NULL, &alloc10);
+  if (!SWIG_IsOK(res10)) {
+    SWIG_exception_fail(SWIG_ArgError(res10), "in method '" "py_ProjectNozzleWall3D" "', argument " "10"" of type '" "char *""'");
+  }
+  arg10 = (char *)(buf10);
+  result = (int)py_ProjectNozzleWall3D(arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10);
+  resultobj = SWIG_From_int((int)(result));
+  if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
+  if (alloc10 == SWIG_NEWOBJ) free((char*)buf10);
+  return resultobj;
+fail:
+  if (alloc1 == SWIG_NEWOBJ) free((char*)buf1);
+  if (alloc10 == SWIG_NEWOBJ) free((char*)buf10);
+  return NULL;
+}
+
+
 SWIGINTERN PyObject *_wrap_py_ConvertGMFToSU2(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   char *arg1 = (char *) 0 ;
@@ -3691,6 +3752,7 @@ fail:
 
 static PyMethodDef SwigMethods[] = {
 	 { (char *)"SWIG_PyInstanceMethod_New", (PyCFunction)SWIG_PyInstanceMethod_New, METH_O, NULL},
+	 { (char *)"py_ProjectNozzleWall3D", _wrap_py_ProjectNozzleWall3D, METH_VARARGS, NULL},
 	 { (char *)"py_ConvertGMFToSU2", _wrap_py_ConvertGMFToSU2, METH_VARARGS, NULL},
 	 { (char *)"py_ConvertSU2toGMSH", _wrap_py_ConvertSU2toGMSH, METH_VARARGS, NULL},
 	 { (char *)"py_BSplineGeo3", _wrap_py_BSplineGeo3, METH_VARARGS, NULL},

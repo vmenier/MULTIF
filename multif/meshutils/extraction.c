@@ -59,6 +59,7 @@ typedef struct cvt_SortInterface
 {
 	double y;
 	double x;
+	double z;
   int    IdxSol;
 } SortInterface, *pSortInterface;
 
@@ -73,7 +74,11 @@ int CmpInterface (const void *a, const void *b)
 
   if ( fabs(ia->x-ib->x) < DBL_EPSILON ) {
     if ( fabs(ia->y-ib->y) < DBL_EPSILON ) {
-			return 0;
+			if ( fabs(ia->z-ib->z) < DBL_EPSILON ) {
+				return 0;
+	    }
+	    else if ( ia->z > ib->z ) return 1;
+	    else return -1;
     }
     else if ( ia->y > ib->y ) return 1;
     else return -1;
@@ -329,6 +334,9 @@ double * ExtractSolutionAtRef (Options *mshopt, Mesh *Msh, int *Ref, int NbrRef,
 			
 			SrtInt[cptVer].x      = Msh->Ver[iVer][0];
 			SrtInt[cptVer].y      = Msh->Ver[iVer][1];
+			
+			SrtInt[cptVer].z      = (Msh->Dim == 3 ? Msh->Ver[iVer][2] : 0.0);
+			
 			SrtInt[cptVer].IdxSol = cptVer;
 			
 			idx = cptVer * Msh->SolSiz;
@@ -349,17 +357,18 @@ double * ExtractSolutionAtRef (Options *mshopt, Mesh *Msh, int *Ref, int NbrRef,
 	
 	//--- Alloc and output result
 	
-	result = (double *) malloc(sizeof(double)*cptVer*(2+Msh->SolSiz));
+	result = (double *) malloc(sizeof(double)*cptVer*(3+Msh->SolSiz));
 	
 	for (i=0; i<cptVer; i++) {
 		
-		idx = i*(Msh->SolSiz+2);
+		idx = i*(Msh->SolSiz+3);
 		
 		result[idx+0] = SrtInt[i].x;
 		result[idx+1] = SrtInt[i].y;
+		result[idx+2] = SrtInt[i].z;
 		
 		for (iVar=0; iVar<Msh->SolSiz; iVar++) 
-			result[idx+2+iVar] = Sol[SrtInt[i].IdxSol*Msh->SolSiz+iVar];
+			result[idx+3+iVar] = Sol[SrtInt[i].IdxSol*Msh->SolSiz+iVar];
 		
 		//if ( i < 10 )
 		//	printf(" %d : %lf\n", i, result[idx+2]);
@@ -378,7 +387,7 @@ double * ExtractSolutionAtRef (Options *mshopt, Mesh *Msh, int *Ref, int NbrRef,
 		free(Tag);
 		
 	*NbrRes = cptVer;
-	*Siz    = Msh->SolSiz+2;
+	*Siz    = Msh->SolSiz+3;
 		
 	return result;
 }

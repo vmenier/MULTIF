@@ -53,7 +53,7 @@ class Nozzle:
                 dv = dv + tmp;
                 
             dv_size = len(dv);
-            
+        
         else:
             if key not in config:
                 sys.stderr.write('\n ## ERROR: Expected %s in config ' \
@@ -1559,6 +1559,17 @@ class Nozzle:
                 nozzle.wall.majoraxis.geometry = geometry.Bspline(nozzle.wall.majoraxis.coefs);
                 nozzle.wall.minoraxis.geometry = geometry.Bspline(nozzle.wall.minoraxis.coefs);            
             
+				# Build equivalent nozzle shape based on equivalent area
+                majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
+                minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
+                nx = 2000; # Check accuracy and effect of this interpolation
+                x = np.linspace(0,nozzle.length,num=nx);
+                majoraxisVal = majoraxisTmp.radius(x);
+                minoraxisVal = minoraxisTmp.radius(x);
+                equivRadius = np.sqrt(majoraxisVal*minoraxisVal);
+                shape2d = np.transpose(np.array([x,equivRadius]))
+                nozzle.wall.geometry = geometry.PiecewiseLinear(shape2d);
+
                 
             # Map 3D parameterization to 2D definition using equivalent area
             else:
@@ -1835,10 +1846,13 @@ class Nozzle:
                 innerBaffleRadius = np.interp(nozzle.length,x,rList[-2]);
             else:
                 innerBaffleRadius = np.interp(nozzle.length,x,rList[-1]);   
+            #shapeDefinition = np.transpose(np.array([[0., 0.1548, nozzle.length],
+            #                  [0.4244, 0.4244, innerBaffleRadius + 0.012]]));
             shapeDefinition = np.transpose(np.array([[0., 0.1548, nozzle.length],
-                              [0.4244, 0.4244, innerBaffleRadius + 0.012]]));
+                              [0.8244, 0.8244, innerBaffleRadius + 0.012]]));
             nozzle.exterior.geometry = geometry.PiecewiseLinear(shapeDefinition);  
             
+
             # Check for intersection of nozzle wall with external geometry
             if nozzle.stringers.n > 0:
                 wallDiff = rList[-2] - nozzle.exterior.geometry.radius(x);
@@ -2040,48 +2054,22 @@ class Nozzle:
         nozzle = self;
         
         if 'INPUT_DV_FORMAT' in config:
-            inputDVformat = config['INPUT_DV_FORMAT'];
+            nozzle.inputDVformat = config['INPUT_DV_FORMAT'];
         else :
             sys.stderr.write('\n ## ERROR : Input DV file format not '        \
               'specified. (INPUT_DV_FORMAT expected: PLAIN or DAKOTA)\n\n');
             sys.exit(0);        
                 
         if 'INPUT_DV_NAME' in config:
-            filename = config['INPUT_DV_NAME'];
+            nozzle.inputDVfilename = config['INPUT_DV_NAME'];
         else :
             sys.stderr.write('\n ## ERROR : Input DV file name not '          \
               'specified. (INPUT_DV_NAME expected)\n\n');
             sys.exit(0);
-                
-        if inputDVformat == 'PLAIN':
-			dvList, outputCode, derivativesDV = ParseDesignVariables_Plain(filename); 
-			# Must assign outputCode separately here
-			if nozzle.gradientsFlag == 1:
-			    for i in range(len(nozzle.outputTags)):
-			        outputCode.append(3); # output function value and gradient
-			else:
-			    for i in range(len(nozzle.outputTags)):
-			        outputCode.append(1); # output function value only   
-			NbrDV = len(dvList);
-        elif inputDVformat == 'DAKOTA' :
-			dvList, outputCode, derivativesDV = ParseDesignVariables_Dakota(filename);    
-			NbrDV = len(dvList);
-        else:
-            sys.stderr.write('\n ## ERROR : Unknown DV input file format '    \
-              '%s\n\n' % inputDVformat);
-            sys.exit(0);
-        
-        if NbrDV != nozzle.NbrDVTot : 
-            sys.stderr.write('\n ## Error : Inconsistent number of design '   \
-              'variables are given in %s\n\n' % filename);
-            sys.stderr.write('             %d given, %d expected\n' %         \
-              (NbrDV, nozzle.NbrDVTot ));
-            sys.exit(0);
-        
-        nozzle.dvList = dvList;
-        nozzle.outputCode = outputCode;
-        nozzle.derivativesDV = derivativesDV;
 
+        if nozzle.inputDVformat == 'PLAIN' or nozzle.inputDVformat == 'DAKOTA':
+        	nozzle.ParseDesignVariables(nozzle);
+		
         for i in range(0, len(nozzle.outputTags)):     
             
             tag  = nozzle.outputTags[i];
@@ -2095,7 +2083,6 @@ class Nozzle:
             # 0 No data required, function is inactive
             code = nozzle.outputCode[i];
             
-
             if code == 1: # Output value only
                 nozzle.SetOutput(tag,value=-1,gradients=None);
             elif code == 2: # Output gradients only
@@ -2111,20 +2098,57 @@ class Nozzle:
                 sys.stderr.write('\n ## ERROR : code %i in DV input file not available\n' % code);
                 sys.exit(1);
         
-        if output == 'verbose':
-            sys.stdout.write('Setup Parse Design Variables complete\n');    
-            sys.stdout.write('Design variable list:\n');
-            print nozzle.dvList
-            sys.stdout.write('Output codes:\n');
-            print nozzle.outputCode
-            sys.stdout.write('Derivative design variables:\n');
-            print nozzle.derivativesDV       
+        #if output == 'verbose':
+        #    sys.stdout.write('Setup Parse Design Variables complete\n');    
+        #    sys.stdout.write('Design variable list:\n');
+        #    print nozzle.dvList
+        #    sys.stdout.write('Output codes:\n');
+        #    print nozzle.outputCode
+        #    sys.stdout.write('Derivative design variables:\n');
+        #    print nozzle.derivativesDV       
+    
+    
+    def ParseDesignVariables(self, output='verbose'):
+    	
+    	nozzle = self;
         
+        inputDVformat = nozzle.inputDVformat;
+        filename = nozzle.inputDVfilename;
+    
+        if inputDVformat == 'PLAIN':
+    		dvList, outputCode, derivativesDV = ParseDesignVariables_Plain(filename); 
+    		# Must assign outputCode separately here
+    		if nozzle.gradientsFlag == 1:
+    		    for i in range(len(nozzle.outputTags)):
+    		        outputCode.append(3); # output function value and gradient
+    		else:
+    		    for i in range(len(nozzle.outputTags)):
+    		        outputCode.append(1); # output function value only   
+    		NbrDV = len(dvList);
+        elif inputDVformat == 'DAKOTA' :
+    		dvList, outputCode, derivativesDV = ParseDesignVariables_Dakota(filename);    
+    		NbrDV = len(dvList);
+        else:
+            sys.stderr.write('\n ## ERROR : Unknown DV input file format '    \
+              '%s\n\n' % inputDVformat);
+            sys.exit(0);
+        
+        if NbrDV != nozzle.NbrDVTot : 
+            sys.stderr.write('\n ## Error : Inconsistent number of design '   \
+              'variables are given in %s\n\n' % filename);
+            sys.stderr.write('             %d given, %d expected\n' %         \
+              (NbrDV, nozzle.NbrDVTot ));
+            sys.exit(0);
+        
+        nozzle.dvList = dvList;
+        nozzle.outputCode = outputCode;
+        nozzle.derivativesDV = derivativesDV;
+    
     
     def UpdateDV(self, output='verbose'):
         
         nozzle = self;
-        
+                
         NbrTags = len(nozzle.DV_Tags);
         
         prt_name = [];
@@ -3553,7 +3577,7 @@ def NozzleSetup( config, flevel, output='verbose'):
     nozzle.cfd = CFD();
     nozzle.cfd.mesh_name = 'nozzle.su2';
     nozzle.cfd.restart_name =  'nozzle.dat';
-    nozzle.cfd.exit_mesh_name = 'nozzle_exit.su2';
+    nozzle.cfd.exit_mesh_name = 'nozzle_exit.mesh';
     nozzle.cfd.conv_filename = 'history';
     
     # --- General nozzle information
@@ -3622,14 +3646,14 @@ def NozzleSetup( config, flevel, output='verbose'):
     nozzle.SetupDV(config,output);
   
     # --- If input DV are provided, parse them and update nozzle
-    print 'NbrDVTot = %i' % nozzle.NbrDVTot
+    
     if nozzle.NbrDVTot > 0 :
 
         # Parse DV from input DV file (plain or dakota format)
         nozzle.ParseDV(config,output);
 
         # Update DV using values provided in input DV file
-        nozzle.UpdateDV(output);
+        #nozzle.UpdateDV(output);
 
     # --- Computer inner wall's B-spline and thermal and load layer thicknesses
     #     B-spline coefs, and thickness node arrays may have been updated by

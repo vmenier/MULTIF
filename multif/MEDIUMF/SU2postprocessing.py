@@ -35,6 +35,7 @@ def PostProcess ( nozzle, output ):
 				
 		if nozzle.method == "EULER":
 			SolExtract, Size, Header  = ExtractSolutionAtExit(nozzle);
+			#SolExtract, Size, Header  = ExtractExitRANS (nozzle);
 			nozzle.responses['THRUST'] = ComputeThrust ( nozzle, SolExtract, Size, Header );
 			#nozzle.responses['THRUST'] = Get_Thrust_File(nozzle);
 		else :
@@ -160,39 +161,14 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
 	NbrVer = Size[0];
 	SolSiz = Size[1];
 	
-	if len(Header) != SolSiz-2:
-		sys.stderr.write("  ## ERROR : ComputeThrust : Inconsistent solution header.\n");
+	print SolSiz
+	print Header
+	
+	if len(Header) != SolSiz-2 and len(Header) != SolSiz-3:
+		sys.stderr.write("  ## ERROR : ComputeThrust : Inconsistent solution header (%d != %d).\n" % (len(Header),SolSiz-2));
 		sys.exit(0);
 	
 	## --- Get solution field indices
-	#
-	#iMach  = -1;
-	#iTem   = -1;
-	#iCons1 = -1;
-	#iCons2 = -1;
-	#iCons3 = -1;
-	#iCons4 = -1;
-	#iPres  = -1;
-	#
-	#
-	#for iFld in range(0,len(Header)):
-	#	print Header[iFld]
-	#	if Header[iFld] == 'Mach':
-	#		iMach = iFld;
-	#	elif Header[iFld] == 'Temperature':
-	#		iTem = iFld;
-	#	elif Header[iFld] == 'Conservative_1':
-	#		iCons1 = iFld;
-	#	elif Header[iFld] == 'Conservative_2':
-	#		iCons2 = iFld;
-	#	elif Header[iFld] == 'Conservative_3':
-	#		iCons3 = iFld;
-	#	elif Header[iFld] == 'Conservative_4':
-	#		iCons4 = iFld;
-	#	elif Header[iFld] == 'Pressure':
-	#		iPres = iFld;
-	
-	print Header
 	
 	iMach  = Header['Mach'];
 	iTem   = Header['Temperature'];
@@ -221,9 +197,9 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
 	
 	#for iVer in range(1, NbrVer) :
 	#	
-
+	
 	#	y	= float(SolExtract[iVer][1]);
-
+	
 	#	
 	#	#if y > nozzle.height-1e-6:
 	#	#	print "REMOVE POINT %d" % iVer
@@ -259,11 +235,12 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
 		sol[i][0] = float(SolExtract[i][iCons1]);
 		sol[i][1] = float(SolExtract[i][iCons2]);
 		sol[i][2] = float(SolExtract[i][iPres]);
+		
+	print sol[:][0]
 	
 	fsol = [];
 	for j in range(0,3):
 		fsol.append(interp1d(y,sol[:,j], kind='linear'));
-	
 	
 	nbv = 4000;
 	ynew = np.linspace(0,y[-1],nbv);
@@ -292,6 +269,7 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
 	
 	return Thrust;
 
+
 def ExtractExitRANS (nozzle)	:
 	
 	exitNam = "exit.mesh";
@@ -307,7 +285,6 @@ def ExtractExitRANS (nozzle)	:
 	
 	out = _mshint_module.py_Interpolation (exitNam, "nozzle.su2", "nozzle.dat",\
 		info, Crd, Tri, Tet, Sol, Header);
-	
 	
 	# --- Extract CFD solution at the inner wall	
 
@@ -326,10 +303,10 @@ def ExtractExitRANS (nozzle)	:
 	
 	OutResult = np.reshape(Result,(NbrRes, ResSiz));
 		
-	print "%d results" % NbrRes;
-	
-	for i in range(0,10):
-		print "%d : (%lf,%lf) : rho = %lf" % (i, OutResult[i][0], OutResult[i][1], OutResult[i][2]);
+	#print "%d results" % NbrRes;
+	#
+	#for i in range(0,10):
+	#	print "%d : (%lf,%lf) : rho = %lf" % (i, OutResult[i][0], OutResult[i][1], OutResult[i][3]);
 	
 	# --- Get solution field indices
 	
@@ -341,11 +318,9 @@ def ExtractExitRANS (nozzle)	:
 	iCons4 = -1;
 	iPres  = -1;
 	
-	print Header
-	
 	idHeader = dict();
 	for iFld in range(0,len(Header)):
-		idHeader[Header[iFld]] = iFld+2;
+		idHeader[Header[iFld]] = iFld+3;
 
 	return OutResult, pyInfo, idHeader;
 

@@ -64,7 +64,11 @@ def main():
 	nozzle.verification = int(options.verification);
 	nozzle.meshDeformationFlag = int(options.deform);
 	nozzle.partitions = int(options.partitions);
-
+	
+	if nozzle.NbrDVTot > 0 :
+		nozzle.UpdateDV(output);
+		nozzle.SetupWall(output);
+	
 	if nozzle.method == 'NONIDEALNOZZLE' :
 	    multif.LOWF.Run(nozzle, output);
 	elif nozzle.dim == '2D': # nozzle method should be Euler or RANS
@@ -83,6 +87,8 @@ def main():
 # -------------------------------------------------------------------
 #  Run Main Program
 # -------------------------------------------------------------------
+
+
 
 if __name__ == '__main__':
     main()

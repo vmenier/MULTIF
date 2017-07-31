@@ -12,7 +12,7 @@ except ImportError:
     print 'Error importing all functions from runAEROS.\n'
 
 #def CheckOptions (nozzle):
-    
+
 #		print "Check options"
     #if nozzle.dim == 3 :
     #    sys.stderr.write("\n  ## ERROR : Only 2D axisymmetric simulations are available for now.\n\n");

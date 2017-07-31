@@ -254,7 +254,7 @@ def SetupConfig (solver_options):
         config.LINEAR_SOLVER_ERROR= '1E-6';
         config.LINEAR_SOLVER_ITER= '3';
 
-        config.LIMITER_ITER= '200';
+        config.LIMITER_ITER= '500';
 
     elif method == 'RANS':
         config.PHYSICAL_PROBLEM= 'NAVIER_STOKES';
@@ -414,7 +414,7 @@ def SetupConfig (solver_options):
     
     
 def checkResidual(config):
-
+	
     if( os.path.isfile('history.csv') ):
         history = np.loadtxt('history.csv',skiprows=1,delimiter=',');
         finalResidual = history[-1,11];
@@ -536,7 +536,7 @@ def runSU2 ( nozzle ):
 
 	solver_options.Dimension = '2D';
 
-        if ( nozzle.meshDeformationFlag ):
+	if ( nozzle.meshDeformationFlag ):
 	    GenerateNozzleMesh_Deform(nozzle);
 	else:
 	    GenerateNozzleMesh(nozzle);

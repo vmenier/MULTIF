@@ -14,6 +14,10 @@ Victorien Menier Feb 2016
 //int  GetGeoSize (char *GeoNam, int *CadSiz);
 //int  ReadGeo (char *GeoNam, Cad *cad);
 
+//--- projection.c
+int NozzleWallProjection (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, int refUp, int refDown, char *OutNam);
+int ProjectToDV(double *Crd, CadNozzle *Noz, double *BasParam, int Patch);
+
 //--- extraction.c
 int SolutionExtraction(Options *mshopt, Mesh *Msh);
 double * ExtractAlongLine (Options *mshopt, Mesh *Msh, double *box, int *NbrRes, int *Siz);
@@ -27,6 +31,7 @@ int LoadGMFSolution(char *SolNam, Mesh *Msh);
 int WriteGMFMesh(char *nam, Mesh *Msh, int OptBin);
 int WriteGMFSolution(char *SolNam, double *Sol, int SolSiz, int NbrVer, int Dim, int NbrFld, int* FldTab);
 int WriteGMFSolutionItf(char *SolNam, Mesh *Msh);
+int WriteSegMesh(char *nam, Mesh *Msh);
 
 //---- mesh.c
 Mesh* AllocMesh (int * SizMsh);
@@ -55,6 +60,9 @@ int ConvertGMFtoSU2Sol (Options *mshopt);
 int ConvertSU2SolToGMF (Options *mshopt);
 int Extraction (Options *mshopt);
 int OutputMach (Options *mshopt);
+int ConvertSU2ToGMSH (Options *mshopt);
+int ProjectNozzleWall (Options *mshopt);
+int ConvertGMFtoSegMesh (Options *mshopt);
 
 //--- option.c
 Options* AllocOptions(void);
@@ -78,10 +86,27 @@ int  LoadSU2Vertices (FILE *FilHdl, Mesh *Msh);
 void WriteSU2Mesh(char *nam, Mesh *Msh);
 int  WriteSU2Solution (char *SolNam, Mesh *Msh, double *Sol, int NbrVer, int SolSiz, char SolTag[100][256]);
 
+//--- GMSHio.c
+void WriteGMSHMesh(char *nam, Mesh *Msh);
+
 //--- utils.c
 int  Str2Lower(char *buff);
 void StrRemoveChars (char* str, char c);
 
+//--- nozzle.c
+int          FreeCadBspline (CadBspline *Bsp);
+int          LoadCadBspline (char *BasNam, CadBspline *Bsp);
+int 		 SetCadBspline (CadBspline *Bsp, double *Knots, int NbrKnots, double *Coefs, int NbrCoefs);
+CadBspline * AllocCadBspline (int NbrCoefs, int NbrKnots);
+int          GetCadBsplineSize ( char *BasNam , int *NbrCoefs, int *NbrKnots );
+CadNozzle *  AllocCadNozzle (int * SizCad);
+int          FreeCadNozzle (CadNozzle *Noz) ;
+double       fzcut (double x,  double *BasParam);
+double       fycut (double x,  double *BasParam);
+double 		 fz_bas (double x,  double *BasParam);
+double 		 fr1_bas (double x,  double *BasParam);
+double 		 fr2_bas (double x,  double *BasParam);
+int			 WriteCadBspline(char *BasNam, CadBspline *Bsp);
 
 //--- Bspline
 

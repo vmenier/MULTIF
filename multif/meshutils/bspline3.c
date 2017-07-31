@@ -116,6 +116,7 @@ void bSplineGeo3(double *knots, double *coefs, double *x, double *y,
   int p = k - c - 1;
   if(p != 3) {
 		printf("  ## ERROR : Only B-splines of degree 3 are implemented\n");
+		printf("     Degree = %d - %d - 1 = %d \n", k, c, p);
     //std::cout << "Only B-splines of degree 3 are implemented"<< " (degree " << p << " given)" << std::endl;
     return;
   }

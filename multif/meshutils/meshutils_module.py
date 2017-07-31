@@ -99,6 +99,10 @@ except __builtin__.Exception:
     _newclass = 0
 
 
+def py_ProjectNozzleWall3D(MshNam, pyRefUp, pyRefDown, pyKnots_center, pyCoefs_center, pyKnots_r1, pyCoefs_r1, pyKnots_r2, pyCoefs_r2, OutNam):
+    return _meshutils_module.py_ProjectNozzleWall3D(MshNam, pyRefUp, pyRefDown, pyKnots_center, pyCoefs_center, pyKnots_r1, pyCoefs_r1, pyKnots_r2, pyCoefs_r2, OutNam)
+py_ProjectNozzleWall3D = _meshutils_module.py_ProjectNozzleWall3D
+
 def py_ConvertGMFToSU2(MshNam, SolNam, OutNam):
     return _meshutils_module.py_ConvertGMFToSU2(MshNam, SolNam, OutNam)
 py_ConvertGMFToSU2 = _meshutils_module.py_ConvertGMFToSU2

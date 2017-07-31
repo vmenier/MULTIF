@@ -1,11 +1,18 @@
 
 //int hello_meshutils(int toto);
 
+int py_ProjectNozzleWall3D( char *MshNam,  
+ PyObject *pyRefUp,  PyObject *pyRefDown,
+ PyObject *pyKnots_center, PyObject *pyCoefs_center,
+ PyObject *pyKnots_r1, PyObject *pyCoefs_r1,
+ PyObject *pyKnots_r2, PyObject *pyCoefs_r2, 
+ char *OutNam );
+
+//void py_NozzleWallProjection (char *MshNam, char *SolNam, PyObject *pyMeshMotion,  PyObject *pyDV);
+
 int py_ConvertGMFToSU2( char *MshNam, char *SolNam, char *OutNam ) ;
 
-
 int py_ConvertSU2toGMSH( char *MshNam, char *SolNam, char *OutNam ) ;
-
 
 /*
 	Return nx points (pyx,pyy) of the bspline defined by knots and coefs

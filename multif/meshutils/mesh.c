@@ -93,7 +93,7 @@ void AddPrism(Mesh *Msh, int idx, int *is, int ref)
 void AddTriangle(Mesh *Msh, int idxTri, int *is, int ref)
 {
   if ( idxTri > Msh->MaxNbrTri ) {
-    printf("  ## ERROR : Max number of triangles reached.\n");
+    printf("  ## ERROR : Max number of triangles reached (%d, max %d).\n", idxTri, Msh->MaxNbrTri);
     exit(1);
   }
   Msh->Tri[idxTri][0] = is[0];
@@ -133,6 +133,8 @@ Mesh* AllocMesh (int * SizMsh)
 	Msh->NbrTet = 0;
 	Msh->NbrQua = 0;
 	Msh->NbrHex = 0;
+	Msh->NbrPri = 0;
+	Msh->NbrPyr = 0;
 	
 	Msh->Ver = NULL;
 	Msh->Efr = NULL;
