@@ -1567,7 +1567,7 @@ class Nozzle:
                 nozzle.wall.majoraxis.geometry = geometry.Bspline(nozzle.wall.majoraxis.coefs);
                 nozzle.wall.minoraxis.geometry = geometry.Bspline(nozzle.wall.minoraxis.coefs);            
             
-				# Build equivalent nozzle shape based on equivalent area
+			# Build equivalent nozzle shape based on equivalent area
                 majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
                 minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
                 nx = 2000; # Check accuracy and effect of this interpolation
@@ -3158,35 +3158,28 @@ class Nozzle:
 
         # Initialize output locations for QoI internal to nozzle flow
         for qoi in outputTags:
-            if qoi in ['WALL_PRESSURE', 'PRESSURE', 'VELOCITY', 'WALL_TEMPERATURE'] or \
-               ('FAILURE_CRITERIA' in qoi and qoi not in ['KS','PN','MAX']) or \
-               ('TEMP_RATIO' in qoi and qoi not in ['KS','PN','MAX']):
+            if( qoi + '_LOCATIONS' in config ):
                 
                 if nozzle.param == '3D':
                     sys.stdout.write('\nWARNING: Parameterization is 3D but ' \
                       '%s is specified as an output and is processed with ' \
                       '2D information.\n\n' % qoi);
-                
-                if( qoi + '_LOCATIONS' in config ):
-                    loc = config[qoi+'_LOCATIONS'].strip('()')
-                    loc = loc.split(';')
-                    try: # list of numbers given
-                        float(loc[0].split(',')[0])
-                        tmp = 1
-                    except: # filename given
-                        tmp = 0
-                    if( tmp ): # list of numbers given
-                        locList = []
-                        for item in loc:
-                            item2 = item.split(',')
-                            locList.append([float(e) for e in item2])
-                        nozzle.outputLocations[qoi] = np.squeeze(np.array(locList))                        
-                    else: # filename given
-                        nozzle.outputLocations[qoi] = np.loadtxt(loc[0])                               
-                else:
-                    sys.stderr.write('\n ## ERROR : key %s_LOCATIONS '
-                      'not found in config file to specify location of '
-                      'requested output responses\n\n' % qoi)
+
+                loc = config[qoi+'_LOCATIONS'].strip('()')
+                loc = loc.split(';')
+                try: # list of numbers given
+                    float(loc[0].split(',')[0])
+                    tmp = 1
+                except: # filename given
+                    tmp = 0
+                if( tmp ): # list of numbers given
+                    locList = []
+                    for item in loc:
+                        item2 = item.split(',')
+                        locList.append([float(e) for e in item2])
+                    nozzle.outputLocations[qoi] = np.squeeze(np.array(locList))                        
+                else: # filename given
+                    nozzle.outputLocations[qoi] = np.loadtxt(loc[0])
                       
         # Initialize output locations for QoI on structural mesh
         for qoi in outputTags:

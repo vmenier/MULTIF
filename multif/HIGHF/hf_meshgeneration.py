@@ -1383,8 +1383,10 @@ def HF_GenerateMesh_Deform(nozzle):
 	Coefs_r2     =  nozzle.wall.minoraxis.coefs;
 	
 	pathsrc = "%s/baseline_meshes/" % (os.path.dirname(os.path.abspath(__file__)));
+	
 	basNamGMF   = "%sbaseline_%s_%s.meshb" % (pathsrc, nozzle.method, nozzle.cfd.mesh_size);
 	basNamSU2	= "baseline_%s_%s.su2" % (nozzle.method, nozzle.cfd.mesh_size);
+
 	
 	_meshutils_module.py_ProjectNozzleWall3D(basNamGMF, RefUp, RefDown,
 	Knots_center, Coefs_center,
