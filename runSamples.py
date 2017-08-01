@@ -42,10 +42,25 @@ def main():
 	                  dest="deform", default=False,
 	                  help="Use mesh deformation?")
 	
+	parser.add_option("-s", "--sample",
+	                  dest="samples_filename", default=False,
+	                  help="Run samples from file?")
+	
+	parser.add_option("", "--from",
+	                  dest="samples_from", default=False,
+	                  help="ID of first sample to run?")
+	
+	parser.add_option("", "--to",
+	                  dest="samples_to", default=False,
+	                  help="ID of last sample to run?")
+	
 	(options, args)=parser.parse_args()
 	
 	options.partitions = int( options.partitions )
 	options.flevel     = int( options.flevel )
+	
+	options.samples_from = int(options.samples_from)
+	options.samples_to   = int(options.samples_to)
 	
 	if options.flevel < 0:
 	    sys.stderr.write("  ## ERROR : Please choose a fidelity level to run (option -l or --flevel)");
@@ -65,31 +80,10 @@ def main():
 	nozzle.meshDeformationFlag = int(options.deform);
 	nozzle.partitions = int(options.partitions);
 	
+	if not options.samples_filename:
+		sys.stderr.write("  ## ERROR : No sample file name was provided (option --sample).\n");
+		sys.exit(0);
 	
-	if nozzle.NbrDVTot > 0 :
-		nozzle.UpdateDV(output);
-		nozzle.SetupWall(output);
+	multif.samples.RunSamples(nozzle, options.samples_filename, options.samples_from, options.samples_to);	
 	
-	if nozzle.method == 'NONIDEALNOZZLE' :
-	    multif.LOWF.Run(nozzle, output);
-	elif nozzle.dim == '2D': # nozzle method should be Euler or RANS
-	    multif.MEDIUMF.Run(nozzle, output);
-	elif nozzle.dim == '3D': # nozzle.method should be RANS
-	    multif.HIGHF.Run(nozzle, output);
-	
-	# --- Print warning in case the wrong SU2 version was run
-	if nozzle.method != 'NONIDEALNOZZLE' and nozzle.cfd.su2_version != 'OK':
-	    sys.stdout.write('\n');
-	    sys.stdout.write('#' * 90);
-	    sys.stdout.write('\n  ## WARNING : You are not using the right version of SU2. This may have caused robustness issues.\n');
-	    sys.stdout.write('#' * 90);
-	    sys.stdout.write('\n\n');
-	
-# -------------------------------------------------------------------
-#  Run Main Program
-# -------------------------------------------------------------------
-
-
-
-if __name__ == '__main__':
-    main()
+main()
