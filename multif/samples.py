@@ -114,8 +114,6 @@ def RunSamples(nozzle, samples_filename, beg, end):
 		sys.stderr.write(" ## ERROR RunSamples: Wrong sample id bounds : %d %d\n" % (beg, end));
 		sys.exit(1);
 	
-	nozzle.cfd.su2_max_iterations = 2;
-	
 	nozzleEval = [];
 	
 	outputs = [];
@@ -135,10 +133,11 @@ def RunSamples(nozzle, samples_filename, beg, end):
 		
 		dv_list = [];
 		for j in range(len(samples_hdl[iSam])):
-			dv_list.append(samples_hdl[0,j]);
+			dv_list.append(samples_hdl[iSam,j]);
 		
 		if len(nozzle.dvList) != len(dv_list):
-			sys.stderr.write("  ## ERROR sample %d : Wrong number of DV. SKIP.\n");
+			sys.stderr.write("  ## ERROR sample %d : Wrong number of DV. SKIP.\n" % (iSam));
+			sys.stderr.write("nozzle has %d DV, current sample line has %d DV\n" % (len(nozzle.dvList),len(dv_list)));
 			continue;
 		
 		nozzleEval[iSam] = copy.deepcopy(nozzle);

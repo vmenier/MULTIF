@@ -2077,8 +2077,8 @@ class Nozzle:
               'specified. (INPUT_DV_NAME expected)\n\n');
             sys.exit(0);
 
-        if nozzle.inputDVformat == 'PLAIN' or nozzle.inputDVformat == 'DAKOTA':
-        	nozzle.ParseDesignVariables(nozzle);
+        #if nozzle.inputDVformat == 'PLAIN' or nozzle.inputDVformat == 'DAKOTA' or :
+        nozzle.ParseDesignVariables(nozzle);
 		
         for i in range(0, len(nozzle.outputTags)):     
             
@@ -2121,11 +2121,11 @@ class Nozzle:
     def ParseDesignVariables(self, output='verbose'):
     	
     	nozzle = self;
-        
-        inputDVformat = nozzle.inputDVformat;
-        filename = nozzle.inputDVfilename;
-    
-        if inputDVformat == 'PLAIN':
+    	
+    	inputDVformat = nozzle.inputDVformat;
+    	filename = nozzle.inputDVfilename;
+    	
+    	if inputDVformat == 'PLAIN':
     		dvList, outputCode, derivativesDV = ParseDesignVariables_Plain(filename); 
     		# Must assign outputCode separately here
     		if nozzle.gradientsFlag == 1:
@@ -2135,9 +2135,21 @@ class Nozzle:
     		    for i in range(len(nozzle.outputTags)):
     		        outputCode.append(1); # output function value only   
     		NbrDV = len(dvList);
-        elif inputDVformat == 'DAKOTA' :
+    	elif inputDVformat == 'DAKOTA' :
     		dvList, outputCode, derivativesDV = ParseDesignVariables_Dakota(filename);    
     		NbrDV = len(dvList);
+    	elif inputDVformat == 'SAMPLES' :
+    		dvList = [];
+    		outputCode = [];
+    		derivativesDV = [];
+    		
+    		for i in range(nozzle.NbrDVTot): 
+    			dvList.append(-1.0);
+    		NbrDV = nozzle.NbrDVTot;
+    		
+    		for i in range(len(nozzle.outputTags)):
+    		    outputCode.append(1); # output function value
+    	
         else:
             sys.stderr.write('\n ## ERROR : Unknown DV input file format '    \
               '%s\n\n' % inputDVformat);
