@@ -18,7 +18,10 @@ try:
 except ImportError:
     print 'Error importing all functions from runAEROS.\n'
 
-from matplotlib import pyplot as plt
+try:
+	from matplotlib import pyplot as plt
+except ImportError:
+    print 'Can\'t import matplotlib.\n'
 
 #==============================================================================
 # Sutherland's Law of dynamic viscosity of air
