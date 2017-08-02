@@ -146,7 +146,7 @@ def RunSamples(nozzle, samples_filename, beg, end):
 		nozzleEval[iSam].dvList = dv_list;		
 		nozzleEval[iSam].UpdateDV(output='quiet');
 		nozzleEval[iSam].SetupWall(output='quiet');
-		
+		nozzleEval[iSam].partitions = 1;
 
 	
 	# --- Run the analysis

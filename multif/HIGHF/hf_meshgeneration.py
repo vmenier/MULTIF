@@ -70,22 +70,22 @@ def WriteGeo(FilNam, Ver, Spl, Lin, Loo, Phy, Siz, Bak, dim):
 	if ( dim == 2 ):
 		for i in range(1,NbrPhy+1):
 			nbs = len(Phy[i]);
-
+	
 			if ( nbs < 1 ) :
 				sys.stdout.write("  ## ERROR : Invalid physical group %d. Skip.\n" % i);
-
+	
 			fil.write( "Physical Line(%d) = {%d" % (i, Phy[i][0]));
 			for j in range(1,nbs):
 				fil.write(", %d" % Phy[i][j]);
 			fil.write("};\n");
-
+	
 		if ( NbrLoo >= 1 ):	
 			fil.write( "Physical Surface(1) = {1");
 			for i in range(2,NbrLoo+1):
 				fil.write(", %d" % i);
 			fil.write("};\n");	
 			
-
+	
 	
 	# --------------------
 	# --- 3D : physical surfaces + volume
@@ -95,10 +95,10 @@ def WriteGeo(FilNam, Ver, Spl, Lin, Loo, Phy, Siz, Bak, dim):
 		
 		for i in range(1,NbrPhy+1):
 			nbs = len(Phy[i]);
-
+	
 			if ( nbs < 1 ) :
 				sys.stdout.write("  ## ERROR : Invalid physical group %d. Skip.\n" % i);
-
+	
 			fil.write( "Physical Surface(%d) = {%d" % (i, Phy[i][0]));
 			for j in range(1,nbs):
 				fil.write(", %d" % Phy[i][j]);
@@ -152,6 +152,10 @@ def WriteGeo(FilNam, Ver, Spl, Lin, Loo, Phy, Siz, Bak, dim):
 	fil.close();	
 	
 
+
+
+
+
 def MF_GetRadius (x, x_inp, fr1, fr2, fz, params):
 	
 	zcut0   = params[0]; # z crd of the cut at the throat
@@ -159,7 +163,7 @@ def MF_GetRadius (x, x_inp, fr1, fr2, fz, params):
 	zcut2   = params[2]; # z coordinate of the top of the shovel
 	xthroat = params[3];
 	xexit   = params[4];
-
+	
 	
 	if ( isinstance(x, (list, tuple, np.ndarray)) ):
 		rad = np.zeros(len(x));
@@ -211,9 +215,8 @@ def MF_GetRadius (x, x_inp, fr1, fr2, fz, params):
 	rad = math.sqrt(area/math.pi);
 	
 	return rad;
-		
-	
-	
+
+
 
 
 def MF_DefineAxiSymCAD (FilNam, x_inp, fr1, fr2, fz, sizes, params):
@@ -318,7 +321,10 @@ def MF_DefineAxiSymCAD (FilNam, x_inp, fr1, fr2, fz, sizes, params):
 	# --- Write .geo file
 	
 	WriteGeo(FilNam, Ver, Spl, Lin, Loo, Phy, Siz, Bak, 2)
-	
+
+
+
+
 def HF_DefineCAD (FilNam, x_inp, fr1, fr2, fz, sizes, params):
 	
 	# --- Parameters
@@ -570,7 +576,7 @@ def HF_DefineCAD (FilNam, x_inp, fr1, fr2, fz, sizes, params):
 				alp = alp+dalp;
 				NbrVer = NbrVer+1;
 				Ver.append([x, ynew, znew,1]);
-
+	
 				
 			NbrSpl = NbrSpl+1;
 			Spl.append([])
@@ -655,7 +661,7 @@ def HF_DefineCAD (FilNam, x_inp, fr1, fr2, fz, sizes, params):
 				alp = alp+dalp;
 				NbrVer = NbrVer+1;
 				Ver.append([x, ynew, znew,1]);
-
+	
 			NbrSpl = NbrSpl+1;
 			Spl.append([])
 			Spl[-1].append(SavIdx[i-1,3]);
@@ -686,7 +692,7 @@ def HF_DefineCAD (FilNam, x_inp, fr1, fr2, fz, sizes, params):
 		Phy[-1].append(len(Loo)-1);
 	
 	# --- After throat / top
-  
+	
 	Phy.append([]);
 	for i in range(sec_throat+1, NbrSec):
 		Loo.append([SavSpl[i][0], -SavSpl[i][4], -SavSpl[i-1][0], SavSpl[i][3]]);
@@ -695,7 +701,7 @@ def HF_DefineCAD (FilNam, x_inp, fr1, fr2, fz, sizes, params):
 		Phy[-1].append(len(Loo)-1);
 		
 	# --- After throat / bottom
-  
+	
 	Phy.append([]);
 	for i in range(sec_throat+1, NbrSec):
 		Loo.append([SavSpl[i][5], SavSpl[i][2], -SavSpl[i][6], -SavSpl[i-1][2]]);
@@ -807,7 +813,7 @@ def HF_DefineCAD (FilNam, x_inp, fr1, fr2, fz, sizes, params):
 		NbrVer = NbrVer+1;
 		Ver.append([x, ynew, znew,1])
 		alp = alp+dalp;
-
+	
 	NbrSpl = NbrSpl+1;
 	
 	Spl.append([])
@@ -826,7 +832,7 @@ def HF_DefineCAD (FilNam, x_inp, fr1, fr2, fz, sizes, params):
 	Ver.append([xnew, ynew, znew,1]);
 	
 	OutVid[3] = len(Ver)-1;
-
+	
 	NbrSpl = NbrSpl+1;
 	Spl.append([OutVid[2], OutVid[3]]);
 	
@@ -863,7 +869,7 @@ def HF_DefineCAD (FilNam, x_inp, fr1, fr2, fz, sizes, params):
 	znew = z+(r2)*math.cos(theta)
 	NbrVer = NbrVer+1;
 	Ver.append([x, ynew, znew,1]);
-
+	
 	OutVid[4] = len(Ver)-1;
 	
 	alp = dalp;
@@ -923,7 +929,7 @@ def HF_DefineCAD (FilNam, x_inp, fr1, fr2, fz, sizes, params):
 		NbrVer = NbrVer+1;
 		Ver.append([xnew, ynew, znew,2])
 		alp = alp+dalp;
-
+	
 	NbrSpl = NbrSpl+1;
 	
 	Spl.append([])
@@ -1038,13 +1044,13 @@ def HF_DefineCAD (FilNam, x_inp, fr1, fr2, fz, sizes, params):
 		NbrVer = NbrVer+1;
 		Ver.append([xnew, ynew, znew,2])
 		alp = alp+dalp;
-
+	
 	ynew = r1*math.sin(theta2)
 	znew = z+r2*math.cos(theta2)  
 	NbrVer = NbrVer+1;
 	Ver.append([xnew, ynew, znew,2])
 	OutVid[11] = int(len(Ver)-1);
-
+	
 	NbrSpl = NbrSpl+1;
 	
 	Spl.append([])
@@ -1065,8 +1071,8 @@ def HF_DefineCAD (FilNam, x_inp, fr1, fr2, fz, sizes, params):
 		NbrVer = NbrVer+1;
 		Ver.append([xnew, ynew, znew,2])
 		alp = alp+dalp;
-
-
+	
+	
 	ynew = r1*math.sin(theta1)
 	znew = z+r2*math.cos(theta1)  
 	NbrVer = NbrVer+1;
@@ -1366,6 +1372,8 @@ def HF_GenerateMesh(nozzle):
 	
 
 
+
+
 def HF_GenerateMesh_Deform(nozzle):
 	
 	print "HF_GenerateMesh_Deform"	
@@ -1386,15 +1394,21 @@ def HF_GenerateMesh_Deform(nozzle):
 	
 	basNamGMF   = "%sbaseline_%s_%s.meshb" % (pathsrc, nozzle.method, nozzle.cfd.mesh_size);
 	basNamSU2	= "baseline_%s_%s.su2" % (nozzle.method, nozzle.cfd.mesh_size);
-
+	
+	basNamGMF = basNamGMF.lower()
+	basNamSU2 = basNamSU2.lower()
 	
 	_meshutils_module.py_ProjectNozzleWall3D(basNamGMF, RefUp, RefDown,
 	Knots_center, Coefs_center,
 	Knots_r1, Coefs_r1  ,
 	Knots_r2, Coefs_r2  ,
 	 "mesh_motion.dat");
-	
 	_meshutils_module.py_ConvertGMFToSU2(basNamGMF,"",basNamSU2);
+	
+	#from shutil import copyfile
+	#copyfile("../nozzle.su2", "./nozzle.su2")
+	#
+	#return;
 	
 	# --- Call SU2_DEF to deform baseline mesh
 	
@@ -1434,3 +1448,5 @@ def HF_GenerateMesh_Deform(nozzle):
 	# --- Run SU2
 	
 	info = SU2.run.DEF(config)
+
+
