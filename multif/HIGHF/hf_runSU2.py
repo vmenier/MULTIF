@@ -379,14 +379,14 @@ def HF_SetupConfig (solver_options):
 	# --- Local relaxation / CFL
 	#     Note: these options are only available in a custom version of su2:
 	#                     https://github.com/vmenier/SU2/tree/darpa
-	if (LocalRelax == 'YES' and method == 'EULER') :
-	    config.RELAXATION_LOCAL= 'YES';
-	    config.CFL_ADAPT_LOCAL= 'YES';
-	    config.HARD_LIMITING_PARAM= '(0.15, 1e-5)';
-	    #config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 30.0 )';
-	    config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 20.0 )';
-	    config.RESIDUAL_MAXVAL= 2;
-		
+	#if (LocalRelax == 'YES' and method == 'EULER') :
+	#    config.RELAXATION_LOCAL= 'YES';
+	#    config.CFL_ADAPT_LOCAL= 'YES';
+	#    config.HARD_LIMITING_PARAM= '(0.15, 1e-5)';
+	#    #config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 30.0 )';
+	#    config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 20.0 )';
+	#    config.RESIDUAL_MAXVAL= 2;
+	#	
 	# --- Setup wall temp distribution
 	
 	if ( wall_temp == 1 ) :

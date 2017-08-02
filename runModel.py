@@ -65,7 +65,6 @@ def main():
 	nozzle.meshDeformationFlag = int(options.deform);
 	nozzle.partitions = int(options.partitions);
 	
-	
 	if nozzle.NbrDVTot > 0 :
 		nozzle.UpdateDV(output);
 		nozzle.SetupWall(output);

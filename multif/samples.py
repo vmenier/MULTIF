@@ -58,6 +58,7 @@ def SampleGetOutput(nozzle):
 	return prt_val;
 	
 
+
 def RunOneSample(run_id, nozzle, output='verbose'):
 	
 	dirNam = 'RUN_%d' % run_id;
@@ -93,7 +94,7 @@ def RunOneSample(run_id, nozzle, output='verbose'):
 	prt_val = SampleGetOutput(nozzle);
 	
 	return prt_val;
-		
+	
 
 def RunSamples(nozzle, samples_filename, beg, end):
 		
@@ -120,7 +121,7 @@ def RunSamples(nozzle, samples_filename, beg, end):
 	
 	# --- Start python's multiprocessing pool
 	
-	if nozzle.partitions >= 1:
+	if nozzle.partitions > 1:
 		pool = multiprocessing.Pool(processes=nozzle.partitions);
 	
 	# --- Load data
@@ -148,12 +149,12 @@ def RunSamples(nozzle, samples_filename, beg, end):
 		nozzleEval[iSam].SetupWall(output='quiet');
 		nozzleEval[iSam].partitions = 1;
 
-	
 	# --- Run the analysis
 		
 	if nozzle.partitions == 1:
 		for iSam in range(beg,end):
-			outputs[iSam] = RunOneSample(iSam, nozzleEval[-1]);
+			#outputs[iSam] = RunOneSample(iSam, nozzleEval[-1]);
+			outputs[iSam] = RunOneSample(iSam, nozzle);
 	else:
 		
 		mEval = [];
