@@ -215,7 +215,7 @@ int py_ConvertGMFToSU2( char *MshNam, char *SolNam, char *OutNam )
 	strcpy(mshopt->InpNam,MshNam);
 	strcpy(mshopt->SolNam,SolNam);
 	
-	mshopt->clean = 1; // remove unconnected vertices
+	mshopt->clean = 0; // remove unconnected vertices
 	
 	if ( !CheckOptions(mshopt) ) {
 		return 0;
