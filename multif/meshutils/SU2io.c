@@ -771,7 +771,8 @@ void WriteSU2Mesh(char *nam, Mesh *Msh)
 	
 	FILE *OutFil=NULL;
 	
-	sprintf(OutNam, "%s.su2", nam);
+	GetBasNam (nam, OutNam);
+	strcat(OutNam, ".su2");
  
 	OutFil = fopen(OutNam, "wb");
 	
