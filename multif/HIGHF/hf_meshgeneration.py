@@ -1392,12 +1392,9 @@ def HF_GenerateMesh_Deform(nozzle):
 	
 	pathsrc = "%s/baseline_meshes/" % (os.path.dirname(os.path.abspath(__file__)));
 	
-	basNamGMF   = "%sbaseline_%s_%s.meshb" % (pathsrc, nozzle.method, nozzle.cfd.mesh_size);
-	basNamSU2	= "baseline_%s_%s.su2" % (nozzle.method, nozzle.cfd.mesh_size);
-	
-	basNamGMF = basNamGMF.lower()
-	basNamSU2 = basNamSU2.lower()
-	
+	basNamGMF   = "%sbaseline_%s_%s.meshb" % (pathsrc, nozzle.method.lower(), nozzle.cfd.mesh_size);
+	basNamSU2	= "baseline_%s_%s.su2" % (nozzle.method.lower(), nozzle.cfd.mesh_size);
+		
 	_meshutils_module.py_ProjectNozzleWall3D(basNamGMF, RefUp, RefDown,
 	Knots_center, Coefs_center,
 	Knots_r1, Coefs_r1  ,
