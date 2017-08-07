@@ -3407,7 +3407,9 @@ class Nozzle:
             # 0 No data required, function is inactive
             code = nozzle.outputCode[i];
             
-            print "TAG %s CODE %d" % (tag, code)
+            if output == 'verbose':
+                print "TAG %s CODE %d" % (tag, code);
+                
             if code == 1 or code == 0:
             	pass;
             elif code == 2:
@@ -3454,12 +3456,39 @@ class Nozzle:
                     prt_item.append('%s' % tag);
                     prt_comp.append('');
                     prt_val.append('%0.16f' % nozzle.responses[tag]);                
+
+        # Print function gradients next
+        for i in range(0, len(nozzle.outputTags)):
+            
+            tag = nozzle.outputTags[i];  
+			
+            # 6 Get Hessian, gradient, and value Get Hessian and gradient
+            # 5 Get Hessian and value
+            # 4 Get Hessian
+            # 3 Get gradient and value
+            # 2 Get gradient
+            # 1 Get value
+            # 0 No data required, function is inactive
+            code = nozzle.outputCode[i];
+            
+            if output == 'verbose':
+                print "TAG %s CODE %d" % (tag, code);
+                
+            if code == 1 or code == 0:
+            	pass;
+            elif code == 2:
+            	continue; # skip writing of function value to file
+            elif code == 3:
+            	pass;
+            else:
+                sys.stderr.write('\n ## ERROR : code %i in DV input file not available\n' % code);
+                sys.exit(1);
             
             # Write response gradients to file
             if code == 2 or code == 3 or code == 6:
                 
-                print tag
-                print nozzle.gradients[tag]
+                if output == 'verbose':
+                    print nozzle.gradients[tag];
 				
                 if isinstance(nozzle.gradients[tag][0],list):
                 
@@ -3482,7 +3511,6 @@ class Nozzle:
                         #prt_comp.append('%s' % nozzle.prefixLabels[i]);
                         #prt_val.append('%0.16f' % nozzle.gradients[tag][i]);
                     fil.write(']\n');		
-
                 
         # Close output file
         if output == 'verbose':
@@ -3498,11 +3526,7 @@ class Nozzle:
             for i in range(0,len(prt_item)):
                 sys.stdout.write('%s | %s | %s\n' % (prt_item[i].ljust(40), prt_comp[i].ljust(20),prt_val[i].ljust(20)));
             sys.stdout.write('-' * 85);    
-            sys.stdout.write('\n\n');            
-        elif output == 'quiet':
-            pass
-        else:
-            raise ValueError('keyword argument output can only be set to "verbose" or "quiet" mode')        
+            sys.stdout.write('\n\n');       
 
         
     def Draw (self, output='verbose'):
