@@ -1180,10 +1180,10 @@ def SetupConfig_DEF (solver_options):
 	if Dim == '2D':
 		if method == 'EULER':
 		    config.MARKER_EULER= '( PhysicalLine1, PhysicalLine2, PhysicalLine3 )';
-			config.DEFORM_LINEAR_ITER= 200
+		    config.DEFORM_LINEAR_ITER= 200
 		elif method == 'RANS':
 		    config.MARKER_HEATFLUX= '( PhysicalLine1, 0.0, PhysicalLine2, 0.0, PhysicalLine3, 0.0 )';
-			config.DEFORM_LINEAR_ITER= 500
+		    config.DEFORM_LINEAR_ITER= 500
 		config.MARKER_INLET= '( PhysicalLine8, %lf, %lf, 1.0, 0.0, 0.0, PhysicalLine4,  %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag,Tt, Pt);
 		config.MARKER_FAR= '( PhysicalLine5 )';
 		config.MARKER_SYM= '( PhysicalLine7 )';
