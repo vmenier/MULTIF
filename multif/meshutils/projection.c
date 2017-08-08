@@ -327,7 +327,7 @@ int ProjectToDV(double *Crd, CadNozzle *Noz, double *BasParam, int Patch)
 	CadBspline * Bsp_r2     = Noz->Bsp_r2;
 		
 	double len = Bsp_center->Coefs[Bsp_center->NbrCoefs/2-1];
-	double x = Crd[0]*len, zcenter=0.0, r1=0.0, r2=0.0, dydx=0.0;
+	double x = Bsp_center->Coefs[0]+Crd[0]*len, zcenter=0.0, r1=0.0, r2=0.0, dydx=0.0;
 	
 	//--- Centerline
 	bSplineGeo3 (Bsp_center->Knots, Bsp_center->Coefs, &x, &zcenter, &dydx, 1, Bsp_center->NbrKnots, Bsp_center->NbrCoefs/2);

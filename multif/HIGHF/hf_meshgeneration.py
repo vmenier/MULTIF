@@ -1367,16 +1367,7 @@ def HF_GenerateMesh(nozzle):
 	except:
 		raise;
 	
-	
-	
-	
-
-
-
-
 def HF_GenerateMesh_Deform(nozzle):
-	
-	print "HF_GenerateMesh_Deform"	
 	
 	from .. import _meshutils_module
 	
@@ -1391,24 +1382,72 @@ def HF_GenerateMesh_Deform(nozzle):
 	Coefs_r2     =  nozzle.wall.minoraxis.coefs;
 	
 	pathsrc = "%s/baseline_meshes/" % (os.path.dirname(os.path.abspath(__file__)));
-	
 	basNamGMF   = "%sbaseline_%s_%s.meshb" % (pathsrc, nozzle.method.lower(), nozzle.cfd.mesh_size.lower());
 	basNamSU2	= "baseline_%s_%s.su2" % (nozzle.method.lower(), nozzle.cfd.mesh_size.lower());
-		
+	
+	
+	print Coefs_center
+	
 	_meshutils_module.py_ProjectNozzleWall3D(basNamGMF, RefUp, RefDown,
 	Knots_center, Coefs_center,
 	Knots_r1, Coefs_r1  ,
 	Knots_r2, Coefs_r2  ,
 	 "mesh_motion.dat");
+	
+	#return
 	_meshutils_module.py_ConvertGMFToSU2(basNamGMF,"",basNamSU2);
 	
+	#centerline_spl.dat
+	#r1_spl.dat
+	#r2_spl.dat
+	
+	####print "WRITE"
+	####
+	####print Coefs_center
+    ####
+	####
+	####hdl  = open("centerline_knots.dat", 'w');
+	####hdl.write("%d\n"%len(Knots_center));
+	####for j in range(len(Knots_center)):
+	####	hdl.write("%lf \n" % Knots_center[j]);
+	####hdl.close();
+	####
+	####hdl  = open("centerline_coefs.dat", 'w');
+	####hdl.write("%d\n"%len(Coefs_center));
+	####for j in range(len(Coefs_center)):
+	####	hdl.write("%lf \n" % Coefs_center[j]);
+	####hdl.close();
+    ####
+    ####
+	####hdl  = open("r1_knots.dat", 'w');
+	####hdl.write("%d\n"%len(Knots_r1));
+	####for j in range(len(Knots_r1)):
+	####	hdl.write("%lf \n" % Knots_r1[j]);
+	####hdl.close();
+	####
+	####hdl  = open("r1_coefs.dat", 'w');
+	####hdl.write("%d\n"%len(Coefs_r1));
+	####for j in range(len(Coefs_r1)):
+	####	hdl.write("%lf \n" % Coefs_r1[j]);
+	####hdl.close();
+	####
+	####hdl  = open("r2_knots.dat", 'w');
+	####hdl.write("%d\n"%len(Knots_r2));
+	####for j in range(len(Knots_r2)):
+	####	hdl.write("%lf \n" % Knots_r2[j]);
+	####hdl.close();
+	####
+	####hdl  = open("r2_coefs.dat", 'w');
+	####hdl.write("%d\n"%len(Coefs_r2));
+	####for j in range(len(Coefs_r2)):
+	####	hdl.write("%lf \n" % Coefs_r2[j]);
+	####hdl.close();
+
 	#from shutil import copyfile
 	#copyfile("../nozzle.su2", "./nozzle.su2")
-	#
 	#return;
 	
 	# --- Call SU2_DEF to deform baseline mesh
-	
 	# --- Setup config file
 	
 	from .. import SU2
@@ -1420,7 +1459,7 @@ def HF_GenerateMesh_Deform(nozzle):
 	config.MARKER_INLET  = '(11, 601, 275000, 1.0, 0.0, 0.0 )'
 	config.MARKER_FAR    = '( 1, 2, 3, 5, 6)'
 	config.MARKER_SYM    = '( 4 )'
-		
+	
 	config.MESH_FILENAME= basNamSU2;
 	config.DV_KIND= "SURFACE_FILE"
 	config.DV_MARKER= "( 9, 10 )"

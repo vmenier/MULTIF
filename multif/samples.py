@@ -61,6 +61,8 @@ def SampleGetOutput(nozzle):
 
 def RunOneSample(run_id, nozzle, output='verbose'):
 	
+	redirect = True;
+	
 	dirNam = 'RUN_%d' % run_id;
 	
 	if not os.path.exists(dirNam):
@@ -69,10 +71,10 @@ def RunOneSample(run_id, nozzle, output='verbose'):
 	
 	if output == 'verbose':
 		sys.stdout.write('Running sample in %s\n' % dirNam);	
-	   
-	sav_stdout = sys.stdout;
 	
-	sys.stdout = open('log_%d'%run_id, 'w');
+	if redirect :
+		sav_stdout = sys.stdout;
+		sys.stdout = open('log_%d'%run_id, 'w');
 	
 	if nozzle.method == 'NONIDEALNOZZLE' :
 		multif.LOWF.Run(nozzle, output);
@@ -83,8 +85,9 @@ def RunOneSample(run_id, nozzle, output='verbose'):
 	else:
 		sys.stderr.write(" ## ERROR runSample: Wrong fidelity level defined.\n");
 		sys.exit(1);
-		
-	sys.stdout = sav_stdout;
+	
+	if redirect : 
+		sys.stdout = sav_stdout;
 	
 	# Exit directory
 	os.chdir('..');
@@ -93,8 +96,8 @@ def RunOneSample(run_id, nozzle, output='verbose'):
 	
 	prt_val = SampleGetOutput(nozzle);
 	
-	return prt_val;
-	
+	return prt_val;	
+
 
 def RunSamples(nozzle, samples_filename, beg, end):
 		
@@ -145,18 +148,26 @@ def RunSamples(nozzle, samples_filename, beg, end):
 		
 		# --- Update DV using current sample values
 		nozzleEval[iSam].dvList = dv_list;		
-		nozzleEval[iSam].UpdateDV(output='quiet');
+		
+		nozzleEval[iSam].UpdateDV(output='verbose');
+		
+		
 		nozzleEval[iSam].SetupWall(output='quiet');
+		
 		nozzleEval[iSam].partitions = 1;
-
+	
+	iSam = 1;
+	
+	print nozzleEval[iSam].wall.centerline.knots;
+	print nozzleEval[iSam].wall.centerline.coefs;
+	
 	# --- Run the analysis
 		
 	if nozzle.partitions == 1:
 		for iSam in range(beg,end):
-			#outputs[iSam] = RunOneSample(iSam, nozzleEval[-1]);
-			outputs[iSam] = RunOneSample(iSam, nozzle);
+			outputs[iSam] = RunOneSample(iSam, nozzleEval[iSam]);
+			#outputs[iSam] = RunOneSample(iSam, nozzle);
 	else:
-		
 		mEval = [];
 		for iSam in range(end):
 			mEval.append(-1);

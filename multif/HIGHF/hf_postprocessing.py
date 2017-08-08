@@ -243,6 +243,8 @@ def HF_Compute_Thrust (nozzle):
 		except :
 			Thrust = -1;
 		#Thrust = Thrust + area*(rhoU*(U*U0-U0)+P0*Pres-P0);
-		
+	
+	Thrust = 2*Thrust; # symmetry
+	
 	return Thrust;
 	

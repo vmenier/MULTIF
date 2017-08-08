@@ -428,6 +428,7 @@ def checkResidual(config):
 
 def HF_runSU2 ( nozzle ):
 	
+	
 	# --- Setup solver options
 	solver_options = Solver_Options();
 	
@@ -1396,29 +1397,30 @@ def Compute_Thrust_Gradients_FD (nozzle):
 
 
 def Read_Gradients_AD (nozzle):
-
+	
 	nbr_dv = max(nozzle.wall.dv)+1;
 	
 	hdl_grad = np.loadtxt('./of_grad.dat', skiprows=1);
-
+	
 	thrust_grad = np.zeros(len(nozzle.dvList))
-
+	
 	iTag = -1;
 	for i in range(len(nozzle.DV_Tags)):
 		Tag = nozzle.DV_Tags[i];
 		if (Tag == "WALL"):
 			iTag = i;
 			break;
-
+	
 	if ( iTag < 0 ):
 		sys.stderr.write("  ## ERROR SU2 adjoint computation: Wall parameterization not specified.\n");
 		sys.exit();
-
+	
 	nbr_dv = max(nozzle.wall.dv)+1;
-
+	
 	for i in range(nbr_dv):
 		id_dv = nozzle.DV_Head[iTag] + i;
 		thrust_grad[id_dv] = hdl_grad[i];
 		#print "id_dv %d val %lf" % (id_dv, nozzle.dvList[id_dv])
 		
 	return thrust_grad;
+	

@@ -80,6 +80,7 @@ class Nozzle:
                 sys.stderr.write('  ## ERROR : Inconsistent design '     \
                   'variables provided in %s (idx=%d). Check DV_LIST '    \
                   'and %s_DV keyword specifications.\n\n' % (key,val,key));
+                sys.stderr.write('idDV %d NbrDV %d\n' % (val, NbrDV));
                 sys.exit(0);
 
             dvList.append(val-1);
@@ -1564,8 +1565,8 @@ class Nozzle:
                                 nozzle.wall.centerline.coefs[0];
                 
                 nozzle.wall.centerline.geometry = geometry.Bspline(nozzle.wall.centerline.coefs);
-                nozzle.wall.majoraxis.geometry = geometry.Bspline(nozzle.wall.majoraxis.coefs);
-                nozzle.wall.minoraxis.geometry = geometry.Bspline(nozzle.wall.minoraxis.coefs);            
+                nozzle.wall.majoraxis.geometry  = geometry.Bspline(nozzle.wall.majoraxis.coefs);
+                nozzle.wall.minoraxis.geometry  = geometry.Bspline(nozzle.wall.minoraxis.coefs);            
             
 			# Build equivalent nozzle shape based on equivalent area
                 majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
@@ -1843,7 +1844,7 @@ class Nozzle:
         else: # 2D                
 
             nozzle.exterior = component.AxisymmetricWall('exterior');
-
+			
             # Useful x vs. r data for updating baffle and stringer heights
             n = 10000
             x = np.linspace(0,nozzle.length,n)
@@ -2143,7 +2144,8 @@ class Nozzle:
     		outputCode = [];
     		derivativesDV = [];
     		
-    		for i in range(nozzle.NbrDVTot): 
+    		for i in range(nozzle.NbrDVTot):
+				#id_dv = nozzle.DV_Head[iTag] + nozzle.wall.dv[i];
     			dvList.append(-1.0);
     		NbrDV = nozzle.NbrDVTot;
     		
