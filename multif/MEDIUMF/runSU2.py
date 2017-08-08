@@ -253,8 +253,8 @@ def SetupConfig (solver_options):
         config.LINEAR_SOLVER= 'FGMRES';
         config.LINEAR_SOLVER_ERROR= '1E-6';
         config.LINEAR_SOLVER_ITER= '3';
-
-        config.LIMITER_ITER= '500';
+        
+        config.LIMITER_ITER= '200';
 
     elif method == 'RANS':
         config.PHYSICAL_PROBLEM= 'NAVIER_STOKES';
