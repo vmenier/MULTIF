@@ -162,10 +162,6 @@ def RunSamples(nozzle, samples_filename, beg, end):
 		
 		nozzleEval[iSam].partitions = NbrProc;
 	
-	iSam = 1;
-	
-	print nozzleEval[iSam].wall.centerline.knots;
-	print nozzleEval[iSam].wall.centerline.coefs;
 	
 	# --- Run the analysis
 		
