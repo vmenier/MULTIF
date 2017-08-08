@@ -54,6 +54,10 @@ def main():
 	                  dest="samples_to", default=False,
 	                  help="ID of last sample to run?")
 	
+	parser.add_option("", "--onebyone",
+	                  dest="onebyone", default=False,
+	                  help="Run samples one by one?")
+	
 	(options, args)=parser.parse_args()
 	
 	options.partitions = int( options.partitions )
@@ -79,6 +83,8 @@ def main():
 	nozzle.verification = int(options.verification);
 	nozzle.meshDeformationFlag = int(options.deform);
 	nozzle.partitions = int(options.partitions);
+	
+	nozzle.onebyone = options.onebyone;
 	
 	if not options.samples_filename:
 		sys.stderr.write("  ## ERROR : No sample file name was provided (option --sample).\n");

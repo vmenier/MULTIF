@@ -122,6 +122,12 @@ def RunSamples(nozzle, samples_filename, beg, end):
 	
 	outputs = [];
 	
+	
+	NbrProc = 1;
+	if nozzle.onebyone:
+		NbrProc = nozzle.partitions;
+		nozzle.partitions = 1;
+	
 	# --- Start python's multiprocessing pool
 	
 	if nozzle.partitions > 1:
@@ -154,7 +160,7 @@ def RunSamples(nozzle, samples_filename, beg, end):
 		
 		nozzleEval[iSam].SetupWall(output='quiet');
 		
-		nozzleEval[iSam].partitions = 1;
+		nozzleEval[iSam].partitions = NbrProc;
 	
 	iSam = 1;
 	
