@@ -79,9 +79,9 @@ def main():
 		    sys.exit(0);		
 		config = SU2.io.Config(options.filename)
 		
+	
 	nozzle = multif.nozzle.NozzleSetup(config, options.flevel, output);
 	nozzle.verification = int(options.verification);
-	nozzle.meshDeformationFlag = int(options.deform);
 	nozzle.partitions = int(options.partitions);
 	
 	nozzle.onebyone = options.onebyone;

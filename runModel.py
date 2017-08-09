@@ -61,8 +61,7 @@ def main():
 		config = SU2.io.Config(options.filename)
 		
 	nozzle = multif.nozzle.NozzleSetup(config, options.flevel, output);
-	nozzle.verification = int(options.verification);
-	nozzle.meshDeformationFlag = int(options.deform);
+	nozzle.verification = int(options.verification); 
 	nozzle.partitions = int(options.partitions);
 	
 	if nozzle.NbrDVTot > 0 :
