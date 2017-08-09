@@ -438,7 +438,6 @@ def GenerateNozzleMesh_Deform (nozzle):
 	config.VISUALIZE_DEFORMATION = "YES"
 	config.MARKER_MOVING         = "( PhysicalLine7 )"
 	
-	
 	config.NUMBER_PART = 1;
 	
 	

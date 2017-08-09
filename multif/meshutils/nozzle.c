@@ -182,8 +182,6 @@ int SetCadBspline (CadBspline *Bsp, double *Knots, int NbrKnots, double *Coefs, 
 }
 
 
-
-
 double fzcut (double x,  double *BasParam)
 {
 

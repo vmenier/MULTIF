@@ -66,10 +66,11 @@ class Nozzle:
         # Check that user-stated number of design variables in DV_LIST matches
         # that from component definition (usually a COMPONENT_DV keyword)
         if  dv_size != sizeDV:
-            sys.stderr.write('  ## ERROR : Inconsistent number of '      \
-              'design variables found in %s: %d instead of %d\n\n' %     \
-              (key,dv_size,sizeDV));
-            sys.exit(0);
+			sys.stderr.write('  ## ERROR : Inconsistent number of '      \
+			  'design variables found in %s: %d instead of %d\n\n' %     \
+			  (key,dv_size,sizeDV));
+			print dv
+			sys.exit(0);
         
         tag = np.zeros(NbrDV);
         for iw in range(0,dv_size):
@@ -1560,46 +1561,74 @@ class Nozzle:
         if nozzle.param == '3D':
             
             if nozzle.dim == '3D':
-
-                nozzle.length = nozzle.wall.centerline.coefs[nozzle.wall.centerline.coefs_size/2-1] - \
-                                nozzle.wall.centerline.coefs[0];
-                
-                nozzle.wall.centerline.geometry = geometry.Bspline(nozzle.wall.centerline.coefs);
-                nozzle.wall.majoraxis.geometry  = geometry.Bspline(nozzle.wall.majoraxis.coefs);
-                nozzle.wall.minoraxis.geometry  = geometry.Bspline(nozzle.wall.minoraxis.coefs);            
-            
+			
+			nozzle.length = nozzle.wall.centerline.coefs[nozzle.wall.centerline.coefs_size/2-1] - \
+			                nozzle.wall.centerline.coefs[0];
+			
+			nozzle.wall.centerline.geometry = geometry.Bspline(nozzle.wall.centerline.coefs);
+			nozzle.wall.majoraxis.geometry  = geometry.Bspline(nozzle.wall.majoraxis.coefs);
+			nozzle.wall.minoraxis.geometry  = geometry.Bspline(nozzle.wall.minoraxis.coefs);            
+			
 			# Build equivalent nozzle shape based on equivalent area
-                majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
-                minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
-                nx = 2000; # Check accuracy and effect of this interpolation
-                x = np.linspace(0,nozzle.length,num=nx);
-                majoraxisVal = majoraxisTmp.radius(x);
-                minoraxisVal = minoraxisTmp.radius(x);
-                equivRadius = np.sqrt(majoraxisVal*minoraxisVal);
-                shape2d = np.transpose(np.array([x,equivRadius]))
-                nozzle.wall.geometry = geometry.PiecewiseLinear(shape2d);
-
+			majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
+			minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
+			centerTmp = geometry.Bspline(nozzle.wall.centerline.coefs);
+			nx = 2000; # Check accuracy and effect of this interpolation
+			x = np.linspace(0,nozzle.length,num=nx);
+			majoraxisVal = majoraxisTmp.radius(x);
+			minoraxisVal = minoraxisTmp.radius(x);
+			
+			
+			fr1 = majoraxisTmp.radius
+			fr2 = minoraxisTmp.radius
+			fz = centerTmp.radius
+			
+			params = np.zeros(100)
+			params[0] = 0.099; # z crd of the cut at the throat
+			params[1] = 0.122638;  # z crd of the flat exit (bottom of the shovel)
+			params[3] = 0.0;        # x_throat 
+			params[4] = 4.0;        # x_exit 
+							
+			equivRadius = multif.HIGHF.MF_GetRadius (x, fr1, fr2, fz, params)
+			
+			#equivRadius = np.sqrt(majoraxisVal*minoraxisVal);
+			shape2d = np.transpose(np.array([x,equivRadius]))
+			nozzle.wall.geometry = geometry.PiecewiseLinear(shape2d);
+			
                 
             # Map 3D parameterization to 2D definition using equivalent area
             else:
                 
                 nozzle.length = nozzle.wall.centerline.coefs[nozzle.wall.centerline.coefs_size/2-1] - \
                                 nozzle.wall.centerline.coefs[0];
-           
+                
                 # Build equivalent nozzle shape based on equivalent area
                 majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
                 minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
+                centerTmp = geometry.Bspline(nozzle.wall.centerline.coefs);
                 nx = 2000; # Check accuracy and effect of this interpolation
                 x = np.linspace(0,nozzle.length,num=nx);
                 majoraxisVal = majoraxisTmp.radius(x);
                 minoraxisVal = minoraxisTmp.radius(x);
-                equivRadius = np.sqrt(majoraxisVal*minoraxisVal);
+                
+                
+                fr1 = majoraxisTmp.radius
+                fr2 = minoraxisTmp.radius
+                fz = centerTmp.radius
+                
+                params = np.zeros(100)
+                params[0] = 0.099; # z crd of the cut at the throat
+                params[1] = 0.122638;  # z crd of the flat exit (bottom of the shovel)
+                params[3] = 0.0;        # x_throat 
+                params[4] = 4.0;        # x_exit 
+                
+                equivRadius = multif.HIGHF.MF_GetRadius (x, fr1, fr2, fz, params)
                 shape2d = np.transpose(np.array([x,equivRadius]))
                 nozzle.wall.geometry = geometry.PiecewiseLinear(shape2d);
                 
                 # The following info is required by SU2 for 2D geometries
                 if nozzle.dim == '2D':
-                
+                	
                     nx = 4000; # use 4000 points to interpolate inner wall shape
                     x = np.linspace(0,nozzle.length,num=nx);
                     y = nozzle.wall.geometry.radius(x);
@@ -1615,7 +1644,7 @@ class Nozzle:
                     		break;
                       
         else: # assume 2D parameterization
-        
+        	
             # Upscale 2D param to 3D, this may be useful for comparisons
             if nozzle.dim == '3D':
 

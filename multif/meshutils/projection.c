@@ -345,8 +345,6 @@ int ProjectToDV(double *Crd, CadNozzle *Noz, double *BasParam, int Patch)
 	
 	alp = Crd[0];
 	
-	//thetaMaxBas = alp*BasParam[BasOutletTheta] + (1.0-alp)*BasParam[BasInletTheta];
-	
 	double xbas = Crd[0]*(BasParam[BasOutletx]-BasParam[BasInletx]);
 	double zbas   = fz_bas  (xbas,  BasParam);
 	double r2_bas = fr2_bas (xbas,  BasParam);

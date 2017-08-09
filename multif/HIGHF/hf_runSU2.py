@@ -32,9 +32,10 @@ def CheckSU2Version(nozzle):
         out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=None);
     except subprocess.CalledProcessError as err: 
         if ( 'DARPA' in err.output ):
-            sys.stdout.write('Check SU2 version : OK\n');
-            nozzle.cfd.local_relax = 'YES';
-            nozzle.cfd.su2_version = 'OK';
+			sys.stdout.write('Check SU2 version : OK\n');
+			#nozzle.cfd.local_relax = 'YES';
+			nozzle.cfd.local_relax = 'NO';
+			nozzle.cfd.su2_version = 'OK';
         else:
             sys.stdout.write('\n');
             sys.stdout.write('#' * 90);
@@ -43,10 +44,9 @@ def CheckSU2Version(nozzle):
             sys.stdout.write('\n\n');
             nozzle.cfd.local_relax = 'NO';
             nozzle.cfd.su2_version = 'NOT_OK';
-            
-            
+           	
 def CheckSU2Convergence ( history_filename, field_name ) :
-
+	
 	#plot_format	  = con.OUTPUT_FORMAT;
 	#plot_extension   = SU2.io.get_extension(plot_format)
 	#history_filename = nozzle.cfd.conv_filename + plot_extension
@@ -69,7 +69,6 @@ def CheckSU2Convergence ( history_filename, field_name ) :
 
 	#print "Initial res = %le, Final res = %lf, DIFF = %lf\n" % (IniRes, FinRes, ResDif);
 	return IniRes, FinRes;
-            
 
 def SetupConfig_old (solver_options):
     

@@ -154,71 +154,124 @@ def WriteGeo(FilNam, Ver, Spl, Lin, Loo, Phy, Siz, Bak, dim):
 
 
 
-
-
-def MF_GetRadius (x, x_inp, fr1, fr2, fz, params):
+def MF_GetRadius (x, fr1, fr2, fz, params):
 	
 	zcut0   = params[0]; # z crd of the cut at the throat
 	zcut1   = params[1]; # z crd of the flat exit (bottom of the shovel)
-	zcut2   = params[2]; # z coordinate of the top of the shovel
 	xthroat = params[3];
 	xexit   = params[4];
-	
 	
 	if ( isinstance(x, (list, tuple, np.ndarray)) ):
 		rad = np.zeros(len(x));
 		for i in range(0,len(x)):
-			rad[i] = MF_GetRadius (x[i], x_inp, fr1, fr2, fz, params);
+			rad[i] = MF_GetRadius (x[i], fr1, fr2, fz, params);
 		return rad;
 	
 	if ( x < -1e-12 ):
 		return -1.0;
-		
+	
 	r1 = fr1(x);
 	r2 = fr2(x);
 	
-	if ( x < xthroat-1e-12 ):	
-		area = r1*r2*math.pi;
-		#return area;
-		
-	else:
-				
-		z0  = fz(xthroat);
-		r10 = fr1(xthroat);
-		r20 = fr2(xthroat);
-		theta0 = math.acos((zcut0-z0)/r10);
-		
-		z1  = fz(xexit);
-		r11 = fr1(xexit);
-		r21 = fr2(xexit);
-		theta1 = math.acos((zcut1-z1)/r21);
-		
-		ftheta = itp.interp1d([xthroat,xexit],[theta0,theta1],kind='linear')
-		theta = ftheta(x);
-		
-		pis2 = 0.5*math.pi;
-		
-		if ( theta < pis2 ):
-			return -1.0;
-		else :
-			
-			alp = (xexit-x)/(xexit-xthroat);
-			
-			area = 0.25*r1*r2*math.pi;
-			area = area + 0.5*r1*r2*(theta-pis2 - 0.5*math.sin(2*theta-math.pi));
-			areab = 0.5*r1*r2*(math.pi - theta + 0.5*math.sin(2*theta-math.pi));
-			
-			area = 2*(area + alp*areab);
-			
-			#return area; 
-			
+	
+	z0  = fz(xthroat);
+	r10 = fr1(xthroat);
+	r20 = fr2(xthroat);
+	theta0 = math.acos((zcut0-z0)/r10);
+	
+	z1  = fz(xexit);
+	r11 = fr1(xexit);
+	r21 = fr2(xexit);
+	theta1 = math.acos((zcut1-z1)/r21);
+	
+	ftheta = itp.interp1d([xthroat,xexit],[theta0,theta1],kind='linear')
+	theta = ftheta(x);
+	
+	pis2 = 0.5*math.pi;
+	
+	if ( theta < pis2 ):
+		return -1.0;
+	else :
+	
+		alp = (xexit-x)/(xexit-xthroat);
+	
+		area = 0.25*r1*r2*math.pi;
+		area = area + 0.5*r1*r2*(theta-pis2 - 0.5*math.sin(2*theta-math.pi));
+		areab = 0.5*r1*r2*(math.pi - theta + 0.5*math.sin(2*theta-math.pi));
+	
+		area = 2*(area + alp*areab);
+	
+		#return area; 
+	
 	rad = math.sqrt(area/math.pi);
 	
 	return rad;
+	
 
-
-
-
+#
+#def MF_GetRadius (x, x_inp, fr1, fr2, fz, params):
+#	
+#	zcut0   = params[0]; # z crd of the cut at the throat
+#	zcut1   = params[1]; # z crd of the flat exit (bottom of the shovel)
+#	zcut2   = params[2]; # z coordinate of the top of the shovel
+#	xthroat = params[3];
+#	xexit   = params[4];
+#	
+#	
+#	if ( isinstance(x, (list, tuple, np.ndarray)) ):
+#		rad = np.zeros(len(x));
+#		for i in range(0,len(x)):
+#			rad[i] = MF_GetRadius (x[i], x_inp, fr1, fr2, fz, params);
+#		return rad;
+#	
+#	if ( x < -1e-12 ):
+#		return -1.0;
+#		
+#	r1 = fr1(x);
+#	r2 = fr2(x);
+#	
+#	if ( x < xthroat-1e-12 ):	
+#		area = r1*r2*math.pi;
+#		#return area;
+#		
+#	else:
+#				
+#		z0  = fz(xthroat);
+#		r10 = fr1(xthroat);
+#		r20 = fr2(xthroat);
+#		theta0 = math.acos((zcut0-z0)/r10);
+#		
+#		z1  = fz(xexit);
+#		r11 = fr1(xexit);
+#		r21 = fr2(xexit);
+#		theta1 = math.acos((zcut1-z1)/r21);
+#		
+#		ftheta = itp.interp1d([xthroat,xexit],[theta0,theta1],kind='linear')
+#		theta = ftheta(x);
+#		
+#		pis2 = 0.5*math.pi;
+#		
+#		if ( theta < pis2 ):
+#			return -1.0;
+#		else :
+#			
+#			alp = (xexit-x)/(xexit-xthroat);
+#			
+#			area = 0.25*r1*r2*math.pi;
+#			area = area + 0.5*r1*r2*(theta-pis2 - 0.5*math.sin(2*theta-math.pi));
+#			areab = 0.5*r1*r2*(math.pi - theta + 0.5*math.sin(2*theta-math.pi));
+#			
+#			area = 2*(area + alp*areab);
+#			
+#			#return area; 
+#			
+#	rad = math.sqrt(area/math.pi);
+#	
+#	return rad;
+#
+#
+#
+ 
 def MF_DefineAxiSymCAD (FilNam, x_inp, fr1, fr2, fz, sizes, params):
 	
 	NbrLnk = 400;
