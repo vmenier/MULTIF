@@ -3669,11 +3669,18 @@ def NozzleSetup( config, flevel, output='verbose'):
         nozzle.runDir = '';
 
 	# --- Mesh generation method
-	if 'MESH_GENERATION' in config and config['MESH_GENERATION'] == 'DEFORM':
-	    nozzle.runDir = tempfile.mkdtemp();    
+	if 'MESH_GENERATION_METHOD' in config : 
+		if config['MESH_GENERATION_METHOD'] == 'DEFORM':
+			nozzle.meshDeformationFlag = True; 
+		elif config['MESH_GENERATION_METHOD'] == 'REGEN':
+			nozzle.meshDeformationFlag = False;
+		else :
+			sys.stderr.write("  ## ERROR : Invalid option for MESH_GENERATION (DEFORM or REGEN)\n");
+			sys.exit(1);
 	else:
-	    nozzle.runDir = '';
-    
+		nozzle.meshDeformationFlag = False;
+	
+	
     # --- Path to SU2 exe
     
     if 'SU2_RUN' in config:
