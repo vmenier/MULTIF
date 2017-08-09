@@ -63,7 +63,7 @@ def RunOneSample(run_id, nozzle, output='verbose'):
 	
 	redirect = True;
 	
-	dirNam = 'RUN_%d' % run_id;
+	dirNam = '%s/RUN_%d' % (nozzle.curDir, run_id);
 	
 	if not os.path.exists(dirNam):
 		os.makedirs(dirNam);
@@ -92,7 +92,7 @@ def RunOneSample(run_id, nozzle, output='verbose'):
 		sys.stdout = sav_stdout;
 	
 	# Exit directory
-	os.chdir('..');
+	os.chdir(nozzle.curDir);
 	
 	# --- Outputs
 	
@@ -112,7 +112,7 @@ def RunSamples(nozzle, samples_filename, beg, end):
 		beg = 0;
 	if not end:
 		end = NbrSam-1;
-		
+			
 	sys.stdout.write("  -- Running samples %d to %d on %d cores.\n" % (beg, end, nozzle.partitions));
 	
 	if beg < 0 or beg > NbrSam-1 \
@@ -130,6 +130,8 @@ def RunSamples(nozzle, samples_filename, beg, end):
 	if nozzle.onebyone:
 		NbrProc = nozzle.partitions;
 		nozzle.partitions = 1;
+	
+	nozzle.curDir = os.getcwd();	
 	
 	# --- Start python's multiprocessing pool
 	
@@ -190,7 +192,7 @@ def RunSamples(nozzle, samples_filename, beg, end):
 	        
 	# --- Write results in file
 	
-	resNam = "samples_results.dat";
+	resNam = "%s/samples_results.dat" % nozzle.curDir;
 	
 	fil = open(resNam, "w");
 	
