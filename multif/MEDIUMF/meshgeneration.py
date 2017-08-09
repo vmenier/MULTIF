@@ -12,6 +12,7 @@ from scipy import interpolate as itp
 from scipy.interpolate import splev, splrep
 
 from .. import SU2
+from .. import nozzle as noz
 
 class optionsmesh:
 	def __init__(self):
@@ -196,7 +197,32 @@ def Extract_Boundary_Vertices(mesh_name, pyRefs):
 	
 	return Bdr;
 	
-
+def Get3Dto2DEquivArea(nozzle, xnew_tab):
+	
+	from .. import nozzle as noz
+	
+	geometry = noz.geometry;
+	
+	majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
+	minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
+	centerTmp = geometry.Bspline(nozzle.wall.centerline.coefs);
+	
+	majoraxisVal = majoraxisTmp.radius(xnew_tab);
+	minoraxisVal = minoraxisTmp.radius(xnew_tab);
+	
+	fr1 = majoraxisTmp.radius
+	fr2 = minoraxisTmp.radius
+	fz  = centerTmp.radius
+	
+	params = np.zeros(100)
+	params[0] = 0.099; # z crd of the cut at the throat
+	params[1] = 0.122638;  # z crd of the flat exit (bottom of the shovel)
+	params[3] = 0.0;        # x_throat 
+	params[4] = 4.0;        # x_exit 
+	
+	ynew_tab = multif.HIGHF.MF_GetRadius (xnew_tab, fr1, fr2, fz, params)
+	
+	return ynew_tab;
 
 
 def GenerateNozzleMesh_Deform (nozzle):
@@ -209,11 +235,12 @@ def GenerateNozzleMesh_Deform (nozzle):
 	
 	motion_hdl = [];
 	
-	pathsrc = "%s/baseline_meshes/" % (os.path.dirname(os.path.abspath(__file__)));
+	pathsrc = "%s/baseline_meshes_3d/" % (os.path.dirname(os.path.abspath(__file__)));
 	
 	#--- Extract boundary vertices from mesh
 	
-	mesh_name	= "%sbaseline_%s_%s.su2" % (pathsrc, nozzle.method, nozzle.meshsize);
+	#mesh_name	= "%sbaseline_%s_%s.su2" % (pathsrc, nozzle.method, nozzle.meshsize);
+	mesh_name   = "%sbaseline_%s_%s.su2" % (pathsrc, nozzle.method.lower(), nozzle.cfd.mesh_size.lower());
 	
 	print mesh_name
 	
@@ -228,8 +255,8 @@ def GenerateNozzleMesh_Deform (nozzle):
 		
 	#fil = open("mesh_motion.dat", "w");
 	
-	xwall  = nozzle.xwall;
-	ywall  = nozzle.ywall;
+	xwall  = nozzle.cfd.x_wall;
+	ywall  = nozzle.cfd.y_wall;
 	
 	xwall_max = max(xwall);
 	
@@ -253,8 +280,11 @@ def GenerateNozzleMesh_Deform (nozzle):
 	xbas_max = max(float(l[1]) for l in Bdr[ref_outside])
 	xbas_min = min(float(l[1]) for l in Bdr[ref_outside])
 	
-	xx = [-0.67 , -0.65 , 0.1548, xwall[-1]];
-	yy = [0.4244, 0.4244, 0.41,   ywall[-1]+h_tip]
+	#xx = [-0.67 , -0.65 , 0.1548, xwall[-1]];
+	#yy = [0.7244, 0.4244, 0.41,   ywall[-1]+h_tip]
+	
+	xx = [-0.67 , -0.65 , 0.148,  xwall[-1]];
+	yy = [0.7244, 0.7244, 0.7,  ywall[-1]+h_tip]
 	
 	tck = splrep(xx, yy, xb=xx[0], xe=xx[-1], k=2)
 	
@@ -335,9 +365,37 @@ def GenerateNozzleMesh_Deform (nozzle):
 		x = Bdr[ref_wall][i][1];
 		xnew = xwall[0] + (x-xmin)/(xmax-xmin)*(xwall[-1]-xwall[0]);
 		xnew_tab.append(xnew);
-		
-	_meshutils_module.py_BSplineGeo3LowF (nozzle.wall.knots, nozzle.wall.coefs, xnew_tab, ynew_tab, dydx);
 	
+	xnew_tab = np.array(xnew_tab);
+	
+	if nozzle.param == "2D":
+		_meshutils_module.py_BSplineGeo3LowF (nozzle.wall.knots, nozzle.wall.coefs, xnew_tab, ynew_tab, dydx);
+	else :
+		
+		#geometry = noz.geometry;
+		#
+		#majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
+		#minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
+		#centerTmp = geometry.Bspline(nozzle.wall.centerline.coefs);
+		#
+		#majoraxisVal = majoraxisTmp.radius(xnew_tab);
+		#minoraxisVal = minoraxisTmp.radius(xnew_tab);
+		#
+		#fr1 = majoraxisTmp.radius
+		#fr2 = minoraxisTmp.radius
+		#fz  = centerTmp.radius
+		#
+		#params = np.zeros(100)
+		#params[0] = 0.099; # z crd of the cut at the throat
+		#params[1] = 0.122638;  # z crd of the flat exit (bottom of the shovel)
+		#params[3] = 0.0;        # x_throat 
+		#params[4] = 4.0;        # x_exit 
+		#
+		#ynew_tab = multif.HIGHF.MF_GetRadius (xnew_tab, fr1, fr2, fz, params)
+	    
+		ynew_tab = Get3Dto2DEquivArea(nozzle, xnew_tab);
+		
+		
 	for i in range(Nbv):
 		
 		vid = Bdr[ref_wall][i][0];
@@ -356,11 +414,15 @@ def GenerateNozzleMesh_Deform (nozzle):
 	x = Bdr[ref_thrust][0][1];
 	xnew = xx[0] + (x-xbas_min)/(xbas_max-xbas_min)*(xwall_max-xx[0]);
 	
-	xnew_tab = [xnew];
+	xnew_tab = np.array([xnew]);
 	ynew_tab = [];
 	dydx = [];
-	_meshutils_module.py_BSplineGeo3LowF (nozzle.wall.knots, nozzle.wall.coefs, xnew_tab, ynew_tab, dydx);
 	
+	if nozzle.param == "2D":
+		_meshutils_module.py_BSplineGeo3LowF (nozzle.wall.knots, nozzle.wall.coefs, xnew_tab, ynew_tab, dydx);
+	else :
+		ynew_tab = Get3Dto2DEquivArea(nozzle, xnew_tab);
+		
 	ymax = ynew_tab[0];
 	
 	ymax_bas =  max(float(l[2]) for l in Bdr[ref_thrust])
@@ -462,9 +524,9 @@ def GenerateNozzleMesh_Deform (nozzle):
 	config.MARKER_SYM             = '( ( PhysicalLine7 ) )'
 	config.MARKER_OUTLET          = '( PhysicalLine6, 18754.000000)'
 	config.MARKER_THRUST          = '( PhysicalLine9 )'
-	config.MESH_OUT_FILENAME      = nozzle.mesh_name;
+	config.MESH_OUT_FILENAME      = nozzle.cfd.mesh_name;
 	
-	config.SU2_RUN = nozzle.SU2_RUN;
+	config.SU2_RUN = nozzle.cfd.su2_run;
 	
 	
 	# --- Run SU2

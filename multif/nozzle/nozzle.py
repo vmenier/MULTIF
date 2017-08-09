@@ -3667,6 +3667,12 @@ def NozzleSetup( config, flevel, output='verbose'):
         nozzle.runDir = tempfile.mkdtemp();    
     else:
         nozzle.runDir = '';
+
+	# --- Mesh generation method
+	if 'MESH_GENERATION' in config and config['MESH_GENERATION'] == 'DEFORM':
+	    nozzle.runDir = tempfile.mkdtemp();    
+	else:
+	    nozzle.runDir = '';
     
     # --- Path to SU2 exe
     
