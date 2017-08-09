@@ -76,6 +76,8 @@ def RunOneSample(run_id, nozzle, output='verbose'):
 		sav_stdout = sys.stdout;
 		sys.stdout = open('log_%d'%run_id, 'w');
 	
+	nozzle.SetupWall(output='quiet');
+	
 	if nozzle.method == 'NONIDEALNOZZLE' :
 		multif.LOWF.Run(nozzle, output);
 	elif nozzle.dim == '2D': # nozzle method should be Euler or RANS
@@ -110,6 +112,8 @@ def RunSamples(nozzle, samples_filename, beg, end):
 		beg = 0;
 	if not end:
 		end = NbrSam-1;
+		
+	sys.stdout.write("  -- Running samples %d to %d on %d cores.\n" % (beg, end, nozzle.partitions));
 	
 	if beg < 0 or beg > NbrSam-1 \
 		or end < 0 or end > NbrSam-1\
@@ -121,7 +125,6 @@ def RunSamples(nozzle, samples_filename, beg, end):
 	nozzleEval = [];
 	
 	outputs = [];
-	
 	
 	NbrProc = 1;
 	if nozzle.onebyone:
@@ -139,7 +142,11 @@ def RunSamples(nozzle, samples_filename, beg, end):
 		outputs.append([]);
 		nozzleEval.append([]);
 	
+	sys.stdout.write("Loading nozzle data...\n");
+	
 	for iSam in range(beg,end):
+		
+		sys.stdout.write(" - Nozzle %d\n" % iSam);
 		
 		dv_list = [];
 		for j in range(len(samples_hdl[iSam])):
@@ -155,10 +162,9 @@ def RunSamples(nozzle, samples_filename, beg, end):
 		# --- Update DV using current sample values
 		nozzleEval[iSam].dvList = dv_list;		
 		
-		nozzleEval[iSam].UpdateDV(output='verbose');
+		nozzleEval[iSam].UpdateDV(output='quiet');
 		
-		
-		nozzleEval[iSam].SetupWall(output='quiet');
+		#nozzleEval[iSam].SetupWall(output='quiet');
 		
 		nozzleEval[iSam].partitions = NbrProc;
 	

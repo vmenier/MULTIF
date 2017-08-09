@@ -90,12 +90,13 @@ def main():
 		sys.stderr.write("  ## ERROR : No sample file name was provided (option --sample).\n");
 		sys.exit(0);
 	
-	
 	if nozzle.NbrDVTot > 0 :
 		nozzle.UpdateDV(output);
 		nozzle.SetupWall(output);
 	
 	#multif.samples.RunOneSample(777, nozzle);
+	
+	
 	multif.samples.RunSamples(nozzle, options.samples_filename, options.samples_from, options.samples_to);	
 	
 

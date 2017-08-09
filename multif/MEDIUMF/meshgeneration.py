@@ -698,8 +698,8 @@ def NozzleGeoFile(FilNam, Mesh_options):
 	CrdBox[3][0] = 6.6;        CrdBox[3][1] = 0;
 	CrdBox[4][0] = 6.6;        CrdBox[4][1] = 4.5;
 	CrdBox[5][0] = -0.67;      CrdBox[5][1] = 4.5;
-	CrdBox[6][0] = -0.67;      CrdBox[6][1] = 0.6244;
-	CrdBox[7][0] = 0.1548;     CrdBox[7][1] = 0.6244;
+	CrdBox[6][0] = -0.67;      CrdBox[6][1] = 0.7244;
+	CrdBox[7][0] = 0.1548;     CrdBox[7][1] = 0.7244;
 	CrdBox[8][0] = length;     CrdBox[8][1] = ywall[nx-1]+0.012;
 	
 	try:
@@ -757,8 +757,9 @@ def NozzleGeoFile(FilNam, Mesh_options):
 	fil.write('Line(6)  = {4, 5};\n');
 	fil.write('Line(7)  = {5, 11};\n');
 	fil.write('Line(8)  = {11, 6};\n');
-	fil.write('Line(9)  = {6, 7};\n');
-	fil.write('Line(10) = {7, 8};\n');
+	#fil.write('Line(9)  = {6, 7};\n');
+	#fil.write('Line(10) = {7, 8};\n');
+	fil.write('BSpline(10) = {6, 7, 8};\n');
 	fil.write('Line(11) = {8, 12};\n');
 	
 	# --- Define B-Spline
@@ -784,7 +785,7 @@ def NozzleGeoFile(FilNam, Mesh_options):
 	
 	# --- Plane surface
 	
-	fil.write('Line Loop(14) = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,15, 13};\n');
+	fil.write('Line Loop(14) = {1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12,15, 13};\n');
 	fil.write('Plane Surface(14) = {14};\n');
 	
 	hl1 = hl[0];
@@ -826,7 +827,7 @@ def NozzleGeoFile(FilNam, Mesh_options):
 	# --- Add boundary layer definition
 	if method == 'RANS':
 		fil.write('Field[%d] = BoundaryLayer;          \n' % (NbrFld+2));
-		fil.write('Field[%d].EdgesList = {9,10,11,12,15}; \n' % (NbrFld+2));
+		fil.write('Field[%d].EdgesList = {10,11,12,15}; \n' % (NbrFld+2));
 		fil.write('Field[%d].NodesList = {6,%d};      \n' % ((NbrFld+2), savIdx));
 		fil.write('Field[%d].hfar = 1;                 \n' % (NbrFld+2));
 		fil.write('Field[%d].hwall_n = %le;       \n' % ((NbrFld+2), ds));
@@ -852,7 +853,7 @@ def NozzleGeoFile(FilNam, Mesh_options):
 		
 		fil.write('Physical Line(1)  = {12, 15};                          \n');
 		fil.write('Physical Line(2)  = {11};                          \n');
-		fil.write('Physical Line(3)  = {9, 10};                       \n');
+		fil.write('Physical Line(3)  = {10};                       \n');
 		fil.write('Physical Line(4)  = {7, 8};                        \n');
 		fil.write('Physical Line(5)  = {6};                           \n');
 		fil.write('Physical Line(6)  = {3, 4, 5};                     \n');
@@ -924,7 +925,7 @@ def NozzleGeoFile(FilNam, Mesh_options):
 		fil.write('  Surface{14};                                            \n');
 		fil.write('}                                                         \n');
 		fil.write('Line(16) = {%d, 2};                                       \n'%exit_vid);
-		fil.write('Line Loop(17) = {16, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}; \n');
+		fil.write('Line Loop(17) = {16, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12}; \n');
 		fil.write('Plane Surface(18) = {17};                                 \n');
 		fil.write('Line Loop(19) = {1, -16, 15, 13};                         \n');
 		fil.write('Plane Surface(20) = {19};                                 \n');
@@ -949,7 +950,7 @@ def NozzleGeoFile(FilNam, Mesh_options):
 		
 		fil.write('Physical Line(1)  = {12, 15};                          \n');
 		fil.write('Physical Line(2)  = {11};                          \n');
-		fil.write('Physical Line(3)  = {9, 10};                       \n');
+		fil.write('Physical Line(3)  = {10};                       \n');
 		fil.write('Physical Line(4)  = {7, 8};                        \n');
 		fil.write('Physical Line(5)  = {6};                           \n');
 		fil.write('Physical Line(6)  = {3, 4, 5};                     \n');
