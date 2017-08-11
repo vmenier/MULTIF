@@ -570,7 +570,6 @@ class Nozzle:
                     nozzle.cfd.su2_convergence_order = 6;
                 description += ", relative convergence order %i" % nozzle.cfd.su2_convergence_order;
                 
-
                 if 'SU2_OUTPUT_FORMAT' in config:
                     nozzle.cfd.output_format = config['SU2_OUTPUT_FORMAT'];
                 else:
@@ -579,10 +578,16 @@ class Nozzle:
                 # --- Setup max iterations for SU2
                 if 'SU2_MAX_ITERATIONS' in config:
                     nozzle.cfd.su2_max_iterations = int(config['SU2_MAX_ITERATIONS']);
-                elif nozzle.method == 'EULER':
-                    nozzle.cfd.su2_max_iterations = 600;
+                elif nozzle.dim == '2D':
+                    if nozzle.method == 'EULER':
+                        nozzle.cfd.su2_max_iterations = 600;
+                    else:
+                        nozzle.cfd.su2_max_iterations = 1000;   
                 else:
-                    nozzle.cfd.su2_max_iterations = 1000;                  
+                    if nozzle.method == 'EULER':
+                        nozzle.cfd.su2_max_iterations = 1200;
+                    else:
+                        nozzle.cfd.su2_max_iterations = 5000;
                 description += ", max iterations %i" % nozzle.cfd.su2_max_iterations;
                   
                 # Set thermostructural parameters if necessary
