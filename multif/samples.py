@@ -112,7 +112,7 @@ def RunSamples(nozzle, samples_filename, beg, end):
 		beg = 0;
 	if not end:
 		end = NbrSam-1;
-			
+	
 	sys.stdout.write("  -- Running samples %d to %d on %d cores.\n" % (beg, end, nozzle.partitions));
 	
 	if beg < 0 or beg > NbrSam-1 \
@@ -184,12 +184,16 @@ def RunSamples(nozzle, samples_filename, beg, end):
 				
 		for iSam in range(beg,end):
 			mEval[iSam] = pool.apply_async(RunOneSample,(iSam,nozzleEval[iSam]))
+		
 		pool.close();
 		pool.join();
 		
-		for iSam in range(beg,end):
-			outputs[iSam] = mEval[iSam].get();
-	        
+		#for iSam in range(beg,end):
+		#	outputs[iSam] = mEval[iSam].get();
+	 
+	
+	
+	
 	# --- Write results in file
 	
 	resNam = "%s/samples_results.dat" % nozzle.curDir;

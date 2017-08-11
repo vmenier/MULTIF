@@ -68,6 +68,8 @@ def main():
 		nozzle.UpdateDV(output);
 		nozzle.SetupWall(output);
 	
+	multif.HIGHF.HF_Compute_Thrust_Wrap(nozzle);
+	
 	if nozzle.method == 'NONIDEALNOZZLE' :
 	    multif.LOWF.Run(nozzle, output);
 	elif nozzle.dim == '2D': # nozzle method should be Euler or RANS
