@@ -74,7 +74,7 @@ def RunOneSample(run_id, nozzle, output='verbose'):
 	
 	if redirect :
 		sav_stdout = sys.stdout;
-		sys.stdout = open('log_%d'%run_id, 'w');
+		sys.stdout = open('%s/log_%d'%(nozzle.curDir,run_id), 'w');
 	
 	nozzle.SetupWall(output='quiet');
 	

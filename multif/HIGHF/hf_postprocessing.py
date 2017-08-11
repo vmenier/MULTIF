@@ -30,9 +30,7 @@ def PostProcess ( nozzle, output ):
 	if 'THRUST' in nozzle.responses:
 		# XXX Ensure thrust calculation is correct     
 		
-		
-		
-		nozzle.responses['THRUST'] = HF_Compute_Thrust (nozzle.cfd.mesh_name, nozzle.cfd.restart_name);
+		nozzle.responses['THRUST'] = HF_Compute_Thrust_Wrap (nozzle);
 #		SolExtract, Size, Header  = ExtractSolutionAtExit(nozzle);
 #		nozzle.responses['THRUST'] = ComputeThrust ( nozzle, SolExtract, Size, Header );
 		#nozzle.responses['THRUST'] = Get_Thrust_File(nozzle);
