@@ -517,7 +517,7 @@ def runSU2 ( nozzle ):
 	solver_options.Reynolds_length = D;
 	solver_options.Reynolds        = Rey;
 		
-	solver_options.nproc = min(8,nozzle.partitions);
+	solver_options.nproc = nozzle.partitions;
 	
 	solver_options.Pt = Ps + 0.5*rho*U*U;
 	solver_options.Tt = Ts*(1.+0.5*(gam-1.)*M*M);
@@ -681,7 +681,7 @@ def runSU2 ( nozzle ):
 		
 	# --- Adjoint computation (if required)
 	
-	if nozzle.gradients['THRUST'] is not None and nozzle.gradientsFlag == 1:
+	if nozzle.gradientsFlag == 1 and nozzle.gradients['THRUST'] is not None:
 		
 		if ( nozzle.gradientsMethod == 'ADJOINT' ):
 			
@@ -1304,7 +1304,7 @@ def Compute_Thrust_Gradients_FD (nozzle):
 	solver_options.Reynolds_length = D;
 	solver_options.Reynolds        = Rey;
 	
-	solver_options.nproc = min(8,nozzle.partitions);
+	solver_options.nproc = nozzle.partitions;
 	
 	solver_options.Pt = Ps + 0.5*rho*U*U;
 	solver_options.Tt = Ts*(1.+0.5*(gam-1.)*M*M);
