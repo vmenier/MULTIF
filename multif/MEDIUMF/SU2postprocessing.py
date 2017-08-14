@@ -355,20 +355,10 @@ def ExtractSolutionAtWall (nozzle):
 	#
 	#for i in range(0,10):
 	#	print "%d : (%lf,%lf) : rho = %lf" % (i, OutResult[i][0], OutResult[i][1], OutResult[i][2]);
-	
-	# --- Get solution field indices
-	
-	iMach  = -1;
-	iTem   = -1;
-	iCons1 = -1;
-	iCons2 = -1;
-	iCons3 = -1;
-	iCons4 = -1;
-	iPres  = -1;
 		
 	idHeader = dict();
 	for iFld in range(0,len(pyHeader)):
-		idHeader[pyHeader[iFld]] = iFld+2;
+		idHeader[pyHeader[iFld]] = iFld+3;
 
 	return OutResult, pyInfo, idHeader;
 	

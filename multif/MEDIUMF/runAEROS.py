@@ -107,15 +107,15 @@ def runAEROS ( nozzle, output='verbose' ):
             idHeader = {'Temperature': 1, 'Pressure': 2};
         else:
             SolExtract, Size, idHeader  = ExtractSolutionAtWall(nozzle);
+
+        iPres = idHeader['Pressure'];
+        iTemp = idHeader['Temperature'];
             
         ## How to get x, y, P, T :
         #for i in range(0,Size[0]):
         #    print "VER %d : (x,y) = (%.*lf, %.*lf) , Pres = %lf, Temp = %lf" % \
         #                    (i, 16, SolExtract[i][0], 16, SolExtract[i][1], \
         #                    SolExtract[i][iPres], SolExtract[i][iTemp]);
-    
-        iPres = idHeader['Pressure'];
-        iTemp = idHeader['Temperature'];
         
         # --- Assemble important points to align mesh with
         
