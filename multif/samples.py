@@ -119,7 +119,7 @@ def RunSamples(nozzle, samples_filename, beg, end):
 		or end < 0 or end > NbrSam-1\
 		or beg >= end :
 		
-		sys.stderr.write(" ## ERROR RunSamples: Wrong sample id bounds : %d %d\n" % (beg, end));
+		sys.stderr.write(" ## ERROR RunSamples: Wrong sample id bounds : %d %d, NbrSam %d\n" % (beg, end, NbrSam));
 		sys.exit(1);
 	
 	nozzleEval = [];
