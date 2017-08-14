@@ -7,6 +7,8 @@ from runSU2 import *
 import SU2postprocessing
 import AEROSpostprocessing
 
+from SU2postprocessing import *
+
 try:
 	from runAEROS import *
 except ImportError:
