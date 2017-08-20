@@ -71,9 +71,9 @@ def main():
 	
 	if nozzle.method == 'NONIDEALNOZZLE' :
 	    multif.LOWF.Run(nozzle, output);
-	elif nozzle.dim == '2D': # nozzle method should be Euler or RANS
+	elif nozzle.dim == '2D':
 	    multif.MEDIUMF.Run(nozzle, output);
-	elif nozzle.dim == '3D': # nozzle.method should be RANS
+	elif nozzle.dim == '3D':
 	    multif.HIGHF.Run(nozzle, output);
 	
 	# --- Print warning in case the wrong SU2 version was run
@@ -83,12 +83,11 @@ def main():
 	    sys.stdout.write('\n  ## WARNING : You are not using the right version of SU2. This may have caused robustness issues.\n');
 	    sys.stdout.write('#' * 90);
 	    sys.stdout.write('\n\n');
+
 	
 # -------------------------------------------------------------------
 #  Run Main Program
 # -------------------------------------------------------------------
-
-
 
 if __name__ == '__main__':
     main()
