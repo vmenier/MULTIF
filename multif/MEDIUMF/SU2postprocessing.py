@@ -39,7 +39,8 @@ def PostProcess ( nozzle, output ):
 			nozzle.responses['THRUST'] = ComputeThrust ( nozzle, SolExtract, Size, Header );
 			#nozzle.responses['THRUST'] = Get_Thrust_File(nozzle);
 		else :
-			SolExtract, Size, Header  = ExtractExitRANS (nozzle);
+			
+			SolExtract, Size, Header  = ExtractExitRANS ("exit.mesh", "nozzle.su2", "nozzle.dat");
 			nozzle.responses['THRUST'] = ComputeThrust ( nozzle, SolExtract, Size, Header );
 			#nozzle.responses['THRUST'] = ComputeThrust_RANS (nozzle);
         
@@ -152,6 +153,133 @@ def Get_Thrust_File(nozzle):
 		
 	thrust = np.loadtxt(thrust_filename);
 	return float(thrust);
+
+
+
+def ComputeThrust_2 ( options, SolExtract, Size, Header )	:
+
+	# T = 2PI * Int_{0}^{R} (rho U ( U - U0) + P - Po ) r dr
+
+	NbrVer = Size[0];
+	SolSiz = Size[1];
+
+	print SolSiz
+	print Header
+
+	if len(Header) != SolSiz-2 and len(Header) != SolSiz-3:
+		sys.stderr.write("  ## ERROR : ComputeThrust : Inconsistent solution header (%d != %d).\n" % (len(Header),SolSiz-2));
+		sys.exit(0);
+
+	## --- Get solution field indices
+
+	iMach  = Header['Mach'];
+	iTem   = Header['Temperature'];
+	iCons1 = Header['Conservative_1'];
+	iCons2 = Header['Conservative_2'];
+	iCons3 = Header['Conservative_3'];
+	iCons4 = Header['Conservative_4'];
+	iPres  = Header['Pressure'];
+
+	# --- Compute thrust	
+
+	Thrust = 0;
+
+	#freestream.P = atm.P; % Pa, atmospheric pressure
+	#freestream.T = atm.T; % K, atmospheric temperature
+	#freestream.M = mach;
+	#freestream.U = freestream.M*sqrt(fluid.gam*fluid.R*freestream.T);
+
+	#P0  = nozzle.environment.P;
+	#M0  = nozzle.mission.mach;
+	#Gam = nozzle.fluid.gam;
+	#Rs  = nozzle.fluid.R;
+	#T0  = nozzle.environment.T;
+	#U0  = M0*np.sqrt(Gam*Rs*T0);
+	
+	P0  = options["P0"];
+	M0  = options["M0"];
+	Gam = options["Gam"];
+	Rs  = options["Rs"];
+	T0  = options["T0"];
+	U0  = options["U0"];
+	
+
+
+	#for iVer in range(1, NbrVer) :
+	#	
+
+	#	y	= float(SolExtract[iVer][1]);
+
+	#	
+	#	#if y > nozzle.height-1e-6:
+	#	#	print "REMOVE POINT %d" % iVer
+	#	#	continue;
+	#	
+	#	rho  = 0.5*(SolExtract[iVer][2+iCons1] +  SolExtract[iVer-1][2+iCons1]);
+	#	rhoU = 0.5*(SolExtract[iVer][2+iCons2] +  SolExtract[iVer-1][2+iCons2]);
+	#	Pres = 0.5*(SolExtract[iVer][2+iPres]  +  SolExtract[iVer-1][2+iPres] );
+	#	Mach = 0.5*(SolExtract[iVer][2+iMach]  +  SolExtract[iVer-1][2+iMach] );
+	#	Temp = 0.5*(SolExtract[iVer][2+iTem]   +  SolExtract[iVer-1][2+iTem]  );
+	#	
+	#	
+	#	U = rhoU/rho;
+	#	
+	#	dy = y - SolExtract[iVer-1][1];
+	#	
+	#	#print "%lf %lf %lf %lf %lf %lf" % (y, rho, rhoU, Pres, Mach, Temp);
+	#			
+	#	Thrust = Thrust + dy*(rhoU*(U-U0)+Pres-P0);
+	#
+	#print "THRUST = %lf" % Thrust
+
+	#y = SolExtract[iVer][];
+
+	NbrVer = len(SolExtract);
+
+	y   = np.zeros(NbrVer);
+	sol = np.zeros([NbrVer,5]);
+
+	for i in range(0,NbrVer):
+		y[i] = float(SolExtract[i][1]);
+
+		sol[i][0] = float(SolExtract[i][iCons1]);
+		sol[i][1] = float(SolExtract[i][iCons2]);
+		sol[i][2] = float(SolExtract[i][iPres]);
+
+	print sol[:][0]
+
+	fsol = [];
+	for j in range(0,3):
+		fsol.append(interp1d(y,sol[:,j], kind='linear'));
+
+	nbv = 4000;
+	ynew = np.linspace(0,y[-1],nbv);
+
+	tabrho  = fsol[0](ynew);
+	tabrhoU = fsol[1](ynew);
+	tabPres = fsol[2](ynew);
+
+	fil = open('exit.dat','w')
+
+	for i in range(1, nbv) :
+
+		rho  = 0.5*(tabrho[i-1]+tabrho[i]);
+		rhoU = 0.5*(tabrhoU[i-1]+tabrhoU[i]);
+		Pres = 0.5*(tabPres[i-1]+tabPres[i]);
+
+		U = rhoU/rho;
+
+		dy = ynew[i]-ynew[i-1];
+
+		fil.write("%lf %lf %lf %lf\n" % (ynew[i], rho, rhoU, Pres));
+
+		Thrust = Thrust + dy*(rhoU*(U-U0)+Pres-P0);	
+
+	fil.close();
+
+	return Thrust;
+
+
 	
 
 def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
@@ -270,7 +398,7 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )	:
 	return Thrust;
 
 
-def ExtractExitRANS (nozzle)	:
+def ExtractExitRANS (exit_name, mesh_name, sol_name)	:
 	
 	exitNam = "exit.mesh";
 	
@@ -283,11 +411,11 @@ def ExtractExitRANS (nozzle)	:
 	Sol  = [];
 	Header = [];
 	
-	out = _mshint_module.py_Interpolation (exitNam, "nozzle.su2", "nozzle.dat",\
+	out = _mshint_module.py_Interpolation (exitNam,mesh_name, sol_name,\
 		info, Crd, Tri, Tet, Sol, Header);
 	
 	# --- Extract CFD solution at the inner wall	
-
+	
 	pyResult = [];
 	pyInfo   = [];
 	pyHeader = [];
@@ -321,10 +449,10 @@ def ExtractExitRANS (nozzle)	:
 	idHeader = dict();
 	for iFld in range(0,len(Header)):
 		idHeader[Header[iFld]] = iFld+3;
-
+	
 	return OutResult, pyInfo, idHeader;
-
-
+	
+	
 
 
 

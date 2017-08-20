@@ -61,7 +61,9 @@ def SampleGetOutput(nozzle):
 
 def RunOneSample(run_id, nozzle, output='verbose'):
 	
-	dirNam = 'RUN_%d' % run_id;
+	redirect = True;
+	
+	dirNam = '%s/RUN_%d' % (nozzle.curDir, run_id);
 	
 	if not os.path.exists(dirNam):
 		os.makedirs(dirNam);
@@ -69,10 +71,12 @@ def RunOneSample(run_id, nozzle, output='verbose'):
 	
 	if output == 'verbose':
 		sys.stdout.write('Running sample in %s\n' % dirNam);	
-	   
-	sav_stdout = sys.stdout;
 	
-	sys.stdout = open('log_%d'%run_id, 'w');
+	if redirect :
+		sav_stdout = sys.stdout;
+		sys.stdout = open('%s/log_%d'%(nozzle.curDir,run_id), 'w');
+	
+	nozzle.SetupWall(output='quiet');
 	
 	if nozzle.method == 'NONIDEALNOZZLE' :
 		multif.LOWF.Run(nozzle, output);
@@ -83,18 +87,19 @@ def RunOneSample(run_id, nozzle, output='verbose'):
 	else:
 		sys.stderr.write(" ## ERROR runSample: Wrong fidelity level defined.\n");
 		sys.exit(1);
-		
-	sys.stdout = sav_stdout;
+	
+	if redirect : 
+		sys.stdout = sav_stdout;
 	
 	# Exit directory
-	os.chdir('..');
+	os.chdir(nozzle.curDir);
 	
 	# --- Outputs
 	
 	prt_val = SampleGetOutput(nozzle);
 	
-	return prt_val;
-	
+	return prt_val;	
+
 
 def RunSamples(nozzle, samples_filename, beg, end):
 		
@@ -108,16 +113,25 @@ def RunSamples(nozzle, samples_filename, beg, end):
 	if not end:
 		end = NbrSam-1;
 	
+	sys.stdout.write("  -- Running samples %d to %d on %d cores.\n" % (beg, end, nozzle.partitions));
+	
 	if beg < 0 or beg > NbrSam-1 \
 		or end < 0 or end > NbrSam-1\
 		or beg >= end :
 		
-		sys.stderr.write(" ## ERROR RunSamples: Wrong sample id bounds : %d %d\n" % (beg, end));
+		sys.stderr.write(" ## ERROR RunSamples: Wrong sample id bounds : %d %d, NbrSam %d\n" % (beg, end, NbrSam));
 		sys.exit(1);
 	
 	nozzleEval = [];
 	
 	outputs = [];
+	
+	NbrProc = 1;
+	if nozzle.onebyone:
+		NbrProc = nozzle.partitions;
+		nozzle.partitions = 1;
+	
+	nozzle.curDir = os.getcwd();	
 	
 	# --- Start python's multiprocessing pool
 	
@@ -130,7 +144,11 @@ def RunSamples(nozzle, samples_filename, beg, end):
 		outputs.append([]);
 		nozzleEval.append([]);
 	
+	sys.stdout.write("Loading nozzle data...\n");
+	
 	for iSam in range(beg,end):
+		
+		sys.stdout.write(" - Nozzle %d\n" % iSam);
 		
 		dv_list = [];
 		for j in range(len(samples_hdl[iSam])):
@@ -145,33 +163,40 @@ def RunSamples(nozzle, samples_filename, beg, end):
 		
 		# --- Update DV using current sample values
 		nozzleEval[iSam].dvList = dv_list;		
+		
 		nozzleEval[iSam].UpdateDV(output='quiet');
-		nozzleEval[iSam].SetupWall(output='quiet');
-		nozzleEval[iSam].partitions = 1;
-
+		
+		#nozzleEval[iSam].SetupWall(output='quiet');
+		
+		nozzleEval[iSam].partitions = NbrProc;
+	
+	
 	# --- Run the analysis
 		
 	if nozzle.partitions == 1:
 		for iSam in range(beg,end):
-			#outputs[iSam] = RunOneSample(iSam, nozzleEval[-1]);
-			outputs[iSam] = RunOneSample(iSam, nozzle);
+			outputs[iSam] = RunOneSample(iSam, nozzleEval[iSam]);
+			#outputs[iSam] = RunOneSample(iSam, nozzle);
 	else:
-		
 		mEval = [];
 		for iSam in range(end):
 			mEval.append(-1);
 				
 		for iSam in range(beg,end):
 			mEval[iSam] = pool.apply_async(RunOneSample,(iSam,nozzleEval[iSam]))
+		
 		pool.close();
 		pool.join();
 		
-		for iSam in range(beg,end):
-			outputs[iSam] = mEval[iSam].get();
-	        
+		#for iSam in range(beg,end):
+		#	outputs[iSam] = mEval[iSam].get();
+	 
+	
+	
+	
 	# --- Write results in file
 	
-	resNam = "samples_results.dat";
+	resNam = "%s/samples_results.dat" % nozzle.curDir;
 	
 	fil = open(resNam, "w");
 	

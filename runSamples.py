@@ -54,6 +54,10 @@ def main():
 	                  dest="samples_to", default=False,
 	                  help="ID of last sample to run?")
 	
+	parser.add_option("", "--onebyone",
+	                  dest="onebyone", default=False,
+	                  help="Run samples one by one?")
+	
 	(options, args)=parser.parse_args()
 	
 	options.partitions = int( options.partitions )
@@ -75,21 +79,24 @@ def main():
 		    sys.exit(0);		
 		config = SU2.io.Config(options.filename)
 		
+	
 	nozzle = multif.nozzle.NozzleSetup(config, options.flevel, output);
 	nozzle.verification = int(options.verification);
-	nozzle.meshDeformationFlag = int(options.deform);
 	nozzle.partitions = int(options.partitions);
+	
+	nozzle.onebyone = options.onebyone;
 	
 	if not options.samples_filename:
 		sys.stderr.write("  ## ERROR : No sample file name was provided (option --sample).\n");
 		sys.exit(0);
-	
 	
 	if nozzle.NbrDVTot > 0 :
 		nozzle.UpdateDV(output);
 		nozzle.SetupWall(output);
 	
 	#multif.samples.RunOneSample(777, nozzle);
+	
+	
 	multif.samples.RunSamples(nozzle, options.samples_filename, options.samples_from, options.samples_to);	
 	
 

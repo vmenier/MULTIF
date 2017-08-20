@@ -61,14 +61,13 @@ def main():
 		config = SU2.io.Config(options.filename)
 		
 	nozzle = multif.nozzle.NozzleSetup(config, options.flevel, output);
-	nozzle.verification = int(options.verification);
-	nozzle.meshDeformationFlag = int(options.deform);
+	nozzle.verification = int(options.verification); 
 	nozzle.partitions = int(options.partitions);
 	
 	if nozzle.NbrDVTot > 0 :
 		nozzle.UpdateDV(output);
 		nozzle.SetupWall(output);
-	
+		
 	if nozzle.method == 'NONIDEALNOZZLE' :
 	    multif.LOWF.Run(nozzle, output);
 	elif nozzle.dim == '2D':
@@ -84,7 +83,6 @@ def main():
 	    sys.stdout.write('#' * 90);
 	    sys.stdout.write('\n\n');
 
-	
 # -------------------------------------------------------------------
 #  Run Main Program
 # -------------------------------------------------------------------

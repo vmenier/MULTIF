@@ -29,7 +29,8 @@ def PostProcess ( nozzle, output ):
 	# --- Assign responses
 	if 'THRUST' in nozzle.responses:
 		# XXX Ensure thrust calculation is correct     
-		nozzle.responses['THRUST'] = HF_Compute_Thrust (nozzle);
+		
+		nozzle.responses['THRUST'] = HF_Compute_Thrust_Wrap (nozzle);
 #		SolExtract, Size, Header  = ExtractSolutionAtExit(nozzle);
 #		nozzle.responses['THRUST'] = ComputeThrust ( nozzle, SolExtract, Size, Header );
 		#nozzle.responses['THRUST'] = Get_Thrust_File(nozzle);
@@ -100,10 +101,31 @@ def CheckConvergence ( nozzle ) :
 	#print "Initial res = %le, Final res = %lf, DIFF = %lf\n" % (IniRes, FinRes, ResDif);
 	return IniRes, FinRes;
 
+def HF_Compute_Thrust_Wrap (nozzle):
+	
+	P0  = nozzle.environment.P;
+	M0  = nozzle.mission.mach;
+	Gam = nozzle.fluid.gam;
+	Rs  = nozzle.fluid.R;
+	T0  = nozzle.environment.T;
+	U0  = M0*np.sqrt(Gam*Rs*T0);
+	
+	options = { 'mesh_name' : nozzle.cfd.mesh_name,   \
+	   		 'restart_name' : nozzle.cfd.restart_name,   \
+	   		 'P0'          : P0 ,  \
+	   		 'M0'          : M0 ,  \
+	   		 'Gam'          : Gam,  \
+	   		 'Rs'          : Rs ,  \
+	   		 'T0'          : T0 ,  \
+	   		 'U0'          : U0   \
+	   		}
+	
+	return HF_Compute_Thrust (options);
+	
+	
 
 
-
-def HF_Compute_Thrust (nozzle):
+def HF_Compute_Thrust (options):
 	
 	info = [];
 	Crd  = [];
@@ -113,8 +135,15 @@ def HF_Compute_Thrust (nozzle):
 	Header = [];
 	
 	exitNam = "%s/baseline_meshes/nozzle_exit.mesh" % (os.path.dirname(os.path.abspath(__file__)));
+	exitNamLoc = "%s/nozzle_exit.mesh" % (os.getcwd());
 	
-	out = _mshint_module.py_Interpolation (exitNam, nozzle.cfd.mesh_name, nozzle.cfd.restart_name,\
+	try :
+		os.symlink(exitNam, exitNamLoc);
+	except:
+		# ---
+		sys.stdout.write("%s already exists\n" % exitNamLoc);
+	
+	out = _mshint_module.py_Interpolation (exitNamLoc, options["mesh_name"], options["restart_name"],\
 	info, Crd, Tri, Tet, Sol, Header);
 	
 	dim    = info[0];
@@ -123,52 +152,45 @@ def HF_Compute_Thrust (nozzle):
 	NbrTet = info[3];
 	SolSiz = info[4];
 	
-	#for i in range(1,59):
+	#for i in range(40):
+	#	print "SOL %d = %.5le" % (i, Sol[i])
+	#
+	#for i in range(1,4):
 	#	idx = (i-1)*dim;
 	#	idxs = (i-1)*SolSiz;
-	#	print "Ver %d : %lf %lf %lf / idxs %d  Sol = %le %le ..." % (i, Crd[idx], Crd[idx+1], Crd[idx+2], idxs, Sol[idxs+1], Sol[idxs+2])
-	#
-	#for i in range(0,40):
-	#	print "%d %le" % (i,Sol[i])
+	#	print "Ver %d : %lf %lf %lf / idxs %d  Sol = %le %le ..." % (i, Crd[idx], Crd[idx+1], Crd[idx+2], idxs, Sol[idxs+0], Sol[idxs+1])
 	
 	# --- Get solution field indices
-  
-	iMach  = -1;
-	iTem   = -1;
-	iCons1 = -1;
-	iCons2 = -1;
-	iCons3 = -1;
-	iCons4 = -1;
-	iPres  = -1;
-  
+	
+	idHeader = dict();
 	for iFld in range(0,len(Header)):
-		if Header[iFld] == 'Mach':
-			iMach = iFld;
-		elif Header[iFld] == 'Temperature':
-			iTem = iFld;
-		elif Header[iFld] == 'Conservative_1':
-			iCons1 = iFld;
-		elif Header[iFld] == 'Conservative_2':
-			iCons2 = iFld;
-		elif Header[iFld] == 'Conservative_3':
-			iCons3 = iFld;
-		elif Header[iFld] == 'Conservative_4':
-			iCons4 = iFld;
-		elif Header[iFld] == 'Pressure':
-			iPres = iFld;
-			
-	#print "iPres %lf iCons1 %lf iCons2 %lf" % (iPres, iCons1, iCons2)
-  
+		idHeader[Header[iFld]] = iFld+1;
+	
+	iMach  = idHeader['Mach'];
+	iTem   = idHeader['Temperature'];
+	iCons1 = idHeader['Conservative_1'];
+	iCons2 = idHeader['Conservative_2'];
+	iCons3 = idHeader['Conservative_3'];
+	iCons4 = idHeader['Conservative_4'];
+	iPres  = idHeader['Pressure'];
+	  
 	# --- Compute thrust	
   
 	Thrust = 0.0;
   
-	P0  = nozzle.environment.P;
-	M0  = nozzle.mission.mach;
-	Gam = nozzle.fluid.gam;
-	Rs  = nozzle.fluid.R;
-	T0  = nozzle.environment.T;
-	U0  = M0*np.sqrt(Gam*Rs*T0);
+	#P0  = nozzle.environment.P;
+	#M0  = nozzle.mission.mach;
+	#Gam = nozzle.fluid.gam;
+	#Rs  = nozzle.fluid.R;
+	#T0  = nozzle.environment.T;
+	#U0  = M0*np.sqrt(Gam*Rs*T0);
+	
+	P0  = options["P0"];
+	M0  = options["M0"];
+	Gam = options["Gam"];
+	Rs  = options["Rs"];
+	T0  = options["T0"];
+	U0  = options["U0"];
 	
 	v = np.zeros([3,3]);
 	a = np.zeros(3);
@@ -185,10 +207,6 @@ def HF_Compute_Thrust (nozzle):
 		Mach = 0.0;
 		Temp = 0.0;
 		
-		#print "TRI %d : %d %d %d" % (iTri,  Tri[idt+0], Tri[idt+1], Tri[idt+2])
-		
-		
-		
 		for j in range(0,3):
 			iVer = int(Tri[idt+j]);
 			
@@ -200,7 +218,7 @@ def HF_Compute_Thrust (nozzle):
 			
 			
 			#if iTri == 1:
-			#	print "rho %d (%d) = %lf (ids %d)" % (j,iVer,Sol[ids+iCons1], ids)
+			#	print "rho %d (%d) = %.3le (ids %d)" % (j,iVer,Sol[ids+iCons1], ids)
 				
 			rho  = rho  + Sol[ids+iCons1];
 			rhoU = rhoU + Sol[ids+iCons2];
@@ -233,16 +251,22 @@ def HF_Compute_Thrust (nozzle):
 				
 		# --- Compute thrust
 					
+		if rho < 1e-30:
+			sys.stderr.write("## ERROR HF_Compute_Thrust: rho == 0 for triangle %d\n" % iTri);
+			sys.exit(1);
+		
 		U = rhoU/rho;
 		
 		#if iTri < 10:
 		#	print "Tri %d Pres %lf rho %lf U %lf rhoU %lf U0 %lf P0 %lf area %lf" % (iTri, Pres, rho, U, rhoU, U0, P0, area)
-		
+		#
 		try :
 			Thrust = Thrust + area*(rhoU*(U-U0)+Pres-P0);
 		except :
 			Thrust = -1;
 		#Thrust = Thrust + area*(rhoU*(U*U0-U0)+P0*Pres-P0);
-		
+	
+	Thrust = 2*Thrust; # symmetry
+	
 	return Thrust;
 	

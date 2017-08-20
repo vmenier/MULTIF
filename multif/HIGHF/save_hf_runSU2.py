@@ -28,7 +28,8 @@ def CheckSU2Version(nozzle):
 	except subprocess.CalledProcessError as err: 
 		if ( 'DARPA' in err.output ):
 			sys.stdout.write('Check SU2 version : OK\n');
-			nozzle.cfd.local_relax = 'YES';
+			#nozzle.cfd.local_relax = 'YES';
+			nozzle.cfd.local_relax = 'NO';
 			nozzle.cfd.su2_version = 'OK';
 		else:
 			sys.stdout.write('\n');

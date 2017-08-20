@@ -32,9 +32,10 @@ def CheckSU2Version(nozzle):
         out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=None);
     except subprocess.CalledProcessError as err: 
         if ( 'DARPA' in err.output ):
-            sys.stdout.write('Check SU2 version : OK\n');
-            nozzle.cfd.local_relax = 'YES';
-            nozzle.cfd.su2_version = 'OK';
+			sys.stdout.write('Check SU2 version : OK\n');
+			#nozzle.cfd.local_relax = 'YES';
+			nozzle.cfd.local_relax = 'NO';
+			nozzle.cfd.su2_version = 'OK';
         else:
             sys.stdout.write('\n');
             sys.stdout.write('#' * 90);
@@ -43,10 +44,9 @@ def CheckSU2Version(nozzle):
             sys.stdout.write('\n\n');
             nozzle.cfd.local_relax = 'NO';
             nozzle.cfd.su2_version = 'NOT_OK';
-            
-            
+           	
 def CheckSU2Convergence ( history_filename, field_name ) :
-
+	
 	#plot_format	  = con.OUTPUT_FORMAT;
 	#plot_extension   = SU2.io.get_extension(plot_format)
 	#history_filename = nozzle.cfd.conv_filename + plot_extension
@@ -69,7 +69,6 @@ def CheckSU2Convergence ( history_filename, field_name ) :
 
 	#print "Initial res = %le, Final res = %lf, DIFF = %lf\n" % (IniRes, FinRes, ResDif);
 	return IniRes, FinRes;
-            
 
 def SetupConfig_old (solver_options):
     
@@ -427,6 +426,7 @@ def checkResidual(config):
 
 
 def HF_runSU2 ( nozzle ):
+	
 	
 	# --- Setup solver options
 	solver_options = Solver_Options();
@@ -1396,29 +1396,30 @@ def Compute_Thrust_Gradients_FD (nozzle):
 
 
 def Read_Gradients_AD (nozzle):
-
+	
 	nbr_dv = max(nozzle.wall.dv)+1;
 	
 	hdl_grad = np.loadtxt('./of_grad.dat', skiprows=1);
-
+	
 	thrust_grad = np.zeros(len(nozzle.dvList))
-
+	
 	iTag = -1;
 	for i in range(len(nozzle.DV_Tags)):
 		Tag = nozzle.DV_Tags[i];
 		if (Tag == "WALL"):
 			iTag = i;
 			break;
-
+	
 	if ( iTag < 0 ):
 		sys.stderr.write("  ## ERROR SU2 adjoint computation: Wall parameterization not specified.\n");
 		sys.exit();
-
+	
 	nbr_dv = max(nozzle.wall.dv)+1;
-
+	
 	for i in range(nbr_dv):
 		id_dv = nozzle.DV_Head[iTag] + i;
 		thrust_grad[id_dv] = hdl_grad[i];
 		#print "id_dv %d val %lf" % (id_dv, nozzle.dvList[id_dv])
 		
 	return thrust_grad;
+	

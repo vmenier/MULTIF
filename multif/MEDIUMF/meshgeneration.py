@@ -12,6 +12,7 @@ from scipy import interpolate as itp
 from scipy.interpolate import splev, splrep
 
 from .. import SU2
+from .. import nozzle as noz
 
 class optionsmesh:
 	def __init__(self):
@@ -196,7 +197,32 @@ def Extract_Boundary_Vertices(mesh_name, pyRefs):
 	
 	return Bdr;
 	
-
+def Get3Dto2DEquivArea(nozzle, xnew_tab):
+	
+	from .. import nozzle as noz
+	
+	geometry = noz.geometry;
+	
+	majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
+	minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
+	centerTmp = geometry.Bspline(nozzle.wall.centerline.coefs);
+	
+	majoraxisVal = majoraxisTmp.radius(xnew_tab);
+	minoraxisVal = minoraxisTmp.radius(xnew_tab);
+	
+	fr1 = majoraxisTmp.radius
+	fr2 = minoraxisTmp.radius
+	fz  = centerTmp.radius
+	
+	params = np.zeros(100)
+	params[0] = 0.099; # z crd of the cut at the throat
+	params[1] = 0.122638;  # z crd of the flat exit (bottom of the shovel)
+	params[3] = 0.0;        # x_throat 
+	params[4] = 4.0;        # x_exit 
+	
+	ynew_tab = multif.HIGHF.MF_GetRadius (xnew_tab, fr1, fr2, fz, params)
+	
+	return ynew_tab;
 
 
 def GenerateNozzleMesh_Deform (nozzle):
@@ -209,11 +235,12 @@ def GenerateNozzleMesh_Deform (nozzle):
 	
 	motion_hdl = [];
 	
-	pathsrc = "%s/baseline_meshes/" % (os.path.dirname(os.path.abspath(__file__)));
+	pathsrc = "%s/baseline_meshes_3d/" % (os.path.dirname(os.path.abspath(__file__)));
 	
 	#--- Extract boundary vertices from mesh
 	
-	mesh_name	= "%sbaseline_%s_%s.su2" % (pathsrc, nozzle.method, nozzle.meshsize);
+	#mesh_name	= "%sbaseline_%s_%s.su2" % (pathsrc, nozzle.method, nozzle.meshsize);
+	mesh_name   = "%sbaseline_%s_%s.su2" % (pathsrc, nozzle.method.lower(), nozzle.cfd.mesh_size.lower());
 	
 	print mesh_name
 	
@@ -228,8 +255,8 @@ def GenerateNozzleMesh_Deform (nozzle):
 		
 	#fil = open("mesh_motion.dat", "w");
 	
-	xwall  = nozzle.xwall;
-	ywall  = nozzle.ywall;
+	xwall  = nozzle.cfd.x_wall;
+	ywall  = nozzle.cfd.y_wall;
 	
 	xwall_max = max(xwall);
 	
@@ -253,8 +280,11 @@ def GenerateNozzleMesh_Deform (nozzle):
 	xbas_max = max(float(l[1]) for l in Bdr[ref_outside])
 	xbas_min = min(float(l[1]) for l in Bdr[ref_outside])
 	
-	xx = [-0.67 , -0.65 , 0.1548, xwall[-1]];
-	yy = [0.4244, 0.4244, 0.41,   ywall[-1]+h_tip]
+	#xx = [-0.67 , -0.65 , 0.1548, xwall[-1]];
+	#yy = [0.7244, 0.4244, 0.41,   ywall[-1]+h_tip]
+	
+	xx = [-0.67 , -0.65 , 0.148,  xwall[-1]];
+	yy = [0.7244, 0.7244, 0.7,  ywall[-1]+h_tip]
 	
 	tck = splrep(xx, yy, xb=xx[0], xe=xx[-1], k=2)
 	
@@ -335,9 +365,37 @@ def GenerateNozzleMesh_Deform (nozzle):
 		x = Bdr[ref_wall][i][1];
 		xnew = xwall[0] + (x-xmin)/(xmax-xmin)*(xwall[-1]-xwall[0]);
 		xnew_tab.append(xnew);
-		
-	_meshutils_module.py_BSplineGeo3LowF (nozzle.wall.knots, nozzle.wall.coefs, xnew_tab, ynew_tab, dydx);
 	
+	xnew_tab = np.array(xnew_tab);
+	
+	if nozzle.param == "2D":
+		_meshutils_module.py_BSplineGeo3LowF (nozzle.wall.knots, nozzle.wall.coefs, xnew_tab, ynew_tab, dydx);
+	else :
+		
+		#geometry = noz.geometry;
+		#
+		#majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
+		#minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
+		#centerTmp = geometry.Bspline(nozzle.wall.centerline.coefs);
+		#
+		#majoraxisVal = majoraxisTmp.radius(xnew_tab);
+		#minoraxisVal = minoraxisTmp.radius(xnew_tab);
+		#
+		#fr1 = majoraxisTmp.radius
+		#fr2 = minoraxisTmp.radius
+		#fz  = centerTmp.radius
+		#
+		#params = np.zeros(100)
+		#params[0] = 0.099; # z crd of the cut at the throat
+		#params[1] = 0.122638;  # z crd of the flat exit (bottom of the shovel)
+		#params[3] = 0.0;        # x_throat 
+		#params[4] = 4.0;        # x_exit 
+		#
+		#ynew_tab = multif.HIGHF.MF_GetRadius (xnew_tab, fr1, fr2, fz, params)
+	    
+		ynew_tab = Get3Dto2DEquivArea(nozzle, xnew_tab);
+		
+		
 	for i in range(Nbv):
 		
 		vid = Bdr[ref_wall][i][0];
@@ -349,32 +407,38 @@ def GenerateNozzleMesh_Deform (nozzle):
 		
 	# --- Project thrust marker
 	
-	ref_thrust = 9;
-	
-	Nbv = len(Bdr[ref_thrust]);
-	
-	x = Bdr[ref_thrust][0][1];
-	xnew = xx[0] + (x-xbas_min)/(xbas_max-xbas_min)*(xwall_max-xx[0]);
-	
-	xnew_tab = [xnew];
-	ynew_tab = [];
-	dydx = [];
-	_meshutils_module.py_BSplineGeo3LowF (nozzle.wall.knots, nozzle.wall.coefs, xnew_tab, ynew_tab, dydx);
-	
-	ymax = ynew_tab[0];
-	
-	ymax_bas =  max(float(l[2]) for l in Bdr[ref_thrust])
-	
-	for i in range(Nbv):
+	if nozzle.method == "EULER":
 		
-		vid = Bdr[ref_thrust][i][0];
-		y   = Bdr[ref_thrust][i][2];
+		ref_thrust = 9;
 		
-		ynew = y/ymax_bas*ymax;
+		Nbv = len(Bdr[ref_thrust]);
 		
-		motion_hdl.append([vid-1, xnew, ynew, Bdr[ref_thrust][i][1], Bdr[ref_thrust][i][2]]);
-		#fil.write("%d %le %le\n" % (vid-1, xnew, ynew));
-	
+		x = Bdr[ref_thrust][0][1];
+		xnew = xx[0] + (x-xbas_min)/(xbas_max-xbas_min)*(xwall_max-xx[0]);
+		
+		xnew_tab = np.array([xnew]);
+		ynew_tab = [];
+		dydx = [];
+		
+		if nozzle.param == "2D":
+			_meshutils_module.py_BSplineGeo3LowF (nozzle.wall.knots, nozzle.wall.coefs, xnew_tab, ynew_tab, dydx);
+		else :
+			ynew_tab = Get3Dto2DEquivArea(nozzle, xnew_tab);
+			
+		ymax = ynew_tab[0];
+		
+		ymax_bas =  max(float(l[2]) for l in Bdr[ref_thrust])
+		
+		for i in range(Nbv):
+			
+			vid = Bdr[ref_thrust][i][0];
+			y   = Bdr[ref_thrust][i][2];
+			
+			ynew = y/ymax_bas*ymax;
+			
+			motion_hdl.append([vid-1, xnew, ynew, Bdr[ref_thrust][i][1], Bdr[ref_thrust][i][2]]);
+			#fil.write("%d %le %le\n" % (vid-1, xnew, ynew));
+		
 	
 	#--- Write mesh motion file
 	
@@ -438,7 +502,6 @@ def GenerateNozzleMesh_Deform (nozzle):
 	config.VISUALIZE_DEFORMATION = "YES"
 	config.MARKER_MOVING         = "( PhysicalLine7 )"
 	
-	
 	config.NUMBER_PART = 1;
 	
 	
@@ -463,9 +526,9 @@ def GenerateNozzleMesh_Deform (nozzle):
 	config.MARKER_SYM             = '( ( PhysicalLine7 ) )'
 	config.MARKER_OUTLET          = '( PhysicalLine6, 18754.000000)'
 	config.MARKER_THRUST          = '( PhysicalLine9 )'
-	config.MESH_OUT_FILENAME      = nozzle.mesh_name;
+	config.MESH_OUT_FILENAME      = nozzle.cfd.mesh_name;
 	
-	config.SU2_RUN = nozzle.SU2_RUN;
+	config.SU2_RUN = nozzle.cfd.su2_run;
 	
 	
 	# --- Run SU2
@@ -699,8 +762,8 @@ def NozzleGeoFile(FilNam, Mesh_options):
 	CrdBox[3][0] = 6.6;        CrdBox[3][1] = 0;
 	CrdBox[4][0] = 6.6;        CrdBox[4][1] = 4.5;
 	CrdBox[5][0] = -0.67;      CrdBox[5][1] = 4.5;
-	CrdBox[6][0] = -0.67;      CrdBox[6][1] = 0.6244;
-	CrdBox[7][0] = 0.1548;     CrdBox[7][1] = 0.6244;
+	CrdBox[6][0] = -0.67;      CrdBox[6][1] = 0.7244;
+	CrdBox[7][0] = 0.1548;     CrdBox[7][1] = 0.7244;
 	CrdBox[8][0] = length;     CrdBox[8][1] = ywall[nx-1]+0.012;
 	
 	try:
@@ -758,8 +821,9 @@ def NozzleGeoFile(FilNam, Mesh_options):
 	fil.write('Line(6)  = {4, 5};\n');
 	fil.write('Line(7)  = {5, 11};\n');
 	fil.write('Line(8)  = {11, 6};\n');
-	fil.write('Line(9)  = {6, 7};\n');
-	fil.write('Line(10) = {7, 8};\n');
+	#fil.write('Line(9)  = {6, 7};\n');
+	#fil.write('Line(10) = {7, 8};\n');
+	fil.write('BSpline(10) = {6, 7, 8};\n');
 	fil.write('Line(11) = {8, 12};\n');
 	
 	# --- Define B-Spline
@@ -785,7 +849,7 @@ def NozzleGeoFile(FilNam, Mesh_options):
 	
 	# --- Plane surface
 	
-	fil.write('Line Loop(14) = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,15, 13};\n');
+	fil.write('Line Loop(14) = {1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12,15, 13};\n');
 	fil.write('Plane Surface(14) = {14};\n');
 	
 	hl1 = hl[0];
@@ -827,7 +891,7 @@ def NozzleGeoFile(FilNam, Mesh_options):
 	# --- Add boundary layer definition
 	if method == 'RANS':
 		fil.write('Field[%d] = BoundaryLayer;          \n' % (NbrFld+2));
-		fil.write('Field[%d].EdgesList = {9,10,11,12,15}; \n' % (NbrFld+2));
+		fil.write('Field[%d].EdgesList = {10,11,12,15}; \n' % (NbrFld+2));
 		fil.write('Field[%d].NodesList = {6,%d};      \n' % ((NbrFld+2), savIdx));
 		fil.write('Field[%d].hfar = 1;                 \n' % (NbrFld+2));
 		fil.write('Field[%d].hwall_n = %le;       \n' % ((NbrFld+2), ds));
@@ -853,7 +917,7 @@ def NozzleGeoFile(FilNam, Mesh_options):
 		
 		fil.write('Physical Line(1)  = {12, 15};                          \n');
 		fil.write('Physical Line(2)  = {11};                          \n');
-		fil.write('Physical Line(3)  = {9, 10};                       \n');
+		fil.write('Physical Line(3)  = {10};                       \n');
 		fil.write('Physical Line(4)  = {7, 8};                        \n');
 		fil.write('Physical Line(5)  = {6};                           \n');
 		fil.write('Physical Line(6)  = {3, 4, 5};                     \n');
@@ -925,7 +989,7 @@ def NozzleGeoFile(FilNam, Mesh_options):
 		fil.write('  Surface{14};                                            \n');
 		fil.write('}                                                         \n');
 		fil.write('Line(16) = {%d, 2};                                       \n'%exit_vid);
-		fil.write('Line Loop(17) = {16, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}; \n');
+		fil.write('Line Loop(17) = {16, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12}; \n');
 		fil.write('Plane Surface(18) = {17};                                 \n');
 		fil.write('Line Loop(19) = {1, -16, 15, 13};                         \n');
 		fil.write('Plane Surface(20) = {19};                                 \n');
@@ -950,7 +1014,7 @@ def NozzleGeoFile(FilNam, Mesh_options):
 		
 		fil.write('Physical Line(1)  = {12, 15};                          \n');
 		fil.write('Physical Line(2)  = {11};                          \n');
-		fil.write('Physical Line(3)  = {9, 10};                       \n');
+		fil.write('Physical Line(3)  = {10};                       \n');
 		fil.write('Physical Line(4)  = {7, 8};                        \n');
 		fil.write('Physical Line(5)  = {6};                           \n');
 		fil.write('Physical Line(6)  = {3, 4, 5};                     \n');

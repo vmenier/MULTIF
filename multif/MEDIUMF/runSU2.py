@@ -25,15 +25,14 @@ def CheckSU2Version(nozzle):
     
     nozzle.cfd.su2_version = '';
     
-    #print "EXE = %s" % su2_exe;
-    
     try :
         cmd = [su2_exe];
         out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=None);
     except subprocess.CalledProcessError as err: 
         if ( 'DARPA' in err.output ):
             sys.stdout.write('Check SU2 version : OK\n');
-            nozzle.cfd.local_relax = 'YES';
+            #nozzle.cfd.local_relax = 'YES';
+            nozzle.cfd.local_relax = 'NO';
             nozzle.cfd.su2_version = 'OK';
         else:
             sys.stdout.write('\n');
@@ -43,8 +42,8 @@ def CheckSU2Version(nozzle):
             sys.stdout.write('\n\n');
             nozzle.cfd.local_relax = 'NO';
             nozzle.cfd.su2_version = 'NOT_OK';
-            
-            
+
+
 def CheckSU2Convergence ( history_filename, field_name ) :
 
 	#plot_format	  = con.OUTPUT_FORMAT;
@@ -193,224 +192,229 @@ def SetupConfig_old (solver_options):
 
 
 def SetupConfig (solver_options):
-
-    config = SU2.io.Config();
-
-    # --- Options
-
-    Mach = solver_options.Mach;
-    Pres = solver_options.Pres;
-    Temp = solver_options.Temp;
-
-    InletPstag = solver_options.InletPstag;
-    InletTstag = solver_options.InletTstag;
-
-    LocalRelax = solver_options.LocalRelax;
-
-    NbrIte = solver_options.NbrIte;
-
-    mesh_name = solver_options.mesh_name;
-    restart_name = solver_options.restart_name;
-
-    convergence_order = solver_options.convergence_order;
-
-    Reynolds = solver_options.Reynolds;
-    Reynolds_length = solver_options.Reynolds_length;
-
-    method = solver_options.Method;
-
-    Dim = solver_options.Dimension;
-
-    Pt = solver_options.Pt;
-    Tt = solver_options.Tt;
-
-    if hasattr(solver_options,'wall_temp'):
-        wall_temp = solver_options.wall_temp;
-        wall_temp_values = solver_options.wall_temp_values;
-    else:
-        wall_temp = 0;
 	
-    # --- SU2_RUN
-
-    config.SU2_RUN = solver_options.SU2_RUN;
-
-    config.NUMBER_PART =  solver_options.nproc;
+	config = SU2.io.Config();
 	
-    if Dim == '2D' :
-        config.AXISYMMETRIC= 'YES';
+	# --- Options
 	
-    # --- Governing
+	Mach = solver_options.Mach;
+	Pres = solver_options.Pres;
+	Temp = solver_options.Temp;
 	
-    if method == 'EULER':
-        config.PHYSICAL_PROBLEM= 'EULER';
-
-        # --- Numerical method
-
-        config.NUM_METHOD_GRAD= 'WEIGHTED_LEAST_SQUARES';
-        config.CFL_NUMBER= '5';
-        config.CFL_ADAPT= 'NO';
-        config.MAX_DELTA_TIME= '1E6';
-        config.LINEAR_SOLVER= 'FGMRES';
-        config.LINEAR_SOLVER_ERROR= '1E-6';
-        config.LINEAR_SOLVER_ITER= '3';
-        
-        config.LIMITER_ITER= '200';
-
-    elif method == 'RANS':
-        config.PHYSICAL_PROBLEM= 'NAVIER_STOKES';
-        config.KIND_TURB_MODEL= 'SST'
-        config.REYNOLDS_NUMBER= '%lf' % Reynolds;
-        config.REYNOLDS_LENGTH= '%lf' % Reynolds_length;
-        config.VISCOSITY_MODEL= 'SUTHERLAND';
-        config.MU_CONSTANT= 1.716E-5;
-        config.MU_REF= 1.716E-5;
-        config.MU_T_REF= 273.15;
-
-        config.NUM_METHOD_GRAD= 'GREEN_GAUSS';
-
-        config.CFL_NUMBER= '5';
-        config.CFL_ADAPT= 'NO';
-
-        config.LINEAR_SOLVER= 'FGMRES';
-        config.LINEAR_SOLVER_PREC= 'LU_SGS';
-        config.LINEAR_SOLVER_ERROR= '1E-4';
-        config.LINEAR_SOLVER_ITER= '3';
-
-    config.MATH_PROBLEM= 'DIRECT';
-    config.RESTART_SOL= 'NO';
-    config.SYSTEM_MEASUREMENTS= 'SI';
-    config.REGIME_TYPE= 'COMPRESSIBLE';
-
-    config.EXT_ITER=  NbrIte;
-
-    config.RK_ALPHA_COEFF= "( 0.66667, 0.66667, 1.000000 )";
-
-    # --- Free stream
-
-    config.MACH_NUMBER='%lf' % Mach;
+	mu_ref = solver_options.mu;
 	
-    config.FREESTREAM_PRESSURE='%lf' % Pres;
-    config.FREESTREAM_TEMPERATURE='%lf' % Temp;
-    config.REF_DIMENSIONALIZATION= 'DIMENSIONAL';
+	InletPstag = solver_options.InletPstag;
+	InletTstag = solver_options.InletTstag;
 	
-    # --- Boundary conditions
-
-    if Dim == '2D':
-        if method == 'EULER':
-            config.MARKER_EULER= '( PhysicalLine1, PhysicalLine2, PhysicalLine3 )';
-        elif method == 'RANS':
-            config.MARKER_HEATFLUX= '( PhysicalLine1, 0.0, PhysicalLine2, 0.0, PhysicalLine3, 0.0 )';
-        config.MARKER_INLET= '( PhysicalLine8, %lf, %lf, 1.0, 0.0, 0.0, PhysicalLine4,  %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag,Tt, Pt);
-        config.MARKER_FAR= '( PhysicalLine5 )';
-        config.MARKER_SYM= '( PhysicalLine7 )';
-        config.MARKER_OUTLET= '( PhysicalLine6, %lf)' % (Pres);
-        config.MARKER_THRUST= '( PhysicalLine9 )'
-    else:
-        config.MARKER_EULER= '( PhysicalSurface1, PhysicalSurface2, PhysicalSurface3, PhysicalSurface4, \
-        PhysicalSurface5, PhysicalSurface6, PhysicalSurface7, PhysicalSurface8, PhysicalSurface9, PhysicalSurface10, \
-        PhysicalSurface11, PhysicalSurface12, PhysicalSurface13, PhysicalSurface14 )';
-        config.MARKER_INLET= '( PhysicalSurface15, %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag);
-        config.MARKER_FAR= '( PhysicalSurface17, PhysicalSurface18, PhysicalSurface21 )';
-        config.MARKER_SYM= '( PhysicalSurface19, PhysicalSurface20 )';
-        config.MARKER_OUTLET= '( PhysicalSurface22, %lf)' % (Pres);
-
-        #MARKER_EULER= ( PhysicalSurface1, PhysicalSurface2, PhysicalSurface3, PhysicalSurface4, PhysicalSurface5, PhysicalSurface6, PhysicalSurface7, PhysicalSurface8, PhysicalSurface9, PhysicalSurface10, PhysicalSurface11, PhysicalSurface12, PhysicalSurface13, PhysicalSurface14 )
-        #MARKER_INLET= ( PhysicalSurface16,225.423, 8624.06, 1.0, 0.0, 0.0, PhysicalSurface15, 601, 275000, 1.0, 0.0, 0.0 )
-        #MARKER_FAR= ( PhysicalSurface17, PhysicalSurface18, PhysicalSurface21 )
-        #MARKER_SYM= ( PhysicalSurface19, PhysicalSurface20 )
-        #MARKER_OUTLET= ( PhysicalSurface22, 7505.2400000)
-
-    # --- Slope limiter
-
-    config.REF_ELEM_LENGTH= '0.01 ';
-    config.LIMITER_COEFF= '0.3';
-    config.SHARP_EDGES_COEFF= '3.0';
-    config.REF_SHARP_EDGES= '3.0';
-    config.SENS_REMOVE_SHARP= 'NO';
-
-    # --- Multigrid
-
-    config.MGLEVEL= '3';
-    config.MGCYCLE= 'V_CYCLE';
-    config.MG_PRE_SMOOTH= '( 1, 2, 3, 3 )';
-    config.MG_POST_SMOOTH= '( 0, 0, 0, 0 )';
-    config.MG_CORRECTION_SMOOTH= '( 0, 0, 0, 0 )';
-    config.MG_DAMP_RESTRICTION= '0.75';
-    config.MG_DAMP_PROLONGATION= '0.75';
-
-    # --- Flow numerical method
-    if method == 'EULER':
-        config.CONV_NUM_METHOD_FLOW= 'ROE';
-        config.SPATIAL_ORDER_FLOW= '2ND_ORDER_LIMITER';
-        config.SLOPE_LIMITER_FLOW= 'VENKATAKRISHNAN';
-        config.AD_COEFF_FLOW= '( 0.15, 0.5, 0.05 )';
-        config.TIME_DISCRE_FLOW= 'EULER_IMPLICIT';
-    else :
-        config.CONV_NUM_METHOD_FLOW= 'JST';
-        config.SPATIAL_ORDER_FLOW= '2ND_ORDER_LIMITER';
-        config.SLOPE_LIMITER_FLOW= 'VENKATAKRISHNAN';
-        config.AD_COEFF_FLOW= '( 0.15, 0.5, 0.05 )';
-        config.TIME_DISCRE_FLOW= 'EULER_IMPLICIT';
-        config.ENTROPY_FIX_COEFF= 0.0;
-        config.AD_COEFF_FLOW= "( 0.15, 0.5, 0.02 )";
-
-        config.CONV_NUM_METHOD_TURB= 'SCALAR_UPWIND'
-        config.SPATIAL_ORDER_TURB= '2ND_ORDER_LIMITER'
-        config.SLOPE_LIMITER_TURB= 'VENKATAKRISHNAN'
-        config.VISCOUS_LIMITER_TURB= 'NO'
-        config.TIME_DISCRE_TURB= 'EULER_IMPLICIT'
-        config.CFL_REDUCTION_TURB= '0.5'
-        config.RELAXATION_FACTOR_TURB= '1.0'
-
-    # --- Convergence parameters
-
+	LocalRelax = solver_options.LocalRelax;
+	
+	NbrIte = solver_options.NbrIte;
+	
+	mesh_name = solver_options.mesh_name;
+	restart_name = solver_options.restart_name;
+	
+	convergence_order = solver_options.convergence_order;
+	
+	Reynolds = solver_options.Reynolds;
+	Reynolds_length = solver_options.Reynolds_length;
+	
+	method = solver_options.Method;
+	
+	Dim = solver_options.Dimension;
+	
+	Pt = solver_options.Pt;
+	Tt = solver_options.Tt;
+	
+	if hasattr(solver_options,'wall_temp'):
+	    wall_temp = solver_options.wall_temp;
+	    wall_temp_values = solver_options.wall_temp_values;
+	else:
+	    wall_temp = 0;
+	
+	# --- SU2_RUN
+	
+	config.SU2_RUN = solver_options.SU2_RUN;
+	
+	config.NUMBER_PART =  solver_options.nproc;
+	
+	if Dim == '2D' :
+	    config.AXISYMMETRIC= 'YES';
+	
+	# --- Governing
+	
+	if method == 'EULER':
+		
+	    config.PHYSICAL_PROBLEM= 'EULER';
+	
+	    # --- Numerical method
+	
+	    config.NUM_METHOD_GRAD= 'WEIGHTED_LEAST_SQUARES';
+	    config.CFL_NUMBER= '5';
+	    config.CFL_ADAPT= 'NO';
+	    config.MAX_DELTA_TIME= '1E6';
+	    config.LINEAR_SOLVER= 'FGMRES';
+	    config.LINEAR_SOLVER_ERROR= '1E-6';
+	    config.LINEAR_SOLVER_ITER= '3';
+	    
+	    config.LIMITER_ITER= '200';
+	
+	elif method == 'RANS':
+		config.PHYSICAL_PROBLEM= 'NAVIER_STOKES';
+		config.KIND_TURB_MODEL= 'SST'
+		config.REYNOLDS_NUMBER= '%lf' % Reynolds;
+		config.REYNOLDS_LENGTH= '%lf' % Reynolds_length;
+		config.VISCOSITY_MODEL= 'SUTHERLAND';
+		config.MU_CONSTANT= 1.716E-5;
+		config.MU_REF= mu_ref;
+		config.MU_T_REF= Temp;
+		
+		config.NUM_METHOD_GRAD= 'GREEN_GAUSS';
+		
+		config.CFL_NUMBER= '2';
+		config.CFL_ADAPT= 'NO';
+		
+		config.LINEAR_SOLVER= 'FGMRES';
+		config.LINEAR_SOLVER_PREC= 'LU_SGS';
+		config.LINEAR_SOLVER_ERROR= '1E-4';
+		config.LINEAR_SOLVER_ITER= '3';
+		
+		config.LIMITER_ITER= '1000';
+		
+	config.MATH_PROBLEM= 'DIRECT';
+	config.RESTART_SOL= 'NO';
+	config.SYSTEM_MEASUREMENTS= 'SI';
+	config.REGIME_TYPE= 'COMPRESSIBLE';
+	
+	config.EXT_ITER=  NbrIte;
+	
+	config.RK_ALPHA_COEFF= "( 0.66667, 0.66667, 1.000000 )";
+	
+	# --- Free stream
+	
+	config.MACH_NUMBER='%lf' % Mach;
+	
+	config.FREESTREAM_PRESSURE='%lf' % Pres;
+	config.FREESTREAM_TEMPERATURE='%lf' % Temp;
+	config.REF_DIMENSIONALIZATION= 'DIMENSIONAL';
+	
+	# --- Boundary conditions
+	
+	if Dim == '2D':
+	    if method == 'EULER':
+	        config.MARKER_EULER= '( PhysicalLine1, PhysicalLine2, PhysicalLine3 )';
+	    elif method == 'RANS':
+	        config.MARKER_HEATFLUX= '( PhysicalLine1, 0.0, PhysicalLine2, 0.0, PhysicalLine3, 0.0 )';
+	    config.MARKER_INLET= '( PhysicalLine8, %lf, %lf, 1.0, 0.0, 0.0, PhysicalLine4,  %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag,Tt, Pt);
+	    config.MARKER_FAR= '( PhysicalLine5 )';
+	    config.MARKER_SYM= '( PhysicalLine7 )';
+	    config.MARKER_OUTLET= '( PhysicalLine6, %lf)' % (Pres);
+	    config.MARKER_THRUST= '( PhysicalLine9 )'
+	else:
+	    config.MARKER_EULER= '( PhysicalSurface1, PhysicalSurface2, PhysicalSurface3, PhysicalSurface4, \
+	    PhysicalSurface5, PhysicalSurface6, PhysicalSurface7, PhysicalSurface8, PhysicalSurface9, PhysicalSurface10, \
+	    PhysicalSurface11, PhysicalSurface12, PhysicalSurface13, PhysicalSurface14 )';
+	    config.MARKER_INLET= '( PhysicalSurface15, %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag);
+	    config.MARKER_FAR= '( PhysicalSurface17, PhysicalSurface18, PhysicalSurface21 )';
+	    config.MARKER_SYM= '( PhysicalSurface19, PhysicalSurface20 )';
+	    config.MARKER_OUTLET= '( PhysicalSurface22, %lf)' % (Pres);
+	
+	    #MARKER_EULER= ( PhysicalSurface1, PhysicalSurface2, PhysicalSurface3, PhysicalSurface4, PhysicalSurface5, PhysicalSurface6, PhysicalSurface7, PhysicalSurface8, PhysicalSurface9, PhysicalSurface10, PhysicalSurface11, PhysicalSurface12, PhysicalSurface13, PhysicalSurface14 )
+	    #MARKER_INLET= ( PhysicalSurface16,225.423, 8624.06, 1.0, 0.0, 0.0, PhysicalSurface15, 601, 275000, 1.0, 0.0, 0.0 )
+	    #MARKER_FAR= ( PhysicalSurface17, PhysicalSurface18, PhysicalSurface21 )
+	    #MARKER_SYM= ( PhysicalSurface19, PhysicalSurface20 )
+	    #MARKER_OUTLET= ( PhysicalSurface22, 7505.2400000)
+	
+	# --- Slope limiter
+	
+	config.REF_ELEM_LENGTH= '0.01 ';
+	config.LIMITER_COEFF= '0.3';
+	config.SHARP_EDGES_COEFF= '3.0';
+	config.REF_SHARP_EDGES= '3.0';
+	config.SENS_REMOVE_SHARP= 'NO';
+	
+	# --- Multigrid
+	
+	config.MGLEVEL= '3';
+	config.MGCYCLE= 'V_CYCLE';
+	config.MG_PRE_SMOOTH= '( 1, 2, 3, 3 )';
+	config.MG_POST_SMOOTH= '( 0, 0, 0, 0 )';
+	config.MG_CORRECTION_SMOOTH= '( 0, 0, 0, 0 )';
+	config.MG_DAMP_RESTRICTION= '0.75';
+	config.MG_DAMP_PROLONGATION= '0.75';
+	
+	# --- Flow numerical method
+	if method == 'EULER':
+	    config.CONV_NUM_METHOD_FLOW= 'ROE';
+	    config.SPATIAL_ORDER_FLOW= '2ND_ORDER_LIMITER';
+	    config.SLOPE_LIMITER_FLOW= 'VENKATAKRISHNAN';
+	    config.AD_COEFF_FLOW= '( 0.15, 0.5, 0.05 )';
+	    config.TIME_DISCRE_FLOW= 'EULER_IMPLICIT';
+	else :
+	    config.CONV_NUM_METHOD_FLOW= 'JST';
+	    config.SPATIAL_ORDER_FLOW= '2ND_ORDER_LIMITER';
+	    config.SLOPE_LIMITER_FLOW= 'VENKATAKRISHNAN';
+	    config.AD_COEFF_FLOW= '( 0.15, 0.5, 0.05 )';
+	    config.TIME_DISCRE_FLOW= 'EULER_IMPLICIT';
+	    config.ENTROPY_FIX_COEFF= 0.0;
+	    config.AD_COEFF_FLOW= "( 0.15, 0.5, 0.02 )";
+	
+	    config.CONV_NUM_METHOD_TURB= 'SCALAR_UPWIND'
+	    config.SPATIAL_ORDER_TURB= '2ND_ORDER_LIMITER'
+	    config.SLOPE_LIMITER_TURB= 'VENKATAKRISHNAN'
+	    config.VISCOUS_LIMITER_TURB= 'NO'
+	    config.TIME_DISCRE_TURB= 'EULER_IMPLICIT'
+	    config.CFL_REDUCTION_TURB= '0.5'
+	    config.RELAXATION_FACTOR_TURB= '1.0'
+	
+	# --- Convergence parameters
+	
 	if solver_options.gradients == 'ADJOINT':
 		convergence_order = max(convergence_order, 8);
-
-    config.CONV_CRITERIA= 'RESIDUAL';
-    config.RESIDUAL_REDUCTION= convergence_order;
-    config.RESIDUAL_MINVAL= '-12';
-    config.STARTCONV_ITER= '25';
-
-    # --- Input/Output
-
-    config.THRUST_FILENAME= "thrust_nodef.dat";
-
-    config.MESH_FILENAME= mesh_name;
-    config.OUTPUT_FORMAT= solver_options.output_format;
-    config.CONV_FILENAME= 'history';
-    config.RESTART_FLOW_FILENAME= restart_name;
-    config.WRT_SOL_FREQ= '1000';
-    config.WRT_CON_FREQ= '1';
 	
-    # --- Local relaxation / CFL
-    #     Note: these options are only available in a custom version of su2:
-    #                     https://github.com/vmenier/SU2/tree/darpa
-    if (LocalRelax == 'YES' and method == 'EULER') :
-        config.RELAXATION_LOCAL= 'YES';
-        config.CFL_ADAPT_LOCAL= 'YES';
-        config.HARD_LIMITING_PARAM= '(0.15, 1e-5)';
-        #config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 30.0 )';
-        config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 20.0 )';
-        config.RESIDUAL_MAXVAL= 2;
+	config.CONV_CRITERIA= 'RESIDUAL';
+	config.RESIDUAL_REDUCTION= convergence_order;
+	config.RESIDUAL_MINVAL= '-12';
+	config.STARTCONV_ITER= '25';
+	
+	# --- Input/Output
+	
+	config.THRUST_FILENAME= "thrust_nodef.dat";
+	
+	config.MESH_FILENAME= mesh_name;
+	config.OUTPUT_FORMAT= solver_options.output_format;
+	config.CONV_FILENAME= 'history';
+	config.RESTART_FLOW_FILENAME= restart_name;
+	config.WRT_SOL_FREQ= '1000';
+	config.WRT_CON_FREQ= '1';
+	
+	# --- Local relaxation / CFL
+	#     Note: these options are only available in a custom version of su2:
+	#                     https://github.com/vmenier/SU2/tree/darpa
+	if (LocalRelax == 'YES' and method == 'EULER') :
+	    config.RELAXATION_LOCAL= 'YES';
+	    config.CFL_ADAPT_LOCAL= 'YES';
+	    config.HARD_LIMITING_PARAM= '(0.15, 1e-5)';
+	    #config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 30.0 )';
+	    config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 20.0 )';
+	    config.RESIDUAL_MAXVAL= 2;
 		
-    # --- Setup wall temp distribution
-    
-    if ( wall_temp == 1 ) :
-    	
-    	nbv = len(wall_temp_values);
-    	
-    	temp_kwd = "%lf, %lf" % (wall_temp_values[0][0], wall_temp_values[0][1]);
-    	
-    	for i in range(1,nbv):
-    		temp_kwd = "%s, %lf, %lf" % (temp_kwd, wall_temp_values[i][0], wall_temp_values[i][1]);
-    
-    	temp_kwd = "(%s)" % temp_kwd;
-    	
-    	config.MARKER_WALL_TEMP= "( PhysicalLine1 )";
-    	config.WALL_TEMP_DEFINITION = temp_kwd;
-    	
-    return config;
+	# --- Setup wall temp distribution
+	
+	if ( wall_temp == 1 ) :
+		
+		nbv = len(wall_temp_values);
+		
+		temp_kwd = "%lf, %lf" % (wall_temp_values[0][0], wall_temp_values[0][1]);
+		
+		for i in range(1,nbv):
+			temp_kwd = "%s, %lf, %lf" % (temp_kwd, wall_temp_values[i][0], wall_temp_values[i][1]);
+	
+		temp_kwd = "(%s)" % temp_kwd;
+		
+		config.MARKER_WALL_TEMP= "( PhysicalLine1 )";
+		config.WALL_TEMP_DEFINITION = temp_kwd;
+		
+	return config;
     
     
 def checkResidual(config):
@@ -448,17 +452,13 @@ def runSU2 ( nozzle ):
 	solver_options.InletTstag = nozzle.inlet.Tstag;
 	
 	solver_options.LocalRelax = nozzle.cfd.local_relax;
-	
 	solver_options.NbrIte = int(nozzle.cfd.su2_max_iterations);
-	
 	solver_options.output_format = nozzle.cfd.output_format;
-	
 	solver_options.SU2_RUN = nozzle.cfd.su2_run;
 	#print 'SU2_RUN is %s' % nozzle.cfd.su2_run
 	
 	solver_options.mesh_name    = nozzle.cfd.mesh_name;
 	solver_options.restart_name = nozzle.cfd.restart_name;
-	
 	solver_options.convergence_order = nozzle.cfd.su2_convergence_order;
 	
 	solver_options.dv_coefs = [];
@@ -489,7 +489,7 @@ def runSU2 ( nozzle ):
 	    #	if id_dv >= nozzle.DV_Head[iTag]:
 	    #		print "id_dv %d val %lf" % (id_dv, nozzle.dvList[id_dv])
 	    #		solver_options.dv_coefs.append(nozzle.dvList[id_dv]);
-	    #
+	    
 	    solver_options.gradients     = nozzle.gradientsMethod;
 	    solver_options.wall_coefs    = nozzle.wall.coefs;
 	    solver_options.wall_coefs_dv = nozzle.wall.dv;
@@ -517,6 +517,8 @@ def runSU2 ( nozzle ):
 	solver_options.Reynolds_length = D;
 	solver_options.Reynolds        = Rey;
 		
+	solver_options.mu = mu;
+
 	solver_options.nproc = nozzle.partitions;
 	
 	solver_options.Pt = Ps + 0.5*rho*U*U;
@@ -578,106 +580,107 @@ def runSU2 ( nozzle ):
 	su2history.close();
 	
 	# SU2 diverged
-	if( finalResidual > 0 ):
-	
-	    if( config.PHYSICAL_PROBLEM=='EULER' and config.RELAXATION_LOCAL=='YES'):
-	        
-	        sys.stdout.write('  ## WARNING: Restarting SU2 for Euler with more conservative parameters since solution diverged.\n\n');
-	        
-	        # Choose more conservative CFL
-	        config = SetupConfig(solver_options);
-	        config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 10.0 )';
-	        config.EXT_ITER = 3*config.EXT_ITER;
-	        config.LIMITER_ITER= '400';
-	        
-	        su2history = open('about.txt','a');
-	        su2history.write('\nRestarting SU2 for Euler with more conservative params since solution diverged:\n');
-	        su2history.write('CFL_ADAPT_LOCAL_PARAM: %s\n' % config.CFL_ADAPT_LOCAL_PARAM);
-	        su2history.write('LIMITER_ITER: %s\n' % config.LIMITER_ITER);
-	        su2history.write('EXT_ITER: %i\n' % config.EXT_ITER);
-	        su2history.close();            
-	        
-	        # Rerun SU2
-	        info = SU2.run.CFD(config);
-	        
-	        history, finalResidual, residualReduction = checkResidual(config);
-	        
-	        su2history = open('about.txt','a');
-	        su2history.write('\nFinal residual: %0.16f\n' % finalResidual);
-	        su2history.write('Residual reduction: %0.16f\n' % residualReduction);
-	        su2history.close();            
-	        
-	    else:
-	        sys.stderr.write('  ## ERROR : SU2 diverged. No restart capability implemented.\n\n');
-	        su2history = open('about.txt','a');
-	        su2history.write('SU2 diverged, but no restart capability implemented. Exiting now.\n');
-	        su2history.close();           
-	        sys.exit(1);
-	    
-	# SU2 reached max iter limit, but did not reduce residual by requested amount
-	elif( residualReduction < config.RESIDUAL_REDUCTION ):
-	    
-	    if( config.PHYSICAL_PROBLEM=='EULER' and config.RELAXATION_LOCAL=='YES'):
-	        
-	        sys.stdout.write('  ## WARNING: Restarting SU2 for Euler with more conservative parameters since solution did not reach requested accuracy.\n\n');
-	        os.rename('history.csv','history0.csv');
-	        
-	        config = SetupConfig(solver_options);
-	
-	        # Implement restart from previous solution           
-	        if( os.path.isfile('nozzle.dat') ):
-	        
-	            config.RESTART_SOL= 'YES'; # restart from previous solution
-	            os.rename('nozzle.dat','solution_flow.dat');
-	            
-	            # Gauge progress made in last N iter
-	            N = min(300,history[:,0].size);
-	            modVarLast300Iters = np.mean(np.abs(history[-N:-1,11] - np.mean(history[-N:-1,11])));
-	            if( modVarLast300Iters > 0.2 ): # sufficient progress made
-	                pass;
-	            else: # no progress made, tighten CFL
-	                config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 10.0 )';
-	                config.EXT_ITER = 2*config.EXT_ITER; 
-	                config.LIMITER_ITER= '400';
-	            config.RESIDUAL_REDUCTION = float(config.RESIDUAL_REDUCTION) - residualReduction;
-	            
-	            su2history = open('about.txt','a');
-	            su2history.write('\nRestarting SU2 for Euler with more conservative params since solution did not reach required accuracy:\n');
-	            su2history.write('nozzle.dat renamed to solution_flow.dat, history.csv renamed to history0.csv\n');
-	            su2history.write('modVarLast300Iters: %0.16f\n' % modVarLast300Iters);
-	            su2history.write('CFL_ADAPT_LOCAL_PARAM: %s\n' % config.CFL_ADAPT_LOCAL_PARAM);
-	            su2history.write('EXT_ITER: %i\n' % config.EXT_ITER);
-	            su2history.write('LIMITER_ITER: %s\n' % config.LIMITER_ITER);
-	            su2history.write('RESIDUAL_REDUCTION: %i\n' % config.RESIDUAL_REDUCTION);
-	            su2history.close();  
-	                        
-	        else: # Possibly a different residual diverged etc. Regardless, restart with more conservative params
-	            config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 10.0 )';
-	            config.EXT_ITER = 3*config.EXT_ITER;  
-	            config.LIMITER_ITER= '400';
-	            su2history = open('about.txt','a');
-	            su2history.write('\nRestarting SU2 for Euler with more conservative params (nozzle.dat not found, so a different residual likely diverged)\n');
-	            su2history.write('CFL_ADAPT_LOCAL_PARAM: %s\n' % config.CFL_ADAPT_LOCAL_PARAM);
-	            su2history.write('EXT_ITER: %i\n' % config.EXT_ITER);
-	            su2history.write('LIMITER_ITER: %s\n' % config.LIMITER_ITER);
-	            su2history.close();                                 
-	        
-	        # Rerun SU2
-	        info = SU2.run.CFD(config);
-	        
-	        history, finalResidual, residualReduction = checkResidual(config);
-	        
-	        su2history = open('about.txt','a');
-	        su2history.write('\nFinal residual: %0.16f\n' % finalResidual);
-	        su2history.write('Residual reduction: %0.16f\n' % residualReduction);
-	        su2history.close(); 
-	                    
-	    else:
-	        sys.stdout.write('  ## WARNING : SU2 did not reach requested accuracy. Decrease in residual is only %0.2f orders of magnitude.\n\n' % residualReduction);   
-	        su2history = open('about.txt','a');
-	        su2history.write('Decrease in residual: %0.16f\n' % residualReduction);
-	        su2history.write('SU2 did not reach requested accuracy. Continuing...\n');
-	        su2history.close();  
+	#
+	#if( finalResidual > 0 ):
+	#
+	#    if( config.PHYSICAL_PROBLEM=='EULER' and config.RELAXATION_LOCAL=='YES'):
+	#        
+	#        sys.stdout.write('  ## WARNING: Restarting SU2 for Euler with more conservative parameters since solution diverged.\n\n');
+	#        
+	#        # Choose more conservative CFL
+	#        config = SetupConfig(solver_options);
+	#        config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 10.0 )';
+	#        config.EXT_ITER = 3*config.EXT_ITER;
+	#        config.LIMITER_ITER= '400';
+	#        
+	#        su2history = open('about.txt','a');
+	#        su2history.write('\nRestarting SU2 for Euler with more conservative params since solution diverged:\n');
+	#        su2history.write('CFL_ADAPT_LOCAL_PARAM: %s\n' % config.CFL_ADAPT_LOCAL_PARAM);
+	#        su2history.write('LIMITER_ITER: %s\n' % config.LIMITER_ITER);
+	#        su2history.write('EXT_ITER: %i\n' % config.EXT_ITER);
+	#        su2history.close();            
+	#        
+	#        # Rerun SU2
+	#        info = SU2.run.CFD(config);
+	#        
+	#        history, finalResidual, residualReduction = checkResidual(config);
+	#        
+	#        su2history = open('about.txt','a');
+	#        su2history.write('\nFinal residual: %0.16f\n' % finalResidual);
+	#        su2history.write('Residual reduction: %0.16f\n' % residualReduction);
+	#        su2history.close();            
+	#        
+	#    else:
+	#        sys.stderr.write('  ## ERROR : SU2 diverged. No restart capability implemented.\n\n');
+	#        su2history = open('about.txt','a');
+	#        su2history.write('SU2 diverged, but no restart capability implemented. Exiting now.\n');
+	#        su2history.close();           
+	#        sys.exit(1);
+	#    
+	## SU2 reached max iter limit, but did not reduce residual by requested amount
+	#elif( residualReduction < config.RESIDUAL_REDUCTION ):
+	#    
+	#    if( config.PHYSICAL_PROBLEM=='EULER' and config.RELAXATION_LOCAL=='YES'):
+	#        
+	#        sys.stdout.write('  ## WARNING: Restarting SU2 for Euler with more conservative parameters since solution did not reach requested accuracy.\n\n');
+	#        os.rename('history.csv','history0.csv');
+	#        
+	#        config = SetupConfig(solver_options);
+	#
+	#        # Implement restart from previous solution           
+	#        if( os.path.isfile('nozzle.dat') ):
+	#        
+	#            config.RESTART_SOL= 'YES'; # restart from previous solution
+	#            os.rename('nozzle.dat','solution_flow.dat');
+	#            
+	#            # Gauge progress made in last N iter
+	#            N = min(300,history[:,0].size);
+	#            modVarLast300Iters = np.mean(np.abs(history[-N:-1,11] - np.mean(history[-N:-1,11])));
+	#            if( modVarLast300Iters > 0.2 ): # sufficient progress made
+	#                pass;
+	#            else: # no progress made, tighten CFL
+	#                config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 10.0 )';
+	#                config.EXT_ITER = 2*config.EXT_ITER; 
+	#                config.LIMITER_ITER= '400';
+	#            config.RESIDUAL_REDUCTION = float(config.RESIDUAL_REDUCTION) - residualReduction;
+	#            
+	#            su2history = open('about.txt','a');
+	#            su2history.write('\nRestarting SU2 for Euler with more conservative params since solution did not reach required accuracy:\n');
+	#            su2history.write('nozzle.dat renamed to solution_flow.dat, history.csv renamed to history0.csv\n');
+	#            su2history.write('modVarLast300Iters: %0.16f\n' % modVarLast300Iters);
+	#            su2history.write('CFL_ADAPT_LOCAL_PARAM: %s\n' % config.CFL_ADAPT_LOCAL_PARAM);
+	#            su2history.write('EXT_ITER: %i\n' % config.EXT_ITER);
+	#            su2history.write('LIMITER_ITER: %s\n' % config.LIMITER_ITER);
+	#            su2history.write('RESIDUAL_REDUCTION: %i\n' % config.RESIDUAL_REDUCTION);
+	#            su2history.close();  
+	#                        
+	#        else: # Possibly a different residual diverged etc. Regardless, restart with more conservative params
+	#            config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 10.0 )';
+	#            config.EXT_ITER = 3*config.EXT_ITER;  
+	#            config.LIMITER_ITER= '400';
+	#            su2history = open('about.txt','a');
+	#            su2history.write('\nRestarting SU2 for Euler with more conservative params (nozzle.dat not found, so a different residual likely diverged)\n');
+	#            su2history.write('CFL_ADAPT_LOCAL_PARAM: %s\n' % config.CFL_ADAPT_LOCAL_PARAM);
+	#            su2history.write('EXT_ITER: %i\n' % config.EXT_ITER);
+	#            su2history.write('LIMITER_ITER: %s\n' % config.LIMITER_ITER);
+	#            su2history.close();                                 
+	#        
+	#        # Rerun SU2
+	#        info = SU2.run.CFD(config);
+	#        
+	#        history, finalResidual, residualReduction = checkResidual(config);
+	#        
+	#        su2history = open('about.txt','a');
+	#        su2history.write('\nFinal residual: %0.16f\n' % finalResidual);
+	#        su2history.write('Residual reduction: %0.16f\n' % residualReduction);
+	#        su2history.close(); 
+	#                    
+	#    else:
+	#        sys.stdout.write('  ## WARNING : SU2 did not reach requested accuracy. Decrease in residual is only %0.2f orders of magnitude.\n\n' % residualReduction);   
+	#        su2history = open('about.txt','a');
+	#        su2history.write('Decrease in residual: %0.16f\n' % residualReduction);
+	#        su2history.write('SU2 did not reach requested accuracy. Continuing...\n');
+	#        su2history.close();  
 		
 	# --- Adjoint computation (if required)
 	
@@ -1164,7 +1167,7 @@ def SetupConfig_DEF (solver_options):
 	config.DV_MARKER= '( PhysicalLine1 )'
 	config.MOTION_FILENAME= 'mesh_motion.dat'
 	config.DEFORM_LINEAR_SOLVER= 'FGMRES'
-	config.DEFORM_LINEAR_ITER= 500
+	config.DEFORM_LINEAR_ITER= 200
 	config.DEFORM_NONLINEAR_ITER= 5
 	config.DEFORM_CONSOLE_OUTPUT= 'YES'
 	config.DEFORM_TOL_FACTOR= 1e-6
@@ -1180,8 +1183,10 @@ def SetupConfig_DEF (solver_options):
 	if Dim == '2D':
 		if method == 'EULER':
 		    config.MARKER_EULER= '( PhysicalLine1, PhysicalLine2, PhysicalLine3 )';
+		    config.DEFORM_LINEAR_ITER= 200
 		elif method == 'RANS':
 		    config.MARKER_HEATFLUX= '( PhysicalLine1, 0.0, PhysicalLine2, 0.0, PhysicalLine3, 0.0 )';
+		    config.DEFORM_LINEAR_ITER= 500
 		config.MARKER_INLET= '( PhysicalLine8, %lf, %lf, 1.0, 0.0, 0.0, PhysicalLine4,  %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag,Tt, Pt);
 		config.MARKER_FAR= '( PhysicalLine5 )';
 		config.MARKER_SYM= '( PhysicalLine7 )';
