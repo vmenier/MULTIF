@@ -1574,32 +1574,31 @@ class Nozzle:
 			nozzle.wall.majoraxis.geometry  = geometry.Bspline(nozzle.wall.majoraxis.coefs);
 			nozzle.wall.minoraxis.geometry  = geometry.Bspline(nozzle.wall.minoraxis.coefs);            
 			
-			# Build equivalent nozzle shape based on equivalent area
-			majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
-			minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
-			centerTmp = geometry.Bspline(nozzle.wall.centerline.coefs);
-			nx = 2000; # Check accuracy and effect of this interpolation
-			x = np.linspace(0,nozzle.length,num=nx);
-			majoraxisVal = majoraxisTmp.radius(x);
-			minoraxisVal = minoraxisTmp.radius(x);
-			
-			
-			fr1 = majoraxisTmp.radius
-			fr2 = minoraxisTmp.radius
-			fz = centerTmp.radius
-			
-			params = np.zeros(100)
-			params[0] = 0.099; # z crd of the cut at the throat
-			params[1] = 0.122638;  # z crd of the flat exit (bottom of the shovel)
-			params[3] = 0.0;        # x_throat 
-			params[4] = 4.0;        # x_exit 
-							
-			equivRadius = multif.HIGHF.MF_GetRadius (x, fr1, fr2, fz, params)
-			
-			#equivRadius = np.sqrt(majoraxisVal*minoraxisVal);
-			shape2d = np.transpose(np.array([x,equivRadius]))
-			nozzle.wall.geometry = geometry.PiecewiseLinear(shape2d);
-			
+#			# Build equivalent nozzle shape based on equivalent area
+#			majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
+#			minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
+#			centerTmp = geometry.Bspline(nozzle.wall.centerline.coefs);
+#			nx = 2000; # Check accuracy and effect of this interpolation
+#			x = np.linspace(0,nozzle.length,num=nx);
+#			majoraxisVal = majoraxisTmp.radius(x);
+#			minoraxisVal = minoraxisTmp.radius(x);
+#			
+#			
+#			fr1 = majoraxisTmp.radius
+#			fr2 = minoraxisTmp.radius
+#			fz = centerTmp.radius
+#			
+#			params = np.zeros(100)
+#			params[0] = 0.099; # z crd of the cut at the throat
+#			params[1] = 0.122638;  # z crd of the flat exit (bottom of the shovel)
+#			params[3] = 0.0;        # x_throat 
+#			params[4] = 4.0;        # x_exit 
+#							
+#			equivRadius = multif.HIGHF.MF_GetRadius (x, fr1, fr2, fz, params)
+#			
+#			#equivRadius = np.sqrt(majoraxisVal*minoraxisVal);
+#			shape2d = np.transpose(np.array([x,equivRadius]))
+#			nozzle.wall.geometry = geometry.PiecewiseLinear(shape2d);	
                 
             # Map 3D parameterization to 2D definition using equivalent area
             else:
@@ -1612,24 +1611,34 @@ class Nozzle:
                 minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
                 centerTmp = geometry.Bspline(nozzle.wall.centerline.coefs);
                 nx = 2000; # Check accuracy and effect of this interpolation
-                x = np.linspace(0,nozzle.length,num=nx);
-                majoraxisVal = majoraxisTmp.radius(x);
-                minoraxisVal = minoraxisTmp.radius(x);
-                
+                x = np.linspace(0,nozzle.length,num=nx);                
                 
                 fr1 = majoraxisTmp.radius
                 fr2 = minoraxisTmp.radius
                 fz = centerTmp.radius
                 
-                params = np.zeros(100)
-                params[0] = 0.099; # z crd of the cut at the throat
-                params[1] = 0.122638;  # z crd of the flat exit (bottom of the shovel)
-                params[3] = 0.0;        # x_throat 
-                params[4] = 4.0;        # x_exit 
+#                params = np.zeros(100)
+#                params[0] = 0.099; # z crd of the cut at the throat
+#                params[1] = 0.122638;  # z crd of the flat exit (bottom of the shovel)
+#                params[3] = 0.0;        # x_throat 
+#                params[4] = 4.0;        # x_exit 
+                xi = nozzle.wall.centerline.coefs[0];
+                inletRadius = np.sqrt(majoraxisTmp.radius(xi)*minoraxisTmp.radius(xi));
+                params = np.zeros(5);
+                params[0] = inletRadius*np.sin(nozzle.wall.shovel_start_angle*np.pi/180.);
+                params[1] = nozzle.wall.centerline.coefs[-1] + nozzle.wall.shovel_height;
+                #params[2]                
+                params[3] = nozzle.wall.centerline.coefs[0];
+                params[4] = nozzle.wall.centerline.coefs[nozzle.wall.centerline.coefs_size/2-1];
                 
                 equivRadius = multif.HIGHF.MF_GetRadius (x, fr1, fr2, fz, params)
                 shape2d = np.transpose(np.array([x,equivRadius]))
                 nozzle.wall.geometry = geometry.PiecewiseLinear(shape2d);
+
+#                from matplotlib import pyplot as plt
+#                plt.plot(equivRadius,'b')
+#                plt.plot(np.sqrt(majoraxisTmp.radius(x)*minoraxisTmp.radius(x)),'r')
+#                plt.show()
                 
                 # The following info is required by SU2 for 2D geometries
                 if nozzle.dim == '2D':

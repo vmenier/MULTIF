@@ -150,10 +150,17 @@ def WriteGeo(FilNam, Ver, Spl, Lin, Loo, Phy, Siz, Bak, dim):
 	fil.write("Mesh.SaveElementTagType = 2;\n");
 	
 	fil.close();	
-	
 
 
-
+# Function which approximates 2D axisymmetric nozzle with equivalent areas as
+# 3D nonaxisymmetric nozzle. Requires the following inputs:
+# x = vector of axial coordinates spanning length of nozzle
+# fr1 = function which returns major axis radius given a value of x
+# fr2 = function which returns minor axis radius given a value of x
+# fz = function which returns z location of centerline given a value of x
+# params = a list with the following components:
+#          [z coord of cut at the throat, z coord of the flat exit, 0, 
+#           x-coordinate of inlet, x-coordinate of exit]
 def MF_GetRadius (x, fr1, fr2, fz, params):
 	
 	zcut0   = params[0]; # z crd of the cut at the throat
@@ -177,31 +184,33 @@ def MF_GetRadius (x, fr1, fr2, fz, params):
 	z0  = fz(xthroat);
 	r10 = fr1(xthroat);
 	r20 = fr2(xthroat);
+	# Theta is measured down from the vertical axis
 	theta0 = math.acos((zcut0-z0)/r10);
 	
 	z1  = fz(xexit);
 	r11 = fr1(xexit);
 	r21 = fr2(xexit);
+	# Theta is measured down from the vertical axis
 	theta1 = math.acos((zcut1-z1)/r21);
 	
 	ftheta = itp.interp1d([xthroat,xexit],[theta0,theta1],kind='linear')
 	theta = ftheta(x);
-	
-	pis2 = 0.5*math.pi;
-	
-	if ( theta < pis2 ):
-		return -1.0;
-	else :
-	
-		alp = (xexit-x)/(xexit-xthroat);
-	
-		area = 0.25*r1*r2*math.pi;
-		area = area + 0.5*r1*r2*(theta-pis2 - 0.5*math.sin(2*theta-math.pi));
-		areab = 0.5*r1*r2*(math.pi - theta + 0.5*math.sin(2*theta-math.pi));
-	
-		area = 2*(area + alp*areab);
-	
-		#return area; 
+
+#      print x, theta0*180/np.pi, theta1*180/np.pi, theta*180/np.pi
+#      
+#      if ( theta < np.pi/2 ):
+#              return -1.0;
+#      else :
+        
+	alp = (xexit-x)/(xexit-xthroat);
+
+	area = 0.25*r1*r2*math.pi;
+	area = area + 0.5*r1*r2*(theta-np.pi/2 - 0.5*math.sin(2*theta-math.pi));
+	areab = 0.5*r1*r2*(math.pi - theta + 0.5*math.sin(2*theta-math.pi));
+
+	area = 2*(area + alp*areab);
+
+	#return area; 
 	
 	rad = math.sqrt(area/math.pi);
 	
@@ -376,13 +385,11 @@ def MF_DefineAxiSymCAD (FilNam, x_inp, fr1, fr2, fz, sizes, params):
 	WriteGeo(FilNam, Ver, Spl, Lin, Loo, Phy, Siz, Bak, 2)
 
 
-
-
 def HF_DefineCAD (FilNam, x_inp, fr1, fr2, fz, sizes, params):
 	
 	# --- Parameters
 	
-	NbrLnk = 400;   											# How many control points for each spline?
+	NbrLnk = 400; # How many control points for each spline?
 	
 	xmax    = params[5];
 	ymax    = params[6];
