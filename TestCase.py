@@ -180,7 +180,7 @@ class TestCase:
             shutil.copyfile(os.path.join(self.multif_dir,self.cfg_dir,f),f);
             
         # Build shell command to run MULTI-F
-        command = ['pythona','runModel.py','-f',self.cfg_file,'-l',str(self.fidelity),'-n',str(self.nproc)];
+        command = ['python','runModel.py','-f',self.cfg_file,'-l',str(self.fidelity),'-n',str(self.nproc)];
         
         # Run MULTI-F
         start = datetime.datetime.now();
@@ -236,12 +236,21 @@ class TestCase:
             passed = 2;            
         elif( return_flag == -3 ):
             print 'Test failed -- wrong number of results in results file'
+            f = open(self.log_file,'a');
+            f.write('Test failed -- wrong number of results in results file\n');
+            f.close();
             passed = 0;
         elif( return_flag == -4 ):
             print 'Test failed -- no results file'
+            f = open(self.log_file,'a');
+            f.write('Test failed -- no results file\n');
+            f.close();
             passed = 0;
         elif( timed_out ):
             print 'Test failed -- timed out';
+            f = open(self.log_file,'a');
+            f.write('Test failed -- timed out\n');
+            f.close();
             passed = 0;
         else:
             print 'Test passed';
