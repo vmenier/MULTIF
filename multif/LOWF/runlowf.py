@@ -636,10 +636,6 @@ def Quasi1D(nozzle,output='verbose'):
     
         sys.stdout.write(" Running non ideal nozzle computation (target error in exit temp %.3le): \n\n" % tolerance);
         sys.stdout.write('\t %s %s\n' % ("Iter".ljust(10), "Error %".ljust(10)));
-    elif output == 'quiet':
-        pass
-    else:
-        raise ValueError('keyword argument output can only be set to "verbose" or "quiet" mode')
         
     while( 1 ):
         

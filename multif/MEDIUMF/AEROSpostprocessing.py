@@ -253,7 +253,7 @@ def assignTempRatio(nozzle, k, filesuffix, material, output='verbose'):
 def interpolateRadialDataOnConvexHull(nozzle, interpLoc, coord, data, output='verbose'):
  
     # Determine ray information for intersection with convex hull
-    if( nozzle.param == '3D' ): # reference from centerline
+    if( nozzle.dim == '3D' ): # reference from centerline
         y_offset = nozzle.wall.centerline.radius(interpLoc[:,0]);
         r = nozzle.wall.minoraxis.radius(interpLoc[:,0]);
         sys.stdout.write('\n Pointwise stresses not implemented for 3D parameterization.\n\n');
