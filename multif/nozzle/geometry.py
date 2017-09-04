@@ -3,19 +3,15 @@
 Geometry module for axisymmetric nozzle. Currently only a B-spline geometry is 
 implemented.
 
-Rick Fenrich 6/28/16
+Rick Fenrich 9/4/17
 """
 
-import sys
 import copy
 import numpy as np 
 import scipy.optimize
 import scipy.integrate   
-from scipy import interpolate
-#import geometryC
 
 from .. import _meshutils_module
-import ctypes
 
 class Bspline():
     def __init__(self, coefs): # assumes 3rd degree B-spline
@@ -111,40 +107,45 @@ class PiecewiseLinear:
         return (self.xThroat, self.rThroat)
         
     def radius(self, x): # r
-        r = np.interp(x,self.nodes[:,0],self.nodes[:,1])
+        #r = np.interp(x,self.nodes[:,0],self.nodes[:,1])
+        r = piecewiseLinearGeometryC(x,self)[0] # uses dynamic C library
         return r
         
     def diameter(self, x): # D
-        D = self.radius(x)*2
-        return D
+        #r = self.radius(x)
+        r = piecewiseLinearGeometryC(x,self)[0] # uses dynamic C library
+        return 2*r
         
     def area(self, x): # A
-        r = self.radius(x)
+        #r = self.radius(x)
+        r = piecewiseLinearGeometryC(x,self)[0] # uses dynamic C library
         return np.pi*r**2
         
     def radiusGradient(self, x): # drdx
-        if( isinstance(x,float) ):
-            upperIndex = find(x,self.nodes[:,0])
-            if( upperIndex == self.nodes.size/2 ):
-                upperIndex = upperIndex - 1
-            lowerIndex = upperIndex - 1
-            drdx = (self.nodes[upperIndex,1] - self.nodes[lowerIndex,1])/    \
-              (self.nodes[upperIndex,0] - self.nodes[lowerIndex,0])
-        else: # x is an array
-            drdx = np.zeros(x.size)
-            for ii in range(0,x.size):
-                upperIndex = find(x[ii],self.nodes[:,0])
-                if( upperIndex == self.nodes.size/2 ):
-                    upperIndex = upperIndex - 1
-                lowerIndex = upperIndex - 1
-                drdx[ii] = (self.nodes[upperIndex,1] - 
-                  self.nodes[lowerIndex,1])/(self.nodes[upperIndex,0]        \
-                  - self.nodes[lowerIndex,0])
+#        if( isinstance(x,float) ):
+#            upperIndex = find(x,self.nodes[:,0])
+#            if( upperIndex == self.nodes.size/2 ):
+#                upperIndex = upperIndex - 1
+#            lowerIndex = upperIndex - 1
+#            drdx = (self.nodes[upperIndex,1] - self.nodes[lowerIndex,1])/    \
+#              (self.nodes[upperIndex,0] - self.nodes[lowerIndex,0])
+#        else: # x is an array
+#            drdx = np.zeros(x.size)
+#            for ii in range(0,x.size):
+#                upperIndex = find(x[ii],self.nodes[:,0])
+#                if( upperIndex == self.nodes.size/2 ):
+#                    upperIndex = upperIndex - 1
+#                lowerIndex = upperIndex - 1
+#                drdx[ii] = (self.nodes[upperIndex,1] - 
+#                  self.nodes[lowerIndex,1])/(self.nodes[upperIndex,0]        \
+#                  - self.nodes[lowerIndex,0])
+        (r, drdx) = piecewiseLinearGeometryC(x,self) # uses dynamic C library
         return drdx
         
     def areaGradient(self, x): # dAdx
-        r = self.radius(x)
-        drdx = self.radiusGradient(x)            
+        #r = self.radius(x)
+        #drdx = self.radiusGradient(x)  
+        (r, drdx) = piecewiseLinearGeometryC(x,self) # uses dynamic C library          
         return 2*np.pi*r*drdx
 
         
@@ -481,62 +482,50 @@ def bSplineGeometry(x,bSpline):
 # Return y given x for a 3rd degree B-spline
 #==============================================================================
 def bSplineGeometryC(x,bSpline):
-	import sys;
-	import itertools;
 	
 	if( isinstance(x,float) ):
 		if( x > (bSpline.coefs[0][-1]) ):
 		    x = np.array([bSpline.coefs[0][-1]])
 		elif( x < (bSpline.coefs[0][0]) ):
 		    x = np.array([bSpline.coefs[0][0]])
-		    #raise ValueError("x is outside bounds of B-spline")
+		else:
+		    x = np.array([x])
+ 
+ 	coefs = list(bSpline.coefs.flatten());
+		
+	knots = list(bSpline.knots.flatten());
+	
+	x = list(x);
+	
+	y    = [];
+	dydx = [];
+
+	_meshutils_module.py_BSplineGeo3LowF (knots, coefs, x, y, dydx);
+	
+	return (np.asarray(y), np.asarray(dydx))
+ 
+#==============================================================================
+# Return y given x for a piecewise linear function
+#==============================================================================
+def piecewiseLinearGeometryC(x,piecewiseLinear):
+	
+	if( isinstance(x,float) ):
+		if( x > piecewiseLinear.nodes[-1,0] ):
+		    x = np.array([piecewiseLinear.nodes[-1,0]])
+		elif( x < (piecewiseLinear.nodes[0,0]) ):
+		    x = np.array([piecewiseLinear.nodes[0,0]])
 		else:
 		    x = np.array([x])
 	
-	coefs = bSpline.coefs.flatten();
-	coefs.tolist();
+	x_nodes = list(piecewiseLinear.nodes[:,0].flatten());
+	y_nodes = list(piecewiseLinear.nodes[:,1].flatten());
 	
-	#coefs = bSpline.coefs.tolist();
-	#coefs = itertools.chain.from_iterable(coefs);
-	
-	knots = bSpline.knots.flatten();
-	knots.tolist();
-	
-	x.tolist();
+	x = list(x);
 	
 	y    = [];
 	dydx = [];
 	
-	coefs2=[];
-	knots2=[];
-	x2    =[];
-	
-	# --- Duplicate the lists because the result of tolist() doesn't pass the pycheck test 
-	
-	for i in range(0,len(coefs)):
-		#print "coefs[%d] = %lf" % (i,coefs[i]);
-		coefs2.append(coefs[i]);
-	
-	for i in range(0,len(knots)):
-		#print "knots[%d] = %lf" % (i,knots[i]);
-		knots2.append(knots[i]);
-		
-	for i in range(0,len(x)):
-		#print "knots[%d] = %lf" % (i,knots[i]);
-		x2.append(x[i]);
-	
-	
-	
-	#py_BSplineGeo3LowF (PyObject *pyknots, PyObject *pycoefs, PyObject *pyx, PyObject *pyy, PyObject *pydydx)
-	_meshutils_module.py_BSplineGeo3LowF (knots2, coefs2, x2, y, dydx);
-	
-	#for i in range(0,len(y)):
-	#	print "%d : (x,y) = %lf %lf ; dydx = %lf" % (i,x2[i], y[i], dydx[i]);
-	#
-	#print "EXIT";
-	#sys.exit(1);
-	
-	# (y, dydx) = geometryC.bSplineGeometry(bSpline.knots,bSpline.coefs,x)
+	_meshutils_module.py_PiecewiseLinear (x_nodes, y_nodes, x, y, dydx); 
 	
 	return (np.asarray(y), np.asarray(dydx))
     

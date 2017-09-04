@@ -123,3 +123,6 @@ void uMap3(double *knots, double *coefs, double u, double *x, double *y,
 void bSplineGeo3(double *knots, double *coefs, double *x, double *y,
 		 double *dydx, int nx, int k, int c);
 
+//--- Piecewise Linear
+void piecewiseLinear(double *xnodes, double *ynodes, double *x, double *y,
+		     double *dydx, int nx, int nn);

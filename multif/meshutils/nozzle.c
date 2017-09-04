@@ -328,6 +328,7 @@ int WriteCadBspline(char *BasNam, CadBspline *Bsp) {
 	}
 	fclose(outHdl);
 	
+	return 0;
 	
 }
 

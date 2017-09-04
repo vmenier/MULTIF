@@ -34,6 +34,8 @@ int py_MeshPrepro2D (char *InpNam, char *OutNam);
 */
 int py_BSplineGeo3LowF (PyObject *pyknots, PyObject *pycoefs, PyObject *pyx, PyObject *pyy, PyObject *pydydx);
 
+int py_PiecewiseLinear (PyObject *pyxnodes, PyObject *pyynodes, PyObject *pyx, PyObject *pyy, PyObject *pydydx);
+
 void py_ExtractAlongLine (char *MshNam, char *SolNam, PyObject *pyBox,  PyObject *pyResult, PyObject *PyInfo, PyObject *pyHeader);
 
 void py_ExtractAtRef (char *MshNam, char *SolNam, PyObject *pyRefs,  PyObject *pyResult, PyObject *PyInfo, PyObject *pyHeader);

@@ -48,6 +48,8 @@ int ProjectNozzleWall_Up (double *CrdOld, double *CrdNew, double *BasParam)
 	CrdNew[1] = r1*sin(theta);
 	CrdNew[2] = zcen+r2*cos(theta);
 	
+	return 0;
+	
 }
 
 double GetThetaProj(double y, double z)
@@ -365,8 +367,7 @@ int ProjectToDV(double *Crd, CadNozzle *Noz, double *BasParam, int Patch)
 		theta = thetaMaxBas;//alp*Noz->ThetaCutOut + (1.0-alp)*Noz->ThetaCutIn;
 		zcut  = zcenter+r2*cos(theta);		
 		
-	//	printf("alp %lf in %lf out %lf cut %lf zcut %lf theta(crd) = %lf\n", alp, Noz->ThetaCutIn/PI_NUMBER, \
-		 Noz->ThetaCutOut/PI_NUMBER, theta/PI_NUMBER, zcut, acos(Crd[2])/PI_NUMBER);
+	//	printf("alp %lf in %lf out %lf cut %lf zcut %lf theta(crd) = %lf\n", alp, Noz->ThetaCutIn/PI_NUMBER, Noz->ThetaCutOut/PI_NUMBER, theta/PI_NUMBER, zcut, acos(Crd[2])/PI_NUMBER);
 		alp = Crd[0];
 		//CrdNew[2] = zcut;
 		CrdNew[2] = alp*zcut + (1.0-alp)*CrdNew[2];
@@ -377,6 +378,8 @@ int ProjectToDV(double *Crd, CadNozzle *Noz, double *BasParam, int Patch)
 	Crd[0] = CrdNew[0];
 	Crd[1] = CrdNew[1];
 	Crd[2] = CrdNew[2];
+	
+	return 0;
 	
 }
 
@@ -561,6 +564,6 @@ int NozzleWallProjection (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, int re
 	if ( CadNoz )
 		FreeCadNozzle (CadNoz);
 	
-	
+	return 0;
 	
 }

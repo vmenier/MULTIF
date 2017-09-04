@@ -2,8 +2,6 @@
 #include "Python.h"
 
 
-
-
 int py_ProjectNozzleWall3D( char *MshNam,  
  PyObject *pyRefUp,  PyObject *pyRefDown,
  PyObject *pyKnots_center, PyObject *pyCoefs_center,
@@ -203,6 +201,8 @@ int py_ProjectNozzleWall3D( char *MshNam,
 	
 	if ( RefDown )
 		free(RefDown);
+		
+	return 0;
 	
 }
 
@@ -366,14 +366,15 @@ int py_BSplineGeo3 (PyObject *pyknots, PyObject *pycoefs, PyObject *pyx, PyObjec
 		free(y);
 	if (dydx)
 		free(dydx);
+	
+	return 0;
 }
-
 
 
 int py_BSplineGeo3LowF (PyObject *pyknots, PyObject *pycoefs, PyObject *pyx, PyObject *pyy, PyObject *pydydx)
 {	
 	int i, k, c, nx=0;
-	double len, hx;
+	double hx;
 	int size_knots = 0;
 	int size_coefs = 0;
 	int size_x     = 0;
@@ -445,8 +446,6 @@ int py_BSplineGeo3LowF (PyObject *pyknots, PyObject *pycoefs, PyObject *pyx, PyO
 	k = size_knots;
 	c = size_coefs/2;
 	
-	len = coefs[c-1];
-	
 	bSplineGeo3(knots, coefs, x, y, dydx, nx, k, c);
 	
 	//for (i=0; i<nx; i++){
@@ -469,9 +468,103 @@ int py_BSplineGeo3LowF (PyObject *pyknots, PyObject *pycoefs, PyObject *pyx, PyO
 		free(y);
 	if (dydx)
 		free(dydx);
+		
+	return 0;
 }
 
 
+int py_PiecewiseLinear (PyObject *pyxnodes, PyObject *pyynodes, PyObject *pyx, PyObject *pyy, PyObject *pydydx)
+{	
+	int i, nx=0;
+	int size_xnodes = 0;
+	int size_ynodes = 0;
+	int size_x      = 0;
+	int size_y      = 0;
+	int size_dydx   = 0;
+	
+	double *xnodes = NULL;
+	double *ynodes = NULL;
+	double *x      = NULL;
+	double *y      = NULL;
+	double *dydx   = NULL;
+	
+  //--- X-coordinate of nodes
+		
+  if ( PyList_Check(pyxnodes) )
+  {
+      size_xnodes = PyList_Size(pyxnodes);
+      xnodes = malloc( size_xnodes * sizeof(double));
+			
+			for (i=0; i<size_xnodes; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyxnodes,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					xnodes[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+	
+  //--- Y-coordinate of nodes
+
+  if ( PyList_Check(pyynodes) )
+  {
+      size_ynodes = PyList_Size(pyynodes);
+      ynodes = malloc( size_ynodes * sizeof(double));
+			
+			for (i=0; i<size_ynodes; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyynodes,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					ynodes[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+	
+  //--- x
+	
+	if ( PyList_Check(pyx) )
+  {
+      nx = PyList_Size(pyx);
+			x  = (double*)malloc(nx*sizeof(double));
+			
+			for (i=0; i<nx; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyx,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					x[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+	
+	//--- Call function
+	
+	y    = (double*)malloc(nx*sizeof(double));
+	dydx = (double*)malloc(nx*sizeof(double));
+	
+	piecewiseLinear(xnodes, ynodes, x, y, dydx, nx, size_xnodes);
+	
+	for (i=0; i<nx; i++){
+		PyList_Append(pyy, PyFloat_FromDouble(y[i]));
+	}
+	
+	for (i=0; i<nx; i++){
+		PyList_Append(pydydx, PyFloat_FromDouble(dydx[i]));
+	}
+	
+	//--- Free memory
+	
+	if (x)
+		free(x);
+	if (y)
+		free(y);
+	if (dydx)
+		free(dydx);
+		
+	return 0;
+}
 
 
 void py_ReadMesh (char *MshNam, char *SolNam, PyObject *pyVer, PyObject *pyTri, PyObject *pyTet, PyObject *pyEdg, PyObject *pySol)
@@ -529,8 +622,6 @@ void py_ReadMesh (char *MshNam, char *SolNam, PyObject *pyVer, PyObject *pyTri, 
  		FreeMesh(Msh);
 	
 }
-
-
 
 
 void py_ExtractAlongLine (char *MshNam, char *SolNam, PyObject *pyBox,  PyObject *pyResult, PyObject *PyInfo, PyObject *pyHeader)
