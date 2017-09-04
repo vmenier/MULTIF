@@ -3692,8 +3692,7 @@ def NozzleSetup( config, flevel, output='verbose'):
 			sys.stderr.write("  ## ERROR : Invalid option for MESH_GENERATION (DEFORM or REGEN)\n");
 			sys.exit(1);
 	else:
-		nozzle.meshDeformationFlag = False;
-	
+		nozzle.meshDeformationFlag = False;	
 	
     # --- Path to SU2 exe
     
@@ -3767,7 +3766,7 @@ def NozzleSetup( config, flevel, output='verbose'):
     #     B-spline coefs, and thickness node arrays may have been updated by
     #     the design variables input file; update exterior geometry & baffles
     
-    nozzle.SetupWall(output);
+#    nozzle.SetupWall(output);
         
     return nozzle;    
 
