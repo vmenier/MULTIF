@@ -3766,7 +3766,7 @@ def NozzleSetup( config, flevel, output='verbose'):
     #     B-spline coefs, and thickness node arrays may have been updated by
     #     the design variables input file; update exterior geometry & baffles
     
-#    nozzle.SetupWall(output);
+    nozzle.SetupWall(output);
         
     return nozzle;    
 
