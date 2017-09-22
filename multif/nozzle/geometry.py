@@ -278,7 +278,42 @@ class PiecewiseBilinear:
 	                   
 	    return dzdx, dzdy
         
+
+class EllipticalExterior:
+
+    def __init__(self,surface,xexit):
+
+        self.xexit = xexit;
+
+        if( surface == 'top' ):
+            self.angle = 5.; # degrees
+            self.offset = 0.03; # m
+            self.a = 1.5; # m, major axis
+            self.b = 0.2; # m, minor axis
+
+        elif( surface == 'bottom' ):
+            self.angle = -7.; # degrees
+            self.offset = -0.06; # m
+            self.a = 1.; # m, major axis
+            self.b = 0.05; # m, minor axis
+
+        else:
+            raise NotImplementedError('Only top or bottom can be used for ' + \
+                'surfaces of elliptical exterior.');
+
+    # Given x-coordinate and theta angle in radians measured from Y axis, return
+    # Y and Z coordinates of point on elliptical exterior.
+    def coord(self,x,theta):
         
+        r = self.a*self.b/np.sqrt(self.b**2*np.cos(theta)**2 + \
+            self.a**2*np.sin(theta)**2);
+        c = self.offset + (self.xexit - x)*np.tan(np.pi*self.angle/180.);
+        y = r*np.cos(theta);
+        z = r*np.sin(theta) + c;
+
+        return y, z;   
+
+
 #==============================================================================
 # Find first 1-based index where scalar xFind < xVec[ii]
 #==============================================================================

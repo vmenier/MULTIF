@@ -1595,23 +1595,22 @@ class Nozzle:
                 minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
                 centerTmp = geometry.Bspline(nozzle.wall.centerline.coefs);
                 nx = 2000; # Check accuracy and effect of this interpolation
-                x = np.linspace(nozzle.xinlet,nozzle.xoutlet,num=nx);
-                majoraxisVal = majoraxisTmp.radius(x);
-                minoraxisVal = minoraxisTmp.radius(x);                
+                x = np.linspace(nozzle.xinlet,nozzle.xoutlet,num=nx);               
                 
                 fr1 = majoraxisTmp.radius
                 fr2 = minoraxisTmp.radius
                 fz = centerTmp.radius
                 
-                params = np.zeros(100)
-                params[0] = 0.099; # z crd of the cut at the throat
-                params[1] = 0.122638;  # z crd of the flat exit (bottom of the shovel)
-                params[3] = 0.0;        # x_throat 
-                params[4] = 4.0;        # x_exit 
+                xi = nozzle.wall.centerline.coefs[0];
+                inletRadius = np.sqrt(majoraxisTmp.radius(xi)*minoraxisTmp.radius(xi));
+                params = np.zeros(5);
+                params[0] = inletRadius*np.sin(nozzle.wall.shovel_start_angle*np.pi/180.);
+                params[1] = nozzle.wall.centerline.coefs[-1] + nozzle.wall.shovel_height;
+                #params[2]                
+                params[3] = nozzle.xinlet;
+                params[4] = nozzle.xoutlet;
                                 
                 equivRadius = multif.HIGHF.MF_GetRadius (x, fr1, fr2, fz, params)
-                
-                #equivRadius = np.sqrt(majoraxisVal*minoraxisVal);
                 shape2d = np.transpose(np.array([x,equivRadius]))
                 nozzle.wall.geometry = geometry.PiecewiseLinear(shape2d);	
                 
@@ -1628,12 +1627,7 @@ class Nozzle:
                 fr1 = majoraxisTmp.radius
                 fr2 = minoraxisTmp.radius
                 fz = centerTmp.radius             
-                
-#                params = np.zeros(100)
-#                params[0] = 0.099; # z crd of the cut at the throat
-#                params[1] = 0.122638;  # z crd of the flat exit (bottom of the shovel)
-#                params[3] = 0.0;        # x_throat 
-#                params[4] = 4.0;        # x_exit 
+
                 xi = nozzle.wall.centerline.coefs[0];
                 inletRadius = np.sqrt(majoraxisTmp.radius(xi)*minoraxisTmp.radius(xi));
                 params = np.zeros(5);
@@ -1904,9 +1898,50 @@ class Nozzle:
 
         if nozzle.dim == '3D':
             
-            nozzle.exterior = component.NonaxisymmetricWall('exterior');            
-            # Do not define any exterior geometry here, as this is a complex
-            # fixed shape.
+            nozzle.exterior = component.NonaxisymmetricWall('exterior');
+
+            nozzle.exterior.geometry = {};        
+            
+            # Approximate top surface of internal aircraft cavity which nozzle
+            # lies within
+            nozzle.exterior.geometry['top'] = geometry.EllipticalExterior('top',nozzle.xoutlet);
+
+            # Approximate bottom surface of internal aircraft cavity which 
+            # nozzle lies within
+            nozzle.exterior.geometry['bottom'] = geometry.EllipticalExterior('bottom',nozzle.xoutlet);
+
+            # # Test nozzle exterior geometry
+            # import matplotlib.pyplot as plt
+            # from mpl_toolkits.mplot3d import Axes3D 
+            # fig = plt.figure()
+            # ax = plt.axes(projection='3d')
+            # xsection = np.linspace(nozzle.xinlet,nozzle.xoutlet,10);
+            # for i in range(len(xsection)):
+            #     # Plot top of aircraft cavity
+            #     xloc = nozzle.length*float(i)/float(len(xsection)-1) + nozzle.xinlet;
+            #     antmp = np.linspace(0.,np.pi,100);
+            #     xtmp = xloc*np.ones((len(antmp),1));
+            #     ytmp = np.zeros((len(antmp),1));
+            #     ztmp = np.zeros((len(antmp),1));
+            #     for j in range(len(antmp)):
+            #         tmp1, tmp2 = nozzle.exterior.geometry['top'].coord(xloc,antmp[j]);
+            #         ytmp[j] = tmp1;
+            #         ztmp[j] = tmp2;
+            #     ax.scatter(xtmp,ytmp,ztmp);
+
+            #     # Plot bottom of aircraft cavity
+            #     xloc = nozzle.length*float(i)/float(len(xsection)-1) + nozzle.xinlet;
+            #     antmp = np.linspace(np.pi,2*np.pi,100);
+            #     xtmp = xloc*np.ones((len(antmp),1));
+            #     ytmp = np.zeros((len(antmp),1));
+            #     ztmp = np.zeros((len(antmp),1));
+            #     for j in range(len(antmp)):
+            #         tmp1, tmp2 = nozzle.exterior.geometry['bottom'].coord(xloc,antmp[j]);
+            #         ytmp[j] = tmp1;
+            #         ztmp[j] = tmp2;
+            #     ax.scatter(xtmp,ytmp,ztmp);
+
+            # plt.show();
             
             # Baffle and stringer heights will have to be updated later.
             
@@ -3733,10 +3768,6 @@ class Nozzle:
         
         print 'INLET:'
         print nozzle.inlet.__dict__
-        print
-                
-        print 'EXTERIOR ENVIRONMENT:'
-        print nozzle.environment.__dict__
         print
             
         print 'NOZZLE INTERIOR WALL:'

@@ -83,9 +83,53 @@ def runAEROS ( nozzle, output='verbose' ):
         print
         
         print 'EXTERIOR:'
-        'The nozzle exterior is complex and fully defined in CAD, not here.'
+        print 'The nozzle exterior is simplified and is described by the top portion'
+        print 'of an ellipse and the bottom portion of another ellipse.'
+        print 'The top surface of the exterior with which the baffles mate is'
+        print "described in nozzle.exterior.geometry['top'] whereas"
+        print "the bottom surface of the exterior is described in "
+        print "nozzle.exterior.geometry['bottom']. Given an x-location and "
+        print "angle theta measured from the Y-axis in the Y-Z plane, the "
+        print "corresponding Y and Z coordinate of the top surface can be"
+        print "obtained as: "
+        print nozzle.exterior.geometry['top'].coord(0.3,0.5*np.pi);
+        print "and for the bottom surface:"
+        print nozzle.exterior.geometry['bottom'].coord(0.3,1.5*np.pi);
         print nozzle.exterior.__dict__
         print
+
+        # # Plot nozzle exterior geometry
+        # import matplotlib.pyplot as plt
+        # from mpl_toolkits.mplot3d import Axes3D 
+        # fig = plt.figure()
+        # ax = plt.axes(projection='3d')
+        # xsection = np.linspace(nozzle.xinlet,nozzle.xoutlet,10);
+        # for i in range(len(xsection)):
+        #     # Plot top of aircraft cavity
+        #     xloc = nozzle.length*float(i)/float(len(xsection)-1) + nozzle.xinlet;
+        #     antmp = np.linspace(0.,np.pi,100);
+        #     xtmp = xloc*np.ones((len(antmp),1));
+        #     ytmp = np.zeros((len(antmp),1));
+        #     ztmp = np.zeros((len(antmp),1));
+        #     for j in range(len(antmp)):
+        #         tmp1, tmp2 = nozzle.exterior.geometry['top'].coord(xloc,antmp[j]);
+        #         ytmp[j] = tmp1;
+        #         ztmp[j] = tmp2;
+        #     ax.scatter(xtmp,ytmp,ztmp);
+
+        #     # Plot bottom of aircraft cavity
+        #     xloc = nozzle.length*float(i)/float(len(xsection)-1) + nozzle.xinlet;
+        #     antmp = np.linspace(np.pi,2*np.pi,100);
+        #     xtmp = xloc*np.ones((len(antmp),1));
+        #     ytmp = np.zeros((len(antmp),1));
+        #     ztmp = np.zeros((len(antmp),1));
+        #     for j in range(len(antmp)):
+        #         tmp1, tmp2 = nozzle.exterior.geometry['bottom'].coord(xloc,antmp[j]);
+        #         ytmp[j] = tmp1;
+        #         ztmp[j] = tmp2;
+        #     ax.scatter(xtmp,ytmp,ztmp);
+
+        # plt.show();
         
         print 'Entire NOZZLE struct:'
         for k in nozzle.__dict__:
