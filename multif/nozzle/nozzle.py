@@ -9,6 +9,7 @@ R. Fenrich & V. Menier, July 2016
 
 import os, sys, tempfile
 import textwrap
+import copy
 
 import numpy as np
 
@@ -185,9 +186,9 @@ class Nozzle:
             
             # Baffles
             dv_keys.append(['BAFFLES','BAFFLES_LOCATION','BAFFLES_THICKNESS',
-                            'BAFFLES_HEIGHT']);
-            dv_n.append([3*nozzle.baffles.n,nozzle.baffles.n,
-                        nozzle.baffles.n,nozzle.baffles.n]);
+                            'BAFFLES_HEIGHT','BAFFLES_HALF_WIDTH']);
+            dv_n.append([3*nozzle.baffles.n+1,nozzle.baffles.n,
+                        nozzle.baffles.n,nozzle.baffles.n,1]);
                         
             # Stringers
             if nozzle.param == '3D':
@@ -196,7 +197,7 @@ class Nozzle:
                                 'STRINGERS_THICKNESS_VALUES']);
                 dv_n.append([nozzle.stringers.nAxialBreaks+
                              nozzle.stringers.n+
-                             2*nozzle.stringers.nThicknessValues,
+                             nozzle.stringers.nThicknessValues,
                              nozzle.stringers.nAxialBreaks,
                              nozzle.stringers.n,
                              nozzle.stringers.nThicknessValues,
@@ -319,7 +320,7 @@ class Nozzle:
                         # total number of possible DV for checking
                         sizeTemp = nozzle.stringers.nAxialBreaks + \
                                    nozzle.stringers.n + \
-                                   2*nozzle.stringers.nAxialBreaks;
+                                   nozzle.stringers.nThicknessValues;
                         nozzle.AssignListDV(config,nozzle.stringers.dv,'STRINGERS_DV',
                                           NbrDV,sizeTemp);
                         continue;
@@ -365,7 +366,7 @@ class Nozzle:
                                             
                 if key == 'BAFFLES':                    
                     nozzle.baffles.dv = [];
-                    sizeTemp = nozzle.baffles.n*3; # number of DV for checking
+                    sizeTemp = nozzle.baffles.n*3+1; # number of DV for checking
                     self.AssignListDV(config,nozzle.baffles.dv,'BAFFLES_DV',
                                       NbrDV,sizeTemp);
                     continue;
@@ -970,11 +971,11 @@ class Nozzle:
             else:
                 xCoord = np.array([float(a) for a in loc.split(',')]);
                 yCoord = np.array([float(a) for a in val.split(',')]);
-            thicknessNodes = np.transpose(np.array([xCoord,yCoord]));
+            thicknessNodesNonDim = np.transpose(np.array([xCoord,yCoord]));
                 
             nozzle.wall.temperature = component.Distribution('WALL_TEMP');
             nozzle.wall.temperature.param = 'PIECEWISE_LINEAR';
-            nozzle.wall.temperature.thicknessNodes = thicknessNodes; 
+            nozzle.wall.temperature.thicknessNodesNonDim = thicknessNodesNonDim; 
             nozzle.wall.temperature.nBreaks = xCoord.size;                            
                 
         else:
@@ -1136,16 +1137,16 @@ class Nozzle:
         # Update thickness distribution of layer
         if all (k in config for k in thickness_keys):
             try:
-                layer.thicknessNodes = self.ParseThicknessLinear(config,name);
+                layer.thicknessNodesNonDim = self.ParseThicknessLinear(config,name);
             except:
                 sys.stderr.write('\n ## ERROR : Thickness definition '       \
                      'could not be parsed for %s.\n\n' % name);
                 sys.exit(0);
         else:
             if name == 'LOAD_LAYER':
-                layer.thicknessNodes = [[0.0,0.016], [1.0, 0.016]];
+                layer.thicknessNodesNonDim = [[0.0,0.016], [1.0, 0.016]];
             else: # THERMAL_LAYER
-                layer.thicknessNodes = [[0.0,0.01], [1.0, 0.01]];
+                layer.thicknessNodesNonDim = [[0.0,0.01], [1.0, 0.01]];
 
         # Run through keys first and see if material is anisotropic
         isotropicFlag = 1 # assume isotropic
@@ -1215,7 +1216,7 @@ class Nozzle:
             # Assign thicknesses          
             if all (k in config for k in t_keys):
                 t, n, m, p = self.ParseThicknessBilinear(config,layer.formalName);
-                layer.thicknessNodes = t; # Numpy array (n x 3) with break locations & thickness values
+                layer.thicknessNodesNonDim = t; # Numpy array (n x 3) with break locations & thickness values
                 layer.nAxialBreaks = n; # number of breaks in axial direction
                 layer.nAngularBreaks = m; # number of breaks in a plane perp. to axis at axial break
                 layer.nBreaks = p; # total number of breaks
@@ -1234,7 +1235,7 @@ class Nozzle:
             # Assign thicknesses
             if all (k in config for k in t_keys):
                 t, m = self.ParseThicknessLinear(config,layer.formalName);
-                layer.thicknessNodes = t;
+                layer.thicknessNodesNonDim = t;
                 layer.nBreaks = m;                
             else:
                 sys.stderr.write('\n ## ERROR: All the following keys should ' \
@@ -1243,7 +1244,7 @@ class Nozzle:
         
         elif layer.param == 'CONSTANT': # implement as piecewise linear
             t_value = float(config[layer.formalName + '_THICKNESS']);
-            layer.thicknessNodes = np.array([[0,t_value],[1,t_value]]);
+            layer.thicknessNodesNonDim = np.array([[0.,t_value],[1.,t_value]]);
             layer.nBreaks = 2;
             layer.thicknessValue = t_value;
         else:
@@ -1455,7 +1456,13 @@ class Nozzle:
         
         info = config['BAFFLES_THICKNESS'].strip('()');
         ltemp = [x.strip() for x in info.split(',')];          
-        nozzle.baffles.thickness = [float(x) for x in ltemp];  
+        nozzle.baffles.thickness = [float(x) for x in ltemp];
+
+        # For 3D param, the dimensional distance the baffle extends from the 
+        # centerline in the transverse direction
+        if( 'BAFFLES_HALF_WIDTH' in config ):
+            info = config['BAFFLES_HALF_WIDTH'].strip('()');
+            nozzle.baffles.halfWidth = float(info);
         
         if output == 'verbose':
             sys.stdout.write('Setup Baffles complete\n');        
@@ -1522,35 +1529,41 @@ class Nozzle:
             h_val = '_HEIGHT_VALUES';
             
             if ( config['STRINGERS_HEIGHT_VALUES'] == 'EXTERIOR' ):
-                h_val = 'EXTERIOR'
+                h_val = 'EXTERIOR';
+                nozzle.stringers.heightDefinition = h_val;
                 nozzle.stringers.absoluteRadialCoord = 1;
         
         # Assign thickness distribution
         if nozzle.param == '3D':
             t, m, n, p = self.ParseThicknessBilinear(
               config,key,loc=k_loc,ang=k_ang,val=t_val);
-            nozzle.stringers.thicknessNodes = t;
+            if( nozzle.stringers.n != n ):
+                sys.stderr.write('\n ## ERROR: %i stringers defined for 3D ' \
+                  'parameterization, but only %i stringer angles provided.' \
+                  % (nozzle.stringers.n,n));
+                sys.exit(0);
+            nozzle.stringers.thicknessNodesNonDim = t;
             nozzle.stringers.nAxialBreaks = m;
-            #nozzle.stringers.nAngularBreaks = n;
+            nozzle.stringers.nAngularBreaks = n;
             nozzle.stringers.nThicknessValues = p;
         else: # assume 2D parameterization            
             t, m = self.ParseThicknessLinear(config,key,loc=k_loc,val=t_val);
-            nozzle.stringers.thicknessNodes = t;
+            nozzle.stringers.thicknessNodesNonDim = t;
             nozzle.stringers.nBreaks = m;
         
         # Assign height distribution
         if config['STRINGERS_HEIGHT_VALUES'] == 'EXTERIOR':
             if nozzle.param == '3D':
-                nozzle.stringers.heightNodes = np.array([[0,0,0],[0,0,0]],dtype='float64'); # temporary assignment
+                nozzle.stringers.heightNodesNonDim = np.array([[0,0,0],[0,0,0]],dtype='float64'); # temporary assignment
             else:
-                nozzle.stringers.heightNodes = np.array([[0,0],[0,0]],dtype='float64');
+                nozzle.stringers.heightNodesNonDim = np.array([[0,0],[0,0]],dtype='float64');
         else:
             if nozzle.param == '3D':
                 t, m, n, p = self.ParseThicknessBilinear(
                   config,key,loc=k_loc,ang=k_ang,val=h_val);
-                nozzle.stringers.heightNodes = t;
+                nozzle.stringers.heightNodesNonDim = t;
             else: # assume 2D parameterization
-                nozzle.stringers.heightNodes, m = self.ParseThicknessLinear(
+                nozzle.stringers.heightNodesNonDim, m = self.ParseThicknessLinear(
                   config,key,loc=k_loc,val=h_val);    
         
         if output == 'verbose':
@@ -1564,58 +1577,57 @@ class Nozzle:
         # Setup shape of inner wall (B-spline)
         
         if nozzle.param == '3D':
-            
+
+            nozzle.xinlet = nozzle.wall.centerline.coefs[0];
+            nozzle.xoutlet = nozzle.wall.centerline.coefs[nozzle.wall.centerline.coefs_size/2-1];
+            nozzle.zinlet = nozzle.wall.centerline.coefs[nozzle.wall.centerline.coefs_size/2];
+            nozzle.length = nozzle.wall.centerline.coefs[nozzle.wall.centerline.coefs_size/2-1] - \
+                            nozzle.wall.centerline.coefs[0];
+
             if nozzle.dim == '3D':
-			
-			nozzle.length = nozzle.wall.centerline.coefs[nozzle.wall.centerline.coefs_size/2-1] - \
-			                nozzle.wall.centerline.coefs[0];
-			
-			nozzle.wall.centerline.geometry = geometry.Bspline(nozzle.wall.centerline.coefs);
-			nozzle.wall.majoraxis.geometry  = geometry.Bspline(nozzle.wall.majoraxis.coefs);
-			nozzle.wall.minoraxis.geometry  = geometry.Bspline(nozzle.wall.minoraxis.coefs);            
-			
-#			# Build equivalent nozzle shape based on equivalent area
-#			majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
-#			minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
-#			centerTmp = geometry.Bspline(nozzle.wall.centerline.coefs);
-#			nx = 2000; # Check accuracy and effect of this interpolation
-#			x = np.linspace(0,nozzle.length,num=nx);
-#			majoraxisVal = majoraxisTmp.radius(x);
-#			minoraxisVal = minoraxisTmp.radius(x);
-#			
-#			
-#			fr1 = majoraxisTmp.radius
-#			fr2 = minoraxisTmp.radius
-#			fz = centerTmp.radius
-#			
-#			params = np.zeros(100)
-#			params[0] = 0.099; # z crd of the cut at the throat
-#			params[1] = 0.122638;  # z crd of the flat exit (bottom of the shovel)
-#			params[3] = 0.0;        # x_throat 
-#			params[4] = 4.0;        # x_exit 
-#							
-#			equivRadius = multif.HIGHF.MF_GetRadius (x, fr1, fr2, fz, params)
-#			
-#			#equivRadius = np.sqrt(majoraxisVal*minoraxisVal);
-#			shape2d = np.transpose(np.array([x,equivRadius]))
-#			nozzle.wall.geometry = geometry.PiecewiseLinear(shape2d);	
                 
-            # Map 3D parameterization to 2D definition using equivalent area
-            else:
-                
-                nozzle.length = nozzle.wall.centerline.coefs[nozzle.wall.centerline.coefs_size/2-1] - \
-                                nozzle.wall.centerline.coefs[0];
+                nozzle.wall.centerline.geometry = geometry.Bspline(nozzle.wall.centerline.coefs);
+                nozzle.wall.majoraxis.geometry  = geometry.Bspline(nozzle.wall.majoraxis.coefs);
+                nozzle.wall.minoraxis.geometry  = geometry.Bspline(nozzle.wall.minoraxis.coefs);            
                 
                 # Build equivalent nozzle shape based on equivalent area
                 majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
                 minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
                 centerTmp = geometry.Bspline(nozzle.wall.centerline.coefs);
                 nx = 2000; # Check accuracy and effect of this interpolation
-                x = np.linspace(0,nozzle.length,num=nx);                
+                x = np.linspace(nozzle.xinlet,nozzle.xoutlet,num=nx);
+                majoraxisVal = majoraxisTmp.radius(x);
+                minoraxisVal = minoraxisTmp.radius(x);                
                 
                 fr1 = majoraxisTmp.radius
                 fr2 = minoraxisTmp.radius
                 fz = centerTmp.radius
+                
+                params = np.zeros(100)
+                params[0] = 0.099; # z crd of the cut at the throat
+                params[1] = 0.122638;  # z crd of the flat exit (bottom of the shovel)
+                params[3] = 0.0;        # x_throat 
+                params[4] = 4.0;        # x_exit 
+                                
+                equivRadius = multif.HIGHF.MF_GetRadius (x, fr1, fr2, fz, params)
+                
+                #equivRadius = np.sqrt(majoraxisVal*minoraxisVal);
+                shape2d = np.transpose(np.array([x,equivRadius]))
+                nozzle.wall.geometry = geometry.PiecewiseLinear(shape2d);	
+                
+            # Map 3D parameterization to 2D definition using equivalent area
+            else:
+                
+                # Build equivalent nozzle shape based on equivalent area
+                majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
+                minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
+                centerTmp = geometry.Bspline(nozzle.wall.centerline.coefs);
+                nx = 2000; # Check accuracy and effect of this interpolation
+                x = np.linspace(nozzle.xinlet,nozzle.xoutlet,num=nx);                
+                
+                fr1 = majoraxisTmp.radius
+                fr2 = minoraxisTmp.radius
+                fz = centerTmp.radius             
                 
 #                params = np.zeros(100)
 #                params[0] = 0.099; # z crd of the cut at the throat
@@ -1628,28 +1640,28 @@ class Nozzle:
                 params[0] = inletRadius*np.sin(nozzle.wall.shovel_start_angle*np.pi/180.);
                 params[1] = nozzle.wall.centerline.coefs[-1] + nozzle.wall.shovel_height;
                 #params[2]                
-                params[3] = nozzle.wall.centerline.coefs[0];
-                params[4] = nozzle.wall.centerline.coefs[nozzle.wall.centerline.coefs_size/2-1];
+                params[3] = nozzle.xinlet;
+                params[4] = nozzle.xoutlet;
                 
-                equivRadius = multif.HIGHF.MF_GetRadius (x, fr1, fr2, fz, params)
-                shape2d = np.transpose(np.array([x,equivRadius]))
+                equivRadius = multif.HIGHF.MF_GetRadius (x, fr1, fr2, fz, params);
+                shape2d = np.transpose(np.array([x,equivRadius]));
                 nozzle.wall.geometry = geometry.PiecewiseLinear(shape2d);
 
-#                from matplotlib import pyplot as plt
-#                plt.plot(equivRadius,'b')
-#                plt.plot(np.sqrt(majoraxisTmp.radius(x)*minoraxisTmp.radius(x)),'r')
-#                plt.show()
+                # from matplotlib import pyplot as plt
+                # plt.plot(equivRadius,'b')
+                # plt.plot(np.sqrt(majoraxisTmp.radius(x)*minoraxisTmp.radius(x)),'r')
+                # plt.show()
                 
                 # The following info is required by SU2 for 2D geometries
                 if nozzle.dim == '2D':
                 	
                     nx = 4000; # use 4000 points to interpolate inner wall shape
-                    x = np.linspace(0,nozzle.length,num=nx);
+                    x = np.linspace(nozzle.xinlet,nozzle.xoutlet,num=nx);
                     y = nozzle.wall.geometry.radius(x);
                     
                     nozzle.cfd.x_wall = x;
                     nozzle.cfd.y_wall = y;
-                    
+
                     dx_exit = max(1.3*nozzle.cfd.meshhl[3], 0.001);
                     for i in range(0,nx) :
                     	if (  x[nx-i-1] < x[-1]-dx_exit  ):
@@ -1658,15 +1670,19 @@ class Nozzle:
                     		break;
                       
         else: # assume 2D parameterization
+
+            nozzle.xinlet = nozzle.wall.coefs[0];
+            nozzle.xoutlet = nozzle.wall.coefs[nozzle.wall.coefs_size/2-1];
+            nozzle.zinlet = 0.;
+            nozzle.length = nozzle.wall.coefs[nozzle.wall.coefs_size/2-1] - \
+                            nozzle.wall.coefs[0];
         	
             # Upscale 2D param to 3D, this may be useful for comparisons
             if nozzle.dim == '3D':
 
                 xi = nozzle.wall.coefs[0]; # inlet x-coord
                 xe = nozzle.wall.coefs[nozzle.wall.coefs_size/2-1]; # exit x-coord
-                ri = nozzle.wall.coefs[nozzle.wall.coefs_size/2]; # inlet r-coord
-                
-                nozzle.length = xe - xi;        
+                ri = nozzle.wall.coefs[nozzle.wall.coefs_size/2]; # inlet r-coord    
 
                 centerCoefs = np.array([xi, xi, xe, xe, ri, ri, ri, ri]);
                 nozzle.wall.centerline.geometry = geometry.Bspline(centerCoefs);
@@ -1674,10 +1690,7 @@ class Nozzle:
                 nozzle.wall.minoraxis.geometry = geometry.Bspline(nozzle.wall.coefs);            
                                 
             else:
-            
-                nozzle.length = nozzle.wall.coefs[nozzle.wall.coefs_size/2-1] - \
-                                nozzle.wall.coefs[0];
-                                
+                                            
                 nozzle.wall.geometry = geometry.Bspline(nozzle.wall.coefs);
                          
                 if nozzle.method == 'RANS' or nozzle.method == 'EULER':  
@@ -1706,7 +1719,11 @@ class Nozzle:
                 sys.exit(0);
             else: # assume 2D parameterization           
                 if nozzle.wall.temperature.param == 'PIECEWISE_LINEAR':
-                    nozzle.wall.temperature.thicknessNodes[:,0] *= nozzle.length;
+                    nozzle.wall.temperature.thicknessNodes = \
+                        copy.copy(nozzle.wall.temperature.thicknessNodesNonDim);
+                    nozzle.wall.temperature.thicknessNodes[:,0] = \
+                        nozzle.wall.temperature.thicknessNodes[:,0]* \
+                        nozzle.length + nozzle.xinlet;
                     nozzle.wall.temperature.geometry = \
                       geometry.PiecewiseLinear(nozzle.wall.temperature.thicknessNodes);                
                 elif nozzle.wall.temperature.param == 'KLE':
@@ -1719,7 +1736,10 @@ class Nozzle:
         for i in range(len(nozzle.wall.layer)):
             
             # Dimensionalize thickness node x-coordinate
-            nozzle.wall.layer[i].thicknessNodes[:,0] *= nozzle.length;
+            nozzle.wall.layer[i].thicknessNodes = \
+                copy.copy(nozzle.wall.layer[i].thicknessNodesNonDim);
+            nozzle.wall.layer[i].thicknessNodes[:,0] = \
+                nozzle.wall.layer[i].thicknessNodes[:,0]*nozzle.length + nozzle.xinlet;
             
             if nozzle.param == '3D':
                 
@@ -1790,8 +1810,14 @@ class Nozzle:
         # Setup stringers
 
         # Dimensionalize stringers thickness x-coordinate
-        nozzle.stringers.thicknessNodes[:,0] *= nozzle.length;
-        nozzle.stringers.heightNodes[:,0] *= nozzle.length;
+        nozzle.stringers.thicknessNodes = \
+            copy.copy(nozzle.stringers.thicknessNodesNonDim);
+        nozzle.stringers.thicknessNodes[:,0] = \
+            nozzle.stringers.thicknessNodes[:,0]*nozzle.length + nozzle.xinlet;
+        nozzle.stringers.heightNodes = \
+            copy.copy(nozzle.stringers.heightNodesNonDim);
+        nozzle.stringers.heightNodes[:,0] = \
+            nozzle.stringers.heightNodes[:,0]*nozzle.length + nozzle.xinlet;
             
         if nozzle.param == '3D':
             
@@ -1814,7 +1840,7 @@ class Nozzle:
                 else:
                     for i in range(ns):
                         nozzle.stringers.height.append(geometry.PiecewiseLinear( \
-                               nozzle.stringers.heightNodes[i*na:i*na+na]));                
+                               nozzle.stringers.heightNodes[i*na:i*na+na]));    
                            
             # Map 3D parameterization to 2D definition using average thickness              
             else:
@@ -1871,7 +1897,7 @@ class Nozzle:
         # Setup baffles
 
         # Dimensionalize baffle x-location
-        nozzle.baffles.location = [q*nozzle.length for q in \
+        nozzle.baffles.location = [q*nozzle.length + nozzle.xinlet for q in \
                                    nozzle.baffles.locationNonDim];
 
         # Setup exterior wall, update baffle & stringer heights if necessary
@@ -1890,20 +1916,19 @@ class Nozzle:
 			
             # Useful x vs. r data for updating baffle and stringer heights
             n = 10000
-            x = np.linspace(0,nozzle.length,n)
+            x = np.linspace(nozzle.xinlet,nozzle.xoutlet,n)
             rList = geometry.layerCoordinatesInGlobalFrame(nozzle,x);
         
             # Setup external geometry
             if nozzle.stringers.n > 0:
-                innerBaffleRadius = np.interp(nozzle.length,x,rList[-2]);
+                innerBaffleRadius = np.interp(nozzle.xoutlet,x,rList[-2]);
             else:
-                innerBaffleRadius = np.interp(nozzle.length,x,rList[-1]);   
-            #shapeDefinition = np.transpose(np.array([[0., 0.1548, nozzle.length],
+                innerBaffleRadius = np.interp(nozzle.xoutlet,x,rList[-1]);   
+            #shapeDefinition = np.transpose(np.array([[nozzle.xinlet, nozzle.xinlet+0.1548, nozzle.xoutlet],
             #                  [0.4244, 0.4244, innerBaffleRadius + 0.012]]));
-            shapeDefinition = np.transpose(np.array([[0., 0.1548, nozzle.length],
+            shapeDefinition = np.transpose(np.array([[nozzle.xinlet, nozzle.xinlet+0.1548, nozzle.xoutlet],
                               [0.8244, 0.8244, innerBaffleRadius + 0.012]]));
-            nozzle.exterior.geometry = geometry.PiecewiseLinear(shapeDefinition);  
-            
+            nozzle.exterior.geometry = geometry.PiecewiseLinear(shapeDefinition);
 
             # Check for intersection of nozzle wall with external geometry
             if nozzle.stringers.n > 0:
@@ -1917,17 +1942,11 @@ class Nozzle:
                 sys.stderr.write('\n ## ERROR: External nozzle wall ' \
                   'intersects exterior geometry. Terminating.\n\n');
                 sys.exit(0);
-#                sys.stdout.write('\nWARNING! Nozzle wall intersects with exterior geometry\n');
-#                wallBend = 0.1548;
-#                for i in range(len(nozzle.wall.layer)):
-#                    wallBend = max([wallBend, nozzle.wall.layer[i].thicknessNodes[-2,0]]);
-#                shapeDefinition = np.array([[0., wallBend, nozzle.length],
-#                                            [0.4244, 0.4244, innerBaffleRadius + 0.012]]);
-#                nozzle.exterior.geometry = geometry.PiecewiseLinear(shapeDefinition); 
-#                sys.stdout.write('WARNING! Altered exterior nozzle geometry to fit nozzle wall shape\n\n');
        
             # Update height of baffles to coincide with exterior wall shape
             if( nozzle.baffles.heightSetToExterior ):
+
+                nozzle.baffles.height = [];
                 
                 for i in range(len(nozzle.baffles.location)):
                     loc = nozzle.baffles.location[i];
@@ -2308,15 +2327,15 @@ class Nozzle:
                         pass
                     elif id_dv < nozzle.DV_Head[iTag]+brk:
                         prt_name.append('wall temp location #%d' % (iCoord+1));
-                        prt_basval.append('%.4lf'% nozzle.wall.temperature.thicknessNodes[iCoord,0]);
+                        prt_basval.append('%.4lf'% nozzle.wall.temperature.thicknessNodesNonDim[iCoord,0]);
                         prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                        nozzle.wall.temperature.thicknessNodes[iCoord,0] = nozzle.dvList[id_dv];
+                        nozzle.wall.temperature.thicknessNodesNonDim[iCoord,0] = nozzle.dvList[id_dv];
                         NbrChanged = NbrChanged+1;
                     else: # id_dv > nozzle.DV_Head[iTag]+brk
                         prt_name.append('wall temp value #%d' % (iCoord+1-lsize));
-                        prt_basval.append('%.4lf'% nozzle.wall.temperature.thicknessNodes[iCoord-lsize,1]);
+                        prt_basval.append('%.4lf'% nozzle.wall.temperature.thicknessNodesNonDim[iCoord-lsize,1]);
                         prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                        nozzle.wall.temperature.thicknessNodes[iCoord-lsize,1] = nozzle.dvList[id_dv];
+                        nozzle.wall.temperature.thicknessNodesNonDim[iCoord-lsize,1] = nozzle.dvList[id_dv];
                         NbrChanged = NbrChanged+1;
                 continue;
                 
@@ -2326,18 +2345,18 @@ class Nozzle:
                 for iCoord in range(nozzle.wall.temperature.nBreaks):
                     id_dv = nozzle.DV_Head[iTag] + iCoord;
                     prt_name.append('wall temp location #%d' % (iCoord+1));
-                    prt_basval.append('%.4lf'% nozzle.wall.temperature.thicknessNodes[iCoord,0]);
+                    prt_basval.append('%.4lf'% nozzle.wall.temperature.thicknessNodesNonDim[iCoord,0]);
                     prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                    nozzle.wall.temperature.thicknessNodes[iCoord,0] = nozzle.dvList[id_dv];
+                    nozzle.wall.temperature.thicknessNodesNonDim[iCoord,0] = nozzle.dvList[id_dv];
                     NbrChanged = NbrChanged+1;
                 check = 1;
             elif Tag == 'WALL_TEMP_VALUES':
                 for iCoord in range(nozzle.wall.temperature.nBreaks):
                     id_dv = nozzle.DV_Head[iTag] + iCoord;                  
                     prt_name.append('wall temp value #%d' % (iCoord+1));
-                    prt_basval.append('%.4lf'% nozzle.wall.temperature.thicknessNodes[iCoord,1]);
+                    prt_basval.append('%.4lf'% nozzle.wall.temperature.thicknessNodesNonDim[iCoord,1]);
                     prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                    nozzle.wall.temperature.thicknessNodes[iCoord,1] = nozzle.dvList[id_dv];
+                    nozzle.wall.temperature.thicknessNodesNonDim[iCoord,1] = nozzle.dvList[id_dv];
                     NbrChanged = NbrChanged+1;
                 check = 1;
             if check == 1:
@@ -2358,33 +2377,33 @@ class Nozzle:
                                 # Update axial break (THICKNESS_LOCATIONS)
                                 if i < nozzle.wall.layer[j].nAxialBreaks:
                                     prt_name.append('%s thickness location #%d' % (nozzle.wall.layer[j].name,i+1));
-                                    prt_basval.append('%.4lf'%nozzle.wall.layer[j].thicknessNodes[i,0]);
+                                    prt_basval.append('%.4lf'%nozzle.wall.layer[j].thicknessNodesNonDim[i,0]);
                                     prt_newval.append('%.4lf'%nozzle.dvList[id_dv]);
                                     # Update all axial break locations
                                     for k in range(i,nozzle.wall.layer[j].nBreaks,nozzle.wall.layer[j].nAxialBreaks):
-                                        nozzle.wall.layer[j].thicknessNodes[k,0] = nozzle.dvList[id_dv];
+                                        nozzle.wall.layer[j].thicknessNodesNonDim[k,0] = nozzle.dvList[id_dv];
                                     NbrChanged = NbrChanged+1;
                                 # Update angular break (THICKNESS_ANGLES)
                                 elif i < nozzle.wall.layer[j].nAxialBreaks + \
                                          nozzle.wall.layer[j].nAngularBreaks:
                                     iLocal = i - nozzle.wall.layer[j].nAxialBreaks;
                                     prt_name.append('%s thickness angle #%d' % (nozzle.wall.layer[j].name,iLocal+1));
-                                    prt_basval.append('%.4lf'%nozzle.wall.layer[j].thicknessNodes[iLocal,1]);
+                                    prt_basval.append('%.4lf'%nozzle.wall.layer[j].thicknessNodesNonDim[iLocal,1]);
                                     prt_newval.append('%.4lf'%nozzle.dvList[id_dv]);
                                     # Update all angular break locations
                                     angBreakLoc = iLocal*nozzle.wall.layer[j].nAxialBreaks;
                                     for k in range(angBreakLoc,angBreakLoc+nozzle.wall.layer[j].nAngularBreaks):
-                                        nozzle.wall.layer[j].thicknessNodes[k,1] = nozzle.dvList[id_dv];
+                                        nozzle.wall.layer[j].thicknessNodesNonDim[k,1] = nozzle.dvList[id_dv];
                                     NbrChanged = NbrChanged+1;                                    
                                 # Update thickness value (THICKNESS_VALUES)
                                 else:
                                     iLocal = i - nozzle.wall.layer[j].nAxialBreaks - \
                                       nozzle.wall.layer[j].nAngularBreaks;
                                     prt_name.append('%s thickness value #%d' % (nozzle.wall.layer[j].name,iLocal+1));
-                                    prt_basval.append('%.4lf'%nozzle.wall.layer[j].thicknessNodes[iLocal,2]);
+                                    prt_basval.append('%.4lf'%nozzle.wall.layer[j].thicknessNodesNonDim[iLocal,2]);
                                     prt_newval.append('%.4lf'%nozzle.dvList[id_dv]);
                                     # Update thickness value
-                                    nozzle.wall.layer[j].thicknessNodes[iLocal,2] = nozzle.dvList[id_dv];
+                                    nozzle.wall.layer[j].thicknessNodesNonDim[iLocal,2] = nozzle.dvList[id_dv];
                                     NbrChanged = NbrChanged+1;   
                         check = 1;
 
@@ -2399,15 +2418,15 @@ class Nozzle:
                                 pass
                             elif id_dv < nozzle.DV_Head[iTag]+brk:
                                 prt_name.append('%s thickness location #%d' % (nozzle.wall.layer[j].name,iCoord+1));
-                                prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodes[iCoord,0]);
+                                prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodesNonDim[iCoord,0]);
                                 prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                                nozzle.wall.layer[j].thicknessNodes[iCoord,0] = nozzle.dvList[id_dv];
+                                nozzle.wall.layer[j].thicknessNodesNonDim[iCoord,0] = nozzle.dvList[id_dv];
                                 NbrChanged = NbrChanged+1;
                             else: # id_dv > nozzle.DV_Head[iTag]+brk
                                 prt_name.append('%s thickness value #%d' % (nozzle.wall.layer[j].name,iCoord+1-lsize));
-                                prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodes[iCoord-lsize,1]);
+                                prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodesNonDim[iCoord-lsize,1]);
                                 prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                                nozzle.wall.layer[j].thicknessNodes[iCoord-lsize,1] = nozzle.dvList[id_dv];
+                                nozzle.wall.layer[j].thicknessNodesNonDim[iCoord-lsize,1] = nozzle.dvList[id_dv];
                                 NbrChanged = NbrChanged+1;
                         check = 1;
                         
@@ -2426,11 +2445,11 @@ class Nozzle:
                         for i in range(nozzle.wall.layer[j].nAxialBreaks):
                             id_dv = nozzle.DV_Head[iTag] + i;
                             prt_name.append('%s thickness location #%d' % (nozzle.wall.layer[j].name,i+1));
-                            prt_basval.append('%.4lf'%nozzle.wall.layer[j].thicknessNodes[i,0]);
+                            prt_basval.append('%.4lf'%nozzle.wall.layer[j].thicknessNodesNonDim[i,0]);
                             prt_newval.append('%.4lf'%nozzle.dvList[id_dv]);
                             # Update all axial break locations
                             for k in range(i,nozzle.wall.layer[j].nBreaks,nozzle.wall.layer[j].nAxialBreaks):
-                                nozzle.wall.layer[j].thicknessNodes[k,0] = nozzle.dvList[id_dv];
+                                nozzle.wall.layer[j].thicknessNodesNonDim[k,0] = nozzle.dvList[id_dv];
                             NbrChanged = NbrChanged+1;                        
                         check = 1;
                         
@@ -2440,12 +2459,12 @@ class Nozzle:
                         for i in range(nozzle.wall.layer[j].nAngularBreaks):
                             id_dv = nozzle.DV_Head[iTag] + i;
                             prt_name.append('%s thickness angle #%d' % (nozzle.wall.layer[j].name,i));
-                            prt_basval.append('%.4lf'%nozzle.wall.layer[j].thicknessNodes[i,1]);
+                            prt_basval.append('%.4lf'%nozzle.wall.layer[j].thicknessNodesNonDim[i,1]);
                             prt_newval.append('%.4lf'%nozzle.dvList[id_dv]);
                             # Update all angular break locations
                             angBreakLoc = i*nozzle.wall.layer[j].nAxialBreaks;
                             for k in range(angBreakLoc,angBreakLoc+nozzle.wall.layer[j].nAngularBreaks):
-                                nozzle.wall.layer[j].thicknessNodes[k,1] = nozzle.dvList[id_dv];
+                                nozzle.wall.layer[j].thicknessNodesNonDim[k,1] = nozzle.dvList[id_dv];
                             NbrChanged = NbrChanged+1;                                    
                         check = 1;
                         
@@ -2455,10 +2474,10 @@ class Nozzle:
                         for i in range(nozzle.wall.layer[j].nBreaks):
                             id_dv = nozzle.DV_Head[iTag] + i;
                             prt_name.append('%s thickness value #%d' % (nozzle.wall.layer[j].name,i+1));
-                            prt_basval.append('%.4lf'%nozzle.wall.layer[j].thicknessNodes[i,2]);
+                            prt_basval.append('%.4lf'%nozzle.wall.layer[j].thicknessNodesNonDim[i,2]);
                             prt_newval.append('%.4lf'%nozzle.dvList[id_dv]);
                             # Update thickness value
-                            nozzle.wall.layer[j].thicknessNodes[i,2] = nozzle.dvList[id_dv];
+                            nozzle.wall.layer[j].thicknessNodesNonDim[i,2] = nozzle.dvList[id_dv];
                             NbrChanged = NbrChanged+1;   
                         check = 1;
                 
@@ -2468,18 +2487,18 @@ class Nozzle:
                         for iCoord in range(nozzle.wall.layer[j].nBreaks):
                             id_dv = nozzle.DV_Head[iTag] + iCoord;
                             prt_name.append('%s thickness location #%d' % (nozzle.wall.layer[j].name,iCoord+1));
-                            prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodes[iCoord,0]);
+                            prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodesNonDim[iCoord,0]);
                             prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                            nozzle.wall.layer[j].thicknessNodes[iCoord,0] = nozzle.dvList[id_dv];
+                            nozzle.wall.layer[j].thicknessNodesNonDim[iCoord,0] = nozzle.dvList[id_dv];
                             NbrChanged = NbrChanged+1;
                         check = 1;
                     elif Tag == nozzle.wall.layer[j].name + '_THICKNESS_VALUES':
                         for iCoord in range(nozzle.wall.layer[j].nBreaks):
                             id_dv = nozzle.DV_Head[iTag] + iCoord;                  
                             prt_name.append('%s thickness value #%d' % (nozzle.wall.layer[j].name,iCoord+1));
-                            prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodes[iCoord,1]);
+                            prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodesNonDim[iCoord,1]);
                             prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                            nozzle.wall.layer[j].thicknessNodes[iCoord,1] = nozzle.dvList[id_dv];
+                            nozzle.wall.layer[j].thicknessNodesNonDim[iCoord,1] = nozzle.dvList[id_dv];
                             NbrChanged = NbrChanged+1;
                         check = 1;
                         
@@ -2492,10 +2511,10 @@ class Nozzle:
                 if Tag == nozzle.wall.layer[j].name + '_THICKNESS':
                     id_dv = nozzle.DV_Head[iTag];
                     prt_name.append('%s thickness' % nozzle.wall.layer[j].name);
-                    prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodes[0,1]);
+                    prt_basval.append('%.4lf'% nozzle.wall.layer[j].thicknessNodesNonDim[0,1]);
                     prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                    nozzle.wall.layer[j].thicknessNodes[0,1] = nozzle.dvList[id_dv];
-                    nozzle.wall.layer[j].thicknessNodes[1,1] = nozzle.dvList[id_dv];
+                    nozzle.wall.layer[j].thicknessNodesNonDim[0,1] = nozzle.dvList[id_dv];
+                    nozzle.wall.layer[j].thicknessNodesNonDim[1,1] = nozzle.dvList[id_dv];
                     nozzle.wall.layer[j].thicknessValue = nozzle.dvList[id_dv];
                     NbrChanged = NbrChanged+1;
                     check = 1;
@@ -2503,9 +2522,10 @@ class Nozzle:
                 continue;
 
             if Tag == 'BAFFLES':
-                lsize = len(nozzle.baffles.dv)/3;
+                lsize = (len(nozzle.baffles.dv)-1)/3;
                 brk1 = np.max(nozzle.baffles.dv[:lsize])+1;
                 brk2 = np.max(nozzle.baffles.dv[lsize:2*lsize])+1;
+                brk3 = np.max(nozzle.baffles.dv[2*lsize:3*lsize])+1;
                 for iCoord in range(len(nozzle.baffles.dv)):
                     id_dv = nozzle.DV_Head[iTag] + nozzle.baffles.dv[iCoord];                    
                     # --- Update coordinate in baffle definition if required
@@ -2522,9 +2542,9 @@ class Nozzle:
                                 prt_name.append('stringer location #%d' % (iCoord+1));
                                 prt_basval.append('%.4lf'% nozzle.baffles.locationNonDim[iCoord]);
                                 prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                                nozzle.stringers.thicknessNodes[iCoord][0] = nozzle.dvList[id_dv];
+                                nozzle.stringers.thicknessNodesNonDim[iCoord][0] = nozzle.dvList[id_dv];
                                 if (nozzle.stringers.heightDefinition == 'BAFFLES_HEIGHT'):
-                                    nozzle.stringers.heightNodes[iCoord][0] = nozzle.dvList[id_dv];                        
+                                    nozzle.stringers.heightNodesNonDim[iCoord][0] = nozzle.dvList[id_dv];                        
                                 NbrChanged = NbrChanged+1;
                     elif id_dv < nozzle.DV_Head[iTag] + brk2:
                         prt_name.append('baffle thickness #%d' % (iCoord+1-lsize));
@@ -2532,7 +2552,7 @@ class Nozzle:
                         prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
                         nozzle.baffles.thickness[iCoord-lsize] = nozzle.dvList[id_dv];
                         NbrChanged = NbrChanged+1;                        
-                    else:
+                    elif id_dv < nozzle.DV_Head[iTag] + brk3:
                         prt_name.append('baffle height #%d' % (iCoord+1-2*lsize));
                         prt_basval.append('%.4lf'% nozzle.baffles.height[iCoord-2*lsize]);
                         prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
@@ -2543,8 +2563,14 @@ class Nozzle:
                                 prt_name.append('stringer height #%d' % (iCoord+1-2*lsize));
                                 prt_basval.append('%.4lf'% nozzle.baffles.height[iCoord-2*lsize]);
                                 prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                                nozzle.stringers.heightNodes[iCoord-2*lsize][1] = nozzle.dvList[id_dv];                     
-                                NbrChanged = NbrChanged+1;                        
+                                nozzle.stringers.heightNodesNonDim[iCoord-2*lsize][1] = nozzle.dvList[id_dv];                     
+                                NbrChanged = NbrChanged+1;     
+                    else:
+                        prt_name.append('baffle half width');
+                        prt_basval.append('%.4lf' % nozzle.baffles.halfWidth);
+                        prt_newval.append('%.4lf' % nozzle.dvList[id_dv]);
+                        nozzle.baffles.halfWidth = nozzle.dvList[id_dv];  
+                        NbrChanged += 1;                 
                 continue;
                 
             if Tag == 'BAFFLES_LOCATION':
@@ -2560,8 +2586,8 @@ class Nozzle:
                             prt_name.append('stringer location #%d' % (iCoord+1));
                             prt_basval.append('%.4lf'% nozzle.baffles.locationNonDim[iCoord]);
                             prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                            nozzle.stringers.thicknessNodes[iCoord][0] = nozzle.dvList[id_dv];
-                            nozzle.stringers.heightNodes[iCoord][0] = nozzle.dvList[id_dv];                        
+                            nozzle.stringers.thicknessNodesNonDim[iCoord][0] = nozzle.dvList[id_dv];
+                            nozzle.stringers.heightNodesNonDim[iCoord][0] = nozzle.dvList[id_dv];                        
                             NbrChanged = NbrChanged+1;                    
                 continue;
                
@@ -2578,7 +2604,7 @@ class Nozzle:
                             prt_name.append('stringer height #%d' % (iCoord+1));
                             prt_basval.append('%.4lf'% nozzle.baffles.height[iCoord]);
                             prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                            nozzle.stringers.heightNodes[iCoord][1] = nozzle.dvList[id_dv];                     
+                            nozzle.stringers.heightNodesNonDim[iCoord][1] = nozzle.dvList[id_dv];                     
                             NbrChanged = NbrChanged+1;
                 continue;
             
@@ -2591,20 +2617,18 @@ class Nozzle:
                     nozzle.baffles.thickness[iCoord] = nozzle.dvList[id_dv];
                     NbrChanged = NbrChanged+1;
                 continue;
+
+            if Tag == 'BAFFLES_HALF_WIDTH':
+                id_dv = nozzle.DV_Head[iTag];
+                prt_name.append('baffle half width');
+                prt_basval.append('%.4lf' % nozzle.baffles.halfWidth);
+                prt_newval.append('%.4lf' % nozzle.dvList[id_dv]);
+                nozzle.baffles.halfWidth = nozzle.dvList[id_dv];  
+                NbrChanged += 1;  
                 
             if Tag == 'STRINGERS':
                 
                 if nozzle.param == '3D':
-                    
-                    sys.sterr.write('\n## ERROR: Specification of STRINGERS ' \
-                      'as design variables where STRINGERS controls the ' \
-                      'break locations, angles, heights, and thicknesses ' \
-                      'of the stringers is not implemented for the 3D ' \
-                      'parameterization. Specify stringer sub-definitions ' \
-                      'instead such as STRINGERS_THICKNESS_VALUES.\n\n');
-                    sys.exit(0);
-                    
-                    #print nozzle.stringers.__dict__
                     
                     # Loop through all possible stringer design variables
                     for i in range(len(nozzle.stringers.dv)):
@@ -2613,18 +2637,38 @@ class Nozzle:
                         # Update stringer parameter if required
                         if id_dv >= nozzle.DV_Head[iTag]:
                             # Update stringer break locations
-                            if i < nozzle.stringer.nBreaks:
-                                pass;
+                            if i < nozzle.stringers.nAxialBreaks:
+                                prt_name.append('stringer break location #%d' % (i+1));
+                                prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodesNonDim[i,0]);
+                                prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                                jtmp = 0;
+                                for j in range(nozzle.stringers.n):
+                                    nozzle.stringers.thicknessNodesNonDim[jtmp,0] = nozzle.dvList[id_dv];
+                                    jtmp += nozzle.stringers.nAxialBreaks;
+                                    NbrChanged = NbrChanged+1;
                             # Update stringer angles
-                            elif i < nozzle.stringer.nBreaks + \
-                                     nozzle.stringer.n:
-                                pass;
+                            elif i < nozzle.stringers.nAxialBreaks + \
+                              nozzle.stringers.n:
+                                jtmp = (i-nozzle.stringers.nAxialBreaks)*nozzle.stringers.nAxialBreaks;
+                                prt_name.append('stringer angle #%d' % (i+1-nozzle.stringers.nAxialBreaks));
+                                prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodesNonDim[jtmp,1]);
+                                prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                                jtmp = 0;
+                                for j in range(nozzle.stringers.n):
+                                    nozzle.stringers.thicknessNodesNonDim[jtmp:jtmp+nozzle.stringers.nAxialBreaks,1] = nozzle.dvList[id_dv]*np.ones((nozzle.stringers.nAxialBreaks,));
+                                    jtmp += nozzle.stringers.nAxialBreaks;
+                                    NbrChanged = NbrChanged+1;
                             # Update stringer heights
                             #elif i < :
                             #    pass;             
                             # Update stringer thicknesses
                             else:
-                                pass;                        
+                                jtmp = i - nozzle.stringers.nAxialBreaks - nozzle.stringers.n;
+                                prt_name.append('stringer thickness #%d' % (jtmp+1));
+                                prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodesNonDim[jtmp,2]);
+                                prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
+                                nozzle.stringers.thicknessNodesNonDim[jtmp,2] = nozzle.dvList[id_dv];
+                                NbrChanged += 1;                     
                     
                 else: # assume 2D parameterization
                     
@@ -2638,22 +2682,22 @@ class Nozzle:
                             pass
                         elif id_dv < nozzle.DV_Head[iTag]+brk1:
                             prt_name.append('stringer break location #%d' % (iCoord+1));
-                            prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodes[iCoord][0]);
+                            prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodesNonDim[iCoord][0]);
                             prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                            nozzle.stringers.thicknessNodes[iCoord][0] = nozzle.dvList[id_dv];
-                            nozzle.stringers.heightNodes[iCoord][0] = nozzle.dvList[id_dv];
+                            nozzle.stringers.thicknessNodesNonDim[iCoord][0] = nozzle.dvList[id_dv];
+                            nozzle.stringers.heightNodesNonDim[iCoord][0] = nozzle.dvList[id_dv];
                             NbrChanged = NbrChanged+1;
                         elif id_dv < nozzle.DV_Head[iTag] + brk2:
                             prt_name.append('stringer height value #%d' % (iCoord+1-lsize));
-                            prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodes[iCoord-lsize][1]);
+                            prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodesNonDim[iCoord-lsize][1]);
                             prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                            nozzle.stringers.heightNodes[iCoord-lsize][1] = nozzle.dvList[id_dv];
+                            nozzle.stringers.heightNodesNonDim[iCoord-lsize][1] = nozzle.dvList[id_dv];
                             NbrChanged = NbrChanged+1;
                         else: # id_dv > nozzle.DV_Head[iTag]+brk
                             prt_name.append('stringer thickness value #%d' % (iCoord+1-2*lsize));
-                            prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodes[iCoord-2*lsize][1]);
+                            prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodesNonDim[iCoord-2*lsize][1]);
                             prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                            nozzle.stringers.thicknessNodes[iCoord-2*lsize][1] = nozzle.dvList[id_dv];
+                            nozzle.stringers.thicknessNodesNonDim[iCoord-2*lsize][1] = nozzle.dvList[id_dv];
                             NbrChanged = NbrChanged+1;
                 continue;    
                 
@@ -2669,10 +2713,10 @@ class Nozzle:
                     for iCoord in range(nozzle.stringers.nBreaks):
                         id_dv = nozzle.DV_Head[iTag] + iCoord;
                         prt_name.append('stringer break location #%d' % (iCoord+1));
-                        prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodes[iCoord][0]);
+                        prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodesNonDim[iCoord][0]);
                         prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                        nozzle.stringers.thicknessNodes[iCoord][0] = nozzle.dvList[id_dv];
-                        nozzle.stringers.heightNodes[iCoord][0] = nozzle.dvList[id_dv];
+                        nozzle.stringers.thicknessNodesNonDim[iCoord][0] = nozzle.dvList[id_dv];
+                        nozzle.stringers.heightNodesNonDim[iCoord][0] = nozzle.dvList[id_dv];
                         NbrChanged = NbrChanged+1;
                     continue;
             
@@ -2684,12 +2728,12 @@ class Nozzle:
                       ' is currently not implemented.\n\n');
                     sys.exit(0);
                 else: # assume 2D parameterization
-                    for iCoord in range(len(nozzle.stringers.heightNodes)):
+                    for iCoord in range(len(nozzle.stringers.heightNodesNonDim)):
                         id_dv = nozzle.DV_Head[iTag] + iCoord;                  
                         prt_name.append('stringer height value #%d' % (iCoord+1));
-                        prt_basval.append('%.4lf'% nozzle.stringers.heightNodes[iCoord][1]);
+                        prt_basval.append('%.4lf'% nozzle.stringers.heightNodesNonDim[iCoord][1]);
                         prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                        nozzle.stringers.heightNodes[iCoord][1] = nozzle.dvList[id_dv];
+                        nozzle.stringers.heightNodesNonDim[iCoord][1] = nozzle.dvList[id_dv];
                         NbrChanged = NbrChanged+1;
                     continue;
                     
@@ -2699,19 +2743,19 @@ class Nozzle:
                     for i in range(nozzle.stringers.nThicknessValues):
                         id_dv = nozzle.DV_Head[iTag] + i;
                         prt_name.append('stringer thickness value #%d' % (i+1));
-                        prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodes[i,2]);
+                        prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodesNonDim[i,2]);
                         prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                        nozzle.stringers.thicknessNodes[i,2] = nozzle.dvList[id_dv];
+                        nozzle.stringers.thicknessNodesNonDim[i,2] = nozzle.dvList[id_dv];
                         NbrChanged = NbrChanged+1;
                     continue;
                         
                 else: # assume 2D parameterization
-                    for iCoord in range(len(nozzle.stringers.thicknessNodes)):
+                    for iCoord in range(len(nozzle.stringers.thicknessNodesNonDim)):
                         id_dv = nozzle.DV_Head[iTag] + iCoord;                  
                         prt_name.append('stringer thickness value #%d' % (iCoord+1));
-                        prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodes[iCoord,1]);
+                        prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodesNonDim[iCoord,1]);
                         prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                        nozzle.stringers.thicknessNodes[iCoord,1] = nozzle.dvList[id_dv];
+                        nozzle.stringers.thicknessNodesNonDim[iCoord,1] = nozzle.dvList[id_dv];
                         NbrChanged = NbrChanged+1;
                     continue;                    
                         
@@ -3604,7 +3648,7 @@ class Nozzle:
         ymax = max(ytab);
         
         
-        Box = [[0, nozzle.length],[ymin, ymax]];
+        Box = [[nozzle.xinlet, nozzle.xoutlet],[ymin, ymax]];
                 
         wid = Box[0][1] - Box[0][0];
         hei = Box[1][1] - Box[1][0];
@@ -3662,6 +3706,122 @@ class Nozzle:
         fil.write("</svg>");
         
         sys.stdout.write("  -- Info : nozzle.svg OPENED.\n\n");
+
+
+    # Useful function for printing everything about nozzle
+    def printNozzleData(self, output='verbose'):
+
+        nozzle = self
+
+        print '\n*****************NOZZLE INFORMATION*****************\n'
+
+        print 'MISSION:'
+        print nozzle.mission.__dict__
+        print
+        
+        print 'CFD:'
+        print nozzle.cfd.__dict__
+        print
+        
+        print 'FLUID:'
+        print nozzle.fluid.__dict__
+        print
+        
+        print 'EXTERIOR ENVIRONMENT:'
+        print nozzle.environment.__dict__
+        print
+        
+        print 'INLET:'
+        print nozzle.inlet.__dict__
+        print
+                
+        print 'EXTERIOR ENVIRONMENT:'
+        print nozzle.environment.__dict__
+        print
+            
+        print 'NOZZLE INTERIOR WALL:'
+        if nozzle.dim == '3D':
+            print 'The interior nozzle wall is parameterized with 3 B-splines.'
+            print 'One B-spline parameterizes the centerline, and two more '
+            print 'parameterize the major and minor axes of an ellipse centered '
+            print 'on the centerline, drawn in the vertical plane. Two other '
+            print 'parameters, the shovel exit height and shovel inlet start '
+            print 'angle are used to define the flattening out of the geometry '
+            print 'near the exit.'
+            print 'Nozzle wall centerline geometry:'
+            print nozzle.wall.centerline.geometry.__dict__
+            print 'Nozzle wall major axis geometry:'
+            print nozzle.wall.majoraxis.geometry.__dict__
+            print 'Nozzle wall minor axis geometry:'
+            print nozzle.wall.minoraxis.geometry.__dict__
+            print 'Nozzle wall equivalent axisymmetric geometry:'
+            print nozzle.wall.geometry.__dict__
+            print 'Nozzle length: %f' % nozzle.length
+            print 'Nozzle wall struct:'
+            print nozzle.wall.__dict__
+            print 'Nozzle wall shovel exit height: %f' % nozzle.wall.shovel_height
+            print 'Nozzle wall shovel inlet start angle: %f' % nozzle.wall.shovel_start_angle
+            print
+        else:
+            print 'Nozzle wall geometry:'
+            print nozzle.wall.geometry.__dict__
+            print 'Nozzle length: %f' % nozzle.length
+            print 'Nozzle wall struct:'
+            print nozzle.wall.__dict__
+            print
+        
+        print 'WALL LAYERS:'
+        if nozzle.dim == '3D':
+            print 'Each wall layer is defined using a bilinear distribution, '
+            print 'where thickness is a function of global axial coordinate x '
+            print 'and global angular coordinate theta. Data is arranged in a '
+            print 'Numpy array in a rectilinear grid as follows:'
+            print 'nozzle.wall.layer[i].thicknessNodes = '
+            print '  [[x1, y1, t1],'
+            print '   [x2, y1, t2],'
+            print '   [x3, y1, t3],'
+            print '   [x4, y1, t4],'
+            print '   [x1, y2, t5],'
+            print '       ... '
+            print '        etc.  ]'
+        for i in range(len(nozzle.wall.layer)):
+            print 'Nozzle wall layer: %s' % nozzle.wall.layer[i].name
+            print nozzle.wall.layer[i].__dict__
+        print
+
+        print 'MATERIALS:'
+        print 'Not implemented yet for printing'
+        
+        print 'STRINGERS:'
+        print 'Since the nozzle is nonaxisymmetric, stringers are defined by '
+        print 'angular position around the centerline. Thicknesses are a '
+        print 'function of global axial X-coordinate and stringer angle. '
+        print 'A stringer is assumed to travel along the same angular coord.'
+        print nozzle.stringers.__dict__
+        if nozzle.dim == '3D':
+            for i in range(len(nozzle.stringers.height)):
+                print 'Nozzle stringer %i height:' % i
+                print nozzle.stringers.height[i].__dict__
+                print 'Nozzle stringer %i thickness:' % i
+                print nozzle.stringers.thickness[i].__dict__
+        
+        print 'BAFFLES:'
+        print nozzle.baffles.__dict__
+        print
+        
+        print 'EXTERIOR:'
+        print nozzle.exterior.__dict__
+        print
+        
+        print 'Entire NOZZLE struct:'
+        for k in nozzle.__dict__:
+            print k
+            print nozzle.__dict__[k]
+            print
+
+        return
+
+    # END of Nozzle class.
 
 
 def NozzleSetup( config, flevel, output='verbose'):
@@ -3760,105 +3920,11 @@ def NozzleSetup( config, flevel, output='verbose'):
         nozzle.ParseDV(config,output);
 
         # Update DV using values provided in input DV file
-        #nozzle.UpdateDV(output);
+        nozzle.UpdateDV(output);
 
     # --- Computer inner wall's B-spline and thermal and load layer thicknesses
     #     B-spline coefs, and thickness node arrays may have been updated by
-    #     the design variables input file; update exterior geometry & baffles
-    
+    #     the design variables input file; update exterior geometry & baffles   
     nozzle.SetupWall(output);
-        
-    return nozzle;    
 
-
-def SetupVerificationConfig ():
-	
-	# --- 
-	
-	config = SU2.io.Config();
-	
-	print "SetupVerificationConfig"
-	
-	config.FIDELITY_LEVELS_TAGS                   = '(model1,model2,model3)'
-	config.DEF_model1                             = '(EULER,2D,COARSE,AERO,LINEAR,0.5)'
-	config.DEF_model2                             = '(EULER,2D,MEDIUM,AERO,LINEAR,0.75)'
-	config.DEF_model3                             = '(EULER,2D,FINE,AERO,LINEAR,0.75)'
-	config.MISSION                                = 0
-	config.SU2_OUTPUT_FORMAT                      = 'PARAVIEW'
-	config.SU2_MAX_ITERATIONS                     = 500
-	config.SU2_CONVERGENCE_ORDER                  = 6
-	#config.SU2_RUN                                = '/Users/menier/codes/SU2_dev/su2-install/bin'
-	config.OUTPUT_GRADIENTS                       = 'NO'
-	config.OUTPUT_GRADIENTS_FILENAME              = 'grad.dat'
-	config.INPUT_DV_FORMAT                        = 'DAKOTA'
-	config.OUTPUT_FUNCTIONS                       = '(MASS, THRUST)'
-	config.OUTPUT_NAME                            = 'results.out'
-	config.OUTPUT_FORMAT                          = 'DAKOTA'
-	config.WALL                                   = '(BSPLINE)'
-	config.WALL_COEFS                             = '(0.0000, 0.0000, 0.1500, 0.1700, 0.1900, 0.2124, 0.2269, 0.2734, 0.3218, 0.3218, 0.3230, 0.3343, 0.3474, 0.4392, 0.4828, 0.5673, 0.6700, 0.6700, 0.3255, 0.3255, 0.3255, 0.3255, 0.3255, 0.3238, 0.2981, 0.2817, 0.2787, 0.2787, 0.2787, 0.2797, 0.2807, 0.2936, 0.2978, 0.3049, 0.3048, 0.3048)'
-	config.WALL_COEFS_DV                          = '(0, 0, 0, 0, 0, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 11, 0, 0, 0, 0, 0, 12, 13, 14, 15, 15, 15, 16, 17, 18, 19, 20, 21, 21)'
-	config.LAYER1                                 = '(THERMAL_LAYER, PIECEWISE_LINEAR, CMC)'
-	config.LAYER1_THICKNESS_LOCATIONS             = '(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0)'
-	config.LAYER1_THICKNESS_VALUES                = '(0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03)'
-	config.LAYER1_DV                              = '(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)'
-	config.LAYER2                                 = '(AIR_GAP, CONSTANT, AIR)'
-	config.LAYER2_THICKNESS                       = '0.005'
-	config.LAYER3                                 = '(LOAD_LAYER_INSIDE, PIECEWISE_LINEAR, GR-BMI)'
-	config.LAYER3_THICKNESS_LOCATIONS             = '(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0)'
-	config.LAYER3_THICKNESS_VALUES                = '(0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002)'
-	config.LAYER3_DV                              = '(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)'
-	config.LAYER4                                 = '(LOAD_LAYER_MIDDLE, PIECEWISE_LINEAR, TI-HC)'
-	config.LAYER4_THICKNESS_LOCATIONS             = '(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0)'
-	config.LAYER4_THICKNESS_VALUES                = '(0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 0.013)'
-	config.LAYER4_DV                              = '(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)'
-	config.LAYER5                                 = '(LOAD_LAYER_OUTSIDE, PIECEWISE_LINEAR, GR-BMI)'
-	config.LAYER5_THICKNESS_LOCATIONS             = '(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0)'
-	config.LAYER5_THICKNESS_VALUES                = '(0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002)'
-	config.LAYER5_DV                              = '(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)'
-	config.STRINGERS                              = '(4,GR-BMI)'
-	config.STRINGERS_BREAK_LOCATIONS              = 'BAFFLES_LOCATION'
-	config.STRINGERS_HEIGHT_VALUES                = 'BAFFLES_HEIGHT'
-	config.STRINGERS_THICKNESS_VALUES             = '(0.01, 0.01, 0.01, 0.01, 0.01, 0.01)'
-	config.BAFFLES                                = '(6,PANEL)'
-	config.BAFFLES_LOCATION                       = '(0, 0.2, 0.4, 0.6, 0.8, 1)'
-	config.BAFFLES_THICKNESS                      = '(0.01, 0.01, 0.01, 0.01, 0.01, 0.01)'
-	config.BAFFLES_HEIGHT                         = '(0.2, 0.2, 0.2, 0.2, 0.2, 0.2)'
-	config.BAFFLES_DV                             = '(0, 1, 2, 3, 4, 0, 5, 6, 7, 8, 9, 10, 0, 0, 0, 0, 0, 0)'
-	config.MATERIAL1                              = '(CMC, ISOTROPIC)'
-	config.MATERIAL1_DENSITY                      = '2410'
-	config.MATERIAL1_ELASTIC_MODULUS              = '67.1e9'
-	config.MATERIAL1_POISSON_RATIO                = '0.33'
-	config.MATERIAL1_THERMAL_CONDUCTIVITY         = '1.41'
-	config.MATERIAL1_THERMAL_EXPANSION_COEF       = '0.24e-6'
-	config.MATERIAL1_PRINCIPLE_FAILURE_STRAIN     = '0.0007'
-	config.MATERIAL1_MAX_SERVICE_TEMPERATURE      = '973'
-	config.MATERIAL2                              = '(GR-BMI, ANISOTROPIC_SHELL)'
-	config.MATERIAL2_DENSITY                      = '1568'
-	config.MATERIAL2_ELASTIC_MODULUS              = '(60e9, 60e9)'
-	config.MATERIAL2_SHEAR_MODULUS                = '23.31e9'
-	config.MATERIAL2_POISSON_RATIO                = '0.344'
-	config.MATERIAL2_MUTUAL_INFLUENCE_COEFS       = '(0.0, 0.0)'
-	config.MATERIAL2_THERMAL_CONDUCTIVITY         = '(3.377, 3.377, 3.414)'
-	config.MATERIAL2_THERMAL_EXPANSION_COEF       = '(1.2e-6, 1.2e-6, 0.0)'
-	config.MATERIAL2_LOCAL_FAILURE_STRAIN         = '(0.0075, -0.0052, 0.0075, -0.0052, 0.0017)'
-	config.MATERIAL2_MAX_SERVICE_TEMPERATURE      = '505'
-	config.MATERIAL3                              = '(TI-HC, ISOTROPIC)'
-	config.MATERIAL3_DENSITY                      = '179.57'
-	config.MATERIAL3_ELASTIC_MODULUS              = '0.190e9'
-	config.MATERIAL3_POISSON_RATIO                = '0.178'
-	config.MATERIAL3_THERMAL_CONDUCTIVITY         = '0.708'
-	config.MATERIAL3_THERMAL_EXPANSION_COEF       = '2.97e-6'
-	config.MATERIAL3_YIELD_STRESS                 = '12.9e6'
-	config.MATERIAL3_MAX_SERVICE_TEMPERATURE      = '755'
-	config.MATERIAL4                              = '(PANEL, FIXED_RATIO_PANEL)'
-	config.MATERIAL4_LAYERS                       = '(GR-BMI, TI-HC, GR-BMI)'
-	config.MATERIAL4_THICKNESS_RATIOS             = '(0.2, 0.6, 0.2)'
-	config.MATERIAL4_YIELD_STRESS                 = '324e6'
-	config.MATERIAL5                              = '(AIR, ISOTROPIC)'
-	config.MATERIAL5_DENSITY                      = '0.0'
-	config.MATERIAL5_THERMAL_CONDUCTIVITY         = '0.0425'
-	config.HEAT_XFER_COEF_TO_ENV                  = '12.62'
-
-
-	return config;
-	
+    return nozzle;

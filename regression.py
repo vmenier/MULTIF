@@ -176,16 +176,16 @@ if( test['all'] or test['medfi'] or test['adjoint'] ):
 
 # --------- 2D param, med-fi, f.d. gradients w/ mesh deformation -------------
 if( test['all'] or test['medfi'] or test['fd'] ):
-    medfi_2dparam_fd = TestCase('medfi_2dparam_fd');
-    medfi_2dparam_fd.description = 'Mass and thrust, 2D, parallel, med-fi analysis with finite difference gradients using mesh deformation';
-    medfi_2dparam_fd.cfg_dir = os.path.join('example','gradients');
-    medfi_2dparam_fd.cfg_file = 'general_fd_gradients.cfg';
-    medfi_2dparam_fd.input_file = 'params.in';
-    medfi_2dparam_fd.compare_file = 'example/regression/results_general_fd_gradients_medfi.out';
-    medfi_2dparam_fd.fidelity = 1;
-    medfi_2dparam_fd.nproc = nCores;
-    medfi_2dparam_fd.diff_tol = 1e-6;
-    test_list.append(medfi_2dparam_fd);
+   medfi_2dparam_fd = TestCase('medfi_2dparam_fd');
+   medfi_2dparam_fd.description = 'Mass and thrust, 2D, parallel, med-fi analysis with finite #difference gradients using mesh deformation';
+   medfi_2dparam_fd.cfg_dir = os.path.join('example','gradients');
+   medfi_2dparam_fd.cfg_file = 'general_fd_gradients.cfg';
+   medfi_2dparam_fd.input_file = 'params.in';
+   medfi_2dparam_fd.compare_file = 'example/regression/results_general_fd_gradients_medfi.out';
+   medfi_2dparam_fd.fidelity = 1;
+   medfi_2dparam_fd.nproc = nCores;
+   medfi_2dparam_fd.diff_tol = 1e-6;
+   test_list.append(medfi_2dparam_fd);
 
 # Remaining tests get placed below as they come online
 

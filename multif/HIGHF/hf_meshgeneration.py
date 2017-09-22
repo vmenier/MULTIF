@@ -174,12 +174,8 @@ def MF_GetRadius (x, fr1, fr2, fz, params):
 			rad[i] = MF_GetRadius (x[i], fr1, fr2, fz, params);
 		return rad;
 	
-	if ( x < -1e-12 ):
-		return -1.0;
-	
 	r1 = fr1(x);
-	r2 = fr2(x);
-	
+	r2 = fr2(x);	
 	
 	z0  = fz(xthroat);
 	r10 = fr1(xthroat);

@@ -158,10 +158,7 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
             gradFile = open(nozzle.gradientsFile,'w');
             for k in nozzle.outputTags:
 			    np.savetxt(gradFile,nozzle.gradients[k]);
-            gradFile.close();   			
-    
-    if nozzle.verification:
-    	SU2postprocessing.VerificationPostPro(nozzle);
+            gradFile.close();
 
     # Write data
     if writeToFile:
