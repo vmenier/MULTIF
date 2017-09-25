@@ -386,6 +386,7 @@ def HF_SetupConfig (solver_options):
 	#    config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 20.0 )';
 	#    config.RESIDUAL_MAXVAL= 2;
 	#	
+	config.RELAXATION_LOCAL= 'NO';
 	# --- Setup wall temp distribution
 	
 	if ( wall_temp == 1 ) :

@@ -66,7 +66,7 @@ def GenerateNozzleMesh (nozzle):
 	mesh_options = optionsmesh();
 	mesh_options.xwall  = nozzle.cfd.x_wall;
 	mesh_options.ywall  = nozzle.cfd.y_wall;
-	mesh_options.hl     = nozzle.cfd.meshhl; 
+	mesh_options.hl     = nozzle.cfd.meshhl;
 	mesh_options.method = nozzle.method; # Euler or RANS
 	
 	# --- Compute ds based on y+ value
@@ -366,12 +366,11 @@ def GenerateNozzleMesh_Deform (nozzle):
 		xnew = xwall[0] + (x-xmin)/(xmax-xmin)*(xwall[-1]-xwall[0]);
 		xnew_tab.append(xnew);
 	
-	xnew_tab = np.array(xnew_tab);
 	
 	if nozzle.param == "2D":
 		_meshutils_module.py_BSplineGeo3LowF (nozzle.wall.knots, nozzle.wall.coefs, xnew_tab, ynew_tab, dydx);
 	else :
-		
+		xnew_tab = np.array(xnew_tab);
 		#geometry = noz.geometry;
 		#
 		#majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);

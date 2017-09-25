@@ -122,8 +122,38 @@ def HF_Compute_Thrust_Wrap (nozzle):
 	
 	return HF_Compute_Thrust (options);
 	
-	
 
+
+def HF_InterpolateToStructural (options):
+    
+    info = [];
+    Crd  = [];
+    Tri  = [];
+    Tet  = [];
+    Sol  = [];
+    Header = [];
+    
+    structNam = "./visu.meshb"
+    
+    structNamLoc = "%s/structural.meshb" % (os.getcwd());
+    
+    try :
+    	os.symlink(structNam, structNamLoc);
+    except:
+    	# ---
+    	sys.stdout.write("%s already exists\n" % exitNamLoc);
+    
+    out = _mshint_module.py_Interpolation (structNamLoc, options["mesh_name"], options["restart_name"],\
+    info, Crd, Tri, Tet, Sol, Header);
+    
+    dim    = info[0];
+    NbrVer = info[1]; 
+    NbrTri = info[2];
+    NbrTet = info[3];
+    SolSiz = info[4];
+    
+    return Crd, Tri, Sol, SolSiz
+    
 
 def HF_Compute_Thrust (options):
 	

@@ -167,8 +167,12 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
 		
 	   # Run thermal/structural analyses
 	    if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
-	         # XXX Ensure high-fidelity AEROS analysis runs correctly
-	        runAEROS(nozzle, output);
+	        # XXX Ensure high-fidelity AEROS analysis runs correctly
+	        try : 
+	            runAEROS(nozzle, output);
+	        except:
+	           sys.stdout.write("  ## WARNING: CALL TO AERO-S IGNORED.\n");
+	           
 		
 	    # Assign aero QoI if required
 	    # XXX Fill in this PostProcess function to return correct outputs
@@ -177,7 +181,11 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
 	    # Assign thermal/structural QoI if required
 	    if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
 	        # XXX Ensure AEROS post-processing returns correct outputs
-	        AEROSpostprocessing.PostProcess(nozzle, output);             
+	        #AEROSpostprocessing.PostProcess(nozzle, output);      
+	        try : 
+	           AEROSpostprocessing.PostProcess(nozzle, output);    
+	        except:
+	           sys.stdout.write("  ## WARNING: CALL TO AERO-S IGNORED.\n");       
 	    
 	    # Calculate gradients if necessary
 	    if nozzle.gradientsFlag == 1 and runAeroThermalStructuralGradients:
