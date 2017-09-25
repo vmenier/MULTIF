@@ -7,6 +7,16 @@ int py_ProjectNozzleWall3D( char *MshNam,
  PyObject *pyKnots_r1, PyObject *pyCoefs_r1,
  PyObject *pyKnots_r2, PyObject *pyCoefs_r2, 
  char *OutNam );
+ 
+ int py_ProjectNozzleWall3D_DV( char *MshNam,  
+  PyObject *pyRefUp,  PyObject *pyRefDown,
+  PyObject *pyKnots_center_from, PyObject *pyCoefs_center_from,
+  PyObject *pyKnots_r1_from, PyObject *pyCoefs_r1_from,
+  PyObject *pyKnots_r2_from, PyObject *pyCoefs_r2_from, 
+  PyObject *pyKnots_center_to, PyObject *pyCoefs_center_to,
+  PyObject *pyKnots_r1_to, PyObject *pyCoefs_r1_to,
+  PyObject *pyKnots_r2_to, PyObject *pyCoefs_r2_to, 
+  char *OutNam ) ;
 
 //void py_NozzleWallProjection (char *MshNam, char *SolNam, PyObject *pyMeshMotion,  PyObject *pyDV);
 

@@ -537,11 +537,11 @@ def runSU2 ( nozzle ):
 		solver_options.wall_temp_values = nozzle.wall.temperature.thicknessNodes;
 
 	solver_options.Dimension = '2D';
-
-	if ( nozzle.meshDeformationFlag ):
-	    GenerateNozzleMesh_Deform(nozzle);
-	else:
-	    GenerateNozzleMesh(nozzle);
+    
+	#if ( nozzle.meshDeformationFlag ):
+	#    GenerateNozzleMesh_Deform(nozzle);
+	#else:
+	#    GenerateNozzleMesh(nozzle);
 	
 	config = SetupConfig(solver_options);
 	

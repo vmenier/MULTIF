@@ -17,6 +17,8 @@ Victorien Menier Feb 2016
 //--- projection.c
 int NozzleWallProjection (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, int refUp, int refDown, char *OutNam);
 int ProjectToDV(double *Crd, CadNozzle *Noz, double *BasParam, int Patch);
+int NozzleWallProjection_DV (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, CadNozzle * CadNoz_bas, int refUp, int refDown, char *OutNam);
+
 
 //--- extraction.c
 int SolutionExtraction(Options *mshopt, Mesh *Msh);
@@ -106,7 +108,8 @@ double       fycut (double x,  double *BasParam);
 double 		 fz_bas (double x,  double *BasParam);
 double 		 fr1_bas (double x,  double *BasParam);
 double 		 fr2_bas (double x,  double *BasParam);
-int			 WriteCadBspline(char *BasNam, CadBspline *Bsp);
+int			   WriteCadBspline(char *BasNam, CadBspline *Bsp);
+int        Evaluate_Nozzle ( CadNozzle *Noz, double *x, double *r1, double *r2, double *zcenter );
 
 //--- Bspline
 

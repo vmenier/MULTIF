@@ -341,12 +341,14 @@ int ProjectNozzleWall (Options *mshopt)
 	LoadCadBspline ("r1", CadNoz->Bsp_r1);
 	LoadCadBspline ("r2", CadNoz->Bsp_r2);
 	
-	double cosTheta;
-	cosTheta = max(-1.0, min(1.0,(BasParam[BasInletzcut]-BasParam[BasInletz])/BasParam[BasInletr]));
-	CadNoz->ThetaCutIn  = acos(cosTheta);
+	//double cosTheta;
+	//cosTheta = max(-1.0, min(1.0,(BasParam[BasInletzcut]-BasParam[BasInletz])/BasParam[BasInletr]));
+	//CadNoz->ThetaCutIn  = acos(cosTheta);
+	//cosTheta = max(-1.0, min(1.0,(BasParam[BasOutletzcut]-BasParam[BasOutletz])/BasParam[BasOutletr2]));
+	//CadNoz->ThetaCutOut  = acos(cosTheta);
 	
-	cosTheta = max(-1.0, min(1.0,(BasParam[BasOutletzcut]-BasParam[BasOutletz])/BasParam[BasOutletr2]));
-	CadNoz->ThetaCutOut  = acos(cosTheta);
+	CadNoz->ThetaCutIn  = 1.572865;
+	CadNoz->ThetaCutOut = 1.855294;
 	
 	WriteCadBspline ("centerline", CadNoz->Bsp_center);
 	WriteCadBspline ("r1", CadNoz->Bsp_r1);

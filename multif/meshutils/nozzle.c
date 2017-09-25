@@ -18,9 +18,31 @@ int FreeCadBspline (CadBspline *Bsp)
 int FreeCadNozzle (CadNozzle *Noz) 
 {
 	
+	if ( Noz )
+		free(Noz);
+	
 	return 1;
 	
 }
+
+int Evaluate_Nozzle ( CadNozzle *Noz, double *x, double *r1, double *r2, double *zcenter )
+{
+	
+	double dydx=0.0;
+	
+	CadBspline * Bsp_center = Noz->Bsp_center;
+	CadBspline * Bsp_r1     = Noz->Bsp_r1;
+	CadBspline * Bsp_r2     = Noz->Bsp_r2;
+	
+	bSplineGeo3 (Bsp_center->Knots, Bsp_center->Coefs, x, zcenter, &dydx, 1, Bsp_center->NbrKnots, Bsp_center->NbrCoefs/2);
+	bSplineGeo3 (Bsp_r1->Knots, Bsp_r1->Coefs, x, r1, &dydx, 1, Bsp_r1->NbrKnots, Bsp_r1->NbrCoefs/2);
+	bSplineGeo3 (Bsp_r2->Knots, Bsp_r2->Coefs, x, r2, &dydx, 1, Bsp_r2->NbrKnots, Bsp_r2->NbrCoefs/2);
+	
+	return 1;
+	
+}
+
+
 
 CadNozzle * AllocCadNozzle (int * SizCad)
 {
@@ -191,7 +213,7 @@ double fzcut (double x,  double *BasParam)
 	double cen_outlet[3] = {BasParam[4], BasParam[5], BasParam[6]}; 
 
 	double zcut_in  = BasParam[10];
-	double zcut_out = BasParam[9];
+	double zcut_out = BasParam[BasOutletzcut];
 
 	if ( x < cen_inlet[0]-1e-6 || x > cen_outlet[0]+1e-6  ) {
 		printf("  ## ERROR fz_bas : x out of range!\n");

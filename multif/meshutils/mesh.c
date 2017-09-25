@@ -296,8 +296,12 @@ void PrintMeshInfo (Mesh *Msh)
 	printf("Mesh: %s\n", Msh->MshNam);
 	printf("  Vertices   : %d\n", Msh->NbrVer);
 	if ( Msh->NbrTri > 0 ) printf("  Triangles  : %d\n", Msh->NbrTri);
+	if ( Msh->NbrQua > 0 ) printf("  Quads      : %d\n", Msh->NbrQua);
 	if ( Msh->NbrEfr > 0 ) printf("  Edges      : %d\n", Msh->NbrEfr);
 	if ( Msh->NbrTet > 0 ) printf("  Tetrahedra : %d\n", Msh->NbrTet);
+	if ( Msh->NbrPri > 0 ) printf("  Prisms     : %d\n", Msh->NbrPri);
+	if ( Msh->NbrHex > 0 ) printf("  Hexahedra  : %d\n", Msh->NbrHex);
+	if ( Msh->NbrPyr > 0 ) printf("  Pyramids   : %d\n", Msh->NbrPyr);
 	
 	if ( Msh->Sol ){
 		printf("Solution: %s\n", Msh->SolNam);

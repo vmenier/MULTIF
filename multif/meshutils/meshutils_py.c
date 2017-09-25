@@ -183,6 +183,10 @@ int py_ProjectNozzleWall3D( char *MshNam,
 	SetCadBspline (CadNoz->Bsp_r1, Knots_r1, nKnots_r1, Coefs_r1, nCoefs_r1);
 	SetCadBspline (CadNoz->Bsp_r2, Knots_r2, nKnots_r2, Coefs_r2, nCoefs_r2);
 	
+	
+	CadNoz->ThetaCutIn  = 1.572865;
+	CadNoz->ThetaCutOut = 1.855294;
+	
 	WriteCadBspline ("centerline", CadNoz->Bsp_center);
 	WriteCadBspline ("r1", CadNoz->Bsp_r1);
 	WriteCadBspline ("r2", CadNoz->Bsp_r2);
@@ -205,6 +209,342 @@ int py_ProjectNozzleWall3D( char *MshNam,
 	return 0;
 	
 }
+
+
+int py_ProjectNozzleWall3D_DV( char *MshNam,  
+ PyObject *pyRefUp,  PyObject *pyRefDown,
+ PyObject *pyKnots_center_from, PyObject *pyCoefs_center_from,
+ PyObject *pyKnots_r1_from, PyObject *pyCoefs_r1_from,
+ PyObject *pyKnots_r2_from, PyObject *pyCoefs_r2_from, 
+ PyObject *pyKnots_center_to, PyObject *pyCoefs_center_to,
+ PyObject *pyKnots_r1_to, PyObject *pyCoefs_r1_to,
+ PyObject *pyKnots_r2_to, PyObject *pyCoefs_r2_to, 
+ char *OutNam ) 
+{
+	
+	int i;
+	int *RefUp = NULL, *RefDown = NULL;
+	int sizRefUp=0, sizRefDown=0;
+	
+	double  *Knots_center_from=NULL, *Coefs_center_from=NULL;
+	double  *Knots_r1_from=NULL, *Coefs_r1_from=NULL;
+	double  *Knots_r2_from=NULL, *Coefs_r2_from=NULL;
+	
+	int nKnots_center_from=0, nCoefs_center_from=0;
+	int nKnots_r1_from=0, nCoefs_r1_from=0;
+	int nKnots_r2_from=0, nCoefs_r2_from=0;
+	
+	double  *Knots_center_to=NULL, *Coefs_center_to=NULL;
+	double  *Knots_r1_to=NULL, *Coefs_r1_to=NULL;
+	double  *Knots_r2_to=NULL, *Coefs_r2_to=NULL;
+	
+	int nKnots_center_to=0, nCoefs_center_to=0;
+	int nKnots_r1_to=0, nCoefs_r1_to=0;
+	int nKnots_r2_to=0, nCoefs_r2_to=0;
+	
+	CadNozzle *Noz_from = NULL;
+	CadNozzle *Noz_to   = NULL;
+					
+	//--- Get nozzle patch references to re-project
+	
+	if ( PyList_Check(pyRefUp) )
+  {
+			sizRefUp = PyList_Size(pyRefUp);
+      RefUp = (int*) malloc( sizRefUp * sizeof(int));
+			for (i=0; i<sizRefUp; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyRefUp,i);
+       	if ( PyInt_Check(oo) )
+       	{
+					RefUp[i] = (int) PyInt_AS_LONG(oo);
+       	}
+      }
+  }
+
+	if ( PyList_Check(pyRefDown) )
+  {
+			sizRefDown = PyList_Size(pyRefDown);
+      RefDown = (int*) malloc( sizRefDown * sizeof(int));
+			for (i=0; i<sizRefDown; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyRefDown,i);
+       	if ( PyInt_Check(oo) )
+       	{
+					RefDown[i] = (int) PyInt_AS_LONG(oo);
+       	}
+      }
+  }
+
+	//---
+	//--- Get coefs and knots of the 3 b-splines defining the nozzle
+	//---
+	
+	//--- center knots and coefs
+	
+	if ( PyList_Check(pyKnots_center_from) )
+  {
+			nKnots_center_from = PyList_Size(pyKnots_center_from);
+						
+      Knots_center_from = (double*) malloc( nKnots_center_from * sizeof(double));
+			for (i=0; i<nKnots_center_from; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyKnots_center_from,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					Knots_center_from[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+
+	if ( PyList_Check(pyCoefs_center_from) )
+  {
+			nCoefs_center_from = PyList_Size(pyCoefs_center_from);
+      Coefs_center_from = (double*) malloc( nCoefs_center_from * sizeof(double));
+			for (i=0; i<nCoefs_center_from; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyCoefs_center_from,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					Coefs_center_from[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+
+	//--- r1 coefs and knots
+
+	if ( PyList_Check(pyKnots_r1_from) )
+  {
+			nKnots_r1_from = PyList_Size(pyKnots_r1_from);
+      Knots_r1_from = (double*) malloc( nKnots_r1_from * sizeof(double));
+			for (i=0; i<nKnots_r1_from; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyKnots_r1_from,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					Knots_r1_from[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+
+	if ( PyList_Check(pyCoefs_r1_from) )
+  {
+			nCoefs_r1_from = PyList_Size(pyCoefs_r1_from);
+      Coefs_r1_from = (double*) malloc( nCoefs_r1_from * sizeof(double));
+			for (i=0; i<nCoefs_r1_from; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyCoefs_r1_from,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					Coefs_r1_from[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+
+	//--- r2 coefs and knots
+
+	if ( PyList_Check(pyKnots_r2_from) )
+  {
+			nKnots_r2_from = PyList_Size(pyKnots_r2_from);
+      Knots_r2_from = (double*) malloc( nKnots_r2_from * sizeof(double));
+			for (i=0; i<nKnots_r2_from; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyKnots_r2_from,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					Knots_r2_from[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+
+	if ( PyList_Check(pyCoefs_r2_from) )
+  {
+			nCoefs_r2_from = PyList_Size(pyCoefs_r2_from);
+      Coefs_r2_from = (double*) malloc( nCoefs_r2_from * sizeof(double));
+			for (i=0; i<nCoefs_r2_from; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyCoefs_r2_from,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					Coefs_r2_from[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+
+	//--- Destination nozzle
+
+	
+	if ( PyList_Check(pyKnots_center_to) )
+  {
+			nKnots_center_to = PyList_Size(pyKnots_center_to);
+						
+      Knots_center_to = (double*) malloc( nKnots_center_to * sizeof(double));
+			for (i=0; i<nKnots_center_to; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyKnots_center_to,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					Knots_center_to[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+
+	if ( PyList_Check(pyCoefs_center_to) )
+  {
+			nCoefs_center_to = PyList_Size(pyCoefs_center_to);
+      Coefs_center_to = (double*) malloc( nCoefs_center_to * sizeof(double));
+			for (i=0; i<nCoefs_center_to; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyCoefs_center_to,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					Coefs_center_to[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+
+	//--- r1 coefs and knots
+
+	if ( PyList_Check(pyKnots_r1_to) )
+  {
+			nKnots_r1_to = PyList_Size(pyKnots_r1_to);
+      Knots_r1_to = (double*) malloc( nKnots_r1_to * sizeof(double));
+			for (i=0; i<nKnots_r1_to; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyKnots_r1_to,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					Knots_r1_to[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+
+	if ( PyList_Check(pyCoefs_r1_to) )
+  {
+			nCoefs_r1_to = PyList_Size(pyCoefs_r1_to);
+      Coefs_r1_to = (double*) malloc( nCoefs_r1_to * sizeof(double));
+			for (i=0; i<nCoefs_r1_to; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyCoefs_r1_to,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					Coefs_r1_to[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+
+	//--- r2 coefs and knots
+
+	if ( PyList_Check(pyKnots_r2_to) )
+  {
+			nKnots_r2_to = PyList_Size(pyKnots_r2_to);
+      Knots_r2_to = (double*) malloc( nKnots_r2_to * sizeof(double));
+			for (i=0; i<nKnots_r2_to; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyKnots_r2_to,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					Knots_r2_to[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+
+	if ( PyList_Check(pyCoefs_r2_to) )
+  {
+			nCoefs_r2_to = PyList_Size(pyCoefs_r2_to);
+      Coefs_r2_to = (double*) malloc( nCoefs_r2_to * sizeof(double));
+			for (i=0; i<nCoefs_r2_to; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyCoefs_r2_to,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					Coefs_r2_to[i] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+      }
+  }
+	
+	////////////////////////////
+
+	//--- Alloc nozzle CAD data structure
+	
+	Options *mshopt = AllocOptions();
+	
+	strcpy(mshopt->OutNam,OutNam);
+	strcpy(mshopt->InpNam,MshNam);
+	strcpy(mshopt->SolNam,"");
+	
+	if ( !CheckOptions(mshopt) ) {
+		return 0;
+	}
+	
+	//--- Open mesh/solution file
+	Mesh *Msh = NULL;
+	Msh = SetupMeshAndSolution (mshopt->InpNam, mshopt->SolNam);
+	
+	//--- Setup nozzle CAD
+	
+	int SizCad[MaxKwdNozzleSize];
+	memset(SizCad, 0, sizeof(int)*MaxKwdNozzleSize);
+	
+	SizCad[KwdnCoefs_center] = nCoefs_center_from;
+	SizCad[KwdnKnots_center] = nKnots_center_from;
+	SizCad[KwdnCoefs_r1]     = nCoefs_r1_from;
+	SizCad[KwdnKnots_r1]     = nKnots_r1_from;
+	SizCad[KwdnCoefs_r2]     = nCoefs_r2_from;
+	SizCad[KwdnKnots_r2]     = nKnots_r2_from;
+	
+	Noz_from = AllocCadNozzle (SizCad);
+	
+	SizCad[KwdnCoefs_center] = nCoefs_center_to;
+	SizCad[KwdnKnots_center] = nKnots_center_to;
+	SizCad[KwdnCoefs_r1]     = nCoefs_r1_to;
+	SizCad[KwdnKnots_r1]     = nKnots_r1_to;
+	SizCad[KwdnCoefs_r2]     = nCoefs_r2_to;
+	SizCad[KwdnKnots_r2]     = nKnots_r2_to;
+	
+	Noz_to = AllocCadNozzle (SizCad);
+	
+	SetCadBspline (Noz_from->Bsp_center, Knots_center_from,  nKnots_center_from, Coefs_center_from, nCoefs_center_from);
+	SetCadBspline (Noz_from->Bsp_r1, Knots_r1_from, nKnots_r1_from, Coefs_r1_from, nCoefs_r1_from);
+	SetCadBspline (Noz_from->Bsp_r2, Knots_r2_from, nKnots_r2_from, Coefs_r2_from, nCoefs_r2_from);
+	
+	Noz_from->ThetaCutIn  = 1.572865;
+	Noz_from->ThetaCutOut = 1.855294;
+	
+	SetCadBspline (Noz_to->Bsp_center, Knots_center_to,  nKnots_center_to, Coefs_center_to, nCoefs_center_to);
+	SetCadBspline (Noz_to->Bsp_r1, Knots_r1_to, nKnots_r1_to, Coefs_r1_to, nCoefs_r1_to);
+	SetCadBspline (Noz_to->Bsp_r2, Knots_r2_to, nKnots_r2_to, Coefs_r2_to, nCoefs_r2_to);
+	
+	Noz_to->ThetaCutIn  = 1.572865;
+	Noz_to->ThetaCutOut = 1.855294;
+	
+	WriteCadBspline ("centerline_from", Noz_from->Bsp_center);
+	WriteCadBspline ("r1_from", Noz_from->Bsp_r1);
+	WriteCadBspline ("r2_from", Noz_from->Bsp_r2);
+	
+	WriteCadBspline ("centerline_to", Noz_to->Bsp_center);
+	WriteCadBspline ("r1_to", Noz_to->Bsp_r1);
+	WriteCadBspline ("r2_to", Noz_to->Bsp_r2);
+	
+	//--- Project
+	
+	NozzleWallProjection_DV (mshopt, Msh, Noz_to, Noz_from, RefUp[0], RefDown[0], OutNam);
+	
+	//--- Free memory
+	
+	if ( Msh )
+ 		FreeMesh(Msh);
+	
+	if ( RefUp )
+		free(RefUp);
+	
+	if ( RefDown )
+		free(RefDown);
+		
+	return 0;
+	
+}
+
+
 
 int py_ConvertGMFToSU2( char *MshNam, char *SolNam, char *OutNam ) 
 {

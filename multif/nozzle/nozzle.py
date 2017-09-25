@@ -1574,31 +1574,31 @@ class Nozzle:
 			nozzle.wall.majoraxis.geometry  = geometry.Bspline(nozzle.wall.majoraxis.coefs);
 			nozzle.wall.minoraxis.geometry  = geometry.Bspline(nozzle.wall.minoraxis.coefs);            
 			
-#			# Build equivalent nozzle shape based on equivalent area
-#			majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
-#			minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
-#			centerTmp = geometry.Bspline(nozzle.wall.centerline.coefs);
-#			nx = 2000; # Check accuracy and effect of this interpolation
-#			x = np.linspace(0,nozzle.length,num=nx);
-#			majoraxisVal = majoraxisTmp.radius(x);
-#			minoraxisVal = minoraxisTmp.radius(x);
-#			
-#			
-#			fr1 = majoraxisTmp.radius
-#			fr2 = minoraxisTmp.radius
-#			fz = centerTmp.radius
-#			
-#			params = np.zeros(100)
-#			params[0] = 0.099; # z crd of the cut at the throat
-#			params[1] = 0.122638;  # z crd of the flat exit (bottom of the shovel)
-#			params[3] = 0.0;        # x_throat 
-#			params[4] = 4.0;        # x_exit 
-#							
-#			equivRadius = multif.HIGHF.MF_GetRadius (x, fr1, fr2, fz, params)
-#			
-#			#equivRadius = np.sqrt(majoraxisVal*minoraxisVal);
-#			shape2d = np.transpose(np.array([x,equivRadius]))
-#			nozzle.wall.geometry = geometry.PiecewiseLinear(shape2d);	
+			# Build equivalent nozzle shape based on equivalent area
+			majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
+			minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
+			centerTmp = geometry.Bspline(nozzle.wall.centerline.coefs);
+			nx = 2000; # Check accuracy and effect of this interpolation
+			x = np.linspace(0,nozzle.length,num=nx);
+			majoraxisVal = majoraxisTmp.radius(x);
+			minoraxisVal = minoraxisTmp.radius(x);
+			
+			
+			fr1 = majoraxisTmp.radius
+			fr2 = minoraxisTmp.radius
+			fz = centerTmp.radius
+			
+			params = np.zeros(100)
+			params[0] = 0.099; # z crd of the cut at the throat
+			params[1] = 0.122638;  # z crd of the flat exit (bottom of the shovel)
+			params[3] = 0.0;        # x_throat 
+			params[4] = 4.0;        # x_exit 
+							
+			equivRadius = multif.HIGHF.MF_GetRadius (x, fr1, fr2, fz, params)
+			
+			#equivRadius = np.sqrt(majoraxisVal*minoraxisVal);
+			shape2d = np.transpose(np.array([x,equivRadius]))
+			nozzle.wall.geometry = geometry.PiecewiseLinear(shape2d);	
                 
             # Map 3D parameterization to 2D definition using equivalent area
             else:
