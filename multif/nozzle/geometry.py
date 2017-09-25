@@ -35,7 +35,7 @@ class Bspline():
         self.knots = np.hstack(([np.zeros(4), np.arange(1.,self.coefs.size/2-3),  \
           np.ones(4)*(self.coefs.size/2-3)])) # calculate here
         self.degree = self.knots.size - self.coefs.size/2 - 1
-        self.length = self.coefs[0,-1]
+        self.length = self.coefs[0,-1] - self.coefs[0,0]
         self.inletRadius = self.coefs[1,0]
         self.n = self.coefs.size/2
         
@@ -144,7 +144,7 @@ class PiecewiseLinear:
         
     def areaGradient(self, x): # dAdx
         #r = self.radius(x)
-        #drdx = self.radiusGradient(x)  
+        #drdx = self.radiusGradient(x)  #        
         (r, drdx) = piecewiseLinearGeometryC(x,self) # uses dynamic C library          
         return 2*np.pi*r*drdx
 
@@ -278,7 +278,42 @@ class PiecewiseBilinear:
 	                   
 	    return dzdx, dzdy
         
+
+class EllipticalExterior:
+
+    def __init__(self,surface,xexit):
+
+        self.xexit = xexit;
+
+        if( surface == 'top' ):
+            self.angle = 5.; # degrees
+            self.offset = 0.03; # m
+            self.a = 1.5; # m, major axis
+            self.b = 0.2; # m, minor axis
+
+        elif( surface == 'bottom' ):
+            self.angle = -7.; # degrees
+            self.offset = -0.06; # m
+            self.a = 1.; # m, major axis
+            self.b = 0.05; # m, minor axis
+
+        else:
+            raise NotImplementedError('Only top or bottom can be used for ' + \
+                'surfaces of elliptical exterior.');
+
+    # Given x-coordinate and theta angle in radians measured from Y axis, return
+    # Y and Z coordinates of point on elliptical exterior.
+    def coord(self,x,theta):
         
+        r = self.a*self.b/np.sqrt(self.b**2*np.cos(theta)**2 + \
+            self.a**2*np.sin(theta)**2);
+        c = self.offset + (self.xexit - x)*np.tan(np.pi*self.angle/180.);
+        y = r*np.cos(theta);
+        z = r*np.sin(theta) + c;
+
+        return y, z;   
+
+
 #==============================================================================
 # Find first 1-based index where scalar xFind < xVec[ii]
 #==============================================================================
@@ -718,7 +753,7 @@ def layerCoordinatesInGlobalFrame(nozzle,x):
             # Approximate gradient from vector
             drdxTemp = (rLower[1:] - rLower[:-1])/(x[1:] - x[:-1])
             xTemp = (x[1:] - x[:-1])/2 + x[:-1]
-            xTemp = np.hstack((0.,xTemp,nozzle.length))
+            xTemp = np.hstack((nozzle.xinlet,xTemp,nozzle.xoutlet))
             drdxTemp = np.hstack((drdxTemp[0],drdxTemp,drdxTemp[-1]))
             drdxLower = np.interp(x,xTemp,drdxTemp)
         
@@ -745,7 +780,7 @@ def calcVolumeAndMass(nozzle):
     # The calculation currently outlined below is only good for 2D nozzle
     # geometry.
     n = 10000 # 1e4
-    x = np.linspace(0,nozzle.length,n)
+    x = np.linspace(nozzle.xinlet,nozzle.xoutlet,n)
     # Pick x smartly
     xHit = set()
     if( nozzle.wall.geometry.type == 'B-spline' ):

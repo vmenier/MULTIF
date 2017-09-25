@@ -71,7 +71,7 @@ def GenerateNozzleMesh (nozzle):
 	
 	# --- Compute ds based on y+ value
 	
-	mesh_options.ds = ComputeDs(nozzle);	
+	mesh_options.ds = ComputeDs(nozzle);
 	#mesh_options.ds          = nozzle.cfd.bl_ds;
 	
 	mesh_options.ratio       = nozzle.cfd.bl_ratio 
@@ -751,21 +751,20 @@ def NozzleGeoFile(FilNam, Mesh_options):
 	
 	nx = len(xwall);
 	
-	length = xwall[nx-1];
+	xinlet = xwall[0];
+	xoutlet = xwall[nx-1];
 	
 	CrdBox = [[0 for x in range(2)] for y in range(9)] 
-	
-	CrdBox[1][0] = 0;          CrdBox[1][1] = 0;
-	CrdBox[2][0] = length;     CrdBox[2][1] = 0;
-	#	CrdBox[3][0] = 1.5;        CrdBox[3][1] = 0;
-	#	CrdBox[4][0] = 1.5;        CrdBox[4][1] = 2.5;
-	CrdBox[3][0] = 6.6;        CrdBox[3][1] = 0;
-	CrdBox[4][0] = 6.6;        CrdBox[4][1] = 4.5;
-	CrdBox[5][0] = -0.67;      CrdBox[5][1] = 4.5;
-	CrdBox[6][0] = -0.67;      CrdBox[6][1] = 0.7244;
-	CrdBox[7][0] = 0.1548;     CrdBox[7][1] = 0.7244;
-	CrdBox[8][0] = length;     CrdBox[8][1] = ywall[nx-1]+0.012;
-	
+
+	CrdBox[1][0] = xinlet;              CrdBox[1][1] = 0;
+	CrdBox[2][0] = xoutlet;             CrdBox[2][1] = 0;
+	CrdBox[3][0] = 6.6;                 CrdBox[3][1] = 0;
+	CrdBox[4][0] = 6.6;                 CrdBox[4][1] = 4.5;
+	CrdBox[5][0] = -0.67 + xinlet;      CrdBox[5][1] = 4.5;
+	CrdBox[6][0] = -0.67 + xinlet;      CrdBox[6][1] = 0.7244;
+	CrdBox[7][0] = 0.1548 + xinlet;     CrdBox[7][1] = 0.7244;
+	CrdBox[8][0] = xoutlet;             CrdBox[8][1] = ywall[nx-1]+0.012;
+
 	try:
 		fil = open(FilNam, 'w');
 	except:
@@ -865,7 +864,7 @@ def NozzleGeoFile(FilNam, Mesh_options):
 	          [-100, 4.6, -10, CrdBox[6][1],    hl5],\
 	          [-100, 0.3, -10, CrdBox[6][1],   hl4],\
 			  [-100, 100, -10, CrdBox[6][1]+0.3,    hl2],\
-	          [-100, length+0.04, -10, CrdBox[6][1], hl4]];
+	          [-100, xoutlet+0.04, -10, CrdBox[6][1], hl4]];
 	
 	NbrFld = len(fields);
 	

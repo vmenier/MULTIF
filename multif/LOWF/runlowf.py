@@ -109,7 +109,7 @@ def nozzleState(nozzle,pressureRatio,PsT,TsT,PsE,TsE):
 def findApparentThroat(nozzle,tol,params):
 
     n = 10000
-    x = np.linspace(0,nozzle.length,n)
+    x = np.linspace(nozzle.xinlet,nozzle.xoutlet,n)
     
     # First, determine approximate throat location by minimum area point
     minInd = np.argmin(nozzle.wall.geometry.area(x))
@@ -122,7 +122,7 @@ def findApparentThroat(nozzle,tol,params):
     # the flow again. We require M to increase after this point.
     dM2dx = np.zeros((n,))
     #params = (xInterp,Cf,Tstag,dTstagdx);    
-    xRight = nozzle.length
+    xRight = nozzle.xoutlet
     
     # Search to the right:
     frac = 0.1 # fraction of nozzle length to search around min area point
@@ -808,7 +808,7 @@ def Quasi1D(nozzle,output='verbose'):
     mdot = massFlowRate(nozzle.fluid,Pstag,A,Tstag,M)
     
     # Calculate thrust
-    exitAngle = np.arctan2(dAdx[-1],D[-1])
+    exitAngle = np.arctan2(dAdx[-1],np.pi*D[-1])
     divergenceFactor = (1. + np.cos(exitAngle))/2.
     netThrust = divergenceFactor*mdot[0]*(U[-1] - nozzle.mission.mach*       \
       nozzle.environment.c) + (P[-1] - nozzle.environment.P)*A[-1]
