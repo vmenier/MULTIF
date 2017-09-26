@@ -856,8 +856,12 @@ def Quasi1D(nozzle,output='verbose'):
         nozzle.wallResults = np.transpose(np.array([xPosition,Tinside,P]))
         nozzle.runAEROS = 0;
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
-            runAEROS(nozzle, output);
-            AEROSPostProcess(nozzle, output);
+            
+            try:
+                runAEROS(nozzle, output);
+                AEROSPostProcess(nozzle, output);
+            except:
+                sys.stdout.write("  ## WARNING : CALL TO AEROS IGNORED.\n");
 
     else: # do not perform structural analysis
         pass;

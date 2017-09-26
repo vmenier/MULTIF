@@ -4,7 +4,7 @@ Python class for running regression test cases for MULTI-F
 Rick Fenrich 8/29/17
 """
 
-import time, os, shutil, subprocess, datetime
+import time, os, shutil, subprocess, datetime, sys
 import numpy as np
 
 class TestCase:
@@ -16,8 +16,11 @@ class TestCase:
         self.log_file = os.path.join(os.getcwd(),'regression.out');
         
         # Configuration and input file information
-        self.multif_dir = os.getcwd();
+        self.multif_dir = os.path.dirname(os.path.abspath(__file__));
         self.cfg_dir = os.getcwd();
+        
+        self.working_dir = os.getcwd();
+        
         self.cfg_file = 'general.cfg';
         self.input_file = 'general.in';
         self.dependencies = []; # list of strings giving other required MULTI-F files
@@ -149,7 +152,7 @@ class TestCase:
         timed_out = 0;
         
         # Go to MULTI-F directory and run all tests from here
-        os.chdir(self.multif_dir);
+        #os.chdir(self.multif_dir);
         
         # Create directory to run test in 
         if not os.path.isdir('local'):
@@ -164,7 +167,7 @@ class TestCase:
         os.chdir(self.name);
         
         workdir = os.getcwd();
-        
+                
         # Write preliminary information to log file
         f = open(self.log_file,'a');
         f.write('======================= Test: %s =======================\n' % self.name);
@@ -180,7 +183,13 @@ class TestCase:
             shutil.copyfile(os.path.join(self.multif_dir,self.cfg_dir,f),f);
             
         # Build shell command to run MULTI-F
-        command = ['python','runModel.py','-f',self.cfg_file,'-l',str(self.fidelity),'-n',str(self.nproc)];
+        command = ['python','%s/runModel.py'%self.multif_dir,'-f',self.cfg_file,'-l',str(self.fidelity),'-n',str(self.nproc)];
+        
+        # Write command line in file
+        f = open(self.log_file,'a');
+        f.write('Command line: %s\n' % ' '.join(command));
+        f.close();
+        
         
         # Run MULTI-F
         start = datetime.datetime.now();
@@ -189,8 +198,9 @@ class TestCase:
         try:
             so = open('stdout.txt','w');
             se = open('stderr.txt','w');
-            print '\nRunning test case %s' % self.name;
-            print workdir;
+            sys.stdout.write('\nRunning test case %s\n' % self.name);
+            sys.stdout.write('Working directory: %s\n' % os.getcwd());
+            sys.stdout.write('Comparison data file: %s\n' % os.path.join(self.multif_dir,self.compare_file));
             subprocess.call(command,stdout=so,stderr=se);
             so.close();
             se.close();
@@ -201,7 +211,8 @@ class TestCase:
             f.write('===================== End Test: %s =====================\n\n' % self.name);
             f.close();
             # Return to MULTI-F directory
-            os.chdir(self.multif_dir);
+            #os.chdir(self.multif_dir);
+            os.chdir(self.working_dir);
             return 0;
         
         # IMPLEMENT PROCESS KILL HERE FOR TIMEOUT
@@ -224,6 +235,7 @@ class TestCase:
 #                passed = 0;
         
         # Examine and compare output
+        
         return_flag = self.compare_responses();        
         if( return_flag == -1 ):
             print 'Test failed -- tolerance exceeded (%e)' % self.fail_tol;
@@ -265,6 +277,7 @@ class TestCase:
         f.close();
 
         # Return to MULTI-F directory
-        os.chdir(self.multif_dir);
+        #os.chdir(self.multif_dir);    
+        os.chdir(self.working_dir);
         
         return passed;

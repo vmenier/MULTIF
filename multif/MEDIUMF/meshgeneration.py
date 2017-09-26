@@ -424,13 +424,13 @@ def GenerateNozzleMesh_Deform (nozzle):
         x = Bdr[ref_thrust][0][1];
         xnew = xx[0] + (x-xbas_min)/(xbas_max-xbas_min)*(xwall_max-xx[0]);
         
-        xnew_tab = np.array([xnew]);
         ynew_tab = [];
         dydx = [];
         
         if nozzle.param == "2D":
             _meshutils_module.py_BSplineGeo3LowF (nozzle.wall.knots, nozzle.wall.coefs, xnew_tab, ynew_tab, dydx);
         else :
+            xnew_tab = np.array([xnew]);
             ynew_tab = Get3Dto2DEquivArea(nozzle, xnew_tab);
             
         ymax = ynew_tab[0];

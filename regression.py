@@ -32,11 +32,11 @@ nCores = int(options.partitions);
 testNum = 1;
 
 # Control which tests are run
-test = {'all': 1, 'lofi': 0, 'medfi': 0, 'adjoint': 0, 'fd': 0, 'fea': 0};
+test = {'all': 0, 'lofi': 0, 'medfi': 1, 'adjoint': 0, 'fd': 0, 'fea': 0};
 
 # Set up necessary filepaths
-rootdir = os.getcwd()
-print 'MULTI-F root directory: %s' % rootdir;
+#rootdir = os.getcwd()
+rootdir = os.path.dirname(os.path.abspath(__file__));
 
 # Start fresh log file by overwriting previous one
 f = open('regression.out','w');
@@ -79,7 +79,7 @@ if( test['all'] or test['lofi'] or test['fea'] ):
 #    lofi_3dparam.fidelity = 0;
 #    lofi_3dparam.nproc = 1;
 #    lofi_3dparam.diff_tol = 1e-6;
-#    test_list.append(lofi_3dparam);
+#    #test_list.append(lofi_3dparam);
 
 # ------------------- 2D param, lo-fi, f.d. gradients ------------------------
 if( test['all'] or test['lofi'] or test['fd'] ):
