@@ -127,5 +127,8 @@ void bSplineGeo3(double *knots, double *coefs, double *x, double *y,
 		 double *dydx, int nx, int k, int c);
 
 //--- Piecewise Linear
-void piecewiseLinear(double *xnodes, double *ynodes, double *x, double *y,
-		     double *dydx, int nx, int nn);
+//void piecewiseLinear(double *xnodes, double *ynodes, double *x, double *y,
+//		     double *dydx, int nx, int nn);
+void interp1(double *xn, double *yn, int nn, double *x, double *y, int nx, int js);
+void interp1grad(double *xn, double *yn, int nn, double *x, double *dydx, int nx, int js);
+		     
