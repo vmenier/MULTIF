@@ -1660,20 +1660,22 @@ class Nozzle:
                 nx = 2000; # Check accuracy and effect of this interpolation
                 x = np.linspace(nozzle.xinlet,nozzle.xoutlet,num=nx);                
                 
-                fr1 = majoraxisTmp.radius
-                fr2 = minoraxisTmp.radius
-                fz = centerTmp.radius             
+                #fr1 = majoraxisTmp.radius
+                #fr2 = minoraxisTmp.radius
+                #fz = centerTmp.radius             
 
                 xi = nozzle.wall.centerline.coefs[0];
                 inletRadius = np.sqrt(majoraxisTmp.radius(xi)*minoraxisTmp.radius(xi));
-                params = np.zeros(5);
-                params[0] = inletRadius*np.sin(nozzle.wall.shovel_start_angle*np.pi/180.);
-                params[1] = nozzle.wall.centerline.coefs[-1] + nozzle.wall.shovel_height;
-                #params[2]                
-                params[3] = nozzle.xinlet;
-                params[4] = nozzle.xoutlet;
+                #params = np.zeros(5);
+                #params[0] = inletRadius*np.sin(nozzle.wall.shovel_start_angle*np.pi/180.);
+                #params[1] = nozzle.wall.centerline.coefs[-1] + nozzle.wall.shovel_height;
+                ##params[2]                
+                #params[3] = nozzle.xinlet;
+                #params[4] = nozzle.xoutlet;
+                #equivRadius = multif.HIGHF.MF_GetRadius (x, fr1, fr2, fz, params);
                 
-                equivRadius = multif.HIGHF.MF_GetRadius (x, fr1, fr2, fz, params);
+                equivRadius = multif.MEDIUMF.Get3Dto2DEquivArea(nozzle,x);
+                
                 shape2d = np.transpose(np.array([x,equivRadius]));
                 nozzle.wall.geometry = geometry.PiecewiseLinear(shape2d);
 
@@ -1687,10 +1689,13 @@ class Nozzle:
                 	
                     nx = 4000; # use 4000 points to interpolate inner wall shape
                     x = np.linspace(nozzle.xinlet,nozzle.xoutlet,num=nx);
-                    y = nozzle.wall.geometry.radius(x);
+                    #y = nozzle.wall.geometry.radius(x);
+                    y = multif.MEDIUMF.Get3Dto2DEquivArea(nozzle, x);
+                    #multif.HIGHF.MF_GetRadius (x, fr1, fr2, fz, params);
                     
                     nozzle.cfd.x_wall = x;
                     nozzle.cfd.y_wall = y;
+                    
 
                     dx_exit = max(1.3*nozzle.cfd.meshhl[3], 0.001);
                     for i in range(0,nx) :
