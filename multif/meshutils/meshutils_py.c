@@ -884,7 +884,10 @@ int py_PiecewiseLinear (PyObject *pyxnodes, PyObject *pyynodes, PyObject *pyx, P
 	y    = (double*)malloc(nx*sizeof(double));
 	dydx = (double*)malloc(nx*sizeof(double));
 	
-	piecewiseLinear(xnodes, ynodes, x, y, dydx, nx, size_xnodes);
+	//piecewiseLinear(xnodes, ynodes, x, y, dydx, nx, size_xnodes);
+    interp1(xnodes, ynodes, size_xnodes, x, y, nx, 1);
+    interp1grad(xnodes, ynodes, size_xnodes, x, dydx, nx, 1);
+	
 	
 	for (i=0; i<nx; i++){
 		PyList_Append(pyy, PyFloat_FromDouble(y[i]));
