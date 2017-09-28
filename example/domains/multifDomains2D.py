@@ -1,5 +1,8 @@
 import numpy as np
 
+from linearConstraints import bspline
+from linearConstraints import cleanupConstraintMatrix
+
 from domains import LinIneqDomain
 from domains import UniformDomain
 from domains import LogNormalDomain
@@ -155,12 +158,27 @@ def buildDesignDomain(output='verbose'):
     lb_perc = 0.8
     ub_perc = 1.2
 
+    WALL_COEFS= (0.0000, 0.0000, 0.1, 0.3, 0.7, 1.0, 1.3, 
+                 1.3500, 1.3500, 1.4000, 1.5000, 1.6000, 1.8000, 2.3371, 2.3371, 
+                 0.4395, 0.4395, 0.4395, 0.4, 0.34, 0.31, 0.27, 
+                 0.2700, 0.2700, 0.2700, 0.3, 0.33, 0.38, 0.3955, 0.3955)
+    WALL_COEFS_DV= (0, 0, 0, 1, 2, 3, 4, 5, 5, 6, 7, 8, 9, 0, 0, 
+                    0, 0, 0, 10, 11, 12, 13, 13, 13, 13, 14, 15, 16, 0, 0)                  
     # DV_LIST = WALL, 21, 
     # Inner wall, 21-dimensions
-    x_wall = np.array([0.2124, 0.2269, 0.2734, 0.3218, 0.3230, 0.3343, 0.3474, 0.4392, 0.4828, 0.5673, 0.6700, 0.3238, 0.2981, 0.2817, 0.2787, 0.2797, 0.2807, 0.2936, 0.2978, 0.3049, 0.3048])
-    _, A, b = wall(x_wall)
-    inner_wall_domain = LinIneqDomain(A, b, lb = lb_perc * x_wall, ub = ub_perc * x_wall, center = x_wall)
-    
+#    x_wall = np.array([0.2124, 0.2269, 0.2734, 0.3218, 0.3230, 0.3343, 0.3474, 0.4392, 0.4828, 0.5673, 0.6700, 0.3238, 0.2981, 0.2817, 0.2787, 0.2797, 0.2807, 0.2936, 0.2978, 0.3049, 0.3048])
+#    _, A, b = wall(x_wall)
+#    inner_wall_domain = LinIneqDomain(A, b, lb = lb_perc * x_wall, ub = ub_perc * x_wall, center = x_wall)
+    x_wall = np.array([0.542184, 0.861924, 1.072944, 1.211161, 1.311161, 
+                       1.408983, 1.528983, 1.723828, 2.086573, 0.417017, 
+                       0.365097, 0.301792, 0.267426, 0.277426, 0.332508, 
+                       0.385631])
+    A, b = bspline(WALL_COEFS, WALL_COEFS_DV, 7, (-0.3,0.005,-0.025,0.35), 
+                     xLimits=[None,2.3], delta=0.1, throatIsLowest=1, 
+                     minThroat=0.2, output=output) 
+    A, b = cleanupConstraintMatrix(Alist=[A],blist=[b])
+    inner_wall_domain = LinIneqDomain(A, np.squeeze(b), center = x_wall)
+                     
     #             THERMAL_LAYER, 6
     # Thermal Layer 6-dimensions (first 2 correspond to the x-position between 2nd and 3rd break)
     x_thermal = np.array([0.3, 0.6, 0.03, 0.03, 0.03, 0.03])

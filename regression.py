@@ -32,7 +32,7 @@ nCores = int(options.partitions);
 testNum = 1;
 
 # Control which tests are run
-test = {'all': 0, 'lofi': 0, 'medfi': 1, 'adjoint': 0, 'fd': 0, 'fea': 0};
+test = {'all': 1, 'lofi': 0, 'medfi': 0, 'adjoint': 0, 'fd': 0, 'fea': 0};
 
 # Set up necessary filepaths
 #rootdir = os.getcwd()
@@ -68,8 +68,8 @@ if( test['all'] or test['lofi'] or test['fea'] ):
     test_list.append(lofi_2dparam_1);
 
 # --------------------------- 3D param, lo-fi --------------------------------
-#if( test['all'] or test['lofi'] ):
-#
+# if( test['all'] or test['lofi'] ):
+
 #    lofi_3dparam = TestCase('lofi_3dparam');
 #    lofi_3dparam.description = 'General, 3D, serial, low-fi analysis';
 #    lofi_3dparam.cfg_dir = 'example';

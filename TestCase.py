@@ -94,7 +94,11 @@ class TestCase:
         gradDiff = [];
         if( len(grad1) != len(grad2) ):
             print 'Obtained results.out file does not contain same number of gradient entries as example results file.';
-            return -3;          
+            return -3;
+        for i in range(len(grad1)):
+            if len(grad1[i]) != len(grad2[i]):
+                print 'Obtained results.out file does not contain same number gradient variables as example results file.';
+                return -3;
         for i in range(len(grad1)):
             for j in range(len(grad1[i])):
                 if( grad1[i][j] != 0. ):
@@ -189,7 +193,6 @@ class TestCase:
         f = open(self.log_file,'a');
         f.write('Command line: %s\n' % ' '.join(command));
         f.close();
-        
         
         # Run MULTI-F
         start = datetime.datetime.now();
