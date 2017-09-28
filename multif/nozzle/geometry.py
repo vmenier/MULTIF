@@ -35,6 +35,8 @@ class Bspline():
         self.knots = np.hstack(([np.zeros(4), np.arange(1.,self.coefs.size/2-3),  \
           np.ones(4)*(self.coefs.size/2-3)])) # calculate here
         self.degree = self.knots.size - self.coefs.size/2 - 1
+        self.xstart = self.coefs[0,0]
+        self.xend = self.coefs[0,-1]
         self.length = self.coefs[0,-1] - self.coefs[0,0]
         self.inletRadius = self.coefs[1,0]
         self.n = self.coefs.size/2
@@ -94,6 +96,8 @@ class PiecewiseLinear:
         # x-coordinate and thickness value for a node
         self.type = "piecewise-linear"
         self.nodes = nodes
+        self.xstart = nodes[0,0]
+        self.xend = nodes[-1,0]
         self.length = np.max(nodes[:,0])
         self.inletRadius = nodes[0,1]
         self.nx = nodes.size/2
@@ -286,16 +290,30 @@ class EllipticalExterior:
         self.xexit = xexit;
 
         if( surface == 'top' ):
-            self.angle = 5.; # degrees
-            self.offset = 0.03; # m
-            self.a = 1.5; # m, major axis
-            self.b = 0.2; # m, minor axis
+            # Original parameterization
+            # self.angle = 5.; # degrees
+            # self.offset = 0.03; # m
+            # self.a = 1.5; # m, major axis
+            # self.b = 0.2; # m, minor axis
+
+            # Parameterization for 44cm inlet, fixed inlet
+            self.angle = 6.; # degrees
+            self.offset = 0.05; # m
+            self.a = 3.0; # m, major axis
+            self.b = 0.4; # m, minor axis
 
         elif( surface == 'bottom' ):
+            # Original parameterization
+            # self.angle = -7.; # degrees
+            # self.offset = -0.06; # m
+            # self.a = 1.; # m, major axis
+            # self.b = 0.05; # m, minor axis
+
+            # Parameterization for 44cm inlet, fixed inlet
             self.angle = -7.; # degrees
-            self.offset = -0.06; # m
-            self.a = 1.; # m, major axis
-            self.b = 0.05; # m, minor axis
+            self.offset = 0.05; # m
+            self.a = 2.0; # m, major axis
+            self.b = 0.12; # m, minor axis
 
         else:
             raise NotImplementedError('Only top or bottom can be used for ' + \
