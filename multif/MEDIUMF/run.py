@@ -165,6 +165,9 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
 
     # Write data
     if writeToFile:
+        
+        #tag_out, val_out, gra_out, gratag_out = nozzle.GetOutputFunctions();
+                
         if nozzle.outputFormat == 'PLAIN':
             nozzle.WriteOutputFunctions_Plain();
         else:

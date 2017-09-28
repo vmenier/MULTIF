@@ -3375,6 +3375,142 @@ class Nozzle:
             sys.stdout.write('Setup Responses and Gradients complete\n');  
 
 
+        
+    def GetOutputFunctions (self,output='verbose'):
+    
+        nozzle = self;
+
+        filename = nozzle.outputFile;
+        
+        # Output arrays
+        tag_out = list();
+        val_out = list();
+        gra_out = list();
+        gratag_out = list();
+        
+        # Stress and temperature outputs can have prefixes appended to them
+        prefix = [];
+        for i in range(len(nozzle.wall.layer)):
+            prefix.append(nozzle.wall.layer[i].name);
+        if nozzle.stringers.n > 0:
+            prefix.append('STRINGERS');
+        for i in range(nozzle.baffles.n):
+            prefix.append('BAFFLE' + str(i+1)); 
+
+        # Print function values first
+        for i in range(0, len(nozzle.outputTags)):
+            
+            tag = nozzle.outputTags[i];  
+			
+            # 6 Get Hessian, gradient, and value Get Hessian and gradient
+            # 5 Get Hessian and value
+            # 4 Get Hessian
+            # 3 Get gradient and value
+            # 2 Get gradient
+            # 1 Get value
+            # 0 No data required, function is inactive
+            code = nozzle.outputCode[i];
+                            
+            if code == 1 or code == 0:
+            	pass;
+            elif code == 2:
+            	continue; # skip writing of function value to file
+            elif code == 3:
+            	pass;
+            else:
+                sys.stderr.write('\n ## ERROR : code %i in DV input file not available\n' % code);
+                sys.exit(1);
+
+            # Write response values to file
+            if code == 1 or code == 3 or code == 5:
+            
+                if isinstance(nozzle.responses[tag],list):
+                    for i in range(len(nozzle.responses[tag])):
+                        if isinstance(nozzle.responses[tag][i],list): # i.e. nested list
+                            for j in range(len(nozzle.responses[tag][i])):
+                                
+                                #fil.write('%0.16f %s_%i_%i\n' % (nozzle.responses[tag][i][j],tag,i,j));                                
+                                tag_out.append("%s_%i_%i" % (tag,i,j));
+                                val_out.append(nozzle.responses[tag][i][j]);
+                                
+                        else:
+                            #fil.write('%0.16f %s_%i\n' % (nozzle.responses[tag][i],tag,i));
+                            
+                            tag_out.append("%s_%i" % (tag,i));
+                            val_out.append(nozzle.responses[tag][i]);
+                            
+                elif isinstance(nozzle.responses[tag],np.ndarray):
+                    arrayShape = nozzle.responses[tag].shape;
+                    if len(arrayShape) == 1:
+                        nr = arrayShape[0];
+                        for i in range(nr):
+                            #fil.write('%0.16f %s_%i\n' % (nozzle.responses[tag][i],tag,i));
+                            tag_out.append("%s_%i" % (tag,i));
+                            val_out.append(nozzle.responses[tag][i]);
+                            
+                    elif len(arrayShape) == 2:
+                        nr, nc = arrayShape;      
+                        for i in range(nr):
+                            for j in range(nc):
+                                #fil.write('%0.16f %s_%i_%i\n' % (nozzle.responses[tag][i,j],tag,i,j));
+                                tag_out.append("%s_%i_%i" % (tag,i,j));
+                                val_out.append(nozzle.responses[tag][i][j]);
+                else:
+                    #fil.write('%0.16f %s\n' % (nozzle.responses[tag],tag));
+                    tag_out.append("%s" % (tag));
+                    val_out.append(nozzle.responses[tag]);
+                    
+
+        # Print function gradients next
+        for i in range(0, len(nozzle.outputTags)):
+            
+            tag = nozzle.outputTags[i];  
+			
+            # 6 Get Hessian, gradient, and value Get Hessian and gradient
+            # 5 Get Hessian and value
+            # 4 Get Hessian
+            # 3 Get gradient and value
+            # 2 Get gradient
+            # 1 Get value
+            # 0 No data required, function is inactive
+            code = nozzle.outputCode[i];
+                            
+            if code == 1 or code == 0:
+            	pass;
+            elif code == 2:
+            	continue; # skip writing of function value to file
+            elif code == 3:
+            	pass;
+            else:
+                sys.stderr.write('\n ## ERROR : code %i in DV input file not available\n' % code);
+                sys.exit(1);
+            
+            # Write response gradients to file
+            if code == 2 or code == 3 or code == 6:
+                
+                if output == 'verbose':
+                    print nozzle.gradients[tag];
+				
+                if isinstance(nozzle.gradients[tag][0],list):
+                
+                    sys.stderr.write('Currently outputting gradients for a vector QOI '
+                      'is not enabled\n');
+                    sys.exit(1);
+                        
+                else:
+                    
+                    gra = list();
+                    
+                    for i in range(len(nozzle.gradients[tag])):
+                        #fil.write('%0.16e ' % nozzle.gradients[tag][i]);
+                        gra.append(nozzle.gradients[tag][i]);
+		
+                    gra_out.append(gra);
+                    gratag_out.append(tag);
+    
+        return tag_out, val_out, gra_out, gratag_out;
+
+
     def WriteOutputFunctions_Plain (self, output='verbose'):
     
         nozzle = self;

@@ -1,217 +1,149 @@
-import sys, os, copy
+import time, os, shutil, subprocess, datetime, sys
 import numpy as np
-import multiprocessing
 
 import multif
 
-
-def SampleGetOutput(nozzle):
-	Output = [];
-	
-	prt_item = [];
-	prt_comp = [];
-	prt_val  = [];
-	
-	for i in range(0, len(nozzle.outputTags)):
-		tag = nozzle.outputTags[i];			
-		
-		# 6 Get Hessian, gradient, and value Get Hessian and gradient
-		# 5 Get Hessian and value
-		# 4 Get Hessian
-		# 3 Get gradient and value
-		# 2 Get gradient
-		# 1 Get value
-		# 0 No data required, function is inactive
-		code = nozzle.outputCode[i];
-		
-		if isinstance(nozzle.responses[tag],list):
-			for i in range(len(nozzle.responses[tag])):
-				if isinstance(nozzle.responses[tag][i],list): # i.e. nested list
-					for j in range(len(nozzle.responses[tag][i])):
-						prt_item.append('%s_%i_%i' % (tag,i,j));
-						prt_comp.append(" ");
-						prt_val.append(nozzle.responses[tag][i][j]);
-				else:
-					prt_item.append('%s %i' % (nozzle.responses[tag][i],i));
-					prt_comp.append('%s' % nozzle.prefixLabels[i]);
-					prt_val.append(nozzle.responses[tag][i]);
-		elif isinstance(nozzle.responses[tag],np.ndarray):
-			arrayShape = nozzle.responses[tag].shape;
-			if len(arrayShape) == 1:
-				nr = arrayShape[0];
-				for i in range(nr):
-					prt_item.append('%s loc %i' % (tag,i));
-					prt_comp.append('');
-					prt_val.append(nozzle.responses[tag][i]);
-			elif len(arrayShape) == 2:
-				nr, nc = arrayShape;	  
-				for i in range(nr):
-					for j in range(nc):
-						prt_item.append('%s loc %i %i' % (tag,i,j));
-						prt_comp.append('');
-						prt_val.append(nozzle.responses[tag][i,j]);								  
-		else:
-			prt_item.append('%s' % tag);
-			prt_comp.append('');
-			prt_val.append(nozzle.responses[tag]);				
-		
-	return prt_val;
-	
-
-
-def RunOneSample(run_id, nozzle, output='verbose'):
-	
-	redirect = True;
-	
-	dirNam = '%s/RUN_%d' % (nozzle.curDir, run_id);
-	
-	if not os.path.exists(dirNam):
-		os.makedirs(dirNam);
-	os.chdir(dirNam);
-	
-	if output == 'verbose':
-		sys.stdout.write('Running sample in %s\n' % dirNam);	
-	
-	if redirect :
-		sav_stdout = sys.stdout;
-		sys.stdout = open('%s/log_%d'%(nozzle.curDir,run_id), 'w');
-	
-	nozzle.SetupWall(output='quiet');
-	
-	if nozzle.method == 'NONIDEALNOZZLE' :
-		multif.LOWF.Run(nozzle, output);
-	elif nozzle.dim == '2D': # nozzle method should be Euler or RANS
-		multif.MEDIUMF.Run(nozzle, output);
-	elif nozzle.dim == '3D': # nozzle.method should be RANS
-		multif.HIGHF.Run(nozzle, output);
-	else:
-		sys.stderr.write(" ## ERROR runSample: Wrong fidelity level defined.\n");
-		sys.exit(1);
-	
-	if redirect : 
-		sys.stdout = sav_stdout;
-	
-	# Exit directory
-	os.chdir(nozzle.curDir);
-	
-	# --- Outputs
-	
-	prt_val = SampleGetOutput(nozzle);
-	
-	return prt_val;	
-
-
-def RunSamples(nozzle, samples_filename, beg, end):
-		
-	samples_hdl = np.loadtxt(samples_filename);
-	NbrSam = len(samples_hdl);
-	
-	# --- No bounds provided? Run all the samples
-	
-	if not beg:
-		beg = 0;
-	if not end:
-		end = NbrSam-1;
-	
-	sys.stdout.write("  -- Running samples %d to %d on %d cores.\n" % (beg, end, nozzle.partitions));
-	
-	if beg < 0 or beg > NbrSam-1 \
-		or end < 0 or end > NbrSam-1\
-		or beg >= end :
-		
-		sys.stderr.write(" ## ERROR RunSamples: Wrong sample id bounds : %d %d, NbrSam %d\n" % (beg, end, NbrSam));
-		sys.exit(1);
-	
-	nozzleEval = [];
-	
-	outputs = [];
-	
-	NbrProc = 1;
-	if nozzle.onebyone:
-		NbrProc = nozzle.partitions;
-		nozzle.partitions = 1;
-	
-	nozzle.curDir = os.getcwd();	
-	
-	# --- Start python's multiprocessing pool
-	
-	if nozzle.partitions > 1:
-		pool = multiprocessing.Pool(processes=nozzle.partitions);
-	
-	# --- Load data
-	
-	for i in range(end):
-		outputs.append([]);
-		nozzleEval.append([]);
-	
-	sys.stdout.write("Loading nozzle data...\n");
-	
-	for iSam in range(beg,end):
-		
-		sys.stdout.write(" - Nozzle %d\n" % iSam);
-		
-		dv_list = [];
-		for j in range(len(samples_hdl[iSam])):
-			dv_list.append(samples_hdl[iSam,j]);
-		
-		if len(nozzle.dvList) != len(dv_list):
-			sys.stderr.write("  ## ERROR sample %d : Wrong number of DV. SKIP.\n" % (iSam));
-			sys.stderr.write("nozzle has %d DV, current sample line has %d DV\n" % (len(nozzle.dvList),len(dv_list)));
-			continue;
-		
-		nozzleEval[iSam] = copy.deepcopy(nozzle);
-		
-		# --- Update DV using current sample values
-		nozzleEval[iSam].dvList = dv_list;		
-		
-		nozzleEval[iSam].UpdateDV(output='quiet');
-		
-		#nozzleEval[iSam].SetupWall(output='quiet');
-		
-		nozzleEval[iSam].partitions = NbrProc;
-	
-	
-	# --- Run the analysis
-		
-	if nozzle.partitions == 1:
-		for iSam in range(beg,end):
-			outputs[iSam] = RunOneSample(iSam, nozzleEval[iSam]);
-			#outputs[iSam] = RunOneSample(iSam, nozzle);
-	else:
-		mEval = [];
-		for iSam in range(end):
-			mEval.append(-1);
-				
-		for iSam in range(beg,end):
-			mEval[iSam] = pool.apply_async(RunOneSample,(iSam,nozzleEval[iSam]))
-		
-		pool.close();
-		pool.join();
-		
-		#for iSam in range(beg,end):
-		#	outputs[iSam] = mEval[iSam].get();
-	 
-	
-	
-	
-	# --- Write results in file
-	
-	resNam = "%s/samples_results.dat" % nozzle.curDir;
-	
-	fil = open(resNam, "w");
-	
-	if fil:
-		sys.stdout.write("--- Writing results file. %s opened.\n" % resNam);
-	else:
-		sys.stderr.write(" ## ERROR : Can't open result file %s.\n" % resNam);
-	
-	for i in range(beg,end):
-		fil.write("%d " %  i)
-		for j in range(len(samples_hdl[i])):
-			fil.write("%lf " %  samples_hdl[i][j]);
-		for j in range(len(outputs[i])):
-			fil.write("%s " %  outputs[i][j]);
-		fil.write("\n");
-	fil.close();
-	
-		
+class Sample:
+    
+    def __init__(self,run_id):
+        
+        self.run_id = run_id;        
+        self.multif_dir = os.path.dirname(os.path.abspath(__file__));
+        self.working_rootdir =  os.getcwd();
+        
+        self.samples_file = "";
+        
+        self.stdout = "stdout.job";
+        self.stderr = "stderr.job";
+                
+        self.cfg_file   = "general.cfg";
+        self.input_file = "inputDV.in";
+        
+        self.fidelity = 0;
+        
+        self.partitions = 1;
+        
+    def RunSample(self):
+        
+        sys.stdout.write('-- Running sample %d \n' % self.run_id);
+        
+        run_id = self.run_id;
+        
+        #--- Go to root working dir
+        
+        os.chdir(self.working_rootdir);
+        
+        #--- Create run working dir
+        
+        runs_dirNam = "runs"; # wrapping folder containing all local run dirs
+        
+        if not os.path.isdir(runs_dirNam):
+            os.mkdir(runs_dirNam);
+            os.chdir(runs_dirNam);
+        else:
+            os.chdir(runs_dirNam);
+        
+        dirNam = "run_%d" % run_id; # local run dir
+        
+        if os.path.isdir(dirNam):
+            shutil.rmtree(dirNam);
+        os.mkdir(dirNam);
+        os.chdir(dirNam);
+        
+        #--- Open log files
+        
+        stdout_hdl = open(self.stdout,'w'); # new targets
+        stderr_hdl = open(self.stderr,'w');
+        
+        success = False;
+        val_out = [False];
+        
+        try: # run with redirected outputs
+            
+            sav_stdout, sys.stdout = sys.stdout, stdout_hdl; 
+            sav_stderr, sys.stderr = sys.stderr, stderr_hdl; 
+                        
+            #--- Copy cfg file
+            shutil.copyfile(os.path.join(self.working_rootdir,self.cfg_file),self.cfg_file);
+            
+            #--- Create DV file
+            try:
+                self.FormatDVFile();
+            except:
+                sys.exit(0);
+                    
+            #--- Setup nozzle data structure
+    	    config = multif.SU2.io.Config(self.cfg_file);
+            config.INPUT_DV_NAME = self.input_file;
+    	    nozzle = multif.nozzle.NozzleSetup(config, self.fidelity);
+    	    nozzle.partitions = int(self.partitions);
+            
+            tag_out, val_out, gra_out, gratag_out = nozzle.GetOutputFunctions();
+            
+            # Hack to debug error handling: make it diverge
+            #if run_id == 2:
+            #    nozzle.mission.mach = 1e6;
+            
+            #--- Run analysis
+            
+            output = 'verbose';
+            
+            nozzle.cfd.su2_max_iterations = 300;
+            
+            if nozzle.method == 'NONIDEALNOZZLE' :
+                multif.LOWF.Run(nozzle, output);
+            elif nozzle.dim == '2D':
+                multif.MEDIUMF.Run(nozzle, output);
+            elif nozzle.dim == '3D':
+                multif.HIGHF.Run(nozzle, output);
+            
+            tag_out, val_out, gra_out, gratag_out = nozzle.GetOutputFunctions();
+            
+            success = True;
+            
+        except:
+            sys.stdout = sav_stdout;
+            sys.stderr = sav_stderr;
+            sys.stderr.write("## Error : Run %d failed.\n" % run_id);
+            return success, val_out;
+        
+        sys.stdout = sav_stdout;
+        sys.stderr = sav_stderr;
+        
+        return success, val_out;
+    
+    def FormatDVFile(self):
+        
+        run_id = self.run_id;
+        
+        samples_filename = os.path.join(self.working_rootdir,self.samples_file);
+        
+        try:
+            hdl = np.loadtxt(samples_filename);
+        except:
+            sys.stderr.write("  ## ERROR : Unable to open samples file %s. It might be invalid.\n" % (samples_filename));
+            sys.exit(0);
+        
+        if run_id > len(hdl) or run_id < 0:
+            sys.stderr.write("  ## ERROR : Invalid run_id=%d (%d samples in %s)\n" % (run_id, len(hdl), samples_filename));
+            sys.exit(0);
+        
+        # --- Write 
+        
+        try:  
+            fil = open(self.input_file, "w");
+            for i in range(len(hdl[run_id])):
+                fil.write("%.16le\n" % hdl[run_id][i]);
+            fil.close(); 
+        except:
+            sys.stderr.write("  ## ERROR : run_id=%d : Unable to write DV file. \n" % (run_id));
+            sys.exit(0);
+        
+        return;
+        
+            
+        
+        
+        
+        
+    
