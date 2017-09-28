@@ -88,7 +88,7 @@ class Sample:
             
             output = 'verbose';
             
-            nozzle.cfd.su2_max_iterations = 300;
+            #nozzle.cfd.su2_max_iterations = 300; # hack
             
             if nozzle.method == 'NONIDEALNOZZLE' :
                 multif.LOWF.Run(nozzle, output);
