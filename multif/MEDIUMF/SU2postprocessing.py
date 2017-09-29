@@ -114,14 +114,24 @@ def ExtractSolutionAtExit ( nozzle ):
 
     restart_name = nozzle.cfd.restart_name;
     
+    #pyResult = [];
+    #pyInfo   = [];
+    #pyHeader = [];
+    #
+    ##pyBox = [nozzle.length,nozzle.length,0,nozzle.height+1e-20];
+    #pyBox = [nozzle.cfd.x_thrust,nozzle.cfd.x_thrust,-1e-20,nozzle.cfd.y_thrust+1e-20];
+    #
+    #_meshutils_module.py_ExtractAlongLine (mesh_name, restart_name, pyBox, pyResult, pyInfo, pyHeader);
+    
+    # --- Extract CFD solution at the inner wall    
+    
     pyResult = [];
     pyInfo   = [];
     pyHeader = [];
     
-    #pyBox = [nozzle.length,nozzle.length,0,nozzle.height+1e-20];
-    pyBox = [nozzle.cfd.x_thrust,nozzle.cfd.x_thrust,-1e-20,nozzle.cfd.y_thrust+1e-20];
+    pyRef = [9];
     
-    _meshutils_module.py_ExtractAlongLine (mesh_name, restart_name, pyBox, pyResult, pyInfo, pyHeader);
+    _meshutils_module.py_ExtractAtRef (mesh_name, restart_name, pyRef, pyResult, pyInfo, pyHeader);
     
     NbrRes = pyInfo[0];
     ResSiz = pyInfo[1];
@@ -129,12 +139,11 @@ def ExtractSolutionAtExit ( nozzle ):
     Result = np.asarray(pyResult);
     
     OutResult = np.reshape(Result,(NbrRes, ResSiz));
-    
     Out_sort = OutResult[OutResult[:,1].argsort()]
     
     idHeader = dict();
     for iFld in range(0,len(pyHeader)):
-        idHeader[pyHeader[iFld]] = iFld+2;
+        idHeader[pyHeader[iFld]] = iFld+3;
 
     return OutResult, pyInfo, idHeader;
     
@@ -246,7 +255,6 @@ def ComputeThrust_2 ( options, SolExtract, Size, Header )    :
         sol[i][1] = float(SolExtract[i][iCons2]);
         sol[i][2] = float(SolExtract[i][iPres]);
 
-    print sol[:][0]
 
     fsol = [];
     for j in range(0,3):
@@ -321,37 +329,8 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )    :
     Rs  = nozzle.fluid.R;
     T0  = nozzle.environment.T;
     U0  = M0*np.sqrt(Gam*Rs*T0);
-    
-    
-    #for iVer in range(1, NbrVer) :
-    #    
-    #    y    = float(SolExtract[iVer][1]);
-    #    
-    #    #if y > nozzle.height-1e-6:
-    #    #    print "REMOVE POINT %d" % iVer
-    #    #    continue;
-    #    
-    #    rho  = 0.5*(SolExtract[iVer][2+iCons1] +  SolExtract[iVer-1][2+iCons1]);
-    #    rhoU = 0.5*(SolExtract[iVer][2+iCons2] +  SolExtract[iVer-1][2+iCons2]);
-    #    Pres = 0.5*(SolExtract[iVer][2+iPres]  +  SolExtract[iVer-1][2+iPres] );
-    #    Mach = 0.5*(SolExtract[iVer][2+iMach]  +  SolExtract[iVer-1][2+iMach] );
-    #    Temp = 0.5*(SolExtract[iVer][2+iTem]   +  SolExtract[iVer-1][2+iTem]  );
-    #    
-    #    
-    #    U = rhoU/rho;
-    #    
-    #    dy = y - SolExtract[iVer-1][1];
-    #    
-    #    #print "%lf %lf %lf %lf %lf %lf" % (y, rho, rhoU, Pres, Mach, Temp);
-    #            
-    #    Thrust = Thrust + dy*(rhoU*(U-U0)+Pres-P0);
-    #
-    #   print "THRUST = %lf" % Thrust
-    
-    #y = SolExtract[iVer][];
-    
+        
     NbrVer = len(SolExtract);
-    
     
     y   = np.zeros(NbrVer);
     sol = np.zeros([NbrVer,5]);
@@ -362,11 +341,6 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )    :
     
     for i in range(0,NbrVer):
         y[i] = float(SolExtract[i][1]);
-        
-        #sol[i][0] = float(SolExtract[i][iCons1]);
-        #sol[i][1] = float(SolExtract[i][iCons2]);
-        #sol[i][2] = float(SolExtract[i][iPres]);
-        
         
         tabrho.append(float(SolExtract[i][iCons1]));
         tabrhoU.append(float(SolExtract[i][iCons2]));
