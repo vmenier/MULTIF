@@ -9,7 +9,7 @@ import AEROSpostprocessing
 
 from SU2postprocessing import *
 
-try:
-	from runAEROS import *
-except ImportError:
-	pass;
+#try:
+#	from runAEROS import *
+#except ImportError:
+#	pass;

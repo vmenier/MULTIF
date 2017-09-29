@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
 """
 Perform quasi-1D area-averaged Navier-Stokes analysis on axisymmetric nozzle
 
-Rick Fenrich 6/28/16
+Rick Fenrich 9/24/17
 """
 
 import numpy as np
@@ -10,18 +9,24 @@ import scipy.optimize
 import scipy.integrate
 import sys, os
 
+import quasi1dnozzle
+
 from .. import nozzle as nozzlemod
 from multif.MEDIUMF.AEROSpostprocessing import PostProcess as AEROSPostProcess
 
 try:
     from multif.MEDIUMF.runAEROS import *
-except ImportError:
-    print 'Error importing all functions from runAEROS.\n'
+except ImportError as e: 
+    print 'Error importing all functions from runAEROS in runlowf.py.'
+    print e
+    print
 
 try:
 	from matplotlib import pyplot as plt
-except ImportError:
-    print 'Can\'t import matplotlib.\n'
+except ImportError as e:
+    print 'Error importing matplotlib in runlowf.py.'
+    print e
+    print
 
 #==============================================================================
 # Sutherland's Law of dynamic viscosity of air
@@ -574,7 +579,7 @@ def integrateTrapezoidal(y,x):
 #% transfer coefficient hf, friction coefficient Cf, interior wall temp. Tw,
 #% exterior wall temp. Text, and approximate stress along length of nozzle.
 #==============================================================================
-def Quasi1D(nozzle,output='verbose'):
+def Quasi1D_old(nozzle,output='verbose'):
     
     # Initialize
     gam = nozzle.fluid.gam
@@ -812,8 +817,6 @@ def Quasi1D(nozzle,output='verbose'):
     divergenceFactor = (1. + np.cos(exitAngle))/2.
     netThrust = divergenceFactor*mdot[0]*(U[-1] - nozzle.mission.mach*       \
       nozzle.environment.c) + (P[-1] - nozzle.environment.P)*A[-1]
-    #grossThrust = divergenceFactor*mdot[0]*U + (P[-1] -                      \
-    #  nozzle.environment.P)*A[-1]
     
     if nozzle.structuralFlag == 1:
 #        # Simplified stress calculation (calculate stresses IN LOAD LAYER ONLY)
@@ -857,11 +860,13 @@ def Quasi1D(nozzle,output='verbose'):
         nozzle.runAEROS = 0;
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
             
-            try:
-                runAEROS(nozzle, output);
-                AEROSPostProcess(nozzle, output);
-            except:
-                sys.stdout.write("  ## WARNING : CALL TO AEROS IGNORED.\n");
+            #try:
+            #    runAEROS(nozzle, output);
+            #    AEROSPostProcess(nozzle, output);
+            #except:
+            #    sys.stdout.write("  ## WARNING : CALL TO AEROS IGNORED.\n");
+            runAEROS(nozzle, output);
+            AEROSPostProcess(nozzle, output);
 
     else: # do not perform structural analysis
         pass;
@@ -881,6 +886,182 @@ def Quasi1D(nozzle,output='verbose'):
 # END OF analysis(nozzle,tol)
 
 
+#==============================================================================
+# Perform quasi-1D area-averaged Navier-Stokes analysis of axisymmetric nozzle.
+#% Solve for flow along length of non-ideal nozzle given geometry, inlet
+#% stagnation temperature and pressure, and freestream temperature and
+#% pressure. Iterate for Cf and stagnation temperature. An ODE for M^2 is 
+#% solved given A, Cf, and Tstag. Pstag is found from mass conservation. T 
+#% and P are found from def'n of stag. temp. Density rho is found from ideal 
+#% gas law. 
+#%
+#% Returns M, density, pressure P, temperature T, stagnation 
+#% temp. Tstag, stagnation pressure Pstag, velocity U, Re, internal heat
+#% transfer coefficient hf, friction coefficient Cf, interior wall temp. Tw,
+#% exterior wall temp. Text.
+#==============================================================================
+def Quasi1D(nozzle,output='verbose'):
+    
+    # Initialize inputs for nozzle analysis
+
+    # Discretization
+    nbreaks = 1000 # save data for nbreaks along length of nozzle
+    nApproxPoints = 8000 # number of points to use for piecewise-linear
+                         # approximation of non-piecewise-linear geometries
+
+    # Nozzle interior wall geometry
+    if nozzle.wall.geometry.type == 'piecewise-linear':
+        xgeo = list(nozzle.wall.geometry.nodes[:,0].transpose())
+        rgeo = list(nozzle.wall.geometry.nodes[:,1].transpose())
+    else:
+        xgeo = list(np.linspace(nozzle.wall.geometry.xstart,
+            nozzle.wall.geometry.xend, nApproxPoints))
+        rgeo = list(nozzle.wall.geometry.radius(xgeo))
+
+    # Interior wall temperature (if necessary)
+    if hasattr(nozzle.wall, 'temperature'):
+        if nozzle.wall.temperature.geometry.type == 'piecewise-linear':
+            xwalltemp = list(nozzle.wall.temperature.geometry.nodes[:,0].transpose())
+            walltemp = list(nozzle.wall.temperature.geometry.nodes[:,1].transpose())
+        else:
+            xwalltemp = list(np.linspace(nozzle.wall.temperature.geometry.xstart,
+                nozzle.wall.temperature.geometry.xend, nApproxPoints))
+            walltemp = list(nozzle.wall.temperature.geometry.radius(xwalltemp))
+    else:
+        xwalltemp = []
+        walltemp = []
+
+    # Thermal layer
+    if nozzle.wall.layer[0].thickness.type == 'piecewise-linear':
+        xlayer1 = list(nozzle.wall.layer[0].thickness.nodes[:,0].transpose())
+        tlayer1 = list(nozzle.wall.layer[0].thickness.nodes[:,1].transpose())
+    else:
+        xlayer1 = list(np.linspace(nozzle.wall.layer[0].thickness.xstart,
+            nozzle.wall.layer[0].thickness.xend, nApproxPoints))
+        tlayer1 = list(nozzle.wall.layer[0].thickness.radius(xlayer1))
+    k1 = nozzle.wall.layer[0].material.getThermalConductivity(direction=3)
+
+    # Air gap
+    if nozzle.wall.layer[1].thickness.type == 'piecewise-linear':
+        xlayer2 = list(nozzle.wall.layer[1].thickness.nodes[:,0].transpose())
+        tlayer2 = list(nozzle.wall.layer[1].thickness.nodes[:,1].transpose())
+    else:
+        xlayer2 = list(np.linspace(nozzle.wall.layer[1].thickness.xstart,
+            nozzle.wall.layer[1].thickness.xend, nApproxPoints))
+        tlayer2 = list(nozzle.wall.layer[1].thickness.radius(xlayer2))
+    k2 = nozzle.wall.layer[1].material.getThermalConductivity(direction=3)
+
+    # Inner load layer
+    if nozzle.wall.layer[2].thickness.type == 'piecewise-linear':
+        xlayer3 = list(nozzle.wall.layer[2].thickness.nodes[:,0].transpose())
+        tlayer3 = list(nozzle.wall.layer[2].thickness.nodes[:,1].transpose())
+    else:
+        xlayer3 = list(np.linspace(nozzle.wall.layer[2].thickness.xstart,
+            nozzle.wall.layer[2].thickness.xend, nApproxPoints))
+        tlayer3 = list(nozzle.wall.layer[2].thickness.radius(xlayer3))
+    k3 = nozzle.wall.layer[2].material.getThermalConductivity(direction=3)
+
+    # Middle load layer
+    if nozzle.wall.layer[3].thickness.type == 'piecewise-linear':
+        xlayer4 = list(nozzle.wall.layer[3].thickness.nodes[:,0].transpose())
+        tlayer4 = list(nozzle.wall.layer[3].thickness.nodes[:,1].transpose())
+    else:
+        xlayer4 = list(np.linspace(nozzle.wall.layer[3].thickness.xstart,
+            nozzle.wall.layer[3].thickness.xend, nApproxPoints))
+        tlayer4 = list(nozzle.wall.layer[3].thickness.radius(xlayer4))
+    k4 = nozzle.wall.layer[3].material.getThermalConductivity(direction=3)
+    
+    # Outer load layer
+    if nozzle.wall.layer[4].thickness.type == 'piecewise-linear':
+        xlayer5 = list(nozzle.wall.layer[4].thickness.nodes[:,0].transpose())
+        tlayer5 = list(nozzle.wall.layer[4].thickness.nodes[:,1].transpose())
+    else:
+        xlayer5 = list(np.linspace(nozzle.wall.layer[4].thickness.xstart,
+            nozzle.wall.layer[4].thickness.xend, nApproxPoints))
+        tlayer5 = list(nozzle.wall.layer[4].thickness.radius(xlayer5))
+    k5 = nozzle.wall.layer[4].material.getThermalConductivity(direction=3)
+   
+    # Inlet parameters
+    tsi = nozzle.inlet.Tstag
+    psi = nozzle.inlet.Pstag
+
+    # Initial parameters
+    dtsi = -6. # stagnation temp gradient guess
+    cfi = 0.004 # friction coefficient guess
+
+    # Fluid properties
+    g = nozzle.fluid.gam
+    gasconstant = nozzle.fluid.R
+
+    # Mission properties
+    missionmach = nozzle.mission.mach
+
+    # Environment properties
+    hinf = nozzle.environment.hInf
+    tenv = nozzle.environment.T
+    penv = nozzle.environment.P
+    cenv = nozzle.environment.c
+
+    # Gauss-Seidel fluid-thermal iteration properties
+    eps1 = nozzle.tolerance.exitTempPercentError # relative tolerance for exit temp b/w iterations
+    if nozzle.thermalFlag == 1:
+        maxiter = 12 # max number of iterations for conjugate heat xfer
+    else: # do not perform thermal analysis
+        maxiter = 1
+
+    # ODE integration properties
+    maxstep = 100000 # max number of steps
+    eps2 = nozzle.tolerance.solverAbsTol # absolute allowable error of RK4 integration
+    ns = 1001 # approximate number of steps to save (governs closeness of integrated mach values)
+    himag = 1e-4 # guess for starting step
+    hminmag = 1e-12 # smallest allowable step
+    hmaxmag = 5e-3 # largest allowable step
+    singularitydy = 1e-3 # increment above/below M=1 to start integration
+
+    # Outputs
+    x = [] # x-coordinate along nozzle axis
+    temp = [] # temperature
+    p = [] # static pressure
+    rho = [] # density
+    u = [] # velocity
+    mach = [] # mach
+    tempinside = [] # inside wall temperature
+    tempoutside = [] # outside wall temperature
+    netthrust = [] # net thrust
+
+    # Run thermo-fluid analysis
+    quasi1dnozzle.analyze(xgeo, rgeo, nbreaks, xwalltemp, walltemp, 
+        xlayer1, tlayer1, k1, xlayer2, 
+        tlayer2, k2, xlayer3, tlayer3, k3, xlayer4, tlayer4, k4, xlayer5,
+        tlayer5, k5, tsi, dtsi, psi, cfi, missionmach, g, gasconstant, hinf,
+        tenv, cenv, penv, eps1, maxiter, maxstep, eps2, ns, himag, hminmag, hmaxmag, 
+        singularitydy,
+        x, temp, p, rho, u, mach, tempinside, tempoutside, netthrust)
+
+    # Convert data to Numpy array
+    x = np.array(x)
+    temp = np.array(temp)
+    p = np.array(p)
+    rho = np.array(rho)
+    u = np.array(u)
+    mach = np.array(mach)
+    tempinside = np.array(tempinside)
+    tempoutside = np.array(tempoutside)
+    netthrust = netthrust[0]
+
+    ps = p*(1+(g-1)*mach**2/2.)**(g/(g-1.)) # stagnation pressure
+    
+    # Run secondary thermal analysis and structural analysis if necessary
+    if nozzle.structuralFlag == 1:    
+        nozzle.wallResults = np.transpose(np.array([x, tempinside, ps]))
+        nozzle.runAEROS = 0
+        if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
+            runAEROS(nozzle, output)
+            AEROSPostProcess(nozzle, output)
+    
+    return netthrust, x, tempinside, ps, p, u
+
+
 def Run (nozzle,output='verbose',writeToFile=1):
     
     # Obtain mass and volume
@@ -888,10 +1069,8 @@ def Run (nozzle,output='verbose',writeToFile=1):
         volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle)
         if 'MASS' in nozzle.responses:
             nozzle.responses['MASS'] = np.sum(mass)
-            #nozzle.mass = np.sum(mass)
         if 'VOLUME' in nozzle.responses:
             nozzle.responses['VOLUME'] = np.sum(volume)
-            #nozzle.volume = np.sum(volume)
         
     # Calculate mass gradients if necessary
     if 'MASS' in nozzle.gradients and nozzle.gradients['MASS'] is not None:
@@ -911,7 +1090,7 @@ def Run (nozzle,output='verbose',writeToFile=1):
     if 'VOLUME' in nozzle.gradients and nozzle.gradients['VOLUME'] is not None:
         sys.stderr.write('\n ## ERROR : gradients for VOLUME are not supported\n\n');
         sys.exit(1);
-        
+ 
     # Obtain mass of wall and gradients only if requested
     if 'MASS_WALL_ONLY' in nozzle.responses:
         volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle)
@@ -947,34 +1126,56 @@ def Run (nozzle,output='verbose',writeToFile=1):
    
     if runAeroThermalStructuralProblem:
         
-        # Run aero analysis (+ 1D thermal analysis if requested)
-        xPosition, flowTuple, heatTuple, geoTuple, \
-            performanceTuple = Quasi1D(nozzle,output);
+        # # Run aero analysis (+ 1D thermal analysis if requested)
+        # xPosition, flowTuple, heatTuple, geoTuple, \
+        #     performanceTuple = Quasi1D_old(nozzle,output);
+
+        # # Assign function values        
+        # if 'THRUST' in nozzle.responses:
+        #     nozzle.responses['THRUST'] = performanceTuple[2]  
+
+        # if 'WALL_TEMPERATURE' in nozzle.responses:
+        #     nozzle.responses['WALL_TEMPERATURE'] = np.interp(\
+        #         nozzle.outputLocations['WALL_TEMPERATURE'], xPosition, heatTuple[0])
         
-        # Assign function values
+        # if 'WALL_PRESSURE' in nozzle.responses:
+        #     nozzle.responses['WALL_PRESSURE'] = np.interp(\
+        #         nozzle.outputLocations['WALL_PRESSURE'], xPosition, flowTuple[3])
+
+        # if 'PRESSURE' in nozzle.responses:
+        #     nozzle.responses['PRESSURE'] = np.interp(\
+        #         nozzle.outputLocations['PRESSURE'][:,0], xPosition, flowTuple[3])
+
+        # if 'VELOCITY' in nozzle.responses:
+        #     nr, nc = nozzle.outputLocations['VELOCITY'].shape
+        #     nozzle.responses['VELOCITY'] = np.zeros((nr,3))
+        #     nozzle.responses['VELOCITY'][:,0] = np.interp(\
+        #         nozzle.outputLocations['VELOCITY'][:,0], xPosition, flowTuple[1])
+
+        thrust, x, walltemp, wallpress, press, velocity = Quasi1D(nozzle, output)
         
+        # Assign function values        
         if 'THRUST' in nozzle.responses:
-            nozzle.responses['THRUST'] = performanceTuple[2];
-            #nozzle.thrust = performanceTuple[2];
+            nozzle.responses['THRUST'] = thrust
             
         if 'WALL_TEMPERATURE' in nozzle.responses:
             nozzle.responses['WALL_TEMPERATURE'] = np.interp(\
-                nozzle.outputLocations['WALL_TEMPERATURE'], xPosition, heatTuple[0])
-            
+                nozzle.outputLocations['WALL_TEMPERATURE'], x, walltemp)
+
         if 'WALL_PRESSURE' in nozzle.responses:
             nozzle.responses['WALL_PRESSURE'] = np.interp(\
-                nozzle.outputLocations['WALL_PRESSURE'], xPosition, flowTuple[3])
-            
+                nozzle.outputLocations['WALL_PRESSURE'], x, wallpress)
+
         if 'PRESSURE' in nozzle.responses:
             nozzle.responses['PRESSURE'] = np.interp(\
-                nozzle.outputLocations['PRESSURE'][:,0], xPosition, flowTuple[3])
-            
+                nozzle.outputLocations['PRESSURE'][:,0], x, press)
+
         if 'VELOCITY' in nozzle.responses:
             nr, nc = nozzle.outputLocations['VELOCITY'].shape
             nozzle.responses['VELOCITY'] = np.zeros((nr,3))
             nozzle.responses['VELOCITY'][:,0] = np.interp(\
-                nozzle.outputLocations['VELOCITY'][:,0], xPosition, flowTuple[1])
-        
+                nozzle.outputLocations['VELOCITY'][:,0], x, velocity)
+
         # Calculate gradients if necessary
         if nozzle.gradientsFlag == 1 and runAeroThermalStructuralGradients:
         

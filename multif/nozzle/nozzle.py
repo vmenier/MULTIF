@@ -510,6 +510,8 @@ class Nozzle:
                     nozzle.tolerance = tolerance.Tolerance();
                     nozzle.tolerance.setRelTol(tol);
                     nozzle.tolerance.setAbsTol(tol);
+                    nozzle.tolerance.exitTempPercentError = 10*tol;
+                    nozzle.solverApparentThroatLocation = tol;
 
                     # Set analysis type
                     try:

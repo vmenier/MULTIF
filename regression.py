@@ -68,18 +68,18 @@ if( test['all'] or test['lofi'] or test['fea'] ):
     test_list.append(lofi_2dparam_1);
 
 # --------------------------- 3D param, lo-fi --------------------------------
-# if( test['all'] or test['lofi'] ):
+if( test['all'] or test['lofi'] ):
 
-#    lofi_3dparam = TestCase('lofi_3dparam');
-#    lofi_3dparam.description = 'General, 3D, serial, low-fi analysis';
-#    lofi_3dparam.cfg_dir = 'example';
-#    lofi_3dparam.cfg_file = 'general-3d.cfg';
-#    lofi_3dparam.input_file = 'general-3d.in';
-#    lofi_3dparam.compare_file = 'example/regression/results_general-3d_lofi.out';
-#    lofi_3dparam.fidelity = 0;
-#    lofi_3dparam.nproc = 1;
-#    lofi_3dparam.diff_tol = 1e-6;
-#    #test_list.append(lofi_3dparam);
+    lofi_3dparam = TestCase('lofi_3dparam');
+    lofi_3dparam.description = 'General, 3D, serial, low-fi analysis';
+    lofi_3dparam.cfg_dir = 'example';
+    lofi_3dparam.cfg_file = 'general-3d.cfg';
+    lofi_3dparam.input_file = 'general-3d.in';
+    lofi_3dparam.compare_file = 'example/regression/results_general-3d_lofi.out';
+    lofi_3dparam.fidelity = 0;
+    lofi_3dparam.nproc = 1;
+    lofi_3dparam.diff_tol = 1e-6;
+    test_list.append(lofi_3dparam);
 
 # ------------------- 2D param, lo-fi, f.d. gradients ------------------------
 if( test['all'] or test['lofi'] or test['fd'] ):
