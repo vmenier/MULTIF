@@ -140,7 +140,14 @@ def main():
         samples_tab[-1].input_file      = "inputDV.in";
         samples_tab[-1].fidelity        = options.flevel;
         samples_tab[-1].partitions      = options.partitions;
-        
+    
+    #--- Create ./runs folder
+    
+    runs_dirNam = "runs"; # wrapping folder containing all local run dirs
+    
+    if not os.path.isdir(runs_dirNam):
+        os.mkdir(runs_dirNam);
+    
     #--- Start python's multiprocessing pool
     
     if options.poolpartitions > 1:
