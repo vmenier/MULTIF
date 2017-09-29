@@ -15,13 +15,17 @@ from multif.MEDIUMF.AEROSpostprocessing import PostProcess as AEROSPostProcess
 
 try:
     from multif.MEDIUMF.runAEROS import *
-except ImportError:
-    print 'Error importing all functions from runAEROS.\n'
+except ImportError as e: 
+    print 'Error importing all functions from runAEROS in runlowf.py.'
+    print e
+    print
 
 try:
 	from matplotlib import pyplot as plt
-except ImportError:
-    print 'Can\'t import matplotlib.\n'
+except ImportError as e:
+    print 'Error importing matplotlib in runlowf.py.'
+    print e
+    print
 
 #==============================================================================
 # Sutherland's Law of dynamic viscosity of air
@@ -857,11 +861,13 @@ def Quasi1D(nozzle,output='verbose'):
         nozzle.runAEROS = 0;
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
             
-            try:
-                runAEROS(nozzle, output);
-                AEROSPostProcess(nozzle, output);
-            except:
-                sys.stdout.write("  ## WARNING : CALL TO AEROS IGNORED.\n");
+            #try:
+            #    runAEROS(nozzle, output);
+            #    AEROSPostProcess(nozzle, output);
+            #except:
+            #    sys.stdout.write("  ## WARNING : CALL TO AEROS IGNORED.\n");
+            runAEROS(nozzle, output);
+            AEROSPostProcess(nozzle, output);
 
     else: # do not perform structural analysis
         pass;

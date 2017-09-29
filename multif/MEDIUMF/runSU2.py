@@ -564,14 +564,14 @@ def runSU2 ( nozzle ):
     gradCalc = 0; # 0 = failure, 1 = success
 
     # --- Run SU2
-    
-    try:
-        info = SU2.run.CFD(config);
-    except:
-        sys.stdout.write('   ## WARNING: SU2 calculation unsuccessful.\n\n');
-        su2history = open('about.txt','a');
-        su2history.write('SU2 calculation with baseline params unsuccessful.\n');
-        su2history.close();
+    info = SU2.run.CFD(config);
+#    try:
+#        info = SU2.run.CFD(config);
+#    except:
+#        sys.stdout.write('   ## WARNING: SU2 calculation unsuccessful.\n\n');
+#        su2history = open('about.txt','a');
+#        su2history.write('SU2 calculation with baseline params unsuccessful.\n');
+#        su2history.close();
     
     # --- Check SU2 solution here
     

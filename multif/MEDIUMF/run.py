@@ -11,8 +11,11 @@ from .. import nozzle as nozzlemod
 
 try:
     from runAEROS import *
-except ImportError:
-    print 'Error importing all functions from runAEROS.\n'
+except ImportError as e:
+    print 'Error importing all functions from runAEROS in MEDIUMF/run.py.'
+    print e
+    print
+
 
 #def CheckOptions (nozzle):
 
@@ -103,10 +106,11 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
 	    
 	    # Run thermal/structural analyses
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
-            try : 
-                runAEROS(nozzle, output);  
-            except:
-                sys.stdout.write("  ## WARNING: CALL TO AERO-S IGNORED.\n");
+            runAEROS(nozzle,output);
+        #    try : 
+        #        runAEROS(nozzle, output);  
+        #    except:
+        #        sys.stdout.write("  ## WARNING: CALL TO AERO-S IGNORED.\n");
 	        
         # Assign aero QoI if required
         SU2postprocessing.PostProcess(nozzle, output);

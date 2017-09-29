@@ -8,9 +8,12 @@ from hf_runSU2 import *
 import hf_postprocessing
 
 try:
-    from runAEROS import *
-except ImportError:
-    print 'Error importing all functions from runAEROS.\n'
+    from multif.MEDIUMF.runAEROS import *
+except ImportError as e:
+    print 'Error importing all functions from runAEROS in hf_run.py.'
+    print e
+    print
+
 
 def CheckOptions (nozzle):
     
