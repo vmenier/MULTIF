@@ -21,6 +21,8 @@ autom4te.cache
 
 nozzle*.su2
 
+./multif/meshutils/meshutils
+
 # Latex files
 *.aux
 *.bbl

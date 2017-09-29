@@ -811,6 +811,16 @@ void WriteSU2Mesh(char *nam, Mesh *Msh)
   	  }
   	  fprintf(OutFil, "%d\n", iTri-1); 
   	}
+		
+		//--- Write quads
+		for (iQua=1; iQua<=Msh->NbrQua; iQua++) {
+  	  fprintf(OutFil, "%d ", SU2_RECTANGLE); 
+			for (i=0; i<4; ++i) {
+  	    fprintf(OutFil, "%d ",Msh->Qua[iQua][i]-1);
+  	  }
+  	  fprintf(OutFil, "%d\n", iQua-1); 
+  	}
+		
 	}
 	
 	

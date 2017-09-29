@@ -115,6 +115,7 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
         # Assign aero QoI if required
         SU2postprocessing.PostProcess(nozzle, output);
         
+        
         # Assign thermal/structural QoI if required
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
             AEROSpostprocessing.PostProcess(nozzle, output);             
@@ -169,6 +170,9 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
 
     # Write data
     if writeToFile:
+        
+        #tag_out, val_out, gra_out, gratag_out = nozzle.GetOutputFunctions();
+                
         if nozzle.outputFormat == 'PLAIN':
             nozzle.WriteOutputFunctions_Plain();
         else:
