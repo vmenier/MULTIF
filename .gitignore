@@ -49,6 +49,7 @@ Makefile
 ./multif/meshutils/meshutils_module.py
 ./multif/meshutils/meshutils_py_wrap.c
 ./multif/mshint/mshint_module.py
+./multif/LOWF/quasi1dnozzle.py
 
 ./multif/build
 
