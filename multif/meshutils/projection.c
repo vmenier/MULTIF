@@ -226,8 +226,12 @@ int ProjectNozzleWall_Up_DV (double *CrdOld, double *CrdNew, CadNozzle * NozBas)
 	x_in   = NozBas->Bsp_center->Coefs[0];
 	x_out  = NozBas->Bsp_center->Coefs[NozBas->Bsp_center->NbrCoefs/2-1];
 	
+	
+	int verbose = 1;
+	
 	if ( CrdOld[0] < x_in-1e-6 || CrdOld[0] > x_out+1e-6  ) {
-		printf("  ## ERROR ProjectNozzleWall_Down : x out of range!\n");
+		if ( verbose > 0 )
+			printf("  ## ERROR ProjectNozzleWall_Down : x out of range!\n");
 		exit(1);
 	}
 	
@@ -1002,7 +1006,7 @@ int NozzleWallProjection (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, int re
 
 
 
-int NozzleWallProjection_DV (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, CadNozzle *CadNoz_bas,  int refUp, int refDown, char *OutNam)
+int NozzleWallProjection_DV (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, CadNozzle *CadNoz_bas,  int refUp, int refDown, char *OutNam, int verbose)
 {
 	
 	//---
@@ -1073,11 +1077,13 @@ int NozzleWallProjection_DV (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, Cad
 	FILE *motionHdl = fopen(OutNam, "wb");
 	
 	if ( motionHdl ) {
-		printf("%%%% %s OPENED (WRITE).\n", OutNam);
+		if ( verbose > 0 )
+			printf("%%%% %s OPENED (WRITE).\n", OutNam);
 	}
 	else
 	{
-		printf("  ## ERROR : Could not open %s.\n", OutNam);
+		if ( verbose > 0  )
+			printf("  ## ERROR : Could not open %s.\n", OutNam);
 		exit(1);
 	}
 	
@@ -1106,7 +1112,8 @@ int NozzleWallProjection_DV (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, Cad
 		}
 		
 		if ( patch == -1 ) {
-			printf("  ## ERROR : Wrong nozzle CAD patch.\n");
+			if ( verbose > 0 )
+				printf("  ## ERROR : Wrong nozzle CAD patch.\n");
 			exit(1);
 		}
 		

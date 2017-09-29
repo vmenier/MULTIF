@@ -129,7 +129,7 @@ int GetCadBsplineSize ( char *BasNam , int *NbrCoefs, int *NbrKnots )
 	
 }
 
-int LoadCadBspline (char *BasNam, CadBspline *Bsp)
+int LoadCadBspline (char *BasNam, CadBspline *Bsp, int verbose)
 {
 	
 	int i;
@@ -320,7 +320,7 @@ double fr2_bas (double x,  double *BasParam)
 }
 
 
-int WriteCadBspline(char *BasNam, CadBspline *Bsp) {
+int WriteCadBspline(char *BasNam, CadBspline *Bsp, int verbose) {
 	
 	char CadNam [1024];
 	double len = Bsp->Coefs[Bsp->NbrCoefs/2-1];
@@ -331,10 +331,12 @@ int WriteCadBspline(char *BasNam, CadBspline *Bsp) {
 	FILE *outHdl = fopen(CadNam, "wb");
 	
 	if ( outHdl ) {
-		printf(" -- %s opened.\n", CadNam);
+		if ( verbose > 0 )
+			printf(" -- %s opened.\n", CadNam);
 	}
 	else {
-		printf(" ## WARNING: WriteCadBspline : Unable to open %s. Return.\n", CadNam);
+		if ( verbose > 0 )
+			printf(" ## WARNING: WriteCadBspline : Unable to open %s. Return.\n", CadNam);
 		return 0;
 	}
 	
