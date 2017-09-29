@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+ #!/usr/bin/env python
 
 import os, sys
 
@@ -48,6 +48,8 @@ def main():
                       
     parser.add_option("-e", "--end", dest="run_end", default=-1,
                       help="Id of last sample (from 0 to N-1, bounds are included)", metavar="FLEVEL")   
+    parser.add_option("-o", "--output", dest="outfile", default="data.out",
+                      help="Output file", metavar="OUTPUT")
                           
     (options, args)=parser.parse_args()
     
@@ -181,6 +183,15 @@ def main():
         
         for i in range(len(mEval)):
             print rEval[i];
+        
+        # Write results to file
+        f = open(options.outfile,'w');
+        for i in range(len(mEval)):
+            for j in range(len(rEval[i][2])-1):
+                f.write('%0.16f, ' % rEval[i][2][j]);
+            f.write('%0.16f\n' % rEval[i][2][-1]);
+        f.close();
+        sys.stdout.write("-- %s written with sample data.\n" % options.outfile);
         
         
         
