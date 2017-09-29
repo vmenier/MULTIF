@@ -45,5 +45,14 @@ setup(ext_modules=[ \
 			    "./mshint/mesh.c" ,\
 			    "./mshint/scalem.c"] , \
 	   extra_compile_args=["-O3","-c","-Wuninitialized","-Wunused",
-	   "-Winline","-Wshadow","-fexpensive-optimizations","-funroll-loops"])       
+	   "-Winline","-Wshadow","-fexpensive-optimizations","-funroll-loops"]),   
+	   
+	  Extension("LOWF/_quasi1dnozzle",
+      sources=["./LOWF/quasi1dnozzle_py.c", \
+               "./LOWF/lofinozzle.c", \
+               "./LOWF/odeint.c", \
+               "./meshutils/piecewise.c", \
+               "./LOWF/quasi1dnozzle_py.i"],
+      extra_compile_args=["-Wno-unused-variable","-Wno-unused-result"])
+    
        ]);
