@@ -58,7 +58,7 @@ sources=["./LOWF/quasi1dnozzle_py.c", \
          "./LOWF/odeint.c", \
          "./meshutils/piecewise.c", \
          "./LOWF/quasi1dnozzle_py.i"],
-extra_compile_args=["-Wno-unused-variable","-Wno-unused-result"])
+extra_compile_args=["-std=c99", "-Wno-unused-variable","-Wno-unused-result"])
 ]);
 
     
