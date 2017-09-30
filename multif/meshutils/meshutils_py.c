@@ -23,6 +23,8 @@ int py_ProjectNozzleWall3D( char *MshNam,
 	int nKnots_r2=0, nCoefs_r2=0;
 	
 	CadNozzle *CadNoz = NULL;
+	
+	int verbose = 0;
 					
 	//--- Get nozzle patch references to re-project
 	
@@ -187,9 +189,9 @@ int py_ProjectNozzleWall3D( char *MshNam,
 	CadNoz->ThetaCutIn  = 1.572865;
 	CadNoz->ThetaCutOut = 1.855294;
 	
-	WriteCadBspline ("centerline", CadNoz->Bsp_center);
-	WriteCadBspline ("r1", CadNoz->Bsp_r1);
-	WriteCadBspline ("r2", CadNoz->Bsp_r2);
+	WriteCadBspline ("centerline", CadNoz->Bsp_center, verbose);
+	WriteCadBspline ("r1", CadNoz->Bsp_r1, verbose);
+	WriteCadBspline ("r2", CadNoz->Bsp_r2, verbose);
 	
 	//--- Project
 	
@@ -221,6 +223,8 @@ int py_ProjectNozzleWall3D_DV( char *MshNam,
  PyObject *pyKnots_r2_to, PyObject *pyCoefs_r2_to, 
  char *OutNam ) 
 {
+	
+	int verbose = 0;
 	
 	int i;
 	int *RefUp = NULL, *RefDown = NULL;
@@ -517,17 +521,17 @@ int py_ProjectNozzleWall3D_DV( char *MshNam,
 	Noz_to->ThetaCutIn  = 1.572865;
 	Noz_to->ThetaCutOut = 1.855294;
 	
-	WriteCadBspline ("centerline_from", Noz_from->Bsp_center);
-	WriteCadBspline ("r1_from", Noz_from->Bsp_r1);
-	WriteCadBspline ("r2_from", Noz_from->Bsp_r2);
+	WriteCadBspline ("centerline_from", Noz_from->Bsp_center, verbose);
+	WriteCadBspline ("r1_from", Noz_from->Bsp_r1, verbose);
+	WriteCadBspline ("r2_from", Noz_from->Bsp_r2, verbose);
 	
-	WriteCadBspline ("centerline_to", Noz_to->Bsp_center);
-	WriteCadBspline ("r1_to", Noz_to->Bsp_r1);
-	WriteCadBspline ("r2_to", Noz_to->Bsp_r2);
+	WriteCadBspline ("centerline_to", Noz_to->Bsp_center, verbose);
+	WriteCadBspline ("r1_to", Noz_to->Bsp_r1, verbose);
+	WriteCadBspline ("r2_to", Noz_to->Bsp_r2, verbose);
 	
 	//--- Project
 	
-	NozzleWallProjection_DV (mshopt, Msh, Noz_to, Noz_from, RefUp[0], RefDown[0], OutNam);
+	NozzleWallProjection_DV (mshopt, Msh, Noz_to, Noz_from, RefUp[0], RefDown[0], OutNam, verbose);
 	
 	//--- Free memory
 	

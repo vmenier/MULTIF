@@ -106,11 +106,12 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
 	    
 	    # Run thermal/structural analyses
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
-            runAEROS(nozzle,output);
-        #    try : 
-        #        runAEROS(nozzle, output);  
-        #    except:
-        #        sys.stdout.write("  ## WARNING: CALL TO AERO-S IGNORED.\n");
+            
+            try : 
+                runAEROS(nozzle, output);  
+            except:
+                sys.stdout.write("  ## WARNING: CALL TO AERO-S IGNORED.\n");
+
 	        
         # Assign aero QoI if required
         SU2postprocessing.PostProcess(nozzle, output);

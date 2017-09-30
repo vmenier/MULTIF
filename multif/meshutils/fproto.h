@@ -17,7 +17,7 @@ Victorien Menier Feb 2016
 //--- projection.c
 int NozzleWallProjection (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, int refUp, int refDown, char *OutNam);
 int ProjectToDV(double *Crd, CadNozzle *Noz, double *BasParam, int Patch);
-int NozzleWallProjection_DV (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, CadNozzle * CadNoz_bas, int refUp, int refDown, char *OutNam);
+int NozzleWallProjection_DV (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, CadNozzle * CadNoz_bas, int refUp, int refDown, char *OutNam, int verbose);
 
 
 //--- extraction.c
@@ -97,7 +97,7 @@ void StrRemoveChars (char* str, char c);
 
 //--- nozzle.c
 int          FreeCadBspline (CadBspline *Bsp);
-int          LoadCadBspline (char *BasNam, CadBspline *Bsp);
+int          LoadCadBspline (char *BasNam, CadBspline *Bsp, int verbose);
 int 		 SetCadBspline (CadBspline *Bsp, double *Knots, int NbrKnots, double *Coefs, int NbrCoefs);
 CadBspline * AllocCadBspline (int NbrCoefs, int NbrKnots);
 int          GetCadBsplineSize ( char *BasNam , int *NbrCoefs, int *NbrKnots );
@@ -108,7 +108,7 @@ double       fycut (double x,  double *BasParam);
 double 		 fz_bas (double x,  double *BasParam);
 double 		 fr1_bas (double x,  double *BasParam);
 double 		 fr2_bas (double x,  double *BasParam);
-int			   WriteCadBspline(char *BasNam, CadBspline *Bsp);
+int        WriteCadBspline(char *BasNam, CadBspline *Bsp, int verbose);
 int        Evaluate_Nozzle ( CadNozzle *Noz, double *x, double *r1, double *r2, double *zcenter );
 
 //--- Bspline

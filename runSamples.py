@@ -6,12 +6,14 @@ from optparse import OptionParser
 import multiprocessing
 
 import multif
-
+import time
 
 def runSample_wrap(sample):
     sucess, val_out = sample.RunSample();
     return [sample.run_id, sucess, val_out];
-    
+
+
+
 def main():
     
     output = 'verbose';
@@ -147,8 +149,17 @@ def main():
     
     runs_dirNam = "runs"; # wrapping folder containing all local run dirs
     
-    if not os.path.isdir(runs_dirNam):
-        os.mkdir(runs_dirNam);
+    # Save it if it already exists
+    if os.path.isdir(runs_dirNam):
+        try : 
+            runs_dirNam_save = "%s_%s" % (runs_dirNam, time.strftime("%Y%m%d_%I:%M:%S"));
+            os.rename(runs_dirNam, runs_dirNam_save);
+            sys.stdout.write("Renamed previous %s folder into %s.\n" % (runs_dirNam,runs_dirNam_save));
+        except:
+            sys.stderr.write("  ## ERROR : Unable to save previous folder %s. Rename/delete it and try again.\n\n" % (runs_dirNam));
+            sys.exit(0);
+    
+    os.mkdir(runs_dirNam);
     
     #--- Start python's multiprocessing pool
     

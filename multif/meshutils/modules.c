@@ -290,6 +290,8 @@ int ProjectNozzleWall (Options *mshopt)
 	int FldTab[1] = {1};
 	double *Mach = NULL;
 	
+	int verbose = 1;
+	
 	Mesh *Msh = NULL;
 	Msh = SetupMeshAndSolution (mshopt->InpNam, mshopt->SolNam);
 	
@@ -337,9 +339,9 @@ int ProjectNozzleWall (Options *mshopt)
 	
 	CadNoz = AllocCadNozzle (SizCad);
 	
-	LoadCadBspline ("centerline", CadNoz->Bsp_center);
-	LoadCadBspline ("r1", CadNoz->Bsp_r1);
-	LoadCadBspline ("r2", CadNoz->Bsp_r2);
+	LoadCadBspline ("centerline", CadNoz->Bsp_center, verbose);
+	LoadCadBspline ("r1", CadNoz->Bsp_r1, verbose);
+	LoadCadBspline ("r2", CadNoz->Bsp_r2, verbose);
 	
 	//double cosTheta;
 	//cosTheta = max(-1.0, min(1.0,(BasParam[BasInletzcut]-BasParam[BasInletz])/BasParam[BasInletr]));
@@ -350,9 +352,9 @@ int ProjectNozzleWall (Options *mshopt)
 	CadNoz->ThetaCutIn  = 1.572865;
 	CadNoz->ThetaCutOut = 1.855294;
 	
-	WriteCadBspline ("centerline", CadNoz->Bsp_center);
-	WriteCadBspline ("r1", CadNoz->Bsp_r1);
-	WriteCadBspline ("r2", CadNoz->Bsp_r2);
+	WriteCadBspline ("centerline", CadNoz->Bsp_center, verbose);
+	WriteCadBspline ("r1", CadNoz->Bsp_r1, verbose);
+	WriteCadBspline ("r2", CadNoz->Bsp_r2, verbose);
 
 	//--- End load bsplines from files
 
