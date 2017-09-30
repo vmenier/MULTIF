@@ -3,7 +3,7 @@
 #include <errno.h>
 
 #include "lofinozzle.h"
-#include "python.h"
+#include "Python.h"
 
 double *allocateVectorFromPyList(PyObject *pylist, int *n) {
 
