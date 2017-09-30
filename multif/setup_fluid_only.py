@@ -51,6 +51,7 @@ setup(ext_modules=[Extension("_mshint_module",
 ])
 
 
+setup(ext_modules=[ \
 Extension("LOWF/_quasi1dnozzle",
 sources=["./LOWF/quasi1dnozzle_py.c", \
          "./LOWF/lofinozzle.c", \
@@ -58,7 +59,6 @@ sources=["./LOWF/quasi1dnozzle_py.c", \
          "./meshutils/piecewise.c", \
          "./LOWF/quasi1dnozzle_py.i"],
 extra_compile_args=["-Wno-unused-variable","-Wno-unused-result"])
+]);
 
- ]);
-
-
+    
