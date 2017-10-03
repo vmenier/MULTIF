@@ -163,9 +163,10 @@ def HF_Compute_Thrust (options):
 	Tet  = [];
 	Sol  = [];
 	Header = [];
+    
 	
 	exitNam = "%s/baseline_meshes/nozzle_exit.mesh" % (os.path.dirname(os.path.abspath(__file__)));
-	exitNamLoc = "%s/nozzle_exit.mesh" % (os.getcwd());
+	exitNamLoc = "./nozzle_exit_hin.mesh";
 	
 	try :
 		os.symlink(exitNam, exitNamLoc);

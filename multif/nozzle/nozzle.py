@@ -1605,14 +1605,16 @@ class Nozzle:
                 
                 xi = nozzle.wall.centerline.coefs[0];
                 inletRadius = np.sqrt(majoraxisTmp.radius(xi)*minoraxisTmp.radius(xi));
-                params = np.zeros(5);
-                params[0] = inletRadius*np.sin(nozzle.wall.shovel_start_angle*np.pi/180.);
-                params[1] = nozzle.wall.centerline.coefs[-1] + nozzle.wall.shovel_height;
-                #params[2]                
-                params[3] = nozzle.xinlet;
-                params[4] = nozzle.xoutlet;
-                                
-                equivRadius = multif.HIGHF.MF_GetRadius (x, fr1, fr2, fz, params)
+                #params = np.zeros(5);
+                #params[0] = inletRadius*np.sin(nozzle.wall.shovel_start_angle*np.pi/180.);
+                #params[1] = nozzle.wall.centerline.coefs[-1] + nozzle.wall.shovel_height;
+                ##params[2]                
+                #params[3] = nozzle.xinlet;
+                #params[4] = nozzle.xoutlet;
+                #equivRadius = multif.HIGHF.MF_GetRadius (x, fr1, fr2, fz, params)
+                
+                equivRadius = multif.HIGHF.MF_GetRadius (x, nozzle);
+                
                 shape2d = np.transpose(np.array([x,equivRadius]))
                 nozzle.wall.geometry = geometry.PiecewiseLinear(shape2d);	
                 

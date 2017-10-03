@@ -372,6 +372,7 @@ Mesh *SetupMeshAndSolution (char *MshNam, char *SolNam)
 	Mesh *Msh = NULL;
 	int SizMsh[GmfMaxSizMsh+1];
 	int FilTyp = GetInputFileType(MshNam);
+	int val;
 	
 	if ( !FilTyp ) {
 		printf("  ## ERROR SetupMeshAndSolution : Unknown mesh format.\n");
@@ -388,7 +389,12 @@ Mesh *SetupMeshAndSolution (char *MshNam, char *SolNam)
 	if ( FilTyp == FILE_SU2 ) {
 		LoadSU2Mesh(MshNam, Msh);
 		if ( strcmp(SolNam,"") )
-			LoadSU2Solution(SolNam, Msh);
+			val = LoadSU2Solution(SolNam, Msh);
+		
+		if ( val != 1 ) {
+			Msh->Sol = NULL;
+		}
+		
 	}	
 	else if ( FilTyp == FILE_GMF ){
 		LoadGMFMesh(MshNam, Msh);

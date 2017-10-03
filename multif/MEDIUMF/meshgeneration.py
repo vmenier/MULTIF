@@ -84,7 +84,6 @@ def GenerateNozzleMesh (nozzle):
     
     # --- Call Gmsh
     
-    CallGmsh(nozzle);
     try :   
         CallGmsh(nozzle);
     except:
@@ -229,28 +228,28 @@ def Extract_Boundary_Vertices(mesh_name, pyRefs):
     
 def Get3Dto2DEquivArea(nozzle, xnew_tab):
     
-    from .. import nozzle as noz
+    #from .. import nozzle as noz
+    #
+    #geometry = noz.geometry;
+    #
+    #majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
+    #minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
+    #centerTmp = geometry.Bspline(nozzle.wall.centerline.coefs);
+    #
+    #majoraxisVal = majoraxisTmp.radius(xnew_tab);
+    #minoraxisVal = minoraxisTmp.radius(xnew_tab);
+    #
+    #fr1 = majoraxisTmp.radius
+    #fr2 = minoraxisTmp.radius
+    #fz  = centerTmp.radius
+    #
+    #params = np.zeros(100)
+    #params[0] = 0.099; # z crd of the cut at the throat
+    #params[1] = 0.122638;  # z crd of the flat exit (bottom of the shovel)
+    #params[3] = 0.0;        # x_throat 
+    #params[4] = 4.0;        # x_exit 
     
-    geometry = noz.geometry;
-    
-    majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
-    minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
-    centerTmp = geometry.Bspline(nozzle.wall.centerline.coefs);
-    
-    majoraxisVal = majoraxisTmp.radius(xnew_tab);
-    minoraxisVal = minoraxisTmp.radius(xnew_tab);
-    
-    fr1 = majoraxisTmp.radius
-    fr2 = minoraxisTmp.radius
-    fz  = centerTmp.radius
-    
-    params = np.zeros(100)
-    params[0] = 0.099; # z crd of the cut at the throat
-    params[1] = 0.122638;  # z crd of the flat exit (bottom of the shovel)
-    params[3] = 0.0;        # x_throat 
-    params[4] = 4.0;        # x_exit 
-    
-    ynew_tab = multif.HIGHF.MF_GetRadius (xnew_tab, fr1, fr2, fz, params)
+    ynew_tab = multif.HIGHF.MF_GetRadius (xnew_tab, nozzle)
     
     return ynew_tab;
 
