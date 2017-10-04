@@ -153,59 +153,7 @@ def WriteGeo(FilNam, Ver, Spl, Lin, Loo, Phy, Siz, Bak, dim):
 
 
 # Function which approximates 2D axisymmetric nozzle with equivalent areas as
-# 3D nonaxisymmetric nozzle. Requires the following inputs:
-# x = vector of axial coordinates spanning length of nozzle
-# fr1 = function which returns major axis radius given a value of x
-# fr2 = function which returns minor axis radius given a value of x
-# fz = function which returns z location of centerline given a value of x
-# params = a list with the following components:
-#          [z coord of cut at the throat, z coord of the flat exit, 0, 
-#           x-coordinate of inlet, x-coordinate of exit]
-def MF_GetRadius_old (x, fr1, fr2, fz, params):
-	
-	zcut0   = params[0]; # z crd of the cut at the throat
-	zcut1   = params[1]; # z crd of the flat exit (bottom of the shovel)
-	xthroat = params[3];
-	xexit   = params[4];
-	
-	if ( isinstance(x, (list, tuple, np.ndarray)) ):
-		rad = np.zeros(len(x));
-		for i in range(0,len(x)):
-			rad[i] = MF_GetRadius (x[i], fr1, fr2, fz, params);
-		return rad;
-	
-	r1 = fr1(x);
-	r2 = fr2(x);	
-	
-	z0  = fz(xthroat);
-	r10 = fr1(xthroat);
-	r20 = fr2(xthroat);
-	# Theta is measured down from the vertical axis
-	theta0 = math.acos((zcut0-z0)/r10);
-	
-	z1  = fz(xexit);
-	r11 = fr1(xexit);
-	r21 = fr2(xexit);
-	# Theta is measured down from the vertical axis
-	theta1 = math.acos((zcut1-z1)/r21);
-	
-	ftheta = itp.interp1d([xthroat,xexit],[theta0,theta1],kind='linear')
-	theta = ftheta(x);
-
-	alp = (xexit-x)/(xexit-xthroat);
-	
-	area = 0.25*r1*r2*math.pi;
-	area = area + 0.5*r1*r2*(theta-np.pi/2 - 0.5*math.sin(2*theta-math.pi));
-	areab = 0.5*r1*r2*(math.pi - theta + 0.5*math.sin(2*theta-math.pi));
-	
-	area = 2*(area + alp*areab);
-	
-	#return area; 
-	
-	rad = math.sqrt(area/math.pi);
-	
-	return rad;
-	
+# 3D nonaxisymmetric nozzle.
 def MF_GetRadius (x, nozzle):
     
     if ( isinstance(x, (list, tuple, np.ndarray)) ):
@@ -383,6 +331,243 @@ def MF_GetRadius (x, nozzle):
 #    
 #    WriteGeo(FilNam, Ver, Spl, Lin, Loo, Phy, Siz, Bak, 2)
 #
+
+
+def WriteInriaMesh(mshNam, Ver, Tri, Edg):
+    
+    hdl = open(mshNam, "w");
+    
+    sys.stdout.write(" -- %s OPENED.\n" % mshNam);
+    
+    NbrVer = len(Ver);
+    NbrEdg = len(Edg);
+    NbrTri = len(Tri);
+    
+    hdl.write("MeshVersionFormatted\n2\nDimension\n3\nVertices\n%d\n" % NbrVer);
+    
+    for i in range(NbrVer):
+        hdl.write("%lf %lf %lf 1\n" % (Ver[i][0],Ver[i][1],Ver[i][2]));
+    
+    hdl.write("\nEdges\n%d\n"%NbrEdg);
+    for i in range(NbrEdg):
+        hdl.write("%d %d 1\n" % (Edg[i][0],Edg[i][1]));
+    
+    hdl.write("\nTriangles\n%d\n"%NbrTri);
+    for i in range(NbrTri):
+        hdl.write("%d %d %d %d\n" % (Tri[i][0],Tri[i][1],Tri[i][2],Tri[i][3]));
+    
+    
+    hdl.write("\nEnd\n");
+    
+    hdl.close();
+    
+    
+def GetLayer(x, r1, r2, zcen, alp, theta, NbrLnk):
+    
+    Ver = [];
+    
+    # Upper part
+    ttab = np.linspace(0.0,theta, NbrLnk);
+
+    for i in range(len(ttab)):
+        Ver.append([x,r1*math.sin(ttab[i]), zcen+r2*math.cos(ttab[i]),1]);
+    
+    zcut = r2*math.cos(theta);
+    
+    # Lower part
+    ttab = np.linspace(theta, math.pi, NbrLnk);
+    
+    for i in range(1,len(ttab)):        
+        z = zcen+alp*zcut+(1.0-alp)*(r2*math.cos(ttab[i]));
+        Ver.append([x,r1*math.sin(ttab[i]),z,1]);
+        
+    return Ver;
+
+def Length_Edg(v0,v1):
+    
+    len = 0.0;
+    
+    for i in range(3):
+        len += (v1[i]-v0[i])*(v1[i]-v0[i]);
+    
+    return math.sqrt(len);
+    
+
+def HF_GenerateExitMesh_Direct(nozzle, xloc=-1):
+    
+    #--- Output mesh without call to gmsh
+    
+    mshNam = "nozzle_exit_hin.mesh";
+    
+    Ver = [];
+    Tri = [];
+    Edg = [];
+    
+    #--- BL parameter
+    # Note 10/4/17: these parameters were verified for the coarse RANS mesh 
+    ds = 2.5e-5;
+    g  = 1.3;
+    hmax = 0.003;
+    NbrLayMax = 1000;
+    NbrLnk = 250;
+    
+    #--- Get xloc r1,r2,zcen
+    
+    from .. import nozzle as noz
+    
+    geometry = noz.geometry;
+    
+    majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
+    minoraxisTmp = geometry.Bspline(nozzle.wall.minoraxis.coefs);
+    centerTmp    =  geometry.Bspline(nozzle.wall.centerline.coefs);    
+    
+    fr1 = majoraxisTmp.radius
+    fr2 = minoraxisTmp.radius
+    fz  = centerTmp.radius
+    
+    theta_in  = 1.572865;
+    theta_out = 1.855294;
+    
+    coefs_center = nozzle.wall.centerline.coefs;
+    
+    x_in   = coefs_center[0];
+    x_out  = coefs_center[len(coefs_center)/2-1];
+    
+    if xloc > -0.1 :
+        x = xloc;
+    else :
+        h_in = 0.06;
+        x = x_out-h_in;
+    
+    r1 = fr1(x);
+    r2 = fr2(x);
+    zcen = fz(x);
+    
+    alp = (x-x_in)/(x_out-x_in);
+    
+    #--- Create vertices
+    
+    theta = alp*theta_out + (1.0-alp)*theta_in;
+    
+    h = ds;
+    
+    r1_loc = r1;
+    r2_loc = r2;
+    
+    for iLay in range(NbrLayMax):
+        
+        VerLay = GetLayer(x, r1_loc, r2_loc, zcen, alp, theta, NbrLnk);
+        for j in range(len(VerLay)):
+            Ver.append(VerLay[j])
+        
+        r1_loc -= h;  
+        #r2_loc -= h;  
+        r2_loc -= min(hmax, h*r1/r2);
+        h = min(hmax, h*g);
+        
+        if r1_loc < hmax or r2_loc < hmax:
+            break;
+    
+    NbrLay = iLay+1;
+    
+    # --- Add triangles
+    
+    Ni = NbrLay;
+    Nj = len(VerLay);
+    
+    for i in range(Ni-1):
+        for j in range(Nj-1):
+            
+            idx = i*Nj+j+1;
+            ids = [idx, idx+1, idx+1+Nj, idx+Nj];
+            
+            Tri.append([ids[0],ids[1],ids[2],i+1]);
+            Tri.append([ids[0],ids[3],ids[2],i+1]);
+            
+    #--- Mesh middle
+    
+    idx = (Ni-1)*Nj+1;
+    
+    #print "up : from %d to %d" % (idx,idx+Nj/2-1)
+    #print "down: from %d to %d" % (idx+Nj-1, idx+Nj/2+1)
+    
+    mid_vid = idx+Nj/2;
+    vid_up   = np.arange(idx,idx+Nj/2-1+1,1)
+    vid_down = np.arange(idx+Nj-1, idx+Nj/2+1-1,-1)
+    
+    mid_vid -= 1;
+    vid_up   = vid_up  -1; # Because vid start at 0 in Ver
+    vid_down = vid_down-1; 
+    #
+    #for i in range(len(vid_up)-1):
+    #    
+    #    ids = [vid_down[i],vid_down[i+1], vid_up[i+1],vid_up[i]];
+    #    
+    #    Tri.append([ids[0],ids[1],ids[2]]);
+    #    Tri.append([ids[0],ids[3],ids[2]]);
+    #     
+    #Tri.append([vid_down[-1],mid_vid,vid_up[-1]]);
+    
+    
+    iup   = 0;
+    idown = 0;
+    
+    nup = len(vid_up);
+    ndown = len(vid_down);
+    
+    for i in range(2*nup):
+        
+        flag = "None";
+        
+        if iup == nup-1 and idown == ndown-1:
+            break;
+        
+        if idown == ndown-1:
+            #iup += 1;
+            flag = "up";
+        elif iup == nup-1:
+            #idown += 1;
+            flag = "down";
+        else:   
+            
+            #print "iup %d idown %d nup %d ndown %d" % (iup, idown, nup, ndown);
+            #print "vid_up[iup] %d vid_up[iup+1] %d vid_down[idown] %d vid_down[idown+1] %d NbrVer %d" % (vid_up[iup],vid_up[iup+1], vid_down[idown],vid_down[idown+1], len(Ver));
+           
+      
+            # -- iup+1 or idown+1? -> check edge lengths to decide
+            len_down = Length_Edg(Ver[vid_up[iup]],Ver[vid_down[idown+1]]);
+            len_up   = Length_Edg(Ver[vid_up[iup+1]],Ver[vid_down[idown]]);
+            
+            if len_up > len_down:
+                #idown += 1;
+                flag = "down";
+            else:
+                #iup += 1;
+                flag = "up";
+        
+        if flag == "up":
+            ids = [vid_up[iup],vid_up[iup+1],vid_down[idown]];
+            iup += 1;
+        elif flag == "down":
+            ids = [vid_down[idown],vid_down[idown+1],vid_up[iup]];
+            idown += 1;
+        else:
+            sys.stderr("  ## ERROR");
+            sys.exit(0);
+        
+        
+        Tri.append([ids[0]+1,ids[1]+1,ids[2]+1, 666]);   
+        
+    # Close mesh
+    Tri.append([vid_down[-1]+1,mid_vid+1,vid_up[-1]+1, 666]);        
+    
+    print "###### NBRVER %d" % len(Ver)
+    
+    WriteInriaMesh(mshNam, Ver, Tri, Edg);
+    
+    
+    
+
 def HF_GenerateExitMesh(nozzle, xloc=-1):
     
     geonam = "nozzle_exit.geo";
@@ -394,7 +579,6 @@ def HF_GenerateExitMesh(nozzle, xloc=-1):
         out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=None)
     except:
         raise;
-    
     
 def HF_ExitPlaneCAD (filename, nozzle, xloc):
     
@@ -446,7 +630,7 @@ def HF_ExitPlaneCAD (filename, nozzle, xloc):
     Bak = [0];
     dim = 3;
     
-    Siz = [0.007, 0.008];
+    Siz = [0.001, 0.008];
     
     # Upper part
     ttab = np.linspace(0.0,theta, NbrLnk);

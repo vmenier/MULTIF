@@ -220,9 +220,6 @@ def main():
     
         for i in range(len(mEval)):
             rEval[i] = mEval[i].get();
-        
-        for i in range(len(mEval)):
-            print rEval[i];
     
     for i in range(len(rEval)):
         print rEval[i];

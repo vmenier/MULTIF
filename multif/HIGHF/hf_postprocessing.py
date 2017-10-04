@@ -107,7 +107,8 @@ def HF_Compute_Thrust_Wrap (nozzle):
 
     
     try:
-        multif.HIGHF.HF_GenerateExitMesh(nozzle);
+        #multif.HIGHF.HF_GenerateExitMesh(nozzle);
+        multif.HIGHF.HF_GenerateExitMesh_Direct(nozzle);
     except ImportError as e: 
         print 'Error '
         print e
