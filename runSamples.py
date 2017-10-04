@@ -197,7 +197,7 @@ def main():
         
         for i in range(NbrRun):
             if not options.postpro :
-                rEval[i] = runSamplePostpro_wrap(samples_tab[i]); 
+                rEval[i] = runSample_wrap(samples_tab[i]); 
             else:
                 rEval[i] = runSamplePostpro_wrap(samples_tab[i]);
     else:
@@ -208,8 +208,12 @@ def main():
             rEval.append(-1);
             
         for i in range(NbrRun):
-            iRun = samples_tab[i].run_id;    
-            mEval[i] = pool.apply_async(runSample_wrap,(samples_tab[i],));
+            iRun = samples_tab[i].run_id;   
+             
+            if not options.postpro :
+                mEval[i] = pool.apply_async(runSample_wrap,(samples_tab[i],));
+            else :
+                mEval[i] = pool.apply_async(runSamplePostpro_wrap,(samples_tab[i],));
     	
         pool.close();
         pool.join();
