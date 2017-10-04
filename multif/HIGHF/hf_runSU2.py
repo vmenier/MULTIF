@@ -206,7 +206,7 @@ def HF_SetupConfig (solver_options):
 	
 	LocalRelax = solver_options.LocalRelax;
 	
-	NbrIte = solver_options.NbrIte;
+	NbrIte = 5000;#solver_options.NbrIte;
 	
 	mesh_name = solver_options.mesh_name;
 	restart_name = solver_options.restart_name;
@@ -267,7 +267,7 @@ def HF_SetupConfig (solver_options):
 	
 	    config.NUM_METHOD_GRAD= 'GREEN_GAUSS';
 	
-	    config.CFL_NUMBER= '1';
+	    config.CFL_NUMBER= '5';
 	    config.CFL_ADAPT= 'NO';
 	
 	    config.LINEAR_SOLVER= 'FGMRES';
@@ -347,7 +347,7 @@ def HF_SetupConfig (solver_options):
 	    config.AD_COEFF_FLOW= "( 0.15, 0.5, 0.02 )";
 	
 	    config.CONV_NUM_METHOD_TURB= 'SCALAR_UPWIND'
-	    config.SPATIAL_ORDER_TURB= '2ND_ORDER_LIMITER'
+	    config.SPATIAL_ORDER_TURB= '1ST_ORDER'
 	    config.SLOPE_LIMITER_TURB= 'VENKATAKRISHNAN'
 	    config.VISCOUS_LIMITER_TURB= 'NO'
 	    config.TIME_DISCRE_TURB= 'EULER_IMPLICIT'
@@ -372,7 +372,7 @@ def HF_SetupConfig (solver_options):
 	config.OUTPUT_FORMAT= solver_options.output_format;
 	config.CONV_FILENAME= 'history';
 	config.RESTART_FLOW_FILENAME= restart_name;
-	config.WRT_SOL_FREQ= '1000';
+	config.WRT_SOL_FREQ= '500';
 	config.WRT_CON_FREQ= '1';
 	
 	# --- Local relaxation / CFL
