@@ -29,7 +29,20 @@ except ImportError as e:
     #    sys.exit(0);
     
 
-def Run( nozzle, output = 'verbose', writeToFile=1 ):  
+def Run( nozzle, **kwargs ):  
+    
+    output = 'verbose';
+    writeToFile=1;
+    postpro = 0;
+    
+    if 'output' in kwargs:
+        output = kwargs['output'];
+        
+    if 'writeToFile' in kwargs:
+        writeToFile = int(kwargs['writeToFile']);
+        
+    if 'postpro' in kwargs:
+        postpro = int(kwargs['postpro']);
 
     # Obtain mass and volume
     if 'MASS' in nozzle.responses or 'VOLUME' in nozzle.responses:
@@ -96,26 +109,25 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
     if runAeroThermalStructuralProblem:
         
         CheckSU2Version(nozzle);	
-        if nozzle.aeroFlag == 1:
-            # Run aero analysis (and thrust adjoint if necessary)  
-    	    #CheckOptions (nozzle);
-            curDir = os.path.dirname(os.path.realpath(__file__));	
-            if nozzle.runDir != '':
-    	        os.chdir(nozzle.runDir);	
-            gradCalc = runSU2 (nozzle);
-	    
-	    # Run thermal/structural analyses
-        if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
-            
-            try : 
-                runAEROS(nozzle, output);  
-            except:
-                sys.stdout.write("  ## WARNING: CALL TO AERO-S IGNORED.\n");
-
+        
+        if postpro != 1 :
+            if nozzle.aeroFlag == 1:
+                # Run aero analysis (and thrust adjoint if necessary)  
+    	        #CheckOptions (nozzle);
+                curDir = os.path.dirname(os.path.realpath(__file__));	
+                if nozzle.runDir != '':
+    	            os.chdir(nozzle.runDir);	
+                gradCalc = runSU2 (nozzle);
 	        
+	        # Run thermal/structural analyses
+            if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
+                try : 
+                    runAEROS(nozzle, output);  
+                except:
+                    sys.stdout.write("  ## WARNING: CALL TO AERO-S IGNORED.\n");
+        
         # Assign aero QoI if required
         SU2postprocessing.PostProcess(nozzle, output);
-        
         
         # Assign thermal/structural QoI if required
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:

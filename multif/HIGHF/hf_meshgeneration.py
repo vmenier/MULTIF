@@ -387,7 +387,7 @@ def HF_GenerateExitMesh(nozzle, xloc=-1):
     
     geonam = "nozzle_exit.geo";
     HF_ExitPlaneCAD (geonam, nozzle, xloc);
-    
+        
     gmsh_executable = 'gmsh';
     try :
         cmd = [gmsh_executable, '-2', geonam, '-o', "nozzle_exit_hin.mesh"];

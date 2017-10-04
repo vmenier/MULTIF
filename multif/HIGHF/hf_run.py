@@ -22,13 +22,20 @@ def CheckOptions (nozzle):
         sys.stderr.write("\n  ## ERROR : High-fidelity is 3D.\n\n");
         sys.exit(0);
     
-def Run( nozzle, output = 'verbose', writeToFile=1 ):
+def Run(nozzle, **kwargs):
+        
+    output = 'verbose';
+    writeToFile=1;
+    postpro = 0;
     
-    
-    
-    #HF_GenerateMesh_Deform(nozzle);
-    #
-    #return;
+    if 'output' in kwargs:
+        output = kwargs['output'];
+        
+    if 'writeToFile' in kwargs:
+        writeToFile = int(kwargs['writeToFile']);
+        
+    if 'postpro' in kwargs:
+        postpro = int(kwargs['postpro']);
     
     # Introduction to this function and available data
     print
@@ -162,19 +169,20 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
         CheckSU2Version(nozzle);    
         CheckOptions(nozzle);
         
-        curDir = os.path.dirname(os.path.realpath(__file__));    
-        if nozzle.runDir != '':
-            os.chdir(nozzle.runDir);
-        # XXX Ensure high-fidelity SU2 analysis runs correctly
-        gradCalc = HF_runSU2(nozzle);
-        
-        # Run thermal/structural analyses
-        if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
-            # XXX Ensure high-fidelity AEROS analysis runs correctly
-            try : 
-                runAEROS(nozzle, output);
-            except:
-               sys.stdout.write("  ## WARNING: CALL TO AERO-S IGNORED.\n");
+        if postpro != 1:
+            curDir = os.path.dirname(os.path.realpath(__file__));    
+            if nozzle.runDir != '':
+                os.chdir(nozzle.runDir);
+            # XXX Ensure high-fidelity SU2 analysis runs correctly
+            gradCalc = HF_runSU2(nozzle);
+            
+            # Run thermal/structural analyses
+            if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
+                # XXX Ensure high-fidelity AEROS analysis runs correctly
+                try : 
+                    runAEROS(nozzle, output);
+                except:
+                   sys.stdout.write("  ## WARNING: CALL TO AERO-S IGNORED.\n");
                
         
         # Assign aero QoI if required
@@ -218,9 +226,9 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
         
         # ------- END HACK VERIF EQUIV AREA
         
-        
+        print "POSTPROCESSING"
         hf_postprocessing.PostProcess(nozzle, output);
-        
+        print "END POSTPROCESSING"
         # Assign thermal/structural QoI if required
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
             # XXX Ensure AEROS post-processing returns correct outputs

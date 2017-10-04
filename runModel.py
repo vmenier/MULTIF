@@ -50,11 +50,11 @@ def main():
 	nozzle.partitions = int(options.partitions);
 		
 	if nozzle.method == 'NONIDEALNOZZLE' :
-	    multif.LOWF.Run(nozzle, output);
+	    multif.LOWF.Run(nozzle, output=output);
 	elif nozzle.dim == '2D':
-	    multif.MEDIUMF.Run(nozzle, output);
+	    multif.MEDIUMF.Run(nozzle, output=output);
 	elif nozzle.dim == '3D':
-	    multif.HIGHF.Run(nozzle, output);
+	    multif.HIGHF.Run(nozzle,output=output);
 	
 	# --- Print warning in case the wrong SU2 version was run
 	if nozzle.method != 'NONIDEALNOZZLE' and nozzle.cfd.su2_version != 'OK':

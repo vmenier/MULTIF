@@ -22,9 +22,9 @@ def nozzleAnalysis(index, nozzle, output='verbose'):
     
     # Run model analysis    
     if nozzle.method == 'NONIDEALNOZZLE':
-        LOWF.Run(nozzle,output,writeToFile=1);
+        LOWF.Run(nozzle,output=output,writeToFile=1);
     elif nozzle.method == 'EULER' or nozzle.method == 'RANS':
-        MEDIUMF.Run(nozzle,output,writeToFile=1);
+        MEDIUMF.Run(nozzle,output=output,writeToFile=1);
     else:
         sys.stderr.write('  ## ERROR: Only NONIDEALNOZZLE, EULER, or RANS are accepted'
           ' as nozzle.methods\n\n');

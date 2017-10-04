@@ -528,7 +528,7 @@ def HF_runSU2 ( nozzle ):
 	solver_options.Dimension = '3D';
 	    
 	
-	HF_GenerateExitMesh(nozzle);
+	#HF_GenerateExitMesh(nozzle); # generate that one in postprocessing
 	HF_GenerateMesh_Deform(nozzle);
 	
 	

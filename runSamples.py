@@ -11,6 +11,11 @@ import time
 def runSample_wrap(sample):
     sucess, val_out = sample.RunSample();
     return [sample.run_id, sucess, val_out];
+    
+    
+def runSamplePostpro_wrap(sample):
+    sucess, val_out = sample.RunSamplePostpro();
+    return [sample.run_id, sucess, val_out];
 
 
 
@@ -52,6 +57,10 @@ def main():
                       help="Id of last sample (from 0 to N-1, bounds are included)", metavar="FLEVEL")   
     parser.add_option("-o", "--output", dest="outfile", default="data.out",
                       help="Output file", metavar="OUTPUT")
+                      
+    parser.add_option("-g", "--postpro",
+                      dest="postpro", default=False, action="store_true",
+                      help="Run post-processing functions only?")
                           
     (options, args)=parser.parse_args()
     
@@ -78,6 +87,10 @@ def main():
     else :         
         sys.stderr.write("  ## ERROR : Please provide a file containing samples. (option --filesamples)\n");
         sys.exit(0);    
+
+    if options.postpro :
+        sys.stdout.write("  -- Info : Running postprocessing functions only.\n\n");
+        
 
     #--- Check number of samples in file
     
@@ -149,17 +162,21 @@ def main():
     
     runs_dirNam = "runs"; # wrapping folder containing all local run dirs
     
-    # Save it if it already exists
-    if os.path.isdir(runs_dirNam):
-        try : 
-            runs_dirNam_save = "%s_%s" % (runs_dirNam, time.strftime("%Y%m%d_%I:%M:%S"));
-            os.rename(runs_dirNam, runs_dirNam_save);
-            sys.stdout.write("Renamed previous %s folder into %s.\n" % (runs_dirNam,runs_dirNam_save));
-        except:
-            sys.stderr.write("  ## ERROR : Unable to save previous folder %s. Rename/delete it and try again.\n\n" % (runs_dirNam));
-            sys.exit(0);
+    ## Save it if it already exists
+    #if os.path.isdir(runs_dirNam):
+    #    try : 
+    #        runs_dirNam_save = "%s_%s" % (runs_dirNam, time.strftime("%Y%m%d_%I:%M:%S"));
+    #        os.rename(runs_dirNam, runs_dirNam_save);
+    #        sys.stdout.write("Renamed previous %s folder into %s.\n" % (runs_dirNam,runs_dirNam_save));
+    #    except:
+    #        sys.stderr.write("  ## ERROR : Unable to save previous folder %s. Rename/delete it and try again.\n\n" % (runs_dirNam));
+    #        sys.exit(0);
+    #
+    #os.mkdir(runs_dirNam);
     
-    os.mkdir(runs_dirNam);
+    
+    if not os.path.isdir(runs_dirNam):
+        os.mkdir(runs_dirNam);
     
     #--- Start python's multiprocessing pool
     
@@ -173,8 +190,16 @@ def main():
             sys.exit(0);
     
     if options.poolpartitions == 1:
+        
+        rEval = [];
+    	for i in range(NbrRun):
+            rEval.append(-1);
+        
         for i in range(NbrRun):
-            samples_tab[i].RunSample();
+            if not options.postpro :
+                rEval[i] = runSample_wrap(samples_tab[i]); 
+            else:
+                rEval[i] = runSamplePostpro_wrap(samples_tab[i]);
     else:
         mEval = [];
         rEval = [];
@@ -194,16 +219,19 @@ def main():
         
         for i in range(len(mEval)):
             print rEval[i];
-        
-        # Write results to file
-        f = open(options.outfile,'w');
-        for i in range(len(mEval)):
-            for j in range(len(rEval[i][2])-1):
-                f.write('%0.16f, ' % rEval[i][2][j]);
-            f.write('%0.16f\n' % rEval[i][2][-1]);
-        f.close();
-        sys.stdout.write("-- %s written with sample data.\n" % options.outfile);
-        
+    
+    for i in range(len(rEval)):
+        print rEval[i];
+    
+    # Write results to file
+    f = open(options.outfile,'w');
+    for i in range(len(rEval)):
+        for j in range(len(rEval[i][2])-1):
+            f.write('%0.16f, ' % rEval[i][2][j]);
+        f.write('%0.16f\n' % rEval[i][2][-1]);
+    f.close();
+    sys.stdout.write("-- %s written with sample data.\n" % options.outfile);
+    
         
         
 # -------------------------------------------------------------------
