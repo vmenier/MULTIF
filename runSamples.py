@@ -197,7 +197,7 @@ def main():
         
         for i in range(NbrRun):
             if not options.postpro :
-                rEval[i] = runSample_wrap(samples_tab[i]); 
+                rEval[i] = runSamplePostpro_wrap(samples_tab[i]); 
             else:
                 rEval[i] = runSamplePostpro_wrap(samples_tab[i]);
     else:
