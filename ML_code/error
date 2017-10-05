@@ -1,0 +1,8 @@
+adaboost
+square loss function
+---
+CV R2 : training = 0.998411620042
+CV R2 : validation = 0.740699116935
+---
+CV R2 : training = 0.998829092725
+CV R2 : validation = 0.643618092061
