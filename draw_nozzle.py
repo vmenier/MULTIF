@@ -46,7 +46,13 @@ def main():
 		sys.stderr.write("  ## ERROR : Please choose a fidelity level to run (option -l or --flevel)");
 		sys.exit(0);
 	
-	nozzle = multif.nozzle.NozzleSetup( options.filename, options.flevel );
+	
+	if not os.path.isfile(options.filename) :
+	    sys.stderr.write("  ## ERROR : could not find configuration file %s\n\ns" % config_name);
+	    sys.exit(0);
+    
+	config = SU2.io.Config(options.filename)
+	nozzle = multif.nozzle.NozzleSetup( config, options.flevel );
 	
 	nozzle.Draw();
 	

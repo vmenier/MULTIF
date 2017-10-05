@@ -39,8 +39,6 @@ class Baffles:
 class Stringers:
     def __init__(self,n):
         self.n = int(n)
-        self.height = None
-        self.thickness = None
         
 class Distribution:
     def __init__(self,*args):
@@ -49,3 +47,13 @@ class Distribution:
         else:
             self.name = 'NONDESCRIPT_DISTRIBUTION'
         self.param = 'NONE'
+        
+class Spline:
+    def __init__(self,*args):
+        if len(args) == 1:
+            self.name = args[0]
+        else:
+            self.name = 'NONDESCRIPT_SPLINE'
+        self.coefs = []
+        self.knots = []
+        self.coefs_size = 0

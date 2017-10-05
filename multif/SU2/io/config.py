@@ -659,19 +659,22 @@ def write_config(filename,param_dict):
                 output_file.write(" )") 
                 break                
             
-            # semicolon delimited lists of comma delimited lists
+			
+			
             if case("DV_PARAM") :
-
+	
+                print new_value
+	
                 assert isinstance(new_value['PARAM'],list) , 'incorrect specification of DV_PARAM'
                 if not isinstance(new_value['PARAM'][0],list): new_value = [ new_value ]
-                
+				
                 for i_value in range(len(new_value['PARAM'])):
-
+            
                     output_file.write("( ")
                     this_param_list = new_value['PARAM'][i_value]
                     this_ffd_list = new_value['FFDTAG'][i_value]
                     n_lists = len(this_param_list)
-                    
+            
                     if this_ffd_list != []:
                       output_file.write("%s, " % this_ffd_list)
                       for j_value in range(1,n_lists):
@@ -683,7 +686,7 @@ def write_config(filename,param_dict):
                         output_file.write("%s" % this_param_list[j_value])
                         if j_value+1 < n_lists:
                           output_file.write(", ")
-
+            
                     output_file.write(") ")
                     if i_value+1 < len(new_value['PARAM']):
                         output_file.write("; ")

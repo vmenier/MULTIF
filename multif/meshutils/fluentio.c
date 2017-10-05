@@ -18,7 +18,7 @@ void WriteFLUENTMesh(char *nam, Mesh *Msh)
 	FILE *OutFil=NULL;
 	
 	sprintf(OutNam, "%s.msh", nam);
- 
+ 	
 	OutFil = fopen(OutNam, "wb");
 	
 	if ( !OutFil ) {

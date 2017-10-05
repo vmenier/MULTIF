@@ -53,6 +53,7 @@ void WriteGMSHMesh(char *nam, Mesh *Msh)
 	
 	iElt = 0;
 	
+	
 	//--- Write triangles
 	for (iTri=1; iTri<=Msh->NbrTri; iTri++) {
 		iElt++;

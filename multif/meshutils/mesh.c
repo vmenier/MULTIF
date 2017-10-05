@@ -93,7 +93,7 @@ void AddPrism(Mesh *Msh, int idx, int *is, int ref)
 void AddTriangle(Mesh *Msh, int idxTri, int *is, int ref)
 {
   if ( idxTri > Msh->MaxNbrTri ) {
-    printf("  ## ERROR : Max number of triangles reached.\n");
+    printf("  ## ERROR : Max number of triangles reached (%d, max %d).\n", idxTri, Msh->MaxNbrTri);
     exit(1);
   }
   Msh->Tri[idxTri][0] = is[0];
@@ -133,6 +133,8 @@ Mesh* AllocMesh (int * SizMsh)
 	Msh->NbrTet = 0;
 	Msh->NbrQua = 0;
 	Msh->NbrHex = 0;
+	Msh->NbrPri = 0;
+	Msh->NbrPyr = 0;
 	
 	Msh->Ver = NULL;
 	Msh->Efr = NULL;
@@ -294,8 +296,12 @@ void PrintMeshInfo (Mesh *Msh)
 	printf("Mesh: %s\n", Msh->MshNam);
 	printf("  Vertices   : %d\n", Msh->NbrVer);
 	if ( Msh->NbrTri > 0 ) printf("  Triangles  : %d\n", Msh->NbrTri);
+	if ( Msh->NbrQua > 0 ) printf("  Quads      : %d\n", Msh->NbrQua);
 	if ( Msh->NbrEfr > 0 ) printf("  Edges      : %d\n", Msh->NbrEfr);
 	if ( Msh->NbrTet > 0 ) printf("  Tetrahedra : %d\n", Msh->NbrTet);
+	if ( Msh->NbrPri > 0 ) printf("  Prisms     : %d\n", Msh->NbrPri);
+	if ( Msh->NbrHex > 0 ) printf("  Hexahedra  : %d\n", Msh->NbrHex);
+	if ( Msh->NbrPyr > 0 ) printf("  Pyramids   : %d\n", Msh->NbrPyr);
 	
 	if ( Msh->Sol ){
 		printf("Solution: %s\n", Msh->SolNam);
@@ -366,6 +372,7 @@ Mesh *SetupMeshAndSolution (char *MshNam, char *SolNam)
 	Mesh *Msh = NULL;
 	int SizMsh[GmfMaxSizMsh+1];
 	int FilTyp = GetInputFileType(MshNam);
+	int val;
 	
 	if ( !FilTyp ) {
 		printf("  ## ERROR SetupMeshAndSolution : Unknown mesh format.\n");
@@ -382,7 +389,12 @@ Mesh *SetupMeshAndSolution (char *MshNam, char *SolNam)
 	if ( FilTyp == FILE_SU2 ) {
 		LoadSU2Mesh(MshNam, Msh);
 		if ( strcmp(SolNam,"") )
-			LoadSU2Solution(SolNam, Msh);
+			val = LoadSU2Solution(SolNam, Msh);
+		
+		if ( val != 1 ) {
+			Msh->Sol = NULL;
+		}
+		
 	}	
 	else if ( FilTyp == FILE_GMF ){
 		LoadGMFMesh(MshNam, Msh);

@@ -538,6 +538,7 @@ def get_dvMap():
                16  : "FFD_CAMBER_2D"         ,
                17  : "FFD_THICKNESS_2D"      ,
                19  : "CUSTOM"                ,
+               20  : "BSPLINECOEF"           ,
                101 : "MACH_NUMBER"           ,
                102 : "AOA"                    }
     
@@ -671,6 +672,9 @@ def get_gradFileFormat(grad_type,plot_format,kindID,special_cases=[]):
     elif kindID == "FFD_THICKNESS"      : 
         header.append(r',"FFD_Box_ID","xIndex","yIndex"')
         write_format.append(r', %s, %s, %s')
+    elif kindID == "BSPLINECOEF"        :
+        header.append(r',"Val"')
+        write_format.append(r', %s')
     elif kindID == "MACH_NUMBER"        : pass
     elif kindID == "AOA"                : pass
     elif kindID == "CUSTOM"             : pass

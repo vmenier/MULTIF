@@ -10,10 +10,13 @@
 #define max(a,b) (a>=b?a:b)
 #define min(a,b) (a<=b?a:b)
 
+
+
 #include "libmesh6.h"
 #include "mesh.h"
 
 #include "cad.h"
+#include "nozzle.h"
 #include "option.h"
 #include "fproto.h"
 
@@ -23,3 +26,6 @@
 #define NOZMAXNBRTRI 100000
 #define NOZMAXNBRVER 300000
 #define NOZMAXNBREDG 50000
+
+
+#define PI_NUMBER 3.14159265359

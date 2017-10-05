@@ -19,6 +19,8 @@ int main(int argc, char *argv[])
 	
 	PrintOptions(mshopt);
 	
+	
+	
 	switch ( mshopt->Mod ) {
 		
 		case 1:
@@ -44,6 +46,14 @@ int main(int argc, char *argv[])
 		
 		//case 6:
 		//	CleanMesh ();
+		//break;
+		
+		case 7:
+			return ProjectNozzleWall (mshopt);
+		break;
+		
+		//case 8:
+		//	return ConvertGMFtoSegMesh (mshopt);
 		//break;
 		
 		default:

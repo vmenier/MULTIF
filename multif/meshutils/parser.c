@@ -149,9 +149,10 @@ void Usage()
 	printf("   [2] : Convert SU2 mesh+solution files to the GMF format.\n");
 	printf("   [3] : Convert GMF mesh+solution files to the SU2 format. Use -header option to copy header information.\n");
 	printf("   [4] : Solution extraction.\n");
-	printf("   [5] : CAD operations.\n");
-	printf("   [6] : Clean mesh.\n");
-	
+	printf("   [5] : CAD operations. (NOT ACTIVE)\n");
+	printf("   [6] : Clean mesh. (NOT ACTIVE)\n");
+	printf("   [7] : Project nozzle wall.\n");
+		
 	printf("\n-- Examples:\n");
 	printf("    meshutils -O 1 -in restart_flow.su2 -sol restart_flow.dat \n");
 	printf("    meshutils -O 2 -in restart_flow.su2 -sol restart_flow.dat -out restart_flow\n");

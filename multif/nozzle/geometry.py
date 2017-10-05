@@ -3,27 +3,43 @@
 Geometry module for axisymmetric nozzle. Currently only a B-spline geometry is 
 implemented.
 
-Rick Fenrich 6/28/16
+Rick Fenrich 9/4/17
 """
 
-import sys
+import copy
 import numpy as np 
 import scipy.optimize
 import scipy.integrate   
-#import geometryC
 
 from .. import _meshutils_module
-import ctypes
 
 class Bspline():
     def __init__(self, coefs): # assumes 3rd degree B-spline
         self.type = "B-spline"
-        self.coefs = coefs
-        self.knots = np.hstack(([np.zeros(4), np.arange(1.,coefs.size/2-3),  \
-          np.ones(4)*(coefs.size/2-3)])) # calculate here
+        
+        # coefs given as a list
+        if isinstance(coefs,list): # convert to Numpy array
+            if isinstance(coefs[0],list): # nested lists
+                self.coefs = np.array(coefs)
+            else:
+                self.coefs = np.array([coefs[0:len(coefs)/2],coefs[len(coefs)/2:]])
+                
+                
+        # coefs given as a Numpy array
+        elif isinstance(coefs,np.ndarray):
+            if len(coefs.shape) == 1: # 1D array
+                self.coefs = np.array([coefs[0:coefs.size/2],coefs[coefs.size/2:]])
+            else:
+                self.coefs = coefs
+        
+        self.knots = np.hstack(([np.zeros(4), np.arange(1.,self.coefs.size/2-3),  \
+          np.ones(4)*(self.coefs.size/2-3)])) # calculate here
         self.degree = self.knots.size - self.coefs.size/2 - 1
-        self.length = coefs[0,-1]
-        self.inletRadius = coefs[1,0]
+        self.xstart = self.coefs[0,0]
+        self.xend = self.coefs[0,-1]
+        self.length = self.coefs[0,-1] - self.coefs[0,0]
+        self.inletRadius = self.coefs[1,0]
+        self.n = self.coefs.size/2
         
     def findMinimumRadius(self):
         xSeg = np.zeros(self.knots.size)
@@ -76,55 +92,245 @@ class Bspline():
         
 class PiecewiseLinear:
     def __init__(self,nodes):
+        # nodes should be a Numpy array of n x 2, each row contains an
+        # x-coordinate and thickness value for a node
         self.type = "piecewise-linear"
         self.nodes = nodes
-        self.length = nodes[0,-1]
-        self.inletRadius = nodes[1,0]
+        self.xstart = nodes[0,0]
+        self.xend = nodes[-1,0]
+        self.length = np.max(nodes[:,0])
+        self.inletRadius = nodes[0,1]
+        self.nx = nodes.size/2
         
     def findMinimumRadius(self):
-        ii = np.argmin(self.nodes[1,:])
-        self.xThroat = self.nodes[0,ii]
-        self.yThroat = self.nodes[1,ii]
-        self.Ainlet2Athroat = (self.inletRadius)**2/self.yThroat**2
-        self.Aexit2Athroat = (self.nodes[1,-1])**2/self.yThroat**2
-        return (self.xThroat, self.yThroat)
+        ii = np.argmin(self.nodes[:,1])
+        self.xThroat = self.nodes[ii,0]
+        self.rThroat = self.nodes[ii,1]
+        self.Ainlet2Athroat = (self.inletRadius)**2/self.rThroat**2
+        self.Aexit2Athroat = (self.nodes[-1,1])**2/self.rThroat**2
+        return (self.xThroat, self.rThroat)
         
     def radius(self, x): # r
-        y = np.interp(x,self.nodes[0,:],self.nodes[1,:])
-        return y
+        #r = np.interp(x,self.nodes[:,0],self.nodes[:,1])
+        r = piecewiseLinearGeometryC(x,self)[0] # uses dynamic C library
+        return r
         
     def diameter(self, x): # D
-        y = np.interp(x,self.nodes[0,:],self.nodes[1,:])
-        return 2*y
+        #r = self.radius(x)
+        r = piecewiseLinearGeometryC(x,self)[0] # uses dynamic C library
+        return 2*r
         
     def area(self, x): # A
-        y = np.interp(x,self.nodes[0,:],self.nodes[1,:])
-        return np.pi*y**2
+        #r = self.radius(x)
+        r = piecewiseLinearGeometryC(x,self)[0] # uses dynamic C library
+        return np.pi*r**2
         
     def radiusGradient(self, x): # drdx
-        if( isinstance(x,float) ):
-            upperIndex = find(x,self.nodes[0,:])
-            if( upperIndex == self.nodes.size/2 ):
-                upperIndex = upperIndex - 1
-            lowerIndex = upperIndex - 1
-            dydx = (self.nodes[1,upperIndex] - self.nodes[1,lowerIndex])/    \
-              (self.nodes[0,upperIndex] - self.nodes[0,lowerIndex])
-        else: # x is an array
-            dydx = np.zeros(x.size)
-            for ii in range(0,x.size):
-                upperIndex = find(x[ii],self.nodes[0,:])
-                if( upperIndex == self.nodes.size/2 ):
-                    upperIndex = upperIndex - 1
-                lowerIndex = upperIndex - 1
-                dydx[ii] = (self.nodes[1,upperIndex] - 
-                  self.nodes[1,lowerIndex])/(self.nodes[0,upperIndex]        \
-                  - self.nodes[0,lowerIndex])
-        return dydx
+#        if( isinstance(x,float) ):
+#            upperIndex = find(x,self.nodes[:,0])
+#            if( upperIndex == self.nodes.size/2 ):
+#                upperIndex = upperIndex - 1
+#            lowerIndex = upperIndex - 1
+#            drdx = (self.nodes[upperIndex,1] - self.nodes[lowerIndex,1])/    \
+#              (self.nodes[upperIndex,0] - self.nodes[lowerIndex,0])
+#        else: # x is an array
+#            drdx = np.zeros(x.size)
+#            for ii in range(0,x.size):
+#                upperIndex = find(x[ii],self.nodes[:,0])
+#                if( upperIndex == self.nodes.size/2 ):
+#                    upperIndex = upperIndex - 1
+#                lowerIndex = upperIndex - 1
+#                drdx[ii] = (self.nodes[upperIndex,1] - 
+#                  self.nodes[lowerIndex,1])/(self.nodes[upperIndex,0]        \
+#                  - self.nodes[lowerIndex,0])
+        (r, drdx) = piecewiseLinearGeometryC(x,self) # uses dynamic C library
+        return drdx
         
     def areaGradient(self, x): # dAdx
-        y = np.interp(x,self.nodes[0,:],self.nodes[1,:])
-        dydx = self.radiusGradient(x)            
-        return 2*np.pi*y*dydx
+        #r = self.radius(x)
+        #drdx = self.radiusGradient(x)  #        
+        (r, drdx) = piecewiseLinearGeometryC(x,self) # uses dynamic C library          
+        return 2*np.pi*r*drdx
+
+        
+class PiecewiseBilinear:
+	def __init__(self,nx,ny,nodes):
+	    # nodes should be a Numpy array of nx*ny x 3, each row contains an
+	    # x-coordinate, y-coordinate, and thickness value for a node, nodes
+	    # should be arranged in a rectilinear grid
+	    # nodes = np.array([[x1, y1, t1],
+	    #                   [x2, y1, t2],
+	    #                       ...
+	    #                   [x1, y2, t_],
+	    #                       etc.
+	    self.type = "piecewise-bilinear"
+	    self.nodes = nodes # nx*ny x 3 Numpy array of nodes & thicknesses
+	    self.size = nx*ny # number of nodes
+	    self.nx = nx # dimension of grid in x-direction
+	    self.ny = ny # dimension of grid in y-direction
+	    
+	    # Build interpolating function
+	    #self.finterp = interpolate.RectBivariateSpline(nodes[0:nx,0], \
+	    #               np.array(list(nodes[:,1])[::nx]), \
+	    #               np.reshape(nodes[:,2],(nx,ny),'F'),kx=1,ky=1,s=0)
+	    
+	def findNearestPoints(self,x,y):
+	    # x and y should be scalar
+	
+	    # Check that point is valid. Extrapolation will not be performed.
+	    if( x > np.max(self.nodes[:,0])):
+	        raise ValueError('Requested interpolant (%f) > data range.' % x)
+	    if( y > np.max(self.nodes[:,1])):
+	        raise ValueError('Requested interpolant (%f) > data range.' % y)
+	    if( x < np.min(self.nodes[:,0])):
+	        raise ValueError('Requested interpolant (%f) < data range.' % x)
+	    if( y < np.min(self.nodes[:,1])):
+	        raise ValueError('Requested interpolant (%f) < data range.' % y)                    
+	    
+	    # Cycle through all nodes and find the four that bound point p:
+	    # y ^        
+	    #   |        
+	    #  z12 -- z22
+	    #   |  .p  |
+	    #  z11 -- z21 ---> x
+	    for i in range(self.size):
+	        # Find grid point which has x and y coordinates > than that desired
+	        if( self.nodes[i,0] >= x and self.nodes[i,1] >= y ):
+	            z22 = self.nodes[i,2]
+	            x2 = self.nodes[i,0]
+	            y2 = self.nodes[i,1]
+	            
+	            # If we are on left edge of domain
+	            if( self.nodes[i,0] == np.min(self.nodes[i,0]) ):
+	                # Collapse dimension in x-direction
+	                x1 = self.nodes[0,0]
+	                z12 = self.nodes[i,2]
+	            else:
+	                x1 = self.nodes[i-1,0]
+	                z12 = self.nodes[i-1,2]                        
+	            
+	            # If we are on bottom edge of domain
+	            if( self.nodes[i,1] == np.min(self.nodes[i,1]) ):
+	                # Collapse dimension in y-direction
+	                y1 = self.nodes[0,1]
+	                z21 = self.nodes[i,2]
+	            else:
+	                y1 = self.nodes[i-self.nx,1]
+	                z21 = self.nodes[i-self.nx,2]
+	            
+	            # If we are in bottom left corner of domain
+	            if( self.nodes[i,0] == np.min(self.nodes[i,0]) and \
+	                self.nodes[i,1] == np.min(self.nodes[i,1])):
+	                z11 = self.nodes[0,2]
+	            else:
+	                z11 = self.nodes[i-self.nx-1,2]
+	                
+	    return x1, x2, y1, y2, z11, z12, z21, z22        
+	    
+	def height(self,x,y):
+	    #z = self.finterp(x,y,grid=False)
+	
+	    # Perform bilinear interpolation with custom script here
+	    if( isinstance(x,float) and isinstance(y,float) ):
+	        
+	        x1, x2, y1, y2, z11, z12, z21, z22 = self.findNearestPoints(x,y)
+	        z = 1./((x2-x1)*(y2-y1))*(z11*(x2-x)*(y2-y) + z21*(x-x1)*(y2-y) + \
+	            z12*(x2-x)*(y-y1) + z22*(x-x1)*(y-y1))
+	            
+	    else: # assume array
+	        if isinstance(x,list):
+	            z = np.zeros(len(x))
+	        else:
+	            z = np.zeros(x.size)
+	        for i in range(0,z.size):
+	            x1, x2, y1, y2, z11, z12, z21, z22 = self.findNearestPoints(x[i],y[i])
+	            z[i] = 1./((x2-x1)*(y2-y1))*(z11*(x2-x[i])*(y2-y[i]) + \
+	                   z21*(x[i]-x1)*(y2-y[i]) + \
+	                   z12*(x2-x[i])*(y[i]-y1) + z22*(x[i]-x1)*(y[i]-y1))                
+	                   
+	    return z
+	    
+	def gradient(self,x,y):
+	    #temp = self.finterp(x,y,dx=1,dy=1,grid=False)
+	
+	    # Perform bilinear interpolation with custom script here
+	    if( isinstance(x,float) and isinstance(y,float) ):
+	        
+	        x1, x2, y1, y2, z11, z12, z21, z22 = self.findNearestPoints(x,y)
+	        dzdx = 1./((x2-x1)*(y2-y1))*(-z11*(y2-y) + z21*(y2-y) - z12*(y-y1) + \
+	               z22*(y-y1))
+	        dzdy = 1./((x2-x1)*(y2-y1))*(-z11*(x2-x) - z21*(x-x1) + z12*(x2-x) + \
+	               z22*(x-x1))
+	            
+	    else: # assume array
+	        if isinstance(x,list):
+	            dzdx = np.zeros(len(x))
+	            dzdy = np.zeros(len(x))
+	        else:
+	            dzdx = np.zeros(x.size)
+	            dzdy = np.zeros(x.size)
+	        for i in range(0,dzdx.size):
+	            x1, x2, y1, y2, z11, z12, z21, z22 = self.findNearestPoints(x[i],y[i])
+	            dzdx[i] = 1./((x2-x1)*(y2-y1))*(-z11*(y2-y[i]) + z21*(y2-y[i]) - \
+	                      z12*(y[i]-y1) + z22*(y[i]-y1))
+	            dzdy[i] = 1./((x2-x1)*(y2-y1))*(-z11*(x2-x[i]) - z21*(x[i]-x1) + \
+	                      z12*(x2-x[i]) + z22*(x[i]-x1))
+	            if dzdx[i] < pow(10,-16):
+	                dzdx[i] = 0.
+	            if dzdy[i] < pow(10,-16):
+	                dzdy[i] = 0.
+	                   
+	    return dzdx, dzdy
+        
+
+class EllipticalExterior:
+
+    def __init__(self,surface,xexit):
+
+        self.xexit = xexit;
+
+        if( surface == 'top' ):
+            # Original parameterization
+            # self.angle = 5.; # degrees
+            # self.offset = 0.03; # m
+            # self.a = 1.5; # m, major axis
+            # self.b = 0.2; # m, minor axis
+
+            # Parameterization for 44cm inlet, fixed inlet
+            self.angle = 6.; # degrees
+            self.offset = 0.05; # m
+            self.a = 3.0; # m, major axis
+            self.b = 0.4; # m, minor axis
+
+        elif( surface == 'bottom' ):
+            # Original parameterization
+            # self.angle = -7.; # degrees
+            # self.offset = -0.06; # m
+            # self.a = 1.; # m, major axis
+            # self.b = 0.05; # m, minor axis
+
+            # Parameterization for 44cm inlet, fixed inlet
+            self.angle = -7.; # degrees
+            self.offset = 0.05; # m
+            self.a = 2.0; # m, major axis
+            self.b = 0.12; # m, minor axis
+
+        else:
+            raise NotImplementedError('Only top or bottom can be used for ' + \
+                'surfaces of elliptical exterior.');
+
+    # Given x-coordinate and theta angle in radians measured from Y axis, return
+    # Y and Z coordinates of point on elliptical exterior.
+    def coord(self,x,theta):
+        
+        r = self.a*self.b/np.sqrt(self.b**2*np.cos(theta)**2 + \
+            self.a**2*np.sin(theta)**2);
+        c = self.offset + (self.xexit - x)*np.tan(np.pi*self.angle/180.);
+        y = r*np.cos(theta);
+        z = r*np.sin(theta) + c;
+
+        return y, z;   
+
 
 #==============================================================================
 # Find first 1-based index where scalar xFind < xVec[ii]
@@ -329,62 +535,50 @@ def bSplineGeometry(x,bSpline):
 # Return y given x for a 3rd degree B-spline
 #==============================================================================
 def bSplineGeometryC(x,bSpline):
-	import sys;
-	import itertools;
 	
 	if( isinstance(x,float) ):
 		if( x > (bSpline.coefs[0][-1]) ):
 		    x = np.array([bSpline.coefs[0][-1]])
 		elif( x < (bSpline.coefs[0][0]) ):
 		    x = np.array([bSpline.coefs[0][0]])
-		    #raise ValueError("x is outside bounds of B-spline")
+		else:
+		    x = np.array([x])
+ 
+ 	coefs = list(bSpline.coefs.flatten());
+		
+	knots = list(bSpline.knots.flatten());
+	
+	x = list(x);
+	
+	y    = [];
+	dydx = [];
+
+	_meshutils_module.py_BSplineGeo3LowF (knots, coefs, x, y, dydx);
+	
+	return (np.asarray(y), np.asarray(dydx))
+ 
+#==============================================================================
+# Return y given x for a piecewise linear function
+#==============================================================================
+def piecewiseLinearGeometryC(x,piecewiseLinear):
+	
+	if( isinstance(x,float) ):
+		if( x > piecewiseLinear.nodes[-1,0] ):
+		    x = np.array([piecewiseLinear.nodes[-1,0]])
+		elif( x < (piecewiseLinear.nodes[0,0]) ):
+		    x = np.array([piecewiseLinear.nodes[0,0]])
 		else:
 		    x = np.array([x])
 	
-	coefs = bSpline.coefs.flatten();
-	coefs.tolist();
+	x_nodes = list(piecewiseLinear.nodes[:,0].flatten());
+	y_nodes = list(piecewiseLinear.nodes[:,1].flatten());
 	
-	#coefs = bSpline.coefs.tolist();
-	#coefs = itertools.chain.from_iterable(coefs);
-	
-	knots = bSpline.knots.flatten();
-	knots.tolist();
-	
-	x.tolist();
+	x = list(x);
 	
 	y    = [];
 	dydx = [];
 	
-	coefs2=[];
-	knots2=[];
-	x2    =[];
-	
-	# --- Duplicate the lists because the result of tolist() doesn't pass the pycheck test 
-	
-	for i in range(0,len(coefs)):
-		#print "coefs[%d] = %lf" % (i,coefs[i]);
-		coefs2.append(coefs[i]);
-	
-	for i in range(0,len(knots)):
-		#print "knots[%d] = %lf" % (i,knots[i]);
-		knots2.append(knots[i]);
-		
-	for i in range(0,len(x)):
-		#print "knots[%d] = %lf" % (i,knots[i]);
-		x2.append(x[i]);
-	
-	
-	
-	#py_BSplineGeo3LowF (PyObject *pyknots, PyObject *pycoefs, PyObject *pyx, PyObject *pyy, PyObject *pydydx)
-	_meshutils_module.py_BSplineGeo3LowF (knots2, coefs2, x2, y, dydx);
-	
-	#for i in range(0,len(y)):
-	#	print "%d : (x,y) = %lf %lf ; dydx = %lf" % (i,x2[i], y[i], dydx[i]);
-	#
-	#print "EXIT";
-	#sys.exit(1);
-	
-	# (y, dydx) = geometryC.bSplineGeometry(bSpline.knots,bSpline.coefs,x)
+	_meshutils_module.py_PiecewiseLinear (x_nodes, y_nodes, x, y, dydx); 
 	
 	return (np.asarray(y), np.asarray(dydx))
     
@@ -577,7 +771,7 @@ def layerCoordinatesInGlobalFrame(nozzle,x):
             # Approximate gradient from vector
             drdxTemp = (rLower[1:] - rLower[:-1])/(x[1:] - x[:-1])
             xTemp = (x[1:] - x[:-1])/2 + x[:-1]
-            xTemp = np.hstack((0.,xTemp,nozzle.length))
+            xTemp = np.hstack((nozzle.xinlet,xTemp,nozzle.xoutlet))
             drdxTemp = np.hstack((drdxTemp[0],drdxTemp,drdxTemp[-1]))
             drdxLower = np.interp(x,xTemp,drdxTemp)
         
@@ -601,15 +795,18 @@ def layerCoordinatesInGlobalFrame(nozzle,x):
 # estimated using 1e7, where convergence of the mass calculation was observed).
 def calcVolumeAndMass(nozzle):
     
+    # The calculation currently outlined below is only good for 2D nozzle
+    # geometry.
     n = 10000 # 1e4
-    x = np.linspace(0,nozzle.length,n)
+    x = np.linspace(nozzle.xinlet,nozzle.xoutlet,n)
     # Pick x smartly
     xHit = set()
-    for i in range(len(nozzle.wall.geometry.coefs[0,:])):
-        xHit.add(nozzle.wall.geometry.coefs[0,i])
+    if( nozzle.wall.geometry.type == 'B-spline' ):
+        for i in range(len(nozzle.wall.geometry.coefs[0,:])):
+            xHit.add(nozzle.wall.geometry.coefs[0,i])
     for i in range(len(nozzle.wall.layer)):
-        for j in range(len(nozzle.wall.layer[i].thickness.nodes[0,:])):
-            xHit.add(nozzle.wall.layer[i].thickness.nodes[0,j])
+        for j in range(len(nozzle.wall.layer[i].thicknessNodes[:,0])):
+            xHit.add(nozzle.wall.layer[i].thicknessNodes[j,0])
     xHit = list(xHit)
     xHit.sort()
     x = np.array([])
@@ -666,6 +863,108 @@ def calcVolumeAndMass(nozzle):
         m.append(V[-1]*nozzle.baffles.material.getDensity())
     
     return V, m
+    
 
+def printNozzleDef(nozzle):
+
+    # Print all information related to nozzle definition
+    print 'Wall coef\n'
+    print nozzle.wall.coefs
+    #print nozzle.wall.temperature.thicknessNodes
+    for j in range(len(nozzle.wall.layer)):
+        print 'Layer %i thickness\n' % j
+        print nozzle.wall.layer[j].thicknessNodes
+    print 'Baffles loc\n'
+    print nozzle.baffles.location
+    print 'Stringers thickness\n'
+    print nozzle.stringers.thicknessNodes
+    print 'Stringers height\n'
+    print nozzle.stringers.heightNodes
+    print 'Baffles thickness\n'
+    print nozzle.baffles.thickness
+    print 'Baffles height\n'
+    print nozzle.baffles.height
+    for k in nozzle.materials:
+        print 'Material %s' % k
+        print nozzle.materials[k].getDensity()
+        try:
+            print nozzle.materials[k].getElasticModulus()
+        except:
+            print 'no elastic modulus'
+        try:
+            print nozzle.materials[k].getShearModulus()
+        except:
+            print 'no shear modulus'
+        try:
+            print nozzle.materials[k].getPoissonRatio()
+        except:
+            print 'no poisson ratio'
+        try:
+            print nozzle.materials[k].getMutualInfluenceCoefs()
+        except:
+            print 'no mutual coefs'
+        print nozzle.materials[k].getThermalConductivity()
+        try:
+            print nozzle.materials[k].getThermalExpansionCoef()
+        except:
+            print 'no thermal expansion coef'
+        try:
+            print nozzle.materials[k].getFailureLimit()
+        except:
+            print 'no failure limit'
+
+    return
+    
+
+# Calculate and return forward finite difference gradients of nozzle mass
+def calcMassGradientsFD(nozzle,fd_step,components='all'):
+    
+    if components == 'all': # calculate mass of nozzle wall & structure
+        mass = nozzle.responses['MASS'];
+    elif components == 'wall-only': # calculate mass of wall layers only
+        mass = nozzle.responses['MASS_WALL_ONLY'];
+    
+    # For parallel computation
+    #print nozzle.partitions
+    
+    # Perform serial forward finite difference on mass
+    dmdx = [];
+    
+    # For each design variable
+    
+    #print len(nozzle.dvList);
+    #sys.exit(1);
+    
+
+    for i in range(len(nozzle.derivativesDV)):
+        
+        nozzle2 = copy.deepcopy(nozzle);
+        
+        if isinstance(fd_step,list):
+            dx = fd_step[nozzle.derivativesDV[i]-1];
+        else:
+            dx = fd_step;
+            
+        nozzle2.dvList[nozzle.derivativesDV[i]-1] += dx;
+        nozzle2.UpdateDV(output='quiet');
+        nozzle2.SetupWall(output='quiet');
+        
+        volume2, mass2 = calcVolumeAndMass(nozzle2);
+        if components == 'all': # calcuate mass of nozzle wall & structure
+            mass2 = np.sum(mass2);
+            volume2 = np.sum(volume2);
+        elif components == 'wall-only': # calculate mass of wall layers only
+            n_layers = len(nozzle.wall.layer);
+            mass2 = np.sum(mass2[:n_layers]);
+            volume2 = np.sum(volume2[:n_layers]);
+        
+        dmdxLocal = (mass2-mass)/dx;
+        
+        dmdx.append((mass2-mass)/dx);
+
+    	
+		#print "DV %d : copy %lf sec , updateDV %lf sec , setupWall %lf sec , calcvol %lf sec , rest %lf " % (i, t1-t0, t2-t1, t3-t2, t4-t3, t5-t4 )
+
+    return dmdx
 
 
