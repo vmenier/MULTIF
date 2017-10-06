@@ -171,7 +171,7 @@ interface
         fork # asynchronous evaluation_concurrency = 4
         work_directory named 'run_uq_int'
         link_files 'runModel.py' 'general_gradients.cfg' 'make_responses' 'postproc'
-	copy_files '../../ML_code/train.py' '../../ML_code/train.dat' '../../ML_code/shaowuML.py' '/../../ML_code/shaowuML.pyc' '/../../ML_code/config.pkl' '/../../ML_code/ensemble_model.pkl' '/../../ML_code/normalize_dict.pkl'
+	copy_files '../../ML_code/train.py' '../../ML_code/train.dat' '../../ML_code/ML_library.py' '/../../ML_code/config.pkl' '/../../ML_code/ensemble_model.pkl' '/../../ML_code/normalize_dict.pkl'
         directory_tag
         directory_save
         file_save

@@ -1,7 +1,7 @@
 from pylab import *
 import cPickle
 import sys
-from shaowuML import prepTrain, prepTest, trainAdaboost, testEnsemble
+from ML_library import prepTrain, prepTest, trainAdaboost, testEnsemble
 
 def read_fann_format(filename):
     with open(filename, "r") as f:
