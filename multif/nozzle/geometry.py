@@ -285,7 +285,16 @@ class PiecewiseBilinear:
 
 class EllipticalExterior:
 
-    def __init__(self,surface,xexit):
+    # Elliptical exterior shape is defined by default for a nozzle with an 
+    # elliptical exit shape: major axis = 0.92, minor axis = 0.24, centered at
+    # (2.33702, 0.19) in the x-z plane. The bottom of the ellipse is truncated
+    # at the exit by the line z = 0.122638. This is the bottom of the shovel.
+    # For other nozzle exit shapes (such as when a 2d axisymmetric 
+    # parameterization is used), the space between the exterior and top and 
+    # bottom of the interior nozzle wall exit shape is kept constant at 0.1. 
+    # Thus, the exterior is adjustable in such cases.
+
+    def __init__(self,surface,xexit,zoutlettop=0.43,zoutletbottom=0.122638):
 
         self.xexit = xexit;
 
@@ -298,9 +307,12 @@ class EllipticalExterior:
 
             # Parameterization for 44cm inlet, fixed inlet
             self.angle = 6.; # degrees
-            self.offset = 0.05; # m
             self.a = 3.0; # m, major axis
             self.b = 0.4; # m, minor axis
+            self.spacer = 0.1; # m, minimum space between interior surface of
+                               # outlet and exterior in y-z plane. Maximum wall 
+                               # thickness is 0.0879 m.
+            self.offset = zoutlettop - self.b + self.spacer; # m
 
         elif( surface == 'bottom' ):
             # Original parameterization
@@ -310,10 +322,13 @@ class EllipticalExterior:
             # self.b = 0.05; # m, minor axis
 
             # Parameterization for 44cm inlet, fixed inlet
-            self.angle = -7.; # degrees
-            self.offset = 0.05; # m
-            self.a = 2.0; # m, major axis
+            self.angle = -10.; # degrees
+            self.a = 4.0; # m, major axis
             self.b = 0.12; # m, minor axis
+            self.spacer = 0.2; # m, minimum space between interior surface of
+                               # outlet and exterior in y-z plane. Maximum wall 
+                               # thickness is 0.0879 m.
+            self.offset = zoutletbottom + self.b - self.spacer; # m
 
         else:
             raise NotImplementedError('Only top or bottom can be used for ' + \

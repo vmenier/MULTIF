@@ -1577,6 +1577,13 @@ class Nozzle:
         nozzle = self;
         
         # Setup shape of inner wall (B-spline)
+
+        # the following parameters are currently hard-coded but could be obtained from 
+        # nozzle.wall.shovel_start_angle and nozzle.wall.shovel_height
+        nozzle.wall.shovel_start_angle = 1.572865;
+        nozzle.wall.shovel_height = 0.122638;
+        nozzle.wall.shovel_end_angle = 1.855294; # XXX should be calculated from
+                                                 # nozzle.wall.shovel_height
         
         if nozzle.param == '3D':
 
@@ -1618,6 +1625,10 @@ class Nozzle:
                 
             # Map 3D parameterization to 2D definition using equivalent area
             else:
+
+                # No shovel is present in axisymmetric geometry
+                nozzle.wall.shovel_start_angle = np.pi;
+                nozzle.wall.shovel_end_angle = np.pi;
                 
                 # Build equivalent nozzle shape based on equivalent area
                 majoraxisTmp = geometry.Bspline(nozzle.wall.majoraxis.coefs);
@@ -1664,6 +1675,10 @@ class Nozzle:
                       
         else: # assume 2D parameterization
 
+            # No shovel is present in axisymmetric geometry
+            nozzle.wall.shovel_start_angle = np.pi;
+            nozzle.wall.shovel_end_angle = np.pi;
+
             nozzle.xinlet = nozzle.wall.coefs[0];
             nozzle.xoutlet = nozzle.wall.coefs[nozzle.wall.coefs_size/2-1];
             nozzle.zinlet = 0.;
@@ -1674,13 +1689,31 @@ class Nozzle:
             if nozzle.dim == '3D':
 
                 xi = nozzle.wall.coefs[0]; # inlet x-coord
-                xe = nozzle.wall.coefs[nozzle.wall.coefs_size/2-1]; # exit x-coord
-                ri = nozzle.wall.coefs[nozzle.wall.coefs_size/2]; # inlet r-coord    
+                xe = nozzle.wall.coefs[nozzle.wall.coefs_size/2-1]; # exit x-coord   
 
-                centerCoefs = np.array([xi, xi, xe, xe, ri, ri, ri, ri]);
+                centerCoefs = np.array([xi, xi, xe, xe, 0., 0., 0., 0.]);
+
+                # Generate axisymmetric shape, which is used later
+                nozzle.wall.geometry = geometry.Bspline(nozzle.wall.coefs);
+
+                # Create centerline
+                nozzle.wall.centerline = component.Spline('CENTERLINE');
+                nozzle.wall.centerline.coefs = list(centerCoefs);
+                n = len(centerCoefs)/2-3;
+                knots = [0,0,0,0] + range(1,n) + [n,n,n,n];
+                nozzle.wall.centerline.knots = [float(k) for k in knots];
+                nozzle.wall.centerline.coefs_size = len(centerCoefs);
                 nozzle.wall.centerline.geometry = geometry.Bspline(centerCoefs);
+
+                # Create major axis
+                nozzle.wall.majoraxis = component.Spline('MAJORAXIS');
+                nozzle.wall.majoraxis.coefs = nozzle.wall.coefs;
+                nozzle.wall.majoraxis.knots = nozzle.wall.knots;
+                nozzle.wall.majoraxis.coefs_size = nozzle.wall.coefs_size;              
                 nozzle.wall.majoraxis.geometry = geometry.Bspline(nozzle.wall.coefs);
-                nozzle.wall.minoraxis.geometry = geometry.Bspline(nozzle.wall.coefs);            
+                
+                # Create minor axis
+                nozzle.wall.minoraxis = nozzle.wall.majoraxis;
                                 
             else:
                                             
@@ -1893,58 +1926,89 @@ class Nozzle:
         nozzle.baffles.location = [q*nozzle.length + nozzle.xinlet for q in \
                                    nozzle.baffles.locationNonDim];
 
-        # Setup exterior wall, update baffle & stringer heights if necessary
+        # # Setup exterior wall, update baffle & stringer heights if necessary
 
-        if nozzle.dim == '3D':
+        # nozzle.exterior = component.NonaxisymmetricWall('exterior');
+        # nozzle.exterior.geometry = {};        
+        
+        # # Approximate top surface of internal aircraft cavity which nozzle
+        # # lies within
+        # nozzle.exterior.geometry['top'] = geometry.EllipticalExterior('top',nozzle.xoutlet);
+
+        # # Approximate bottom surface of internal aircraft cavity which 
+        # # nozzle lies within
+        # nozzle.exterior.geometry['bottom'] = geometry.EllipticalExterior('bottom',nozzle.xoutlet);
+
+        if( nozzle.baffles.heightSetToExterior ):
+
+            print '*******************************************************'
+            print 'Baffle heights are not set to exterior shape'
+            print '*******************************************************'
+ 
+            # If stringers are dependent on baffles, re-update stringers
+            if( nozzle.stringers.heightDefinition == 'BAFFLES_HEIGHT' ):
+                print '*******************************************************'
+                print 'Stringer heights are not set to baffle heights'
+                print '*******************************************************'
+                                    
+        # Update height distribution for stringers
+        if( nozzle.stringers.heightDefinition == 'EXTERIOR' ):
+            print '*******************************************************'
+            print 'Stringer heights are not set to exterior shape'
+            print '*******************************************************'
+        
+
+        # if nozzle.dim == '3D':
             
-            nozzle.exterior = component.NonaxisymmetricWall('exterior');
+        #     nozzle.exterior = component.NonaxisymmetricWall('exterior');
 
-            nozzle.exterior.geometry = {};        
+        #     nozzle.exterior.geometry = {};        
             
-            # Approximate top surface of internal aircraft cavity which nozzle
-            # lies within
-            nozzle.exterior.geometry['top'] = geometry.EllipticalExterior('top',nozzle.xoutlet);
+        #     # Approximate top surface of internal aircraft cavity which nozzle
+        #     # lies within
+        #     nozzle.exterior.geometry['top'] = geometry.EllipticalExterior('top',nozzle.xoutlet);
 
-            # Approximate bottom surface of internal aircraft cavity which 
-            # nozzle lies within
-            nozzle.exterior.geometry['bottom'] = geometry.EllipticalExterior('bottom',nozzle.xoutlet);
+        #     # Approximate bottom surface of internal aircraft cavity which 
+        #     # nozzle lies within
+        #     nozzle.exterior.geometry['bottom'] = geometry.EllipticalExterior('bottom',nozzle.xoutlet);
 
-            # # Test nozzle exterior geometry
-            # import matplotlib.pyplot as plt
-            # from mpl_toolkits.mplot3d import Axes3D 
-            # fig = plt.figure()
-            # ax = plt.axes(projection='3d')
-            # xsection = np.linspace(nozzle.xinlet,nozzle.xoutlet,10);
-            # for i in range(len(xsection)):
-            #     # Plot top of aircraft cavity
-            #     xloc = nozzle.length*float(i)/float(len(xsection)-1) + nozzle.xinlet;
-            #     antmp = np.linspace(0.,np.pi,100);
-            #     xtmp = xloc*np.ones((len(antmp),1));
-            #     ytmp = np.zeros((len(antmp),1));
-            #     ztmp = np.zeros((len(antmp),1));
-            #     for j in range(len(antmp)):
-            #         tmp1, tmp2 = nozzle.exterior.geometry['top'].coord(xloc,antmp[j]);
-            #         ytmp[j] = tmp1;
-            #         ztmp[j] = tmp2;
-            #     ax.scatter(xtmp,ytmp,ztmp);
+        #     # # Test nozzle exterior geometry
+        #     # import matplotlib.pyplot as plt
+        #     # from mpl_toolkits.mplot3d import Axes3D 
+        #     # fig = plt.figure()
+        #     # ax = plt.axes(projection='3d')
+        #     # xsection = np.linspace(nozzle.xinlet,nozzle.xoutlet,10);
+        #     # for i in range(len(xsection)):
+        #     #     # Plot top of aircraft cavity
+        #     #     xloc = nozzle.length*float(i)/float(len(xsection)-1) + nozzle.xinlet;
+        #     #     antmp = np.linspace(0.,np.pi,100);
+        #     #     xtmp = xloc*np.ones((len(antmp),1));
+        #     #     ytmp = np.zeros((len(antmp),1));
+        #     #     ztmp = np.zeros((len(antmp),1));
+        #     #     for j in range(len(antmp)):
+        #     #         tmp1, tmp2 = nozzle.exterior.geometry['top'].coord(xloc,antmp[j]);
+        #     #         ytmp[j] = tmp1;
+        #     #         ztmp[j] = tmp2;
+        #     #     ax.scatter(xtmp,ytmp,ztmp);
 
-            #     # Plot bottom of aircraft cavity
-            #     xloc = nozzle.length*float(i)/float(len(xsection)-1) + nozzle.xinlet;
-            #     antmp = np.linspace(np.pi,2*np.pi,100);
-            #     xtmp = xloc*np.ones((len(antmp),1));
-            #     ytmp = np.zeros((len(antmp),1));
-            #     ztmp = np.zeros((len(antmp),1));
-            #     for j in range(len(antmp)):
-            #         tmp1, tmp2 = nozzle.exterior.geometry['bottom'].coord(xloc,antmp[j]);
-            #         ytmp[j] = tmp1;
-            #         ztmp[j] = tmp2;
-            #     ax.scatter(xtmp,ytmp,ztmp);
+        #     #     # Plot bottom of aircraft cavity
+        #     #     xloc = nozzle.length*float(i)/float(len(xsection)-1) + nozzle.xinlet;
+        #     #     antmp = np.linspace(np.pi,2*np.pi,100);
+        #     #     xtmp = xloc*np.ones((len(antmp),1));
+        #     #     ytmp = np.zeros((len(antmp),1));
+        #     #     ztmp = np.zeros((len(antmp),1));
+        #     #     for j in range(len(antmp)):
+        #     #         tmp1, tmp2 = nozzle.exterior.geometry['bottom'].coord(xloc,antmp[j]);
+        #     #         ytmp[j] = tmp1;
+        #     #         ztmp[j] = tmp2;
+        #     #     ax.scatter(xtmp,ytmp,ztmp);
 
-            # plt.show();
+        #     # plt.show();
             
-            # Baffle and stringer heights will have to be updated later.
+        #     # Baffle and stringer heights will have to be updated later.
             
-        else: # 2D                
+        # else: # 2D or 1D dimension  
+        if(nozzle.dim != '3D'):         
 
             nozzle.exterior = component.AxisymmetricWall('exterior');
 			
@@ -2002,7 +2066,48 @@ class Nozzle:
             # Update height distribution for stringers
             if( nozzle.stringers.heightDefinition == 'EXTERIOR' ):
                     nozzle.stringers.height = nozzle.exterior.geometry
+
+        # Overwrite exterior definition, TEMPORARY
+
+        # Setup exterior wall, update baffle & stringer heights if necessary
+        nozzle.exterior = component.NonaxisymmetricWall('exterior');
+        nozzle.exterior.geometry = {};   
+
+        if nozzle.dim == '3D' and nozzle.param == '3D':
+            zoutlettop = nozzle.wall.centerline.geometry.radius( 
+                nozzle.wall.centerline.geometry.xend) + \
+                nozzle.wall.minoraxis.geometry.radius(
+                nozzle.wall.minoraxis.geometry.xend);
+            zoutletbottom = nozzle.wall.shovel_height;
+        elif nozzle.dim == '3D' and nozzle.param == '2D': # no shovel
+            xoutlet = nozzle.wall.centerline.geometry.xend;
+            zoutlettop = nozzle.wall.centerline.geometry.radius(xoutlet) + \
+                nozzle.wall.minoraxis.geometry.radius(xoutlet) + \
+                sum([nozzle.wall.layer[i].thickness.height(xoutlet,90.)
+                    for i in range(len(nozzle.wall.layer))]);
+            zoutletbottom = nozzle.wall.centerline.geometry.radius(xoutlet) - \
+                nozzle.wall.minoraxis.geometry.radius(xoutlet) - \
+                sum([nozzle.wall.layer[i].thickness.height(xoutlet,270.)
+                    for i in range(len(nozzle.wall.layer))]);
+        elif nozzle.dim != '3D': # regardless of param, there is no shovel
+            xoutlet = nozzle.wall.geometry.xend;
+            zoutlettop = nozzle.wall.geometry.radius(xoutlet) + \
+                sum(nozzle.wall.layer[i].thickness.radius(xoutlet) 
+                    for i in range(len(nozzle.wall.layer)));
+            zoutletbottom = -zoutlettop;
         
+        # Approximate top surface of internal aircraft cavity which nozzle
+        # lies within
+        nozzle.exterior.geometry['top'] = geometry.EllipticalExterior('top',
+            nozzle.xoutlet, zoutlettop=zoutlettop, zoutletbottom=zoutletbottom);
+
+        # Approximate bottom surface of internal aircraft cavity which 
+        # nozzle lies within
+        nozzle.exterior.geometry['bottom'] = geometry.EllipticalExterior(
+            'bottom', nozzle.xoutlet, zoutlettop=zoutlettop, 
+            zoutletbottom=zoutletbottom);
+
+
 #            # --- Check that stringer heights are not above baffle heights
 #            for i in range(len(nozzle.baffles.location)):
 #                baffleLocation = nozzle.baffles.location[i];
@@ -2675,7 +2780,7 @@ class Nozzle:
                                 prt_name.append('stringer break location #%d' % (i+1));
                                 prt_basval.append('%.4lf'% nozzle.stringers.thicknessNodesNonDim[i,0]);
                                 prt_newval.append('%.4lf'% nozzle.dvList[id_dv]);
-                                jtmp = 0;
+                                jtmp = i;
                                 for j in range(nozzle.stringers.n):
                                     nozzle.stringers.thicknessNodesNonDim[jtmp,0] = nozzle.dvList[id_dv];
                                     jtmp += nozzle.stringers.nAxialBreaks;
