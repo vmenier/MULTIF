@@ -6,13 +6,13 @@ import LOWF
 import MEDIUMF
 
 # Wrapping function for independent nozzle analysis in separate directory
-def nozzleAnalysis(index, nozzle, output='verbose'):
+def nozzleAnalysis(homedir, index, nozzle, output='verbose'):
     
     if output == 'verbose':
         sys.stdout.write('Entered separate nozzle analysis for index %i\n' % index);
 
     # Create and enter new directory
-    dirname = 'EVAL_' + str(index);
+    dirname = os.path.join(homedir,'EVAL_' + str(index));
     if not os.path.exists(dirname):
         os.makedirs(dirname);
     os.chdir(dirname);
@@ -34,7 +34,7 @@ def nozzleAnalysis(index, nozzle, output='verbose'):
         sys.stdout.write('Nozzle analysis completed in directory %s\n' % dirname);    
     
     # Exit directory
-    os.chdir('..');
+    os.chdir(homedir);
     
     # Return nozzle    
     return nozzle;
@@ -80,7 +80,7 @@ def calcGradientsFD(nozzle,fd_step,output='verbose'):
         nozzleEval[i].partitions = 1; # run evaluation on 1 core
                     
     # Run gradient evaluations in serial
-    if nozzle.partitions <= 1:
+    if nozzle.partitions <= 1:   
     
         # For each design variable
         for i in range(len(derivativesDV)):
@@ -95,14 +95,12 @@ def calcGradientsFD(nozzle,fd_step,output='verbose'):
                 sys.stdout.write('Directory %s created and entered\n' % dirname);    
             
             # Run model analysis
-            if nozzle.method == 'NONIDEALNOZZLE':
-                LOWF.Run(nozzleEval[i],output,writeToFile=1);
-            elif nozzle.method == 'EULER' or nozzle.method == 'RANS':
-                MEDIUMF.Run(nozzleEval[i],output,writeToFile=1);
-            else:
-                sys.stderr.write('  ## ERROR: Only NONIDEALNOZZLE, EULER, or RANS are accepted'
-                  ' as nozzle.methods\n\n');
-                sys.exit(1);
+            if nozzle.dim == '1D':
+                LOWF.Run(nozzleEval[i], output=output, writeToFile=1);
+            elif nozzle.dim == '2D':
+                MEDIUMF.Run(nozzleEval[i], output=output, writeToFile=1);
+            else: # nozzle.dim == '3D'
+                HIGHF.Run(nozzle, output=output, writeToFile=1);
 
             if output == 'verbose':
                 sys.stdout.write('Nozzle analysis completed in directory %s\n' % dirname);    
@@ -125,6 +123,9 @@ def calcGradientsFD(nozzle,fd_step,output='verbose'):
     
     # Run gradient evaluations in parallel            
     else:
+
+        # Home directory where all subfolders are stored
+        homedir = os.getcwd();
         
         # Start Python's multiprocessing pool
         if output == 'verbose':
@@ -144,7 +145,7 @@ def calcGradientsFD(nozzle,fd_step,output='verbose'):
         for i in range(len(derivativesDV)):
             if output == 'verbose':
                 sys.stdout.write('Adding analysis %i to the pool\n' % i);
-            mEval[i] = pool.apply_async(nozzleAnalysis,(i,nozzleEval[i],output))
+            mEval[i] = pool.apply_async(nozzleAnalysis,(homedir,i,nozzleEval[i],output))
             
         pool.close();
         pool.join();

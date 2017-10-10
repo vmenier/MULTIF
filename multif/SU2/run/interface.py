@@ -85,8 +85,6 @@ def CFD(config):
     """ run SU2_CFD
         partitions set by config.NUMBER_PART
     """
-
-    #config['SU2_RUN'] = 'toto';
 		
     base='';
 
@@ -133,11 +131,9 @@ def CFD(config):
     the_Command = build_command( the_Command , processes )
 		
 	
-    run_command( the_Command )
+    return_code = run_command( the_Command )
     
-    #os.remove(tempname)
-    
-    return
+    return return_code
 
 def MSH(config):
     """ run SU2_MSH
