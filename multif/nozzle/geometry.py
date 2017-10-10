@@ -156,7 +156,7 @@ class PiecewiseLinear:
 
         
 class PiecewiseBilinear:
-	def __init__(self,nx,ny,nodes):
+    def __init__(self,nx,ny,nodes):
 	    # nodes should be a Numpy array of nx*ny x 3, each row contains an
 	    # x-coordinate, y-coordinate, and thickness value for a node, nodes
 	    # should be arranged in a rectilinear grid
@@ -176,7 +176,7 @@ class PiecewiseBilinear:
 	    #               np.array(list(nodes[:,1])[::nx]), \
 	    #               np.reshape(nodes[:,2],(nx,ny),'F'),kx=1,ky=1,s=0)
 	    
-	def findNearestPoints(self,x,y):
+    def findNearestPoints(self,x,y):
 	    # x and y should be scalar
 	
 	    # Check that point is valid. Extrapolation will not be performed.
@@ -229,21 +229,22 @@ class PiecewiseBilinear:
 	                
 	    return x1, x2, y1, y2, z11, z12, z21, z22        
 	    
-	def height(self,x,y):
+    def height(self,x,y):
 	    #z = self.finterp(x,y,grid=False)
 	
 	    # Perform bilinear interpolation with custom script here
-	    if( isinstance(x,float) and isinstance(y,float) ):
+        if( isinstance(x,float) and isinstance(y,float) ):
 	        
-	        x1, x2, y1, y2, z11, z12, z21, z22 = self.findNearestPoints(x,y)
-	        z = 1./((x2-x1)*(y2-y1))*(z11*(x2-x)*(y2-y) + z21*(x-x1)*(y2-y) + \
+            x1, x2, y1, y2, z11, z12, z21, z22 = self.findNearestPoints(x,y)
+            z = 1./((x2-x1)*(y2-y1))*(z11*(x2-x)*(y2-y) + z21*(x-x1)*(y2-y) + \
 	            z12*(x2-x)*(y-y1) + z22*(x-x1)*(y-y1))
+            return z
 	            
-	    else: # assume array
-	        if isinstance(y,list):
-	            z = np.zeros(len(y))
-	        elif isinstance(y,np.ndarray):
-	            z = np.zeros(y.size)
+        else: # assume array
+            if isinstance(y,list):
+                z = np.zeros(len(y))
+            elif isinstance(y,np.ndarray):
+                z = np.zeros(y.size)
 
             if isinstance(x,float):
                 for i in range(0,z.size):
@@ -257,8 +258,8 @@ class PiecewiseBilinear:
                     z[i] = 1./((x2-x1)*(y2-y1))*(z11*(x2-x[i])*(y2-y[i]) + \
                         z21*(x[i]-x1)*(y2-y[i]) + \
                         z12*(x2-x[i])*(y[i]-y1) + z22*(x[i]-x1)*(y[i]-y1))                
-	                   
-	    return z
+
+            return z
 	    
 	def gradient(self,x,y):
 	    #temp = self.finterp(x,y,dx=1,dy=1,grid=False)

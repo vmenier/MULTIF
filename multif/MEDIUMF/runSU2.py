@@ -572,7 +572,7 @@ def runSU2 ( nozzle ):
     try:
         info = SU2.run.CFD(config);
         print info
-    except DivergenceFailure as e:
+    except SU2.DivergenceFailure as e:
         print e
 
         su2history = open('about.txt','a');

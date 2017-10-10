@@ -22,9 +22,9 @@ def nozzleAnalysis(homedir, index, nozzle, output='verbose'):
     
     # Run model analysis    
     if nozzle.method == 'NONIDEALNOZZLE':
-        LOWF.Run(nozzle,output,writeToFile=1);
+        LOWF.Run(nozzle,output=output,writeToFile=1);
     elif nozzle.method == 'EULER' or nozzle.method == 'RANS':
-        MEDIUMF.Run(nozzle,output,writeToFile=1);
+        MEDIUMF.Run(nozzle,output=output,writeToFile=1);
     else:
         sys.stderr.write('  ## ERROR: Only NONIDEALNOZZLE, EULER, or RANS are accepted'
           ' as nozzle.methods\n\n');
@@ -95,14 +95,12 @@ def calcGradientsFD(nozzle,fd_step,output='verbose'):
                 sys.stdout.write('Directory %s created and entered\n' % dirname);    
             
             # Run model analysis
-            if nozzle.method == 'NONIDEALNOZZLE':
-                LOWF.Run(nozzleEval[i],output,writeToFile=1);
-            elif nozzle.method == 'EULER' or nozzle.method == 'RANS':
-                MEDIUMF.Run(nozzleEval[i],output,writeToFile=1);
-            else:
-                sys.stderr.write('  ## ERROR: Only NONIDEALNOZZLE, EULER, or RANS are accepted'
-                  ' as nozzle.methods\n\n');
-                sys.exit(1);
+            if nozzle.dim == '1D':
+                LOWF.Run(nozzleEval[i], output=output, writeToFile=1);
+            elif nozzle.dim == '2D':
+                MEDIUMF.Run(nozzleEval[i], output=output, writeToFile=1);
+            else: # nozzle.dim == '3D'
+                HIGHF.Run(nozzle, output=output, writeToFile=1);
 
             if output == 'verbose':
                 sys.stdout.write('Nozzle analysis completed in directory %s\n' % dirname);    

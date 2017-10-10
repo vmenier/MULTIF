@@ -1056,13 +1056,27 @@ def Quasi1D(nozzle,output='verbose'):
         nozzle.wallResults = np.transpose(np.array([x, tempinside, ps]))
         nozzle.runAEROS = 0
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
-            runAEROS(nozzle, output)
-            AEROSPostProcess(nozzle, output)
+            
+            try:
+                runAEROS(nozzle, output)
+                AEROSPostProcess(nozzle, output)
+            except:
+                sys.stderr.write("## ERROR : Call to AEROS ignored.\n");
     
     return netthrust, x, tempinside, ps, p, u
 
 
-def Run (nozzle,output='verbose',writeToFile=1):
+    
+def Run(nozzle, **kwargs):
+        
+    output = 'verbose';
+    writeToFile=1;
+    
+    if 'output' in kwargs:
+        output = kwargs['output'];
+        
+    if 'writeToFile' in kwargs:
+        writeToFile = int(kwargs['writeToFile']);
     
     # Obtain mass and volume
     if 'MASS' in nozzle.responses or 'VOLUME' in nozzle.responses:

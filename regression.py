@@ -32,7 +32,7 @@ nCores = int(options.partitions);
 testNum = 1;
 
 # Control which tests are run
-test = {'all': 1, 'lofi': 0, 'medfi': 0, 'adjoint': 0, 'fd': 0, 'fea': 0};
+test = {'all': 1, 'lofi': 0, 'medfi': 0, 'hifi': 0, 'adjoint': 0, 'fd': 0, 'fea': 0};
 
 # Set up necessary filepaths
 #rootdir = os.getcwd()
@@ -53,7 +53,7 @@ test_list = [];
 # Begin tests with low-fidelity analyses
 # =========================================================================== #
 
-# --------------------------- 2D param, lo-fi --------------------------------
+# --------------------------- 2D param, 1D dim lo-fi --------------------------
 if( test['all'] or test['lofi'] or test['fea'] ):
 
     lofi_2dparam_1 = TestCase('lofi_2dparam_1');
@@ -67,11 +67,11 @@ if( test['all'] or test['lofi'] or test['fea'] ):
     lofi_2dparam_1.diff_tol = 1e-6;
     test_list.append(lofi_2dparam_1);
 
-# --------------------------- 3D param, lo-fi --------------------------------
+# --------------------------- 3D param, 1D dim lo-fi --------------------------
 if( test['all'] or test['lofi'] ):
 
     lofi_3dparam = TestCase('lofi_3dparam');
-    lofi_3dparam.description = 'General, 3D, serial, low-fi analysis';
+    lofi_3dparam.description = 'General, 3D->2D, serial, low-fi analysis';
     lofi_3dparam.cfg_dir = 'example';
     lofi_3dparam.cfg_file = 'general-3d.cfg';
     lofi_3dparam.input_file = 'general-3d.in';
@@ -81,7 +81,7 @@ if( test['all'] or test['lofi'] ):
     lofi_3dparam.diff_tol = 1e-6;
     test_list.append(lofi_3dparam);
 
-# ------------------- 2D param, lo-fi, f.d. gradients ------------------------
+# ------------------- 2D param, 1D dim lo-fi, f.d. gradients ------------------
 if( test['all'] or test['lofi'] or test['fd'] ):
 
     lofi_2dparam_fd = TestCase('lofi_2dparam_fd');
@@ -95,7 +95,7 @@ if( test['all'] or test['lofi'] or test['fd'] ):
     lofi_2dparam_fd.diff_tol = 1e-6;
     test_list.append(lofi_2dparam_fd);
 
-# ----------------- 2D param, lo-fi, wall temp as input ----------------------
+# ----------------- 2D param, 1D dim lo-fi, wall temp as input ----------------
 if( test['all'] or test['lofi'] ):
 
     lofi_2dparam_temp = TestCase('lofi_2dparam_temp');
@@ -114,7 +114,7 @@ if( test['all'] or test['lofi'] ):
     lofi_2dparam_temp.diff_tol = 1e-6;
     test_list.append(lofi_2dparam_temp);
 
-# ------------------- 2D param, lo-fi, nonlinear FEA -------------------------
+# ------------------- 2D param, 1D dim lo-fi, nonlinear FEA -------------------
 if( test['all'] or test['lofi'] or test['fea'] ):
 
     lofi_2dparam_2 = TestCase('lofi_2dparam_2');
@@ -129,14 +129,14 @@ if( test['all'] or test['lofi'] or test['fea'] ):
     test_list.append(lofi_2dparam_2);
 
 # =========================================================================== #
-# Perform medium-fidelity analyses
+# Perform medium-fidelity (2D axisymmetric) analyses
 # =========================================================================== #
 
-# --------------------------- 2D param, med-fi -------------------------------
+# --------------------------- 2D param, 2D dim med-fi -------------------------
 if( test['all'] or test['medfi'] ):
 
     medfi_2dparam = TestCase('medfi_2dparam');
-    medfi_2dparam.description = 'General, 2D, parallel, med-fi analysis';
+    medfi_2dparam.description = 'General, 2D, parallel, med-fi (Euler) analysis';
     medfi_2dparam.cfg_dir = 'example';
     medfi_2dparam.cfg_file = 'general.cfg';
     medfi_2dparam.input_file = 'general.in';
@@ -146,11 +146,11 @@ if( test['all'] or test['medfi'] ):
     medfi_2dparam.diff_tol = 1e-6;
     test_list.append(medfi_2dparam);
 
-# ----------------------- 3D param, dim 2D, med-fi ---------------------------
+# ----------------------- 3D param, 2D dim, med-fi ----------------------------
 if( test['all'] or test['medfi'] ):
 
     medfi_3dparam = TestCase('medfi_3dparam');
-    medfi_3dparam.description = 'General, 3D, parallel, med-fi analysis';
+    medfi_3dparam.description = 'General, 3D->2D, parallel, med-fi (Euler) analysis';
     medfi_3dparam.cfg_dir = 'example';
     medfi_3dparam.cfg_file = 'general-3d.cfg';
     medfi_3dparam.input_file = 'general-3d.in';
@@ -160,11 +160,25 @@ if( test['all'] or test['medfi'] ):
     medfi_3dparam.diff_tol = 1e-6;
     test_list.append(medfi_3dparam);
 
-# ------------------ 2D param, med-fi, adjoint gradients ---------------------
+# # ----------------------- 3D param, 2D dim, med-fi ----------------------------
+# if( test['all'] or test['medfi'] ):
+
+#     medfi_3dparam_rans = TestCase('medfi_3dparam_rans');
+#     medfi_3dparam_rans.description = 'General, 3D->2D, parallel, med-fi (RANS) analysis';
+#     medfi_3dparam_rans.cfg_dir = 'example';
+#     medfi_3dparam_rans.cfg_file = 'general-3d.cfg';
+#     medfi_3dparam_rans.input_file = 'general-3d.in';
+#     medfi_3dparam_rans.compare_file = 'example/regression/medfi_3dparam_rans.out';
+#     medfi_3dparam_rans.fidelity = 4;
+#     medfi_3dparam_rans.nproc = nCores;
+#     medfi_3dparam_rans.diff_tol = 1e-6;
+#     test_list.append(medfi_3dparam_rans);
+
+# ------------------ 2D param, 2D dim med-fi, adjoint gradients ---------------
 if( test['all'] or test['medfi'] or test['adjoint'] ):
 
     medfi_2dparam_adjoint = TestCase('medfi_2dparam_adjoint');
-    medfi_2dparam_adjoint.description = 'General, 2D, parallel, med-fi analysis with adjoint gradients';
+    medfi_2dparam_adjoint.description = 'General, 2D, parallel, med-fi (Euler) analysis with adjoint gradients';
     medfi_2dparam_adjoint.cfg_dir = os.path.join('example','gradients');
     medfi_2dparam_adjoint.cfg_file = 'general_gradients.cfg';
     medfi_2dparam_adjoint.input_file = 'params.in';
@@ -174,10 +188,10 @@ if( test['all'] or test['medfi'] or test['adjoint'] ):
     medfi_2dparam_adjoint.diff_tol = 1e-6;
     test_list.append(medfi_2dparam_adjoint);
 
-# --------- 2D param, med-fi, f.d. gradients w/ mesh deformation -------------
+# --------- 2D param, 2D dim, med-fi, f.d. gradients w/ mesh deformation ------
 if( test['all'] or test['medfi'] or test['fd'] ):
    medfi_2dparam_fd = TestCase('medfi_2dparam_fd');
-   medfi_2dparam_fd.description = 'Mass and thrust, 2D, parallel, med-fi analysis with finite #difference gradients using mesh deformation';
+   medfi_2dparam_fd.description = 'Mass and thrust, 2D, parallel, med-fi (Euler) analysis with finite difference gradients using mesh deformation';
    medfi_2dparam_fd.cfg_dir = os.path.join('example','gradients');
    medfi_2dparam_fd.cfg_file = 'general_fd_gradients.cfg';
    medfi_2dparam_fd.input_file = 'params.in';
@@ -186,6 +200,38 @@ if( test['all'] or test['medfi'] or test['fd'] ):
    medfi_2dparam_fd.nproc = nCores;
    medfi_2dparam_fd.diff_tol = 1e-6;
    test_list.append(medfi_2dparam_fd);
+
+# =========================================================================== #
+# Perform high-fidelity (fully 3D) analyses
+# =========================================================================== #
+
+# # ----------------------- 3D param, 3D dim, Euler -----------------------------
+# if( test['all'] or test['hifi'] or test['fea'] ):
+
+#     hifi_euler = TestCase('hifi_euler');
+#     hifi_euler.description = 'General, 3D, parallel, hi-fi (Euler) analysis';
+#     hifi_euler.cfg_dir = 'example';
+#     hifi_euler.cfg_file = 'general-3d.cfg';
+#     hifi_euler.input_file = 'general-3d.in';
+#     hifi_euler.compare_file = 'example/regression/hifi_euler.out';
+#     hifi_euler.fidelity = 3;
+#     hifi_euler.nproc = nCores;
+#     hifi_euler.diff_tol = 1e-6;
+#     test_list.append(hifi_euler);
+
+# # ----------------------- 3D param, 3D dim, Euler -----------------------------
+# if( test['all'] or test['hifi'] ):
+
+#     hifi_rans = TestCase('hifi_rans');
+#     hifi_rans.description = 'General, 3D, parallel, hi-fi (RANS) analysis';
+#     hifi_rans.cfg_dir = 'example';
+#     hifi_rans.cfg_file = 'general-3d.cfg';
+#     hifi_rans.input_file = 'general-3d.in';
+#     hifi_rans.compare_file = 'example/regression/hifi_rans.out';
+#     hifi_rans.fidelity = 5;
+#     hifi_rans.nproc = nCores;
+#     hifi_rans.diff_tol = 1e-6;
+#     test_list.append(hifi_rans);
 
 # Remaining tests get placed below as they come online
 
