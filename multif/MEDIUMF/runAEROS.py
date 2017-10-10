@@ -146,7 +146,7 @@ def runAEROS ( nozzle, output='verbose' ):
     #     0: stringer height is defined w.r.t. nozzle wall 
     #        (specifically, the center of the load layers)
     #     1: stringer height is defined w.r.t. the axis of 
-    #        rotation of the nozzle, i.e. total y coordinate
+    #        rotation of the nozzle, i.e. total z coordinate
     stringerFlag = nozzle.stringers.absoluteRadialCoord;   
     
     # Determine where nozzle boundary is fixed:
@@ -176,14 +176,14 @@ def runAEROS ( nozzle, output='verbose' ):
     # Ln: number of nodes through each half of the thickness of the load layer (thermal model)
     # Mn: number of nodes in circumferential direction per baffle
     if nozzle.thermostructuralFidelityLevel <= 0.5:
-        lc = np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[0.04,0.02]);
+        lc = np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[0.32,0.16]);
         Tn1 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[2,4]));
         Tn2 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[1,2]));
         Ln = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[1,2]));
         Mn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[25,40]));
         Sn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[5,8]));
     else: # nozzle.thermostructuralFidelityLevel betwen 0.5 and 1
-        lc = np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[0.02,0.01]);
+        lc = np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[0.16,0.08]);
         Tn1 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[4,8]));
         Tn2 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[2,4]));
         Ln = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[2,4]));
@@ -509,10 +509,19 @@ def runAEROS ( nozzle, output='verbose' ):
         for i in range(len(points)):
             # Tg: thickness of gap between thermal and load layers
             Tg = nozzle.wall.layer[1].thickness.radius(0.) 
-            # Ts: thickness of stringers
-            Ts = nozzle.stringers.thickness.radius(points[i]) if nozzle.stringers.n > 0 else 0; 
-            # Ws: # height of stringer
-            Ws = nozzle.stringers.height.radius(points[i]) if nozzle.stringers.n > 0 else 0; 
+            if nozzle.stringers.heightDefinition == 'EXTERIOR' or \
+               nozzle.stringers.heightDefinition == 'BAFFLES_HEIGHT':
+                if isinstance(nozzle.stringers.thickness,list):
+                    Ts = nozzle.stringers.thickness[0].radius(points[i]) if nozzle.stringers.n > 0 else 0;
+                    Ws = nozzle.stringers.thickness[1].radius(points[i]) if nozzle.stringers.n > 0 else 0;
+                else:
+                    Ts = nozzle.stringers.thickness.radius(points[i]) if nozzle.stringers.n > 0 else 0; 
+                    Ws = Ts;
+            else:
+                # Ts: thickness of stringers
+                Ts = nozzle.stringers.thickness.radius(points[i]) if nozzle.stringers.n > 0 else 0; 
+                # Ws: # height of stringer
+                Ws = nozzle.stringers.height.radius(points[i]) if nozzle.stringers.n > 0 else 0; 
             print >> f1, "%0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e %0.16e" % (points[i],nozzle.wall.geometry.radius(points[i]),
                 nozzle.wall.geometry.radiusGradient(points[i]),
                 nozzle.wall.layer[2].thickness.radius(points[i]), 
@@ -521,14 +530,27 @@ def runAEROS ( nozzle, output='verbose' ):
                 nozzle.wall.layer[0].thickness.radius(points[i]),
                 Tg, Ts, Ws);
 
+        # # vertices
+        # for i in range(len(vertices)): 
+        #     # Wb: height of baffle 
+        #     Wb = nozzle.baffles.height[nozzle.baffles.location.index(vertices[i])] if vertices[i] in nozzle.baffles.location else 0
+        #     # Nb: number of nodes on radial edge of baffle (not including overlap with stringer)
+        #     #Nb = max(Wb/lc-Ns+1,2); 
+        #     Nb = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,1],[2,4]));
+        #     Tb = nozzle.baffles.thickness[nozzle.baffles.location.index(vertices[i])] \
+        #         if vertices[i] in nozzle.baffles.location else 0 # thickness of baffle
+        #     print >> f1, "%d %0.16e %d %d %0.16e" % (points.index(vertices[i]), Wb, Mb, Nb, Tb);
+
         # vertices
         for i in range(len(vertices)): 
             # Wb: height of baffle 
-            Wb = nozzle.baffles.height[nozzle.baffles.location.index(vertices[i])] \
-                if vertices[i] in nozzle.baffles.location else 0
+            # Wb = nozzle.baffles.height[nozzle.baffles.location.index(vertices[i])] \
+            #     if vertices[i] in nozzle.baffles.location else 0
+            Wb = 1 if vertices[i] in nozzle.baffles.location else 0;
             # Nb: number of nodes on radial edge of baffle (not including overlap with stringer)
             #Nb = max(Wb/lc-Ns+1,2); 
-            Nb = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,1],[2,4]));
+            #Nb = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,1],[2,4]));
+            Nb = -1;
             Tb = nozzle.baffles.thickness[nozzle.baffles.location.index(vertices[i])] \
                 if vertices[i] in nozzle.baffles.location else 0 # thickness of baffle
             print >> f1, "%d %0.16e %d %d %0.16e" % (points.index(vertices[i]), Wb, Mb, Nb, Tb);

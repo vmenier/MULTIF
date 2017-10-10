@@ -1576,14 +1576,9 @@ class Nozzle:
         
         nozzle = self;
         
+        # ====================================================================
         # Setup shape of inner wall (B-spline)
-
-        # the following parameters are currently hard-coded but could be obtained from 
-        # nozzle.wall.shovel_start_angle and nozzle.wall.shovel_height
-        nozzle.wall.shovel_start_angle = 1.572865;
-        nozzle.wall.shovel_height = 0.122638;
-        nozzle.wall.shovel_end_angle = 1.855294; # XXX should be calculated from
-                                                 # nozzle.wall.shovel_height
+        # ====================================================================
         
         if nozzle.param == '3D':
 
@@ -1592,6 +1587,13 @@ class Nozzle:
             nozzle.zinlet = nozzle.wall.centerline.coefs[nozzle.wall.centerline.coefs_size/2];
             nozzle.length = nozzle.wall.centerline.coefs[nozzle.wall.centerline.coefs_size/2-1] - \
                             nozzle.wall.centerline.coefs[0];
+
+            # The following parameters are currently hard-coded but could be obtained from 
+            # nozzle.wall.shovel_start_angle and nozzle.wall.shovel_height
+            nozzle.wall.shovel_start_angle = 1.572865;
+            nozzle.wall.shovel_height = 0.122638;
+            nozzle.wall.shovel_end_angle = np.arccos((nozzle.wall.shovel_height - \
+                nozzle.wall.centerline.coefs[-1])/nozzle.wall.minoraxis.coefs[-1])
 
             if nozzle.dim == '3D':
                 
@@ -1735,9 +1737,11 @@ class Nozzle:
                     		nozzle.cfd.x_thrust = x[nx-i-1];
                     		nozzle.cfd.y_thrust = y[nx-i-1];
                     		break;
-        
+
+        # ====================================================================        
         # Setup inner wall temperature if necessary
-        
+        # ====================================================================  
+      
         if hasattr(nozzle.wall,'temperature'):
             if nozzle.param == '3D':
                 sys.stderr.write('\nWARNING: Wall temp control not setup ' \
@@ -1756,8 +1760,10 @@ class Nozzle:
                     sys.stderr.write('\n ## ERROR: KLE not implemented yet for '  \
                       'inner nozzle wall temperature definition.\n\n');
                     sys.exit(0);
-        
+
+        # ====================================================================        
         # Setup thickness of each layer
+        # ====================================================================
         
         for i in range(len(nozzle.wall.layer)):
             
@@ -1832,244 +1838,11 @@ class Nozzle:
                 else:
                     nozzle.wall.layer[i].thickness = geometry.PiecewiseLinear( \
                         nozzle.wall.layer[i].thicknessNodes);
-          
-        # Setup stringers
 
-        # Dimensionalize stringers thickness x-coordinate
-        nozzle.stringers.thicknessNodes = \
-            copy.copy(nozzle.stringers.thicknessNodesNonDim);
-        nozzle.stringers.thicknessNodes[:,0] = \
-            nozzle.stringers.thicknessNodes[:,0]*nozzle.length + nozzle.xinlet;
-        nozzle.stringers.heightNodes = \
-            copy.copy(nozzle.stringers.heightNodesNonDim);
-        nozzle.stringers.heightNodes[:,0] = \
-            nozzle.stringers.heightNodes[:,0]*nozzle.length + nozzle.xinlet;
-            
-        if nozzle.param == '3D':
-            
-            if nozzle.dim == '3D':
-            
-                # Setup thickness distribution
-                nozzle.stringers.thickness = [];
-                ns = nozzle.stringers.n;
-                na = nozzle.stringers.nAxialBreaks;
-                for i in range(ns):
-                    nozzle.stringers.thickness.append(geometry.PiecewiseLinear( \
-                           nozzle.stringers.thicknessNodes[i*na:i*na+na]));
-                
-                # Setup height distribution
-                nozzle.stringers.height = [];
-                if( nozzle.stringers.heightDefinition == 'EXTERIOR' ):
-                    for i in range(ns):
-                        nozzle.stringers.height.append(geometry.PiecewiseLinear( \
-                          nozzle.stringers.heightNodes))
-                else:
-                    for i in range(ns):
-                        nozzle.stringers.height.append(geometry.PiecewiseLinear( \
-                               nozzle.stringers.heightNodes[i*na:i*na+na]));    
-                           
-            # Map 3D parameterization to 2D definition using average thickness              
-            else:
-                
-                # Setup thickness distribution                
-                nx = nozzle.stringers.nAxialBreaks;               
-                # Find mean thickness at each x-coordinate station
-                xStations = nozzle.stringers.thicknessNodes[0:nx,0];
-                
-                tMean = np.zeros((nx,));
-                for j in range(nx):
-                    tMean[j] = np.mean(list(nozzle.stringers.thicknessNodes[:,2])[j::nx]);
-                thicknessNodes = np.transpose(np.array([xStations,tMean]));
-                
-                nozzle.stringers.thickness = geometry.PiecewiseLinear(thicknessNodes);
- 
-                # Setup height distribution
-                if( nozzle.stringers.heightDefinition == 'EXTERIOR' ):
-                    nozzle.stringers.height = geometry.PiecewiseLinear( \
-                      nozzle.stringers.heightNodes);
-                else:
-                    hMean = np.zeros((nx,));
-                    for j in range(nx):
-                        hMean[j] = np.mean(list(nozzle.stringers.heightNodes[:,2])[j::nx]);
-                    heightNodes = np.transpose(np.array([xStations,hMean]));
-                
-                    nozzle.stringers.height = geometry.PiecewiseLinear(heightNodes);
-        
-        else:
-            
-            # upscale 2D param to 3D
-            if nozzle.dim == '3D':
-                
-                # Setup thickness distribution
-                nozzle.stringers.thickness = [];
-                ns = nozzle.stringers.n;
-                for i in range(ns):
-                    nozzle.stringers.thickness.append(geometry.PiecewiseLinear( \
-                           nozzle.stringers.thicknessNodes));
-                
-                # Set height distribution
-                nozzle.stringers.height = [];
-                for i in range(ns):
-                    nozzle.stringers.height.append(geometry.PiecewiseLinear( \
-                           nozzle.stringers.heightNodes));
-                
-            else:
-                nozzle.stringers.thickness = geometry.PiecewiseLinear( \
-                       nozzle.stringers.thicknessNodes);
-                       
-                nozzle.stringers.height = geometry.PiecewiseLinear( \
-                       nozzle.stringers.heightNodes);
+        # ====================================================================
+        # Setup nozzle exterior
+        # ====================================================================
 
-        # Setup baffles
-
-        # Dimensionalize baffle x-location
-        nozzle.baffles.location = [q*nozzle.length + nozzle.xinlet for q in \
-                                   nozzle.baffles.locationNonDim];
-
-        # # Setup exterior wall, update baffle & stringer heights if necessary
-
-        # nozzle.exterior = component.NonaxisymmetricWall('exterior');
-        # nozzle.exterior.geometry = {};        
-        
-        # # Approximate top surface of internal aircraft cavity which nozzle
-        # # lies within
-        # nozzle.exterior.geometry['top'] = geometry.EllipticalExterior('top',nozzle.xoutlet);
-
-        # # Approximate bottom surface of internal aircraft cavity which 
-        # # nozzle lies within
-        # nozzle.exterior.geometry['bottom'] = geometry.EllipticalExterior('bottom',nozzle.xoutlet);
-
-        if( nozzle.baffles.heightSetToExterior ):
-
-            print '*******************************************************'
-            print 'Baffle heights are not set to exterior shape'
-            print '*******************************************************'
- 
-            # If stringers are dependent on baffles, re-update stringers
-            if( nozzle.stringers.heightDefinition == 'BAFFLES_HEIGHT' ):
-                print '*******************************************************'
-                print 'Stringer heights are not set to baffle heights'
-                print '*******************************************************'
-                                    
-        # Update height distribution for stringers
-        if( nozzle.stringers.heightDefinition == 'EXTERIOR' ):
-            print '*******************************************************'
-            print 'Stringer heights are not set to exterior shape'
-            print '*******************************************************'
-        
-
-        # if nozzle.dim == '3D':
-            
-        #     nozzle.exterior = component.NonaxisymmetricWall('exterior');
-
-        #     nozzle.exterior.geometry = {};        
-            
-        #     # Approximate top surface of internal aircraft cavity which nozzle
-        #     # lies within
-        #     nozzle.exterior.geometry['top'] = geometry.EllipticalExterior('top',nozzle.xoutlet);
-
-        #     # Approximate bottom surface of internal aircraft cavity which 
-        #     # nozzle lies within
-        #     nozzle.exterior.geometry['bottom'] = geometry.EllipticalExterior('bottom',nozzle.xoutlet);
-
-        #     # # Test nozzle exterior geometry
-        #     # import matplotlib.pyplot as plt
-        #     # from mpl_toolkits.mplot3d import Axes3D 
-        #     # fig = plt.figure()
-        #     # ax = plt.axes(projection='3d')
-        #     # xsection = np.linspace(nozzle.xinlet,nozzle.xoutlet,10);
-        #     # for i in range(len(xsection)):
-        #     #     # Plot top of aircraft cavity
-        #     #     xloc = nozzle.length*float(i)/float(len(xsection)-1) + nozzle.xinlet;
-        #     #     antmp = np.linspace(0.,np.pi,100);
-        #     #     xtmp = xloc*np.ones((len(antmp),1));
-        #     #     ytmp = np.zeros((len(antmp),1));
-        #     #     ztmp = np.zeros((len(antmp),1));
-        #     #     for j in range(len(antmp)):
-        #     #         tmp1, tmp2 = nozzle.exterior.geometry['top'].coord(xloc,antmp[j]);
-        #     #         ytmp[j] = tmp1;
-        #     #         ztmp[j] = tmp2;
-        #     #     ax.scatter(xtmp,ytmp,ztmp);
-
-        #     #     # Plot bottom of aircraft cavity
-        #     #     xloc = nozzle.length*float(i)/float(len(xsection)-1) + nozzle.xinlet;
-        #     #     antmp = np.linspace(np.pi,2*np.pi,100);
-        #     #     xtmp = xloc*np.ones((len(antmp),1));
-        #     #     ytmp = np.zeros((len(antmp),1));
-        #     #     ztmp = np.zeros((len(antmp),1));
-        #     #     for j in range(len(antmp)):
-        #     #         tmp1, tmp2 = nozzle.exterior.geometry['bottom'].coord(xloc,antmp[j]);
-        #     #         ytmp[j] = tmp1;
-        #     #         ztmp[j] = tmp2;
-        #     #     ax.scatter(xtmp,ytmp,ztmp);
-
-        #     # plt.show();
-            
-        #     # Baffle and stringer heights will have to be updated later.
-            
-        # else: # 2D or 1D dimension  
-        if(nozzle.dim != '3D'):         
-
-            nozzle.exterior = component.AxisymmetricWall('exterior');
-			
-            # Useful x vs. r data for updating baffle and stringer heights
-            n = 10000
-            x = np.linspace(nozzle.xinlet,nozzle.xoutlet,n)
-            rList = geometry.layerCoordinatesInGlobalFrame(nozzle,x);
-        
-            # Setup external geometry
-            if nozzle.stringers.n > 0:
-                innerBaffleRadius = np.interp(nozzle.xoutlet,x,rList[-2]);
-            else:
-                innerBaffleRadius = np.interp(nozzle.xoutlet,x,rList[-1]);   
-            #shapeDefinition = np.transpose(np.array([[nozzle.xinlet, nozzle.xinlet+0.1548, nozzle.xoutlet],
-            #                  [0.4244, 0.4244, innerBaffleRadius + 0.012]]));
-            shapeDefinition = np.transpose(np.array([[nozzle.xinlet, nozzle.xinlet+0.1548, nozzle.xoutlet],
-                              [0.8244, 0.8244, innerBaffleRadius + 0.012]]));
-            nozzle.exterior.geometry = geometry.PiecewiseLinear(shapeDefinition);
-
-            # Check for intersection of nozzle wall with external geometry
-            if nozzle.stringers.n > 0:
-                wallDiff = rList[-2] - nozzle.exterior.geometry.radius(x);
-            else:
-                wallDiff = rList[-1] - nozzle.exterior.geometry.radius(x);
-            if max(wallDiff) > 0:
-                print max(wallDiff)
-                print rList[-2]
-                print nozzle.exterior.geometry.radius(x);
-                sys.stderr.write('\n ## ERROR: External nozzle wall ' \
-                  'intersects exterior geometry. Terminating.\n\n');
-                sys.exit(0);
-       
-            # Update height of baffles to coincide with exterior wall shape
-            if( nozzle.baffles.heightSetToExterior ):
-
-                nozzle.baffles.height = [];
-                
-                for i in range(len(nozzle.baffles.location)):
-                    loc = nozzle.baffles.location[i];
-                    # inner baffle radius is outside radius of outermost layer
-                    if nozzle.stringers.n > 0:
-                        innerBaffleRadius = np.interp(loc,x,rList[-2]);
-                    else:
-                        innerBaffleRadius = np.interp(loc,x,rList[-1]);
-                    outerBaffleRadius = nozzle.exterior.geometry.radius(loc);
-                    nozzle.baffles.height.append(outerBaffleRadius - innerBaffleRadius);
-                    if output == 'verbose':
-                        sys.stdout.write('Baffle %i height resized to %f\n' % 
-                          (i+1,nozzle.baffles.height[i]));
-            
-                # If stringers are dependent on baffles, re-update stringers
-                if( nozzle.stringers.heightDefinition == 'BAFFLES_HEIGHT' ):
-                    nozzle.stringers.height = nozzle.exterior.geometry;
-                                        
-            # Update height distribution for stringers
-            if( nozzle.stringers.heightDefinition == 'EXTERIOR' ):
-                    nozzle.stringers.height = nozzle.exterior.geometry
-
-        # Overwrite exterior definition, TEMPORARY
-
-        # Setup exterior wall, update baffle & stringer heights if necessary
         nozzle.exterior = component.NonaxisymmetricWall('exterior');
         nozzle.exterior.geometry = {};   
 
@@ -2107,16 +1880,269 @@ class Nozzle:
             'bottom', nozzle.xoutlet, zoutlettop=zoutlettop, 
             zoutletbottom=zoutletbottom);
 
+        # # Test nozzle exterior geometry
+        # import matplotlib.pyplot as plt
+        # from mpl_toolkits.mplot3d import Axes3D 
+        # fig = plt.figure()
+        # ax = plt.axes(projection='3d')
+        # xsection = np.linspace(nozzle.xinlet,nozzle.xoutlet,10);
+        # for i in range(len(xsection)):
+        #     # Plot top of aircraft cavity
+        #     xloc = nozzle.length*float(i)/float(len(xsection)-1) + nozzle.xinlet;
+        #     antmp = np.linspace(0.,np.pi,100);
+        #     xtmp = xloc*np.ones((len(antmp),1));
+        #     ytmp = np.zeros((len(antmp),1));
+        #     ztmp = np.zeros((len(antmp),1));
+        #     for j in range(len(antmp)):
+        #         tmp1, tmp2 = nozzle.exterior.geometry['top'].coord(xloc,antmp[j]);
+        #         ytmp[j] = tmp1;
+        #         ztmp[j] = tmp2;
+        #     ax.scatter(xtmp,ytmp,ztmp);
 
-#            # --- Check that stringer heights are not above baffle heights
-#            for i in range(len(nozzle.baffles.location)):
-#                baffleLocation = nozzle.baffles.location[i];
-#                baffleHeight = nozzle.baffles.height[i];
-#                stringerHeight = nozzle.stringers.height.radius(baffleLocation);
-#                if stringerHeight > baffleHeight:
-#                    sys.stderr.write('\n ## ERROR: Stringers must have heights'  \
-#                      ' that remain below the baffle height.\n\n');
-#                    sys.exit(0);
+        #     # Plot bottom of aircraft cavity
+        #     xloc = nozzle.length*float(i)/float(len(xsection)-1) + nozzle.xinlet;
+        #     antmp = np.linspace(np.pi,2*np.pi,100);
+        #     xtmp = xloc*np.ones((len(antmp),1));
+        #     ytmp = np.zeros((len(antmp),1));
+        #     ztmp = np.zeros((len(antmp),1));
+        #     for j in range(len(antmp)):
+        #         tmp1, tmp2 = nozzle.exterior.geometry['bottom'].coord(xloc,antmp[j]);
+        #         ytmp[j] = tmp1;
+        #         ztmp[j] = tmp2;
+        #     ax.scatter(xtmp,ytmp,ztmp);
+
+        # plt.show();
+
+        # ====================================================================
+        # Setup baffles
+        # ====================================================================
+
+        # Dimensionalize baffle x-location
+        nozzle.baffles.location = [q*nozzle.length + nozzle.xinlet for q in \
+                                   nozzle.baffles.locationNonDim];
+
+        if( nozzle.baffles.heightSetToExterior ):
+
+            # There is nothing to be done. Mass and volume will be approximated
+            # correctly and baffle shape only affects structural FEA. This
+            # is taken into account correctly by AERO-S.
+            pass;
+
+        else:
+
+            raise NotImplementedError("Baffle height is set fixed according " + \
+                "to shape of internally-defined external geometry.");
+
+        # ====================================================================
+        # Setup stringers
+        # ====================================================================
+
+        # Dimensionalize stringers thickness x-coordinate
+        nozzle.stringers.thicknessNodes = \
+            copy.copy(nozzle.stringers.thicknessNodesNonDim);
+        nozzle.stringers.thicknessNodes[:,0] = \
+            nozzle.stringers.thicknessNodes[:,0]*nozzle.length + nozzle.xinlet;
+        nozzle.stringers.heightNodes = \
+            copy.copy(nozzle.stringers.heightNodesNonDim);
+        nozzle.stringers.heightNodes[:,0] = \
+            nozzle.stringers.heightNodes[:,0]*nozzle.length + nozzle.xinlet;
+            
+        if nozzle.param == '3D':
+            
+            if nozzle.dim == '3D':
+            
+                # Setup thickness distribution
+                nozzle.stringers.thickness = [];
+                ns = nozzle.stringers.n;
+                na = nozzle.stringers.nAxialBreaks;
+                for i in range(ns):
+                    # extract 0th and 2nd column of data
+                    nozzle.stringers.thickness.append(geometry.PiecewiseLinear( \
+                           nozzle.stringers.thicknessNodes[i*na:i*na+na,0::2]));
+                    nozzle.stringers.thickness[-1].angle = nozzle.stringers.thicknessNodes[i*na,1];
+                
+                # Setup height distribution
+                if( nozzle.stringers.heightDefinition == 'EXTERIOR' or \
+                    nozzle.stringers.heightDefinition == 'BAFFLES_HEIGHT' ):
+                    # There is no height to assign as it is defined by the 
+                    # exterior. Volume, mass, and structural FEA are taken 
+                    # care of accordingly.
+                    if nozzle.stringers.n != 2:
+                        raise NotImplementedError("Stringers definition with " + \
+                        "EXTERIOR or BAFFLES_HEIGHT height definition can only have 2 " + \
+                        "stringers located on the top and bottom of nozzle.")                                
+                    pass;
+                else:
+                    nozzle.stringers.height = [];
+                    for i in range(ns):
+                        # extract 0th and 2nd column of data
+                        nozzle.stringers.height.append(geometry.PiecewiseLinear( \
+                               nozzle.stringers.heightNodes[i*na:i*na+na,0::2]));    
+                        nozzle.stringers.height[-1].angle = nozzle.stringers.heightNodes[i*na,1];
+                           
+            # Map 3D parameterization to 2D definition using average thickness              
+            else:
+                
+                # Setup thickness distribution                
+                nx = nozzle.stringers.nAxialBreaks;               
+ 
+                # Setup height distribution
+                if( nozzle.stringers.heightDefinition == 'EXTERIOR' or \
+                    nozzle.stringers.heightDefinition == 'BAFFLES_HEIGHT' ):
+
+                    if nozzle.stringers.n != 2:
+                        raise NotImplementedError("Stringers definition with " + \
+                        "EXTERIOR or BAFFLES_HEIGHT height definition can only have 2 " + \
+                        "stringers located on the top and bottom of nozzle.")
+
+                    nozzle.stringers.thickness = [];
+                    ns = nozzle.stringers.n;
+                    na = nozzle.stringers.nAxialBreaks;
+                    for i in range(ns):
+                        # extract 0th and 2nd column of data
+                        nozzle.stringers.thickness.append(geometry.PiecewiseLinear( \
+                            nozzle.stringers.thicknessNodes[i*na:i*na+na,0::2]));
+                        nozzle.stringers.thickness[-1].angle = nozzle.stringers.thicknessNodes[i*na,1];
+
+                    # There is no height to assign as it is defined by the 
+                    # exterior. Volume, mass, and structural FEA are taken 
+                    # care of accordingly.
+                    
+                    # hMean = np.zeros((nx,));
+                    # xTmp = np.linspace(nozzle.stringers.thickness.xstart,nozzle.stringers.thickness.xend,100)
+                    # hTop = nozzle.exterior.geometry['top'].coord(xTmp,np.pi/2)[1]
+                    # hBot = nozzle.exterior.geometry['bottom'].coord(xTmp,-np.pi/2)[1]
+                    # hMean = (np.abs(hTop)+np.abs(hBot))/2
+                    # heightNodes = np.transpose(np.vstack((xTmp,hMean)))
+                    # nozzle.stringers.height = geometry.PiecewiseLinear(heightNodes);
+
+                else:
+
+                    # Find mean thickness at each x-coordinate station
+                    xStations = nozzle.stringers.thicknessNodes[0:nx,0];
+                    
+                    tMean = np.zeros((nx,));
+                    for j in range(nx):
+                        tMean[j] = np.mean(list(nozzle.stringers.thicknessNodes[:,2])[j::nx]);
+                    thicknessNodes = np.transpose(np.array([xStations,tMean]));
+                    
+                    nozzle.stringers.thickness = geometry.PiecewiseLinear(thicknessNodes);
+
+                    hMean = np.zeros((nx,));
+                    for j in range(nx):
+                        hMean[j] = np.mean(list(nozzle.stringers.heightNodes[:,2])[j::nx]);
+                    heightNodes = np.transpose(np.array([xStations,hMean]));
+                
+                    nozzle.stringers.height = geometry.PiecewiseLinear(heightNodes);
+        
+        else:
+            
+            # upscale 2D param to 3D
+            if nozzle.dim == '3D':
+                
+                # Setup thickness distribution
+                nozzle.stringers.thickness = [];
+                ns = nozzle.stringers.n;
+                for i in range(ns):
+                    nozzle.stringers.thickness.append(geometry.PiecewiseLinear( \
+                           nozzle.stringers.thicknessNodes));
+                
+                # Setup height distribution
+                if( nozzle.stringers.heightDefinition == 'EXTERIOR' or \
+                    nozzle.stringers.heightDefinition == 'BAFFLES_HEIGHT' ):
+                    # There is no height to assign as it is defined by the 
+                    # exterior. Volume, mass, and structural FEA are taken 
+                    # care of accordingly.
+                    if nozzle.stringers.n != 2:
+                        raise NotImplementedError("Stringers definition with " + \
+                        "EXTERIOR or BAFFLES_HEIGHT height definition can only have 2 " + \
+                        "stringers located on the top and bottom of nozzle.")                                
+                    pass;
+                else:                                                    
+                    nozzle.stringers.height = [];
+                    for i in range(ns):
+                        nozzle.stringers.height.append(geometry.PiecewiseLinear( \
+                            nozzle.stringers.heightNodes));
+                
+            else:
+                nozzle.stringers.thickness = geometry.PiecewiseLinear( \
+                       nozzle.stringers.thicknessNodes);
+
+                # Setup height distribution
+                if( nozzle.stringers.heightDefinition == 'EXTERIOR' or \
+                    nozzle.stringers.heightDefinition == 'BAFFLES_HEIGHT' ):
+                    # There is no height to assign as it is defined by the 
+                    # exterior. Volume, mass, and structural FEA are taken 
+                    # care of accordingly.
+                    if nozzle.stringers.n != 2:
+                        raise NotImplementedError("Stringers definition with " + \
+                        "EXTERIOR or BAFFLES_HEIGHT height definition can only have 2 " + \
+                        "stringers located on the top and bottom of nozzle.")                                
+                    pass;
+                else:
+                    nozzle.stringers.height = geometry.PiecewiseLinear( \
+                        nozzle.stringers.heightNodes);
+            
+        # ====================================================================
+        # Previous code for axisymmetric stringers/baffles setup
+        # ====================================================================
+
+        # nozzle.exterior = component.AxisymmetricWall('exterior');
+        
+        # # Useful x vs. r data for updating baffle and stringer heights
+        # n = 10000
+        # x = np.linspace(nozzle.xinlet,nozzle.xoutlet,n)
+        # rList = geometry.layerCoordinatesInGlobalFrame(nozzle,x);
+    
+        # # Setup external geometry
+        # if nozzle.stringers.n > 0:
+        #     innerBaffleRadius = np.interp(nozzle.xoutlet,x,rList[-2]);
+        # else:
+        #     innerBaffleRadius = np.interp(nozzle.xoutlet,x,rList[-1]);   
+        # #shapeDefinition = np.transpose(np.array([[nozzle.xinlet, nozzle.xinlet+0.1548, nozzle.xoutlet],
+        # #                  [0.4244, 0.4244, innerBaffleRadius + 0.012]]));
+        # shapeDefinition = np.transpose(np.array([[nozzle.xinlet, nozzle.xinlet+0.1548, nozzle.xoutlet],
+        #                   [0.8244, 0.8244, innerBaffleRadius + 0.012]]));
+        # nozzle.exterior.geometry = geometry.PiecewiseLinear(shapeDefinition);
+
+        # # Check for intersection of nozzle wall with external geometry
+        # if nozzle.stringers.n > 0:
+        #     wallDiff = rList[-2] - nozzle.exterior.geometry.radius(x);
+        # else:
+        #     wallDiff = rList[-1] - nozzle.exterior.geometry.radius(x);
+        # if max(wallDiff) > 0:
+        #     print max(wallDiff)
+        #     print rList[-2]
+        #     print nozzle.exterior.geometry.radius(x);
+        #     sys.stderr.write('\n ## ERROR: External nozzle wall ' \
+        #       'intersects exterior geometry. Terminating.\n\n');
+        #     sys.exit(0);
+    
+        # # Update height of baffles to coincide with exterior wall shape
+        # if( nozzle.baffles.heightSetToExterior ):
+
+        #     nozzle.baffles.height = [];
+            
+        #     for i in range(len(nozzle.baffles.location)):
+        #         loc = nozzle.baffles.location[i];
+        #         # inner baffle radius is outside radius of outermost layer
+        #         if nozzle.stringers.n > 0:
+        #             innerBaffleRadius = np.interp(loc,x,rList[-2]);
+        #         else:
+        #             innerBaffleRadius = np.interp(loc,x,rList[-1]);
+        #         outerBaffleRadius = nozzle.exterior.geometry.radius(loc);
+        #         nozzle.baffles.height.append(outerBaffleRadius - innerBaffleRadius);
+        #         if output == 'verbose':
+        #             sys.stdout.write('Baffle %i height resized to %f\n' % 
+        #               (i+1,nozzle.baffles.height[i]));
+
+        # # If stringers are dependent on baffles, re-update stringers
+        # if( nozzle.stringers.heightDefinition == 'BAFFLES_HEIGHT' ):
+        #     nozzle.stringers.height = nozzle.exterior.geometry;
+                                    
+        # # Update height distribution for stringers
+        # if( nozzle.stringers.heightDefinition == 'EXTERIOR' ):
+        #         nozzle.stringers.height = nozzle.exterior.geometry
 
         if output == 'verbose':
             sys.stdout.write('Setup Wall complete\n');

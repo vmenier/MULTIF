@@ -61,7 +61,7 @@ if( test['all'] or test['lofi'] or test['fea'] ):
     lofi_2dparam_1.cfg_dir = 'example';
     lofi_2dparam_1.cfg_file = 'general.cfg';
     lofi_2dparam_1.input_file = 'general.in';
-    lofi_2dparam_1.compare_file = 'example/regression/results_general_lofi_1.out';
+    lofi_2dparam_1.compare_file = 'example/regression/lofi_2dparam_1.out';
     lofi_2dparam_1.fidelity = 0;
     lofi_2dparam_1.nproc = 1;
     lofi_2dparam_1.diff_tol = 1e-6;
@@ -75,7 +75,7 @@ if( test['all'] or test['lofi'] ):
     lofi_3dparam.cfg_dir = 'example';
     lofi_3dparam.cfg_file = 'general-3d.cfg';
     lofi_3dparam.input_file = 'general-3d.in';
-    lofi_3dparam.compare_file = 'example/regression/results_general-3d_lofi.out';
+    lofi_3dparam.compare_file = 'example/regression/lofi_3dparam.out';
     lofi_3dparam.fidelity = 0;
     lofi_3dparam.nproc = 1;
     lofi_3dparam.diff_tol = 1e-6;
@@ -89,7 +89,7 @@ if( test['all'] or test['lofi'] or test['fd'] ):
     lofi_2dparam_fd.cfg_dir = os.path.join('example','gradients');
     lofi_2dparam_fd.cfg_file = 'general_fd_gradients.cfg';
     lofi_2dparam_fd.input_file = 'params.in';
-    lofi_2dparam_fd.compare_file = 'example/regression/results_general_fd_gradients_lofi.out';
+    lofi_2dparam_fd.compare_file = 'example/regression/lofi_2dparam_fd.out';
     lofi_2dparam_fd.fidelity = 0;
     lofi_2dparam_fd.nproc = nCores;
     lofi_2dparam_fd.diff_tol = 1e-6;
@@ -108,7 +108,7 @@ if( test['all'] or test['lofi'] ):
                                       'wall_pressure_locations.in',
                                       'wall_temperature.in',
                                       'wall_temperature_locations-100.in'];
-    lofi_2dparam_temp.compare_file = 'example/regression/results_temp_input_lofi.out';
+    lofi_2dparam_temp.compare_file = 'example/regression/lofi_2dparam_temp.out';
     lofi_2dparam_temp.fidelity = 0;
     lofi_2dparam_temp.nproc = 1;
     lofi_2dparam_temp.diff_tol = 1e-6;
@@ -122,7 +122,7 @@ if( test['all'] or test['lofi'] or test['fea'] ):
     lofi_2dparam_2.cfg_dir = 'example';
     lofi_2dparam_2.cfg_file = 'general.cfg';
     lofi_2dparam_2.input_file = 'general.in';
-    lofi_2dparam_2.compare_file = 'example/regression/results_general_lofi_2.out';
+    lofi_2dparam_2.compare_file = 'example/regression/lofi_2dparam_2.out';
     lofi_2dparam_2.fidelity = 1;
     lofi_2dparam_2.nproc = 1;
     lofi_2dparam_2.diff_tol = 1e-6;
@@ -140,7 +140,7 @@ if( test['all'] or test['medfi'] ):
     medfi_2dparam.cfg_dir = 'example';
     medfi_2dparam.cfg_file = 'general.cfg';
     medfi_2dparam.input_file = 'general.in';
-    medfi_2dparam.compare_file = 'example/regression/results_general_medfi_1.out';
+    medfi_2dparam.compare_file = 'example/regression/medfi_2dparam.out';
     medfi_2dparam.fidelity = 2;
     medfi_2dparam.nproc = nCores;
     medfi_2dparam.diff_tol = 1e-6;
@@ -154,7 +154,7 @@ if( test['all'] or test['medfi'] ):
     medfi_3dparam.cfg_dir = 'example';
     medfi_3dparam.cfg_file = 'general-3d.cfg';
     medfi_3dparam.input_file = 'general-3d.in';
-    medfi_3dparam.compare_file = 'example/regression/results_general-3d_medfi_1.out';
+    medfi_3dparam.compare_file = 'example/regression/medfi_3dparam.out';
     medfi_3dparam.fidelity = 2;
     medfi_3dparam.nproc = nCores;
     medfi_3dparam.diff_tol = 1e-6;
@@ -168,7 +168,7 @@ if( test['all'] or test['medfi'] or test['adjoint'] ):
     medfi_2dparam_adjoint.cfg_dir = os.path.join('example','gradients');
     medfi_2dparam_adjoint.cfg_file = 'general_gradients.cfg';
     medfi_2dparam_adjoint.input_file = 'params.in';
-    medfi_2dparam_adjoint.compare_file = 'example/regression/results_general_gradients_medfi.out';
+    medfi_2dparam_adjoint.compare_file = 'example/regression/medfi_2dparam_adjoint.out';
     medfi_2dparam_adjoint.fidelity = 0;
     medfi_2dparam_adjoint.nproc = nCores;
     medfi_2dparam_adjoint.diff_tol = 1e-6;
@@ -181,7 +181,7 @@ if( test['all'] or test['medfi'] or test['fd'] ):
    medfi_2dparam_fd.cfg_dir = os.path.join('example','gradients');
    medfi_2dparam_fd.cfg_file = 'general_fd_gradients.cfg';
    medfi_2dparam_fd.input_file = 'params.in';
-   medfi_2dparam_fd.compare_file = 'example/regression/results_general_fd_gradients_medfi.out';
+   medfi_2dparam_fd.compare_file = 'example/regression/medfi_2dparam_fd.out';
    medfi_2dparam_fd.fidelity = 1;
    medfi_2dparam_fd.nproc = nCores;
    medfi_2dparam_fd.diff_tol = 1e-6;

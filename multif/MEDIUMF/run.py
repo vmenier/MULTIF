@@ -15,18 +15,6 @@ except ImportError as e:
     print 'Error importing all functions from runAEROS in MEDIUMF/run.py.'
     print e
     print
-
-
-#def CheckOptions (nozzle):
-
-#		print "Check options"
-    #if nozzle.dim == 3 :
-    #    sys.stderr.write("\n  ## ERROR : Only 2D axisymmetric simulations are available for now.\n\n");
-    #    sys.exit(0);
-    
-    #if nozzle.method == 'RANS':
-    #    sys.stderr.write("\n  ## ERROR : Only Euler simulations are available for now.\n\n");
-    #    sys.exit(0);
     
 
 def Run( nozzle, output = 'verbose', writeToFile=1 ):  
@@ -36,10 +24,8 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
         volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle)
         if 'MASS' in nozzle.responses:
             nozzle.responses['MASS'] = np.sum(mass)
-            #nozzle.mass = np.sum(mass)
         if 'VOLUME' in nozzle.responses:
             nozzle.responses['VOLUME'] = np.sum(volume)
-            #nozzle.volume = np.sum(volume)
 
     # Calculate mass gradients if necessary
     if 'MASS' in nozzle.gradients and nozzle.gradients['MASS'] is not None:
@@ -106,16 +92,10 @@ def Run( nozzle, output = 'verbose', writeToFile=1 ):
 	    
 	    # Run thermal/structural analyses
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
-            
-            try : 
-                runAEROS(nozzle, output);  
-            except:
-                sys.stdout.write("  ## WARNING: CALL TO AERO-S IGNORED.\n");
+	        runAEROS(nozzle, output);
 
-	        
         # Assign aero QoI if required
-        SU2postprocessing.PostProcess(nozzle, output);
-        
+        SU2postprocessing.PostProcess(nozzle, output);        
         
         # Assign thermal/structural QoI if required
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
