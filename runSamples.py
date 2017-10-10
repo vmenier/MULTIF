@@ -16,6 +16,10 @@ def runSample_wrap(sample):
 def runSamplePostpro_wrap(sample):
     sucess, val_out = sample.RunSamplePostpro();
     return [sample.run_id, sucess, val_out];
+    
+def runSampleVisu_wrap(sample):
+    return sample.RunSampleVisu();
+
 
 
 
@@ -61,6 +65,10 @@ def main():
     parser.add_option("-g", "--postpro",
                       dest="postpro", default=False, action="store_true",
                       help="Run post-processing functions only?")
+                      
+    parser.add_option("-v", "--visu",
+                      dest="visu", default=False, action="store_true",
+                      help="Run visualization functions only?")
                           
     (options, args)=parser.parse_args()
     
@@ -177,6 +185,12 @@ def main():
     
     if not os.path.isdir(runs_dirNam):
         os.mkdir(runs_dirNam);
+        
+    #--- Create visu folder if needed
+    visu_dirNam = "visu"
+    if options.visu:
+        if not os.path.isdir(visu_dirNam):
+            os.mkdir(visu_dirNam);
     
     #--- Start python's multiprocessing pool
     
@@ -196,7 +210,10 @@ def main():
             rEval.append(-1);
         
         for i in range(NbrRun):
-            if not options.postpro :
+            
+            if options.visu :
+                rEval[i] = runSampleVisu_wrap(samples_tab[i]); 
+            elif not options.postpro :
                 rEval[i] = runSample_wrap(samples_tab[i]); 
             else:
                 rEval[i] = runSamplePostpro_wrap(samples_tab[i]);
@@ -209,8 +226,10 @@ def main():
             
         for i in range(NbrRun):
             iRun = samples_tab[i].run_id;   
-             
-            if not options.postpro :
+            
+            if options.visu :
+                mEval[i] = pool.apply_async(runSampleVisu_wrap,(samples_tab[i],));
+            elif not options.postpro :
                 mEval[i] = pool.apply_async(runSample_wrap,(samples_tab[i],));
             else :
                 mEval[i] = pool.apply_async(runSamplePostpro_wrap,(samples_tab[i],));
@@ -224,14 +243,16 @@ def main():
     for i in range(len(rEval)):
         print rEval[i];
     
-    # Write results to file
-    f = open(options.outfile,'w');
-    for i in range(len(rEval)):
-        for j in range(len(rEval[i][2])-1):
-            f.write('%0.16f, ' % rEval[i][2][j]);
-        f.write('%0.16f\n' % rEval[i][2][-1]);
-    f.close();
-    sys.stdout.write("-- %s written with sample data.\n" % options.outfile);
+    if not options.visu:
+        
+        # Write results to file
+        f = open(options.outfile,'w');
+        for i in range(len(rEval)):
+            for j in range(len(rEval[i][2])-1):
+                f.write('%0.16f, ' % rEval[i][2][j]);
+            f.write('%0.16f\n' % rEval[i][2][-1]);
+        f.close();
+        sys.stdout.write("-- %s written with sample data.\n" % options.outfile);
     
         
         
