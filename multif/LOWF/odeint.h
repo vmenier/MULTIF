@@ -15,7 +15,7 @@ void rkstepper(double* x, double* y, double dydx,
     double* xgeo, double* rgeo, int ngeo, double g, double* xn, double* cf,
     double* ts, double* dts, int nb );
 
-void odeint(double xi, double xe, double yi, 
+double odeint(double xi, double xe, double yi, 
     int maxstep, double hi, double hmin, double hmax, double eps,
     double* xsave, double* ysave, double dxsave, int ns, int* nsave,
     double(*fcn)(double, double, double*, double*, int, double,

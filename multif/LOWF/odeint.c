@@ -122,7 +122,7 @@ tolerance on error. Function fcn and associated arguments provides derivative
 dydx. xsave is a 1-D array large enough (of size ns) to hold values of x 
 approximately spaced by dxsave from xi to xe. ysave is a 1-D array of the same
 size which saves values of y corresponding to the values in xsave. */
-void odeint(double xi, double xe, double yi, 
+double odeint(double xi, double xe, double yi, 
     int maxstep, double hi, double hmin, double hmax, double eps,
     double* xsave, double* ysave, double dxsave, int ns, int* nsave,
     double(*fcn)(double, double, double*, double*, int, double,
@@ -163,7 +163,7 @@ void odeint(double xi, double xe, double yi,
         // Terminate if stepsize is too small
         if( fabs(hnext) < fabs(hmin) ) {
             printf("Step size too small. Terminating odeint at x=%0.8f.\n",x);
-            return;
+            return x;
         }
 
         // Check that xe has been reached
@@ -173,7 +173,7 @@ void odeint(double xi, double xe, double yi,
             ysave[count] = y;
             *nsave = count+1;
             //printf("Successful completion of odeint.\n");
-            return;
+            return x;
         }
         
         // Update step for next time
@@ -182,7 +182,7 @@ void odeint(double xi, double xe, double yi,
     }
 
     printf("Maximum number of steps reached. Terminating odeint.\n");
-    return;
+    return x;
 
 }
 

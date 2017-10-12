@@ -16,7 +16,7 @@ double dM2dx(double M2, double g, double A, double dAdx, double D, double Cf,
 double evaldM2dx(double xeval, double M2, double* xgeo, double* rgeo, int ngeo, 
         double g, double* x, double* Cf, double* Ts, double* dTs, int nb);
 
-double findApparentThroat(double h0, double M2, 
+double findApparentThroat(double xstart, double h0, double M2, 
     double* xgeo, double* rgeo, int ngeo, double g, 
     double* x, double* Cf, double* Ts, double* dTs, int nb);
 

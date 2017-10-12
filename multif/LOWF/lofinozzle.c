@@ -91,8 +91,15 @@ double areaMachFunc(double M, double g) {
 // Governing equation of motion for quasi-1D flow
 double dM2dx(double M2, double g, double A, double dAdx, double D, double Cf, 
     double Ts, double dTsdx) {
-    double delta = 1e-8; // to keep denominator from becoming zero
-    return 2.*M2*(1.+(g-1.)*M2/2.)/(1.-M2+delta)*(-dAdx/A + 2.*g*M2*Cf/D + (1.+g*M2)*dTsdx/(2.*Ts));
+    double delta = 1e-6; // to keep denominator from becoming zero
+    double denom;
+    if( fabs(1-M2) <= delta ) { // it is unclear whether this actually helps
+        denom = delta;
+    } else {
+        denom = 1. - M2;
+    }
+    //return 2.*M2*(1.+(g-1.)*M2/2.)/(1.-M2+delta)*(-dAdx/A + 2.*g*M2*Cf/D + (1.+g*M2)*dTsdx/(2.*Ts));
+    return 2.*M2*(1.+(g-1.)*M2/2.)/(denom)*(-dAdx/A + 2.*g*M2*Cf/D + (1.+g*M2)*dTsdx/(2.*Ts));
 }
 
 
@@ -120,7 +127,7 @@ double evaldM2dx(double xeval, double M2, double* xgeo, double* rgeo, int ngeo,
 
 
 // Find apparent throat of nozzle
-double findApparentThroat(double h0, double M2, 
+double findApparentThroat(double xstart, double h0, double M2, 
     double* xgeo, double* rgeo, int ngeo, double g, 
     double* x, double* Cf, double* Ts, double* dTs, int nb) {
 
@@ -134,7 +141,8 @@ double findApparentThroat(double h0, double M2,
 
     // Determine approximate throat location by minimum area point
     double x1, f1, x2, f2, xstop;
-    x2 = findPiecwiseLinearMinimumLocation(xgeo, rgeo, ngeo);
+    x2 = xstart;
+    //x2 = findPiecwiseLinearMinimumLocation(xgeo, rgeo, ngeo);
     f2 = evaldM2dx(x2, M2, xgeo, rgeo, ngeo, g, x, Cf, Ts, dTs, nb);
     xt = x2;
 
@@ -322,53 +330,93 @@ int analyzeNozzle(double* xgeo, double* rgeo, int ngeo, int nbreaks,
     }
 
     // Begin Gauss-Seidel iterations for aero-thermal analysis
-    double yi, xs, xf, hi, hmin, hmax;
+    double yi, xs, xf, xtguess, hi, hmin, hmax;
+    double xterm = 0.;
     int ns1, nm;
-    double *xsave1, *xsave2, *ysave1, *ysave2;
+    double *xsave1 = NULL;
+    double *xsave2 = NULL;
+    double *ysave1 = NULL;
+    double *ysave2 = NULL;
     int nsave1 = 0, nsave2 = 0; 
+    int counter = 0;
+    int maxattempts = 5;
     for(int i=0; i < maxiter; i++) {
-        
-        // Find apparent throat location of nozzle
-        xt = findApparentThroat(fabs(himag), pow(1+singularitydy,2), 
+
+        // Initial guess for throat location
+        xtguess = findPiecwiseLinearMinimumLocation(xgeo, rgeo, ngeo);
+
+        // Run integration until correct apparent throat is found and 
+        // integration succeeds
+        while( xterm < xe - 1e-6 ) {
+
+            nsave1 = 0;
+            nsave2 = 0;
+
+            xt = findApparentThroat(xtguess, fabs(himag), pow(1+singularitydy,2), 
             xgeo, rgeo, ngeo, g, x, cf, ts, dts, nbreaks);
-        //printf("\nLocation of minimum is: %f\n", xt);
+            //printf("\nLocation of minimum is: %f\n", xt);
 
-        // Allocate arrays for storing x and y data
-        ns1 = (int)((xt/(xe-xi))*(double)ns);
-        xsave1 = allocateDoubleVector(ns1+2);
-        ysave1 = allocateDoubleVector(ns1+2);
-        xsave2 = allocateDoubleVector(ns-ns1+2);
-        ysave2 = allocateDoubleVector(ns-ns1+2);
+            if( counter > 0 ) {
+                printf("Attempting integration again from new apparent throat x = %0.6f\n",xt);            
+            }
 
-        // Integrate for M^2 backward from throat to inlet
-        // Assume subsonic flow in this region for now
-        yi = pow(1.-singularitydy,2);
-        xs = xt;
-        xf = xi;
-        hi = -himag;
-        hmin = -hminmag;
-        hmax = -hmaxmag;
-        odeint(xs, xf, yi, maxstep, hi, hmin, hmax, eps2, xsave1, ysave1, dxsave, ns, 
-            &nsave1, evaldM2dx, xgeo, rgeo, ngeo, g, x, cf, ts, dts, nbreaks);
-        //printf("completed LHS integration\n");
+            // Allocate arrays for storing x and y data
+            if(xsave1)
+                free(xsave1);
+            if(ysave1)
+                free(ysave1);
+            if(xsave2)
+                free(xsave2);
+            if(ysave2)
+                free(ysave2);
+            ns1 = (int)((xt/(xe-xi))*(double)ns);
+            xsave1 = allocateDoubleVector(ns1+2);
+            ysave1 = allocateDoubleVector(ns1+2);
+            xsave2 = allocateDoubleVector(ns-ns1+2);
+            ysave2 = allocateDoubleVector(ns-ns1+2);
 
-        // Integrate for M^2 forward from throat to exit
-        // Assume supersonic flow for now
-        if( xt >= xe ) {
-            xsave2[0] = xe;
-            ysave2[0] = 1.;
-            nsave2 = 1;
-            //printf("skipping RHS integration\n");
-        } else {
-            yi = pow(1.+singularitydy,2);
+            // Integrate for M^2 backward from throat to inlet
+            // Assume subsonic flow in this region for now
+            yi = pow(1.-singularitydy,2);
             xs = xt;
-            xf = xe;
-            hi = himag;
-            hmin = hminmag;
-            hmax = hmaxmag;
-            odeint(xs, xf, yi, maxstep, hi, hmin, hmax, eps2, xsave2, ysave2, dxsave, ns, 
-                &nsave2, evaldM2dx, xgeo, rgeo, ngeo, g, x, cf, ts, dts, nbreaks);
-            //printf("completed RHS integration\n");
+            xf = xi;
+            hi = -himag;
+            hmin = -hminmag;
+            hmax = -hmaxmag;
+            xterm = odeint(xs, xf, yi, maxstep, hi, hmin, hmax, eps2, xsave1, ysave1, dxsave, ns, 
+                &nsave1, evaldM2dx, xgeo, rgeo, ngeo, g, x, cf, ts, dts, nbreaks);
+            //printf("completed LHS integration\n");
+
+            // Integrate for M^2 forward from throat to exit
+            // Assume supersonic flow for now
+            if( xt >= xe ) {
+                xsave2[0] = xe;
+                ysave2[0] = 1.;
+                nsave2 = 1;
+                //printf("skipping RHS integration\n");
+            } else {
+                yi = pow(1.+singularitydy,2);
+                xs = xt;
+                xf = xe;
+                hi = himag;
+                hmin = hminmag;
+                hmax = hmaxmag;
+                xterm = odeint(xs, xf, yi, maxstep, hi, hmin, hmax, eps2, xsave2, ysave2, dxsave, ns, 
+                    &nsave2, evaldM2dx, xgeo, rgeo, ngeo, g, x, cf, ts, dts, nbreaks);
+                //printf("completed RHS integration\n");
+            }
+            
+            // Update location for guess of throat, if integration failure occurs
+            xtguess = xterm;
+
+            counter++;
+
+            // Terminate if integration fails too many times
+            if( counter > maxattempts ) {
+                printf("*****ODE integration failed after %d attempts.\n",maxattempts);
+                break;
+            }
+
         }
 
         // Concatenate data for M^2 and combine into array for mach
