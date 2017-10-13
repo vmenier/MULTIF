@@ -14,8 +14,9 @@ double *allocateVectorFromPyList(PyObject *pylist, int *n) {
         if( *n < 1 ) { // i.e. if Python list is empty
             return vector;
         } else {
-            vector = malloc(*n*sizeof(double));
+            vector = malloc((*n+1)*sizeof(double));
             if( vector == NULL ) {
+                printf("malloc failed");
                 perror("malloc failed");
             }
             for(int i = 0; i<*n; i++) {
@@ -169,6 +170,10 @@ int analyze(PyObject *pyxgeo, PyObject *pyrgeo, int nbreaks,
         free(xgeo);
     if(rgeo)
         free(rgeo);
+    if(xwalltemp)
+        free(xwalltemp);
+    if(walltemp)
+        free(walltemp);
     if(xlayer1)
         free(xlayer1);
     if(tlayer1)

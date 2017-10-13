@@ -5,11 +5,21 @@
 #
 # >> dakota -i climb-optim.in -o climb-optim.out
 #
-# Rick Fenrich 7/17/17
+# Rick Fenrich 10/4/17
 
 import numpy as np
 
-import linearConstraints
+# The imports below require access to the following files from
+# MULTIF/example/domains:
+#    domains.py
+#    linearConstraints.py
+#    multifDomains2D.py
+#    util.py
+
+from linearConstraints import bspline
+from linearConstraints import cleanupConstraintMatrix
+
+from domains import LinIneqDomain
 
 filename = "det-opt"
 maxLineWidth = 2000
@@ -19,16 +29,16 @@ ncores = 8 # number of cores available
 designVar = dict()
 
 # Set up initial values of design variables
-designVar['initial'] = np.array([0.2124, 0.2269, 0.2734, 0.3218, 0.3230, 0.3343, 0.3474, 0.4392, 0.4828, 0.5673, 0.6700, 0.3238, 0.2981, 0.2817, 0.2787, 0.2797, 0.2807, 0.2936, 0.2978, 0.3049, 0.3048])
+designVar['initial'] = np.array([0.542184, 0.861924, 1.072944, 1.211161, 1.311161, 1.408983, 1.528983, 1.723828, 2.086573, 0.417017, 0.365097, 0.301792, 0.267426, 0.277426, 0.332508, 0.385631])
 
 # Set up lower and upper bounds of design variables
-lbPerc = 0.8
-ubPerc = 1.2
+lbPerc = -np.inf
+ubPerc = np.inf
 designVar['lower_bound'] = lbPerc*designVar['initial']
 designVar['upper_bound'] = ubPerc*designVar['initial']
 
 # Set descriptions for design variables
-designVar['description'] = ['c6x', 'c7x', 'c8x', 'c9x', 'c11x', 'c12x', 'c13x', 'c14x', 'c15x', 'c16x', 'c17x', 'c6y', 'c7y', 'c8y', 'c9y', 'c12y', 'c13y', 'c14y', 'c15y', 'c16y', 'c17y']
+designVar['description'] = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'y1', 'y2', 'y3', 'y4', 'y5', 'y6', 'y7']
 
 # Useful indices for generating constraints, etc.
 n = len(designVar['initial']) # number of design variables
@@ -41,20 +51,24 @@ conNLI['description'] = ['thrust']
 
 ## ---- Define linear inequality constraints, Ax <= b
 
-(tmp1, A_w, b_w) = linearConstraints.wall(designVar['initial'])
-A = A_w # matrix for Ax <= b
-b = b_w # RHS vector for Ax <= b
-ncon, tmp2 = A.shape
-
-# Scale the linear constraints to unity on RHS
-for row in range(ncon):
-  if np.abs(b[row]) < 1e-12:
-    scale = np.min(np.abs([a for a in A[row,:] if a != 0]))
-    # do not scale b[row]
-  else:
-    scale = np.abs(b[row])
-    b[row] = b[row]/scale
-  A[row,:] = A[row,:]/scale
+WALL_COEFS= (0.0000, 0.0000, 0.1, 0.3, 0.7, 1.0, 1.3, 
+             1.3500, 1.3500, 1.4000, 1.5000, 1.6000, 1.8000, 2.3371, 2.3371, 
+             0.4395, 0.4395, 0.4395, 0.4, 0.34, 0.31, 0.27, 
+             0.2700, 0.2700, 0.2700, 0.3, 0.33, 0.38, 0.3955, 0.3955)
+WALL_COEFS_DV= (0, 0, 0, 1, 2, 3, 4, 5, 5, 6, 7, 8, 9, 0, 0, 
+                0, 0, 0, 10, 11, 12, 13, 13, 13, 13, 14, 15, 16, 0, 0)
+x_wall = np.array([0.542184, 0.861924, 1.072944, 1.211161, 1.311161, 
+                   1.408983, 1.528983, 1.723828, 2.086573, 0.417017, 
+                   0.365097, 0.301792, 0.267426, 0.277426, 0.332508, 
+                   0.385631])
+A, b = bspline(WALL_COEFS, WALL_COEFS_DV, 7, (-0.3,0.005,-0.025,0.35), 
+                 xLimits=[None,2.3], delta=0.1, throatIsLowest=1, 
+                 minThroat=0.2, output='verbose') 
+A, b = cleanupConstraintMatrix(Alist=[A],blist=[b])
+inner_wall_domain = LinIneqDomain(A, np.squeeze(b), center = x_wall)
+b = np.squeeze(b)
+shapea = A.shape
+ncon = shapea[0]
 
 # Check feasibility of linear constraints at starting point
 b2 = np.dot(A,np.transpose(designVar['initial']))
@@ -78,7 +92,7 @@ f = open(filein,"w")
 # write header information
 f.write("# Deterministic optimization of reduced aero only design problem\n")
 f.write("#     Minimize Mass of Wall only s.t. Thrust < 21500 N\n")
-f.write("# 21 design variables related to shape of inner wall\n")
+f.write("# 16 design variables related to shape of inner wall\n")
 f.write("# Usage:\n")
 f.write("# dakota -i {} -o {}\n".format(filein,fileout))
 f.write("\n")
@@ -144,7 +158,7 @@ f.write("    nonlinear_inequality_constraints = {}\n".format(len(conNLI['lower_b
 f.write("        lower_bounds = {}\n".format(np.array_str(conNLI['lower_bound'],max_line_width=maxLineWidth,precision=4)[1:-1]))
 f.write("        upper_bounds = {}\n".format(np.array_str(conNLI['upper_bound'],max_line_width=maxLineWidth,precision=4)[1:-1]))
 f.write("        scale_types = 'value'\n")
-f.write("        scales = 4.6512e-5\n")
+f.write("        scales = 2.15e-5\n")
 f.write("    analytic_gradients\n") # provided by user
 f.write("    no_hessians\n")
 f.write("\n")
@@ -153,7 +167,7 @@ f.flush()
 # write interface
 f.write("interface\n")
 f.write("    id_interface = 'OPTIM_I'\n")
-f.write("    analysis_driver = 'python runModel.py -l 2 -n %i -f det_optim_aero.cfg'\n" % ncores)
+f.write("    analysis_driver = 'pythona runModel.py -l 0 -n %i -f det_optim_aero.cfg'\n" % ncores)
 #f.write("        fork asynchronous evaluation_concurrency = 4\n")
 f.write("        fork\n")
 f.write("        work_directory named 'tmp'\n")
