@@ -42,8 +42,6 @@ int copyMesh(Mesh *mesh, VMesh *VMesh) {
     mesh->adja = (int*)calloc(3*mesh->nt+5,sizeof(int));
     assert(mesh->adja);
   }
-
-
 	
   /* read mesh vertices */
 	

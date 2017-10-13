@@ -58,13 +58,14 @@ void  switchTetIdx(int *idx, int *swi);
 void  switchTriIdx(int *idx, int *swi);
 
 //--- modules.c
-int ConvertGMFtoSU2Sol (Options *mshopt);
-int ConvertSU2SolToGMF (Options *mshopt);
-int Extraction (Options *mshopt);
-int OutputMach (Options *mshopt);
-int ConvertSU2ToGMSH (Options *mshopt);
-int ProjectNozzleWall (Options *mshopt);
-int ConvertGMFtoSegMesh (Options *mshopt);
+int    ConvertGMFtoSU2Sol (Options *mshopt);
+int    ConvertSU2SolToGMF (Options *mshopt);
+int    Extraction (Options *mshopt);
+int    OutputMach (Options *mshopt);
+int    ConvertSU2ToGMSH (Options *mshopt);
+int    ProjectNozzleWall (Options *mshopt);
+int    ConvertGMFtoSegMesh (Options *mshopt);
+Mesh * ExtractSurfacePatches(Mesh *Msh, int *Ref, int NbrRef) ;
 
 //--- option.c
 Options* AllocOptions(void);

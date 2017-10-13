@@ -6,15 +6,18 @@ from multif import _meshutils_module
 try :
     from mpl_toolkits.mplot3d import Axes3D
     from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+except:
+    sys.stderr.write("## WARNING: Unable to load mpl_toolkits capabilities. Visualization functions won't work properly.\n");    
+
+try:    
     import matplotlib.pyplot as plt
-    from matplotlib.backends.backend_pdf import PdfPages
+    from   matplotlib.backends.backend_pdf import PdfPages
     import matplotlib.tri as tri
     import matplotlib.cm as cm
-
     from matplotlib.ticker import NullFormatter  # useful for `logit` scale
     
 except:
-    sys.stderr.write("## WARNING: Unable to load matplotlib and/or mpl_toolkits capabilities. Visualization functions are disabled.\n");
+    sys.stderr.write("## WARNING: Unable to load matplotlib capabilities. Visualization functions won't work properly.\n");
     
 
 def Viz_GetMeshAndSolution(MshNam, SolNam):

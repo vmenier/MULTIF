@@ -369,6 +369,104 @@ int ProjectNozzleWall (Options *mshopt)
 	return 1;
 }
 
+Mesh * ExtractSurfacePatches(Mesh *Msh, int *Ref, int NbrRef) 
+{
+	
+	Mesh *MshOut = NULL;
+	
+	int iVer, iTri, j, i, flag=0, is[4];
+	int SizMsh[GmfMaxKwd+1];
+	int idx, idxOut;
+	int *Tag = (int*)malloc(sizeof(int)*(Msh->NbrVer+1));
+	int *TagTri = (int*)malloc(sizeof(int)*(Msh->NbrTri+1));
+	
+	memset(Tag,0,sizeof(int)*(Msh->NbrVer+1));
+	memset(TagTri,0,sizeof(int)*(Msh->NbrTri+1));
+	memset(SizMsh,0,sizeof(int)*(GmfMaxKwd+1));
+	
+	for (iTri=1; iTri<=Msh->NbrTri; iTri++) {	
+		flag = 0;
+		for (i=0; i<NbrRef; i++) {
+			if ( Msh->Tri[iTri][3] == Ref[i] ) {
+				flag = 1;
+				break;
+			}
+		}
+	
+		if ( flag == 0 )
+			continue;
+		
+		TagTri[iTri] = 1;
+		
+		SizMsh[GmfTriangles]++;
+		
+		for (j=0; j<3; j++) {
+			iVer = Msh->Tri[iTri][j];
+			Tag[iVer] = 1;
+		}	
+	}
+	
+	for (iVer=1; iVer<=Msh->NbrVer; iVer++) {
+		if ( Tag[iVer] < 1 )
+			continue;
+		SizMsh[GmfVertices]++;
+		Tag[iVer] = SizMsh[GmfVertices];
+	}
+	
+	//--- Alloc mesh
+	
+	MshOut = AllocMesh(SizMsh);
+	MshOut->Dim = 3;
+	
+	//--- Fill mesh
+	
+	for (iVer=1; iVer<=Msh->NbrVer; iVer++) {
+		if ( Tag[iVer] < 1 )
+			continue;
+		MshOut->NbrVer++;
+		AddVertex(MshOut, MshOut->NbrVer,  Msh->Ver[iVer]);
+		Tag[iVer] = MshOut->NbrVer;
+	}
+	
+	for (iTri=1; iTri<=Msh->NbrTri; iTri++) {
+		if ( TagTri[iTri] < 1 )
+			continue;
+		
+		for (j=0; j<3; j++) {
+			is[j] = Tag[Msh->Tri[iTri][j]];
+		}
+		
+		MshOut->NbrTri++;
+		AddTriangle(MshOut, MshOut->NbrTri, is, Msh->Tri[iTri][3]);
+	}
+	
+	//--- Solution
+	
+	MshOut->SolSiz = Msh->SolSiz;
+	MshOut->NbrFld = Msh->NbrFld;
+	MshOut->FldTab = (int*) malloc(sizeof(int)*Msh->SolSiz);
+	for (j=0; j<Msh->NbrFld; j++){
+		MshOut->FldTab[j] = Msh->FldTab[j];
+		strcpy(MshOut->SolTag[j],Msh->SolTag[j]);
+	}
+	MshOut->Sol = (double*) malloc(sizeof(double)*(MshOut->NbrVer+1)*MshOut->SolSiz);
+	memset(MshOut->Sol, 0, sizeof(double)*(MshOut->NbrVer+1)*MshOut->SolSiz);
+	
+	
+	for (iVer=1; iVer<=Msh->NbrVer; iVer++) {
+		if ( Tag[iVer] < 1 )
+			continue;
+		
+		idx = iVer*Msh->SolSiz;
+		idxOut = Tag[iVer]*MshOut->SolSiz;
+		
+		for (j=0; j<MshOut->SolSiz; j++) 
+			MshOut->Sol[idxOut+j] = Msh->Sol[idx+j];
+	}
+	
+	return MshOut;
+}
+
 //
 //int ConvertGMFtoSegMesh (Options *mshopt)
 //{

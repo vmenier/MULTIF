@@ -1099,6 +1099,285 @@ void py_ExtractAlongLine (char *MshNam, char *SolNam, PyObject *pyBox,  PyObject
 //}
 
 
+void py_ExtractSurfacePatches (char *MshNam, char *SolNam, PyObject *pyVer, PyObject *pyTri, PyObject *pySol, PyObject *pyRefs)
+{
+	int i, j, d;
+		
+	int *Ref = NULL;
+	int size_Ref = 0;
+	
+	
+	Options *mshopt = AllocOptions();
+	
+	strcpy(mshopt->InpNam,MshNam);
+	strcpy(mshopt->SolNam,SolNam);
+	
+	//--- Get patch references
+	
+	if ( PyList_Check(pyRefs) )
+  {
+	
+			size_Ref = PyList_Size(pyRefs);
+      Ref = (int*) malloc( size_Ref * sizeof(int));
+			
+			for (i=0; i<size_Ref; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pyRefs,i);
+       	if ( PyInt_Check(oo) )
+       	{
+					Ref[i] = (int) PyInt_AS_LONG(oo);
+       	}
+      }
+  }
+	
+	//--- Open input mesh/solution file
+	
+	Mesh *MshIn = NULL;
+	MshIn = SetupMeshAndSolution (mshopt->InpNam, mshopt->SolNam);
+	
+	//--- Extract refs
+	
+	Mesh *Msh = ExtractSurfacePatches(MshIn, Ref, size_Ref) ;
+	
+		
+	//--- Return surface mesh + solution
+	
+	for (i=1; i<=Msh->NbrVer; i++){
+		for (d=0; d<3; d++)
+			PyList_Append(pyVer, PyFloat_FromDouble(Msh->Ver[i][d]));
+	}
+	
+	for (i=1; i<=Msh->NbrTri; i++){
+		for (j=0; j<4; j++)
+			PyList_Append(pyTri, PyFloat_FromDouble(Msh->Tri[i][j]));
+	}
+	
+	if ( Msh->Sol ) {
+		
+		//--- Output solution
+		int iVer;
+		for (iVer=1; iVer<=Msh->NbrVer; iVer++) {
+			for (i=0; i<Msh->SolSiz; i++) {
+				PyList_Append(pySol, PyFloat_FromDouble(Msh->Sol[iVer*Msh->SolSiz+i]));
+			}
+		}
+		
+	}
+	
+	if ( Msh )
+ 		FreeMesh(Msh);
+	
+}
+
+void py_WriteMesh(char *OutNam, PyObject *pyVer, PyObject *pyTri, PyObject *pyTet, PyObject *pyEdg, PyObject *pySol)
+{
+	int i, j;
+	Mesh *Msh= NULL;
+	int SizMsh[GmfMaxKwd+1];
+	
+	int is[5], siz, ref, idx;
+	double crd[3];
+	
+	for (i=0; i<GmfMaxKwd; i++)
+		SizMsh[i] = 0;
+	
+	
+	//--- Get mesh size
+
+	if ( PyList_Check(pyVer) )
+		SizMsh[GmfVertices] = PyList_Size(pyVer);
+	
+	if ( PyList_Check(pyTri) )
+		SizMsh[GmfTriangles] = PyList_Size(pyTri);
+	
+	if ( PyList_Check(pyTet) )
+		SizMsh[GmfTetrahedra] = PyList_Size(pyTet);
+	
+	if ( PyList_Check(pyEdg) )
+		SizMsh[GmfEdges] = PyList_Size(pyEdg);
+	
+	//--- Allocate mesh
+	
+	Msh = AllocMesh(SizMsh);
+	
+	Msh->Dim = 3;
+	
+	//--- Fill mesh
+	
+	if ( PyList_Check(pyTri) )
+  {
+			siz = PyList_Size(pyTri);
+			
+			for (i=0; i<siz/4; i++)
+      {
+				idx = 4*i;
+				
+				for (j=0; j<3; j++) {
+	       	PyObject *oo = PyList_GetItem(pyTri,idx+j);
+	       	if ( PyInt_Check(oo) )
+	       	{
+						is[j] = (int) PyInt_AS_LONG(oo);
+	       	}
+				}
+				
+				PyObject *oo = PyList_GetItem(pyTri,idx+3);
+				ref = (int) PyInt_AS_LONG(oo);
+				
+				Msh->NbrTri++;
+				AddTriangle(Msh,Msh->NbrTri,is,ref);
+				
+				//printf("-- Add tri %d : %d %d %d (ref %d)\n", Msh->NbrTri, is[0], is[1], is[2], ref);
+				//exit(1);
+      }
+  }
+	
+	if ( PyList_Check(pyTet) )
+  {
+			siz = PyList_Size(pyTet);
+			
+			for (i=0; i<siz/4; i++)
+      {
+				idx = 4*i;
+				
+				for (j=0; j<4; j++) {
+	       	PyObject *oo = PyList_GetItem(pyTet,idx+j);
+	       	if ( PyInt_Check(oo) )
+	       	{
+						is[j] = (int) PyInt_AS_LONG(oo);
+	       	}
+				}
+				
+				Msh->NbrTet++;
+				AddTetrahedron(Msh,Msh->NbrTet,is,0);
+				
+				//printf("-- Add tet %d : %d %d %d (ref %d)\n", Msh->NbrTet, is[0], is[1], is[2], is[3],ref);
+				//exit(1);
+				
+      }
+  }
+	
+	if ( PyList_Check(pyEdg) )
+  {
+			siz = PyList_Size(pyEdg);
+			
+			for (i=0; i<siz/3; i++)
+      {
+				idx = 3*i;
+				
+				for (j=0; j<2; j++) {
+	       	PyObject *oo = PyList_GetItem(pyEdg,idx+j);
+	       	if ( PyInt_Check(oo) )
+	       	{
+						is[j] = (int) PyInt_AS_LONG(oo);
+	       	}
+				}
+				
+				PyObject *oo = PyList_GetItem(pyTet,idx+2);
+				ref = (int) PyInt_AS_LONG(oo);
+				
+				Msh->NbrEfr++;
+				AddEdge(Msh,Msh->NbrEfr,is,ref);
+      }
+  }
+	
+	if ( PyList_Check(pyVer) )
+  {
+			siz = PyList_Size(pyVer);
+			
+			for (i=0; i<siz/3; i++)
+      {
+				idx = 3*i;
+				
+				for (j=0; j<3; j++) {
+	       	PyObject *oo = PyList_GetItem(pyVer,idx+j);
+	       	if ( PyFloat_Check(oo) )
+	       	{
+						crd[j] = (double) PyFloat_AS_DOUBLE(oo);
+	       	}
+				}
+				Msh->NbrVer++;
+				AddVertex(Msh,Msh->NbrVer,crd);
+				
+				//printf("ADD VERTEX %d : %lf %lf %lf\n", Msh->NbrVer, crd[0], crd[1], crd[2]);
+				//exit(1);
+      }
+  }
+	
+	
+	//--- Get Solution size and check it matches the number of vertices
+	
+	if ( PyList_Check(pySol) )
+		siz = PyList_Size(pySol);
+	
+	if ( siz > 0 ) {
+			
+		if ( siz%Msh->NbrVer == 0 ) {
+			
+			Msh->SolSiz = siz/Msh->NbrVer;
+			Msh->NbrFld = Msh->SolSiz;
+			Msh->FldTab = (int*) malloc(sizeof(int)*Msh->SolSiz);
+			for (j=0; j<Msh->NbrFld; j++){
+				Msh->FldTab[j] = GmfSca;
+				sprintf(Msh->SolTag[j], "scalar_%d", j);
+			}
+			Msh->Sol = (double*) malloc(sizeof(double)*(Msh->NbrVer+1)*Msh->SolSiz);
+			memset(Msh->Sol, 0, sizeof(double)*(Msh->NbrVer+1)*Msh->SolSiz);
+			
+			
+			Msh->Sol[0] = 0.0;
+			for (i=0; i<siz; i++)
+      {
+       	PyObject *oo = PyList_GetItem(pySol,i);
+       	if ( PyFloat_Check(oo) )
+       	{
+					Msh->Sol[i+Msh->SolSiz] = (double) PyFloat_AS_DOUBLE(oo);
+       	}
+			}
+		}
+		else {
+			printf("  ## ERROR py_WriteMesh: Inconsistent solution provided. Skip.\n");
+		}
+		
+	}
+	
+	//--- Write Mesh
+	
+	
+	int FilTyp = GetInputFileType(OutNam);
+  char *ptr = NULL;
+	char BasNam[1024], OutSol[1024];
+	
+	// --- Get BasNam
+	
+  strcpy(BasNam,OutNam);
+	
+  ptr = strstr(BasNam,".su2");	
+  if ( ptr != NULL )
+    BasNam[ptr-BasNam]='\0';
+  ptr = strstr(BasNam,".meshb");	
+  if ( ptr != NULL )
+    BasNam[ptr-BasNam]='\0';
+	
+	if ( FilTyp != FILE_SU2 ) {
+		WriteGMFMesh(BasNam, Msh, 1);
+		if ( Msh->Sol ) {
+			sprintf(OutSol, "%s.solb", BasNam);
+			if ( ! WriteGMFSolutionItf(OutSol, Msh) ) {
+				printf("  ## ERROR : Output solution FAILED.\n");
+			}
+		}
+	}
+	else {
+		WriteSU2Mesh(BasNam, Msh);
+		if ( Msh->Sol ) {
+			sprintf(OutSol, "%s.dat", BasNam);
+			WriteSU2Solution (OutSol, Msh, Msh->Sol, Msh->NbrVer,  Msh->SolSiz, Msh->SolTag);
+		}
+	}
+	
+	
+}
+
 
 void py_ExtractAtRef (char *MshNam, char *SolNam, PyObject *pyRefs,  PyObject *pyResult, PyObject *PyInfo, PyObject *pyHeader)
 {
@@ -1223,8 +1502,7 @@ void py_Extract_Vertices_Ref (char *MshNam, PyObject * pyRefs , PyObject * PyCrd
 		PyList_Append(PyRef_Tab, PyInt_FromLong(Nbv));
 		
   }
-
-	//
+	
 	////double * ExtractSolutionAtRef (Options *mshopt, Mesh *Msh, int *Ref, int NbrRef,  int *NbrRes, int *Siz)
 	//int NbrRes=0, Siz=0;
 	//double *result = ExtractSolutionAtRef(mshopt,Msh, Ref, size_Ref,  &NbrRes, &Siz);
@@ -1239,7 +1517,6 @@ void py_Extract_Vertices_Ref (char *MshNam, PyObject * pyRefs , PyObject * PyCrd
 	//for (i=0; i<Msh->SolSiz; i++){
 	//	PyList_Append(pyHeader, PyString_FromString(Msh->SolTag[i]));
 	//}
-	
 	
 	if (Crd_Out)
 		free(Crd_Out);

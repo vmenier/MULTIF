@@ -53,3 +53,7 @@ void py_ExtractAtRef (char *MshNam, char *SolNam, PyObject *pyRefs,  PyObject *p
 void py_Extract_Vertices_Ref (char *MshNam, PyObject * pyRefs , PyObject * PyCrd_Out, PyObject * PyVid_Out, PyObject * PyRef_Tab);
 
 void py_ReadMesh (char *MshNam, char *SolNam, PyObject *pyVer, PyObject *pyTri, PyObject *pyTet, PyObject *pyEdg, PyObject *pySol);
+
+void py_WriteMesh(char *OutNam, PyObject *pyVer, PyObject *pyTri, PyObject *pyTet, PyObject *pyEdg, PyObject *pySol);
+
+void py_ExtractSurfacePatches (char *MshNam, char *SolNam, PyObject *pyVer, PyObject *pyTri, PyObject *pySol, PyObject *pyRefs);
