@@ -128,6 +128,10 @@ class Sample:
             sys.exit(0);
         else:
             os.chdir(locDir);
+            
+            
+        #--- Copy cfg file
+        shutil.copyfile(os.path.join(self.working_rootdir,self.cfg_file),self.cfg_file);
         
         if not self.cfg_file:
             sys.stderr.write ("## ERROR run %d: configuration file %s does not exit. Skip.\n" % (run_id, self.cfg_file));
