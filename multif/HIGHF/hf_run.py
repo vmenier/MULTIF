@@ -177,10 +177,10 @@ def Run( nozzle, **kwargs ):
         
         hf_postprocessing.PostProcess(nozzle, output);
         
-        # Assign thermal/structural QoI if required
-        if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
-            # XXX Ensure AEROS post-processing returns correct outputs
-            AEROSpostprocessing.PostProcess(nozzle, output);           
+        ## Assign thermal/structural QoI if required
+        #if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
+        #    # XXX Ensure AEROS post-processing returns correct outputs
+        #    AEROSpostprocessing.PostProcess(nozzle, output);           
         
         # Calculate gradients if necessary
         if nozzle.gradientsFlag == 1 and runAeroThermalStructuralGradients:
@@ -227,6 +227,7 @@ def Run( nozzle, **kwargs ):
                 np.savetxt(gradFile,nozzle.gradients[k]);
             gradFile.close();               
     
+    print "WRITE DATA"
     # Write data
     if writeToFile:
         if nozzle.outputFormat == 'PLAIN':
