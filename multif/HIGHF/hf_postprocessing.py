@@ -205,8 +205,13 @@ def HF_Integrate_Sol_Wall(nozzle):
     SolSiz = len(pySol)/NbrVer;
     Sol = np.array(pySol).reshape(NbrVer,SolSiz).tolist();
     
+    
     iPres = 5;
     iTemp = 6;
+    
+    if nozzle.method == 'RANS':
+        iPres += 2;
+        iTemp += 2;
     
     PresAvg = 0.0;
     TempAvg = 0.0;
