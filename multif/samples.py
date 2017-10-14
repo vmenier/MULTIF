@@ -177,6 +177,7 @@ class Sample:
             sys.stdout = sav_stdout;
             sys.stderr = sav_stderr;
             sys.stderr.write("## Error : Run %d failed.\n" % run_id);
+            raise;
             return success, val_out;
         
         sys.stdout = sav_stdout;

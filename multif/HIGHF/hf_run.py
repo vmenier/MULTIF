@@ -175,6 +175,8 @@ def Run( nozzle, **kwargs ):
         #sys.exit(1);
         #
         
+        #AreaTot, PresAvg, TempAvg = hf_postprocessing.HF_Integrate_Sol_Wall(nozzle);
+        
         hf_postprocessing.PostProcess(nozzle, output);
         
         ## Assign thermal/structural QoI if required

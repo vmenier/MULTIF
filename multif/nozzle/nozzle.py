@@ -2160,7 +2160,7 @@ class Nozzle:
         shape_scalar = ['MASS', 'MASS_WALL_ONLY', 'VOLUME'];
         
         # Requiring aero analysis
-        aero_scalar = ['THRUST'];
+        aero_scalar = ['THRUST', 'WALL_PRES_AVG', 'WALL_TEMP_AVG'];
         aero_field = ['WALL_PRESSURE','PRESSURE','VELOCITY'];
         
         # Requiring structural analysis

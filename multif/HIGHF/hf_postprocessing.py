@@ -1,4 +1,5 @@
 from multif import _mshint_module
+from multif import _meshutils_module
 import numpy as np
 import sys
 import os
@@ -41,7 +42,17 @@ def PostProcess ( nozzle, output ):
         sys.stderr.write(' ## ERROR : WALL_TEMPERATURE not currently available from SU2\n\n');
         sys.exit(1);
         #nozzle.responses['WALL_TEMPERATURE'] = 0;
+    
+    if 'WALL_PRES_AVG' in nozzle.responses or 'WALL_TEMP_AVG' in nozzle.responses:
         
+        AreaTot, PresAvg, TempAvg = HF_Integrate_Sol_Wall(nozzle);
+        
+        if 'WALL_PRES_AVG' in nozzle.responses:
+            nozzle.responses['WALL_PRES_AVG'] = PresAvg;
+        
+        if 'WALL_TEMP_AVG' in nozzle.responses:
+            nozzle.responses['WALL_TEMP_AVG'] = TempAvg;
+    
     if 'WALL_PRESSURE' in nozzle.responses:
 
 # XXX        func = interp1d(SolExtract_w[:,0],  Pres, kind='linear');        
@@ -166,6 +177,66 @@ def HF_InterpolateToStructural (options):
     
     return Crd, Tri, Sol, SolSiz
     
+
+def HF_Integrate_Sol_Wall(nozzle):
+    
+    MshNam = "nozzle.su2";
+    SolNam = "nozzle.dat"
+    
+    #--- Extract surface patches from fluid mesh
+    
+    pyVer = [];
+    pyTri = [];
+    pySol = [];
+    Ref = [9,10];
+    
+    _meshutils_module.py_ExtractSurfacePatches (MshNam, SolNam, pyVer, pyTri, pySol, Ref);
+    
+    pyVer = map(float, pyVer);
+    pyTri = map(int, pyTri);
+    pySol = map(float, pySol);
+    
+    NbrVer = len(pyVer)/3;
+    Ver = np.array(pyVer).reshape(NbrVer,3).tolist();
+    
+    NbrTri = len(pyTri)/4;
+    Tri = np.array(pyTri).reshape(NbrTri,4).tolist();
+    
+    SolSiz = len(pySol)/NbrVer;
+    Sol = np.array(pySol).reshape(NbrVer,SolSiz).tolist();
+    
+    iPres = 5;
+    iTemp = 6;
+    
+    PresAvg = 0.0;
+    TempAvg = 0.0;
+    AreaTot = 0.0;
+    
+    Coord = [0,0,0]
+    for iTri in range(NbrTri):
+        
+        pres = 0.0;
+        temp = 0.0;
+        
+        for j in range(3):
+            iVer = Tri[iTri][j]-1;
+            Coord[j]  = Ver[iVer]; 
+            pres += Sol[iVer][iPres];
+            temp += Sol[iVer][iTemp];
+
+        pres /= 3;
+        temp /= 3;
+        
+        area = multif.HIGHF.hf_meshgeneration.GetTriangleArea3D(Coord);
+        AreaTot += area;
+        
+        PresAvg += area*pres;
+        TempAvg += area*temp;
+    
+    PresAvg /= AreaTot;
+    TempAvg /= AreaTot;
+    return AreaTot, PresAvg, TempAvg;
+
 
 def HF_Compute_Thrust (options):
     
