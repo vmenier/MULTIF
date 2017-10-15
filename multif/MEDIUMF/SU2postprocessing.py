@@ -326,7 +326,6 @@ def MF_Integrate_Sol_Wall(nozzle):
     iTemp = idHeader['Temperature'];
     iPres = idHeader['Pressure']; 
     
-    
     pres_avg = 0.0;
     temp_avg = 0.0;
     
@@ -697,7 +696,7 @@ def VerificationPostPro(nozzle):
         
     idHeader = dict();
     for iFld in range(0,len(pyHeader)):
-        idHeader[pyHeader[iFld]] = iFld+2;
+        idHeader[pyHeader[iFld]] = iFld+3;
     
     Pres = OutResult[:,idHeader['Pressure']];
     Temp = OutResult[:,idHeader['Temperature']];
