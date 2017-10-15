@@ -547,6 +547,7 @@ def runSU2 ( nozzle ):
         
     if nozzle.method == "RANS":
         GenerateNozzleExitMesh(nozzle);
+        solver_options.NbrIte=max(solver_options.NbrIte,5000);
     
     config = SetupConfig(solver_options);
     
