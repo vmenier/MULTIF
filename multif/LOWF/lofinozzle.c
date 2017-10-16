@@ -331,16 +331,19 @@ int analyzeNozzle(double* xgeo, double* rgeo, int ngeo, int nbreaks,
 
     // Begin Gauss-Seidel iterations for aero-thermal analysis
     double yi, xs, xf, xtguess, hi, hmin, hmax;
-    double xterm = 0.;
+    double xterm;
     int ns1, nm;
     double *xsave1 = NULL;
     double *xsave2 = NULL;
     double *ysave1 = NULL;
     double *ysave2 = NULL;
-    int nsave1 = 0, nsave2 = 0; 
-    int counter = 0;
+    int nsave1, nsave2; 
+    int counter;
     int maxattempts = 5;
     for(int i=0; i < maxiter; i++) {
+
+        xterm = 0.;
+        counter = 0;
 
         // Initial guess for throat location
         xtguess = findPiecwiseLinearMinimumLocation(xgeo, rgeo, ngeo);
@@ -361,14 +364,12 @@ int analyzeNozzle(double* xgeo, double* rgeo, int ngeo, int nbreaks,
             }
 
             // Allocate arrays for storing x and y data
-            if(xsave1)
+            if( counter > 0 ) {
                 free(xsave1);
-            if(ysave1)
                 free(ysave1);
-            if(xsave2)
                 free(xsave2);
-            if(ysave2)
                 free(ysave2);
+            }
             ns1 = (int)((xt/(xe-xi))*(double)ns);
             xsave1 = allocateDoubleVector(ns1+2);
             ysave1 = allocateDoubleVector(ns1+2);
