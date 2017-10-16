@@ -390,6 +390,8 @@ int WriteGMFMesh(char *nam, Mesh *Msh, int OptBin)
   	}
   }
 	else {
+		
+		
 		for (iVer=1; iVer<=NbrVer; ++iVer) {
     	GmfSetLin(OutMsh, GmfVertices,Ver[iVer][0],Ver[iVer][1],Ver[iVer][2],0);  
   	}

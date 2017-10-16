@@ -44,6 +44,16 @@ def PostProcess ( nozzle, output ):
             nozzle.responses['THRUST'] = ComputeThrust ( nozzle, SolExtract, Size, Header );
             #nozzle.responses['THRUST'] = ComputeThrust_RANS (nozzle);
         
+    if 'WALL_PRES_AVG' in nozzle.responses or 'WALL_TEMP_AVG' in nozzle.responses:
+        
+        AreaTot, PresAvg, TempAvg = MF_Integrate_Sol_Wall(nozzle);
+        
+        if 'WALL_PRES_AVG' in nozzle.responses:
+            nozzle.responses['WALL_PRES_AVG'] = PresAvg;
+        
+        if 'WALL_TEMP_AVG' in nozzle.responses:
+            nozzle.responses['WALL_TEMP_AVG'] = TempAvg;
+            
     if 'WALL_TEMPERATURE' in nozzle.responses:
         sys.stderr.write(' ## ERROR : WALL_TEMPERATURE not currently available from SU2\n\n');
         sys.exit(1);
@@ -287,6 +297,59 @@ def ComputeThrust_2 ( options, SolExtract, Size, Header )    :
 
     return Thrust;
 
+
+def MF_Integrate_Sol_Wall(nozzle):
+    
+    mesh_name    = nozzle.cfd.mesh_name;
+    restart_name = nozzle.cfd.restart_name;
+
+    pyResult = [];
+    pyInfo   = [];
+    pyHeader = [];
+    
+    pyRef = [1];
+    
+    _meshutils_module.py_ExtractAtRef (mesh_name, restart_name, pyRef, pyResult, pyInfo, pyHeader);
+    
+    NbrRes = pyInfo[0];
+    ResSiz = pyInfo[1];
+    
+    Result = np.asarray(pyResult);
+    
+    OutResult = np.reshape(Result,(NbrRes, ResSiz));
+    Out_sort = OutResult[OutResult[:,0].argsort()]
+    
+    idHeader = dict();
+    for iFld in range(0,len(pyHeader)):
+        idHeader[pyHeader[iFld]] = iFld+3;
+    
+    iTemp = idHeader['Temperature'];
+    iPres = idHeader['Pressure']; 
+    
+    pres_avg = 0.0;
+    temp_avg = 0.0;
+    
+    LenTot = 0.0;
+    for i in range(len(Out_sort)-1):
+        
+        nrm = 0.0;
+        for j in range(2):
+            nrm += (Out_sort[i+1][j]-Out_sort[i][j])*(Out_sort[i+1][j]-Out_sort[i][j]);
+        nrm = np.sqrt(nrm);
+        
+        LenTot += nrm;
+        
+        pres = 0.5*(Out_sort[i][iPres]+Out_sort[i+1][iPres]);
+        temp = 0.5*(Out_sort[i][iTemp]+Out_sort[i+1][iTemp]);
+        
+        pres_avg += nrm*pres;
+        temp_avg += nrm*temp;
+    
+    pres_avg /= LenTot;
+    temp_avg /= LenTot;
+    
+    
+    return LenTot, pres_avg, temp_avg;
 
     
 
@@ -633,7 +696,7 @@ def VerificationPostPro(nozzle):
         
     idHeader = dict();
     for iFld in range(0,len(pyHeader)):
-        idHeader[pyHeader[iFld]] = iFld+2;
+        idHeader[pyHeader[iFld]] = iFld+3;
     
     Pres = OutResult[:,idHeader['Pressure']];
     Temp = OutResult[:,idHeader['Temperature']];

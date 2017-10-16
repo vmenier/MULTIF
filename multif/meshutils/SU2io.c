@@ -488,9 +488,7 @@ int LoadSU2Elements(FILE *FilHdl, Mesh *Msh)
 	      AddTriangle(Msh,Msh->NbrTri,is,iMark);
       }
       else if ( typ == SU2_RECTANGLE ) {
-				
-				printf("ADD RECTANGLE\n");
-				
+								
 	      for (s=0; s<4; s++) {
 	        fscanf(FilHdl, "%d", &buf);
 	        swi[s] = buf+1;
