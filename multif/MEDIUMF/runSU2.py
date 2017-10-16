@@ -649,22 +649,22 @@ def runSU2 ( nozzle ):
             # Gauge progress made in last N iter
             N = min(300,history[:,0].size);
             modVarLast300Iters = np.mean(np.abs(history[-N:-1,11] - np.mean(history[-N:-1,11])));
-            if( modVarLast300Iters > 0.2 ): # sufficient progress made, make no changes
-                pass;
+            if( modVarLast300Iters > 0.5 ): # sufficient progress made, make no changes
+                pass; # originally 0.2 was used
             elif( solver_options.LocalRelax == 'YES' ): # no progress made, tighten CFL
                 su2history = open('about.txt','a');
                 su2history.write('More conservative parameters are being used.\n');
                 su2history.close(); 
                 config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 10.0 )';
-                config.LIMITER_ITER= int(config.LIMITER_ITER)*2.; 
-                config.EXT_ITER = int(config.EXT_ITER)*1.5;              
+                config.LIMITER_ITER= int(config.LIMITER_ITER)*2; 
+                config.EXT_ITER = int(config.EXT_ITER)*2;              
             else:
                 su2history = open('about.txt','a');
                 su2history.write('More conservative parameters are being used.\n');
                 su2history.close(); 
-                config.CFL_NUMBER = float(config.CFL_NUMBER)/2.;
-                config.LIMITER_ITER = int(config.LIMITER_ITER)*2.;
-                config.EXT_ITER = int(config.EXT_ITER)*1.5;
+                config.CFL_NUMBER = float(config.CFL_NUMBER)/2;
+                config.LIMITER_ITER = int(config.LIMITER_ITER)*2;
+                config.EXT_ITER = int(config.EXT_ITER)*2;
 
             config.RESIDUAL_REDUCTION = float(config.RESIDUAL_REDUCTION) - residualReduction;
 
@@ -676,12 +676,12 @@ def runSU2 ( nozzle ):
 
             if( solver_options.LocalRelax == 'YES' ):
                 config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 10.0 )';
-                config.LIMITER_ITER= int(config.LIMITER_ITER)*2.; 
-                config.EXT_ITER = int(config.EXT_ITER)*3.;           
+                config.LIMITER_ITER= int(config.LIMITER_ITER)*2; 
+                config.EXT_ITER = int(config.EXT_ITER)*3;           
             else:
-                config.CFL_NUMBER = float(config.CFL_NUMBER)/2.;
-                config.LIMITER_ITER = int(config.LIMITER_ITER)*2.;
-                config.EXT_ITER = int(config.EXT_ITER)*3.;
+                config.CFL_NUMBER = float(config.CFL_NUMBER)/2;
+                config.LIMITER_ITER = int(config.LIMITER_ITER)*2;
+                config.EXT_ITER = int(config.EXT_ITER)*3;
 
         # Rerun SU2
         info = SU2.run.CFD(config);
