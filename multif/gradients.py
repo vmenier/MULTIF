@@ -21,14 +21,12 @@ def nozzleAnalysis(homedir, index, nozzle, output='verbose'):
         sys.stdout.write('Directory %s created and entered\n' % dirname);    
     
     # Run model analysis    
-    if nozzle.method == 'NONIDEALNOZZLE':
+    if nozzle.dim == '1D':
         LOWF.Run(nozzle,output=output,writeToFile=1);
-    elif nozzle.method == 'EULER' or nozzle.method == 'RANS':
+    elif nozzle.dim == '2D':
         MEDIUMF.Run(nozzle,output=output,writeToFile=1);
-    else:
-        sys.stderr.write('  ## ERROR: Only NONIDEALNOZZLE, EULER, or RANS are accepted'
-          ' as nozzle.methods\n\n');
-        sys.exit(1);
+    else: # nozzle.dim == '3D'
+        HIGHF.Run(nozzle, output=output, writeToFile=1);
                     
     if output == 'verbose':
         sys.stdout.write('Nozzle analysis completed in directory %s\n' % dirname);    
@@ -41,7 +39,9 @@ def nozzleAnalysis(homedir, index, nozzle, output='verbose'):
 
 
 # Calculate and return forward finite difference gradients of nozzle QOI
-def calcGradientsFD(nozzle,fd_step,output='verbose'):
+# If rerun_center = 1 then the center point used for finite difference will
+# be recalculated along with all the points corresponding to f.d. steps
+def calcGradientsFD(nozzle,fd_step,rerun_center=0,output='verbose'):
     
     # Check that there are enough finite difference steps if a different step
     # size is provided for each variable
@@ -78,12 +78,24 @@ def calcGradientsFD(nozzle,fd_step,output='verbose'):
         for j in range(len(nozzleEval[i].outputCode)):
             nozzleEval[i].outputCode[j] = 1; # get value only
         nozzleEval[i].partitions = 1; # run evaluation on 1 core
+
+    # Set up additional nozzle evaluation for centerpoint if desired
+    if( rerun_center ):
+        nozzleEval.append(copy.deepcopy(nozzle));
+        # Design variables and wall do not change
+        nozzleEval[-1].output_gradients = 0; # do not request gradients
+        for k in nozzleEval[-1].gradients:
+            nozzleEval[-1].gradients[k] = None; # do not request gradients
+        for j in range(len(nozzleEval[-1].outputCode)):
+            nozzleEval[-1].outputCode[j] = 1; # get value only
+        nozzleEval[-1].partitions = 1; # run evaluation on 1 core
                     
     # Run gradient evaluations in serial
     if nozzle.partitions <= 1:   
     
         # For each design variable
-        for i in range(len(derivativesDV)):
+        saveResponse = [];
+        for i in range(len(nozzleEval)):
 
             # Create and enter new directory
             dirname = 'EVAL_' + str(i);
@@ -100,25 +112,35 @@ def calcGradientsFD(nozzle,fd_step,output='verbose'):
             elif nozzle.dim == '2D':
                 MEDIUMF.Run(nozzleEval[i], output=output, writeToFile=1);
             else: # nozzle.dim == '3D'
-                HIGHF.Run(nozzle, output=output, writeToFile=1);
+                HIGHF.Run(nozzleEval[i], output=output, writeToFile=1);
 
             if output == 'verbose':
                 sys.stdout.write('Nozzle analysis completed in directory %s\n' % dirname);    
             
             # Exit directory
-            os.chdir('..');
-            
+            os.chdir('..');  
 
-            # Calculate gradients here
-            for k in nozzle.gradients:
-                # Only calculate gradients that are requested, and avoid calculating 
-                # mass gradient since it has already been calculated
-                if nozzle.gradients[k] is not None and k not in ['MASS'] and \
-                  k not in ['MASS_WALL_ONLY']:
+            # Save reponses for assembly of gradients afterwards
+            saveResponse.append(nozzleEval[i].responses)         
+
+        # Calculate gradients here
+        for k in nozzle.gradients:
+
+            # Only calculate gradients that are requested, and avoid calculating 
+            # mass gradient since it has already been calculated
+            if nozzle.gradients[k] is not None and k not in ['MASS'] and \
+                k not in ['MASS_WALL_ONLY']:
+
+                if rerun_center == 0:
+                    nozzleResponse = nozzle.responses[k];
+                else:
+                    nozzleResponse = nozzleEval[-1].responses[k];
+
+                for i in range(len(derivativesDV)):
                     if isinstance(fd_step,list):
-                        localGrad = (nozzleEval[i].responses[k] - nozzle.responses[k])/fd_step[derivativesDV[i]];
+                        localGrad = (nozzleEval[i].responses[k] - nozzleResponse)/fd_step[derivativesDV[i]];
                     else:
-                        localGrad = (nozzleEval[i].responses[k] - nozzle.responses[k])/fd_step;
+                        localGrad = (nozzleEval[i].responses[k] - nozzleResponse)/fd_step;
                     nozzle.gradients[k].append(localGrad);
     
     # Run gradient evaluations in parallel            
@@ -136,13 +158,11 @@ def calcGradientsFD(nozzle,fd_step,output='verbose'):
         # Setup list to hold results for nozzle evaluation
         mEval = [];
         rEval = [];
-        for i in range(len(derivativesDV)):
+        for i in range(len(nozzleEval)):
             mEval.append(-1);
             rEval.append(-1);
-            
-        nozzleResults = []
         
-        for i in range(len(derivativesDV)):
+        for i in range(len(nozzleEval)):
             if output == 'verbose':
                 sys.stdout.write('Adding analysis %i to the pool\n' % i);
             mEval[i] = pool.apply_async(nozzleAnalysis,(homedir,i,nozzleEval[i],output))
@@ -158,15 +178,22 @@ def calcGradientsFD(nozzle,fd_step,output='verbose'):
             
         # Calculate gradients here
         for i in range(len(derivativesDV)):
+
             for k in nozzle.gradients:
+
+                if rerun_center == 0:
+                    nozzleResponse = nozzle.responses[k];
+                else:
+                    nozzleResponse = rEval[-1].responses[k];
+
                 # Only calculate gradients that are requested, and avoid calculating 
                 # mass gradient since it has already been calculated
                 if nozzle.gradients[k] is not None and k not in ['MASS'] and  \
                   k not in ['MASS_WALL_ONLY']:
                     if isinstance(fd_step,list):
-                        localGrad = (rEval[i].responses[k] - nozzle.responses[k])/fd_step[derivativesDV[i]];
+                        localGrad = (rEval[i].responses[k] - nozzleResponse)/fd_step[derivativesDV[i]];
                     else:
-                        localGrad = (rEval[i].responses[k] - nozzle.responses[k])/fd_step;                    
+                        localGrad = (rEval[i].responses[k] - nozzleResponse)/fd_step;                    
                     nozzle.gradients[k].append(localGrad);
     	
     return nozzle.gradients

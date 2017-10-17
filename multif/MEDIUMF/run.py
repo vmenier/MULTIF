@@ -128,7 +128,10 @@ def Run( nozzle, **kwargs ):
 #                sys.stdout.write("Done mass gradients.\n");				
 
                 if gradCalc == 0: # i.e. failed adjoint calculation, use finite differences
-                    multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,output);
+                    # Rerun center point with same number of cores as differences.
+                    # This is to avoid a bug where SU2 converges differently when
+                    # run on different number of processors.
+                    multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,rerun_center=1,output=output);
                 else:
                     # Check for other required gradients
                     otherRequiredGradients = 0;
@@ -146,12 +149,17 @@ def Run( nozzle, **kwargs ):
                     if otherRequiredGradients:
                         saveThrustGradients = nozzle.gradients['THRUST'];
                         nozzle.gradients['THRUST'] = None;
-                        multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,output);
+                        # Rerun center point with same number of cores as differences.
+                        # This is to avoid a bug where SU2 converges differently when
+                        # run on different number of processors.
+                        multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,rerun_center=1,output=output);
                         nozzle.gradients['THRUST'] = saveThrustGradients;
                         
             elif ( nozzle.gradientsMethod == 'FINITE_DIFF' ):
-            
-                multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,output);  
+                # Rerun center point with same number of cores as differences.
+                # This is to avoid a bug where SU2 converges differently when
+                # run on different number of processors.            
+                multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,rerun_center=1,output=output);  
                          
             else:
 			    sys.stderr.write('  ## ERROR : Unknown gradients computation '
