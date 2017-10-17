@@ -9,13 +9,6 @@
 
 import numpy as np
 
-# The imports below require access to the following files from
-# MULTIF/example/domains:
-#    domains.py
-#    linearConstraints.py
-#    multifDomains2D.py
-#    util.py
-
 from linearConstraints import bspline
 from linearConstraints import cleanupConstraintMatrix
 
