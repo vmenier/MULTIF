@@ -24,8 +24,9 @@ setup(ext_modules=[ \
        
        Extension('_nozzle_module',
        sources = ['./meshutils/nozzle.cpp'],
-       extra_compile_args=["-Wno-maybe-uninitialized","-std=c++11"],
-       libraries=['Gmsh']),
+       extra_compile_args=["-Wno-maybe-uninitialized","-std=c++11","-Wno-sign-compare","-Wno-unused-but-set-variable","-DHAVE_NO_OCC_CONFIG_H"],
+       libraries=['Gmsh','TKOffset', 'TKTopAlgo', 'TKGeomAlgo', 'TKBRep', 'TKGeomBase', 'TKG3d', 'TKG2d',
+                  'TKMath', 'TKernel', 'TKBool', 'TKFeat', 'TKShHealing']),
        
        Extension("_mshint_module",
        sources=["./mshint/boule.c"      , \
