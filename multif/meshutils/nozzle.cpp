@@ -847,7 +847,7 @@ int writeAEROS(GModel *g,
     return 0;
   }
 
-  fprintf(fp11, "MASS\n");
+  fprintf(fp11, "MASS \"MASS.txt\"\n");
   fprintf(fp11, "*\n");
   fprintf(fp11, "INCLUDE \"%s\"\n*\n", "GEOMETRY.txt");
   fprintf(fp11, "INCLUDE \"%s\"\n*\n", "TOPOLOGY.txt");
@@ -1069,7 +1069,7 @@ int writeAEROH(GModel *g,
     return 0;
   }
 
-  fprintf(fp9, "MASS\n");
+  fprintf(fp9, "MASS \"MASS.txt.thermal\"\n");
   fprintf(fp9, "*\n");
   fprintf(fp9, "INCLUDE \"%s\"\n*\n", "GEOMETRY.txt.thermal");
   fprintf(fp9, "INCLUDE \"%s\"\n*\n", "TOPOLOGY.txt.thermal.mass");
@@ -1264,7 +1264,7 @@ int writeAEROS2(GModel *g,
     return 0;
   }
 
-  fprintf(fp5, "MASS\n");
+  fprintf(fp5, "MASS \"MASS.txt.cmc\"\n");
   fprintf(fp5, "*\n");
   fprintf(fp5, "INCLUDE \"%s\"\n*\n", "GEOMETRY.txt.cmc");
   fprintf(fp5, "INCLUDE \"%s\"\n*\n", "TOPOLOGY.txt.cmc");
