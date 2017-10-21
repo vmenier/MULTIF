@@ -5,7 +5,7 @@
 #
 # >> dakota -i climb-optim.in -o climb-optim.out
 #
-# Rick Fenrich 10/4/17
+# Rick Fenrich 10/18/17
 
 import numpy as np
 
@@ -22,7 +22,7 @@ ncores = 8 # number of cores available
 designVar = dict()
 
 # Set up initial values of design variables
-designVar['initial'] = np.array([0.542184, 0.861924, 1.072944, 1.211161, 1.311161, 1.408983, 1.528983, 1.723828, 2.086573, 0.417017, 0.365097, 0.301792, 0.267426, 0.277426, 0.332508, 0.385631])
+designVar['initial'] = np.array([0.542184, 0.861924, 1.072944, 1.221161, 1.311161, 1.398983, 1.528983, 1.723828, 2.086573, 0.417017, 0.365097, 0.301792, 0.267426, 0.277426, 0.332508, 0.385631])
 
 # Set up lower and upper bounds of design variables
 lbPerc = -np.inf
@@ -84,7 +84,7 @@ f = open(filein,"w")
 
 # write header information
 f.write("# Deterministic optimization of reduced aero only design problem\n")
-f.write("#     Minimize Mass of Wall only s.t. Thrust < 21500 N\n")
+f.write("#     Minimize Mass of Wall only s.t. Thrust > 21500 N\n")
 f.write("# 16 design variables related to shape of inner wall\n")
 f.write("# Usage:\n")
 f.write("# dakota -i {} -o {}\n".format(filein,fileout))
@@ -109,6 +109,7 @@ f.write("        max_function_evaluations = 100\n")
 f.write("        function_precision = 1.e-6\n")
 f.write("        convergence_tolerance = 1.e-3\n")
 f.write("        constraint_tolerance = 1.e-3\n")
+f.write("        scaling\n")
 #f.write("        linesearch_tolerance = 0.9\n")
 f.write("\n")
 f.flush()
@@ -131,7 +132,7 @@ f.write("        initial_point    {}\n".format(np.array_str(designVar['initial']
 f.write("        lower_bounds     {}\n".format(np.array_str(designVar['lower_bound'],max_line_width=maxLineWidth,precision=4)[1:-1]))
 f.write("        upper_bounds     {}\n".format(np.array_str(designVar['upper_bound'],max_line_width=maxLineWidth,precision=4)[1:-1]))
 f.write("        descriptors      {}\n".format("'" + "' '".join(map(str,designVar['description'])) + "'"))
-f.write("        scale_types = 'auto'\n")
+#f.write("        scale_types = 'auto'\n")
 f.write("    linear_inequality_constraint_matrix =\n")
 for i in range(0,ncon):
   f.write("        {}\n".format(np.array_str(A[i,:],max_line_width=maxLineWidth)[1:-1]))
@@ -146,12 +147,12 @@ f.write("responses\n")
 f.write("    id_responses = 'OPTIM_R'\n")
 f.write("    objective_functions = 1\n")
 f.write("    primary_scale_types = 'value'\n") # scale objective function (mass) by 100
-f.write("    primary_scales = 0.01\n")
+f.write("    primary_scales = 100\n") # approximate size of objective function
 f.write("    nonlinear_inequality_constraints = {}\n".format(len(conNLI['lower_bound'])))
 f.write("        lower_bounds = {}\n".format(np.array_str(conNLI['lower_bound'],max_line_width=maxLineWidth,precision=4)[1:-1]))
 f.write("        upper_bounds = {}\n".format(np.array_str(conNLI['upper_bound'],max_line_width=maxLineWidth,precision=4)[1:-1]))
 f.write("        scale_types = 'value'\n")
-f.write("        scales = 2.15e-5\n")
+f.write("        scales = 21500\n") # approximate size of constraints
 f.write("    analytic_gradients\n") # provided by user
 f.write("    no_hessians\n")
 f.write("\n")
@@ -160,7 +161,7 @@ f.flush()
 # write interface
 f.write("interface\n")
 f.write("    id_interface = 'OPTIM_I'\n")
-f.write("    analysis_driver = 'pythona runModel.py -l 0 -n %i -f det_optim_aero.cfg'\n" % ncores)
+f.write("    analysis_driver = 'python runModel.py -l 1 -n %i -f det_optim_aero.cfg'\n" % ncores)
 #f.write("        fork asynchronous evaluation_concurrency = 4\n")
 f.write("        fork\n")
 f.write("        work_directory named 'tmp'\n")

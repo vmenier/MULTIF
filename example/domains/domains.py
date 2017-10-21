@@ -282,7 +282,7 @@ class ComboDomain(Domain):
 
 class BoxDomain(Domain):
 	
-	def __init__(self, lb, ub, center = None):
+	def __init__(self, lb, ub, center = None, tag = None):
 		"""Uniform Sampling on a Box
 		repeat : if scalar domain, 
 		"""
@@ -297,6 +297,7 @@ class BoxDomain(Domain):
 		self.center = center
 		self.A = np.zeros((0,self.__len__()))
 		self.b = np.zeros((0,))
+		self.tag = tag
 
 		# Normalized doamin
 		self.lb_norm = -np.ones(lb.shape)
@@ -403,7 +404,7 @@ class UniformDomain(BoxDomain):
 	pass
 
 class NormalDomain(Domain):
-	def __init__(self, mean, cov = None, clip = None):
+	def __init__(self, mean, cov = None, clip = None, tag = None):
 		"""
 
 		clip: float or None
@@ -421,6 +422,7 @@ class NormalDomain(Domain):
 		self.ew, self.ev = np.linalg.eigh(cov)
 		# np.dot(dom.ev, np.dot(np.diag(dom.ew), dom.ev.T)) = cov
 		self.clip = clip
+		self.tag = tag
 		assert np.all(self.ew > 0), 'covariance matrix must be positive definite'
 
 	def isinside(self, x):
@@ -548,7 +550,7 @@ class NormalDomain(Domain):
 		return NormalDomain(np.zeros(self.mean.shape), clip = self.clip) 
 
 class LogNormalDomain(Domain):
-	def __init__(self, mean, cov = None, scaling = 1., clip = None):
+	def __init__(self, mean, cov = None, scaling = 1., clip = None, tag = None):
 		if isinstance(mean, float) or isinstance(mean, int):
 			mean = [mean]
 		if isinstance(cov, float) or isinstance(mean, int):
@@ -565,6 +567,7 @@ class LogNormalDomain(Domain):
 		self.ew, self.ev = np.linalg.eigh(cov)
 		self.scaling = scaling
 		self.clip = clip
+		self.tag = tag
 		assert np.all(self.ew > 0), 'covariance matrix must be positive definite'
 
 
