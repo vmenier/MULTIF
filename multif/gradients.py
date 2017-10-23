@@ -4,6 +4,7 @@ import multiprocessing
 
 import LOWF
 import MEDIUMF
+import HIGHF
 
 # Wrapping function for independent nozzle analysis in separate directory
 def nozzleAnalysis(homedir, index, nozzle, output='verbose'):
@@ -19,6 +20,13 @@ def nozzleAnalysis(homedir, index, nozzle, output='verbose'):
     
     if output == 'verbose':
         sys.stdout.write('Directory %s created and entered\n' % dirname);    
+
+    # Write input file corresponding to this analysis for debugging
+    if nozzle.inputDVformat == 'DAKOTA':
+        sys.stdout.write('Note: PLAIN input format is used for writing of design variable input file\n');
+        np.savetxt(nozzle.inputDVfilename,nozzle.dvList,fmt='%0.16f');
+    else: # should be 'PLAIN'
+        np.savetxt(nozzle.inputDVfilename,nozzle.dvList,fmt='%0.16f');
     
     # Run model analysis    
     if nozzle.dim == '1D':
@@ -106,6 +114,13 @@ def calcGradientsFD(nozzle,fd_step,rerun_center=0,output='verbose'):
             if output == 'verbose':
                 sys.stdout.write('Directory %s created and entered\n' % dirname);    
             
+            # Write input file corresponding to this analysis for debugging
+            if nozzleEval[i].inputDVformat == 'DAKOTA':
+                sys.stdout.write('Note: PLAIN input format is used for writing of design variable input file\n');
+                np.savetxt(nozzleEval[i].inputDVfilename,nozzleEval[i].dvList,fmt='%0.16f');
+            else: # should be 'PLAIN'
+                np.savetxt(nozzleEval[i].inputDVfilename,nozzleEval[i].dvList,fmt='%0.16f');
+
             # Run model analysis
             if nozzle.dim == '1D':
                 LOWF.Run(nozzleEval[i], output=output, writeToFile=1);

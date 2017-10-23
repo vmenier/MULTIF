@@ -3428,10 +3428,8 @@ class Nozzle:
         for qoi in outputTags:
             if( qoi + '_LOCATIONS' in config ):
                 
-                if nozzle.param == '3D':
-                    sys.stdout.write('\nWARNING: Parameterization is 3D but ' \
-                      '%s is specified as an output and is processed with ' \
-                      '2D information.\n\n' % qoi);
+                if nozzle.dim == '3D':
+                    sys.stderr.write('\nWARNING: %s is specified as an output will not be processed for high-fidelity.\n' % qoi);
 
                 loc = config[qoi+'_LOCATIONS'].strip('()')
                 loc = loc.split(';')

@@ -160,7 +160,7 @@ if( test['all'] or test['medfi'] ):
     medfi_3dparam.diff_tol = 1e-6;
     test_list.append(medfi_3dparam);
 
-# # ----------------------- 3D param, 2D dim, med-fi ----------------------------
+# ----------------------- 3D param, 2D dim, med-fi ----------------------------
 # if( test['all'] or test['medfi'] ):
 
 #     medfi_3dparam_rans = TestCase('medfi_3dparam_rans');
@@ -205,33 +205,33 @@ if( test['all'] or test['medfi'] or test['fd'] ):
 # Perform high-fidelity (fully 3D) analyses
 # =========================================================================== #
 
-# # ----------------------- 3D param, 3D dim, Euler -----------------------------
-# if( test['all'] or test['hifi'] or test['fea'] ):
+# ----------------------- 3D param, 3D dim, Euler ---------------------------
+if( test['all'] or test['hifi'] or test['fea'] ):
 
-#     hifi_euler = TestCase('hifi_euler');
-#     hifi_euler.description = 'General, 3D, parallel, hi-fi (Euler) analysis';
-#     hifi_euler.cfg_dir = 'example';
-#     hifi_euler.cfg_file = 'general-3d.cfg';
-#     hifi_euler.input_file = 'general-3d.in';
-#     hifi_euler.compare_file = 'example/regression/hifi_euler.out';
-#     hifi_euler.fidelity = 3;
-#     hifi_euler.nproc = nCores;
-#     hifi_euler.diff_tol = 1e-6;
-#     test_list.append(hifi_euler);
+    hifi_euler = TestCase('hifi_euler');
+    hifi_euler.description = 'General, 3D, parallel, hi-fi (Euler) analysis';
+    hifi_euler.cfg_dir = 'example';
+    hifi_euler.cfg_file = 'general-3d.cfg';
+    hifi_euler.input_file = 'general-3d.in';
+    hifi_euler.compare_file = 'example/regression/hifi_euler.out';
+    hifi_euler.fidelity = 3;
+    hifi_euler.nproc = nCores;
+    hifi_euler.diff_tol = 1e-6;
+    test_list.append(hifi_euler);
 
-# # ----------------------- 3D param, 3D dim, Euler -----------------------------
-# if( test['all'] or test['hifi'] ):
+# ----------------------- 3D param, 3D dim, RANS ----------------------------
+if( test['all'] or test['hifi'] ):
 
-#     hifi_rans = TestCase('hifi_rans');
-#     hifi_rans.description = 'General, 3D, parallel, hi-fi (RANS) analysis';
-#     hifi_rans.cfg_dir = 'example';
-#     hifi_rans.cfg_file = 'general-3d.cfg';
-#     hifi_rans.input_file = 'general-3d.in';
-#     hifi_rans.compare_file = 'example/regression/hifi_rans.out';
-#     hifi_rans.fidelity = 5;
-#     hifi_rans.nproc = nCores;
-#     hifi_rans.diff_tol = 1e-6;
-#     test_list.append(hifi_rans);
+    hifi_rans = TestCase('hifi_rans');
+    hifi_rans.description = 'General, 3D, parallel, hi-fi (RANS) analysis';
+    hifi_rans.cfg_dir = 'example';
+    hifi_rans.cfg_file = 'general-3d.cfg';
+    hifi_rans.input_file = 'general-3d.in';
+    hifi_rans.compare_file = 'example/regression/hifi_rans.out';
+    hifi_rans.fidelity = 5;
+    hifi_rans.nproc = nCores;
+    hifi_rans.diff_tol = 1e-6;
+    test_list.append(hifi_rans);
 
 # Remaining tests get placed below as they come online
 

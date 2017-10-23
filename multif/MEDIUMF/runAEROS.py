@@ -11,7 +11,37 @@ from .. import _nozzle_module
 from AEROSpostprocessing import *
 from SU2postprocessing import ExtractSolutionAtWall
 
-def runAEROS ( nozzle, output='verbose' ):      
+def getMass ( nozzle, output='verbose' ):
+
+    mass = [0, 0, 0]; # mass of thermal layer
+                      # mass of load layers
+                      # mass of stringers and baffles
+
+    # Check that runAEROS has previously been called to generate the mesh and
+    # AeroS input files. If not, call runAEROS to generate mesh etc.
+    if not os.path.exists('nozzle.aeros.mass'):
+        runAEROS(nozzle, output=output, run_analysis=0);
+
+    # Calculate mass of thermal layer
+    os.system("aeros nozzle.aeros.cmc.mass"); # execute the structural analysis
+    m1 = float(np.loadtxt("MASS.txt.cmc"));
+
+    # Calculate mass of thermal model
+    os.system("aeros nozzle.aeroh.mass"); 
+    m2 = float(np.loadtxt("MASS.txt.thermal"));
+
+    # Calculate mass of load layers and stringers and baffles
+    os.system("aeros nozzle.aeros.mass");
+    m3 = float(np.loadtxt("MASS.txt"));
+
+    mass[0] = m1;
+    mass[1] = m2 - m1;
+    mass[2] = m3 - m2 + m1;
+    print mass
+    return mass
+
+
+def runAEROS ( nozzle, output='verbose', run_analysis=1 ):      
 
     # --- Set important flags
     
@@ -480,7 +510,7 @@ def runAEROS ( nozzle, output='verbose' ):
     
     _nozzle_module.generate();       # generate the meshes for thermal and structural analyses
 
-    if nozzle.dim == '3D':
+    if nozzle.dim == '3D' and run_analysis == 1:
         #--- Get solution from fluid calculation
 
         print "Interface AEROS";
@@ -532,10 +562,16 @@ def runAEROS ( nozzle, output='verbose' ):
         f1.close();
         os.rename("PRESSURES.txt.3d", "PRESSURES.txt");
 
-    if thermalFlag > 0:
-      os.system("aeros nozzle.aeroh"); # execute the thermal analysis
-      _nozzle_module.convert();        # convert temperature output from thermal analysis to input for structural analysis
-      os.system("aeros nozzle.aeros.cmc"); # execute the structural analysis of the cmc layer
-    os.system("aeros nozzle.aeros"); # execute the structural analysis
+    # --- Execute analyses
+    if run_analysis == 1:
+        if thermalFlag > 0:
+            # Thermal analysis
+            os.system("aeros nozzle.aeroh");
+            # Convert temp. output from thermal analysis to input for structural analysis
+            _nozzle_module.convert();
+            # Structural analysis of CMC layer
+            os.system("aeros nozzle.aeros.cmc");
+        # Structural analysis of load layers + baffles and stringers
+        os.system("aeros nozzle.aeros");
 
     return 0;

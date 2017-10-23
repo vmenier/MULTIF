@@ -57,7 +57,7 @@ def PostProcess ( nozzle, output ):
 
 # XXX        func = interp1d(SolExtract_w[:,0],  Pres, kind='linear');        
 # XXX        nozzle.responses['WALL_PRESSURE'] = np.squeeze(func(nozzle.outputLocations['WALL_PRESSURE']));
-        nozzle.responses['WALL_PRESSURE'] = 0. # temporary
+        nozzle.responses['WALL_PRESSURE'] = [-1]*len(nozzle.outputLocations['WALL_PRESSURE']) # temporary
   
         # --- CHECK INTERPOLATION :
         #import matplotlib.pyplot as plt
@@ -73,20 +73,26 @@ def PostProcess ( nozzle, output ):
         y = nozzle.outputLocations['PRESSURE'][:,1];
         
 # XXX        nozzle.responses['PRESSURE'] = np.squeeze(ExtractSolutionAtXY (x, y, ["Pressure"]));
-        nozzle.responses['PRESSURE'] = 0. # temporary
+        nozzle.responses['PRESSURE'] = [-1]*len(x) # temporary
         
     if 'VELOCITY' in nozzle.responses:
 
         x = nozzle.outputLocations['VELOCITY'][:,0];
         y = nozzle.outputLocations['VELOCITY'][:,1];
 # XXX        cons = ExtractSolutionAtXY (x, y, ["Conservative_1","Conservative_2","Conservative_3"]);
-        cons = [[1.,0.,0.]] # temporary
+        # cons = [[1.,0.,0.]] # temporary
                     
         nozzle.responses['VELOCITY'] = [[],[],[]]
-        for i in range(len(cons)):
-            nozzle.responses['VELOCITY'][0].append(cons[i][1]/cons[i][0]); 
-            nozzle.responses['VELOCITY'][1].append(cons[i][2]/cons[i][0]); 
-            nozzle.responses['VELOCITY'][2].append(0.0); 
+        # for i in range(len(cons)):
+        #     nozzle.responses['VELOCITY'][0].append(cons[i][1]/cons[i][0]); 
+        #     nozzle.responses['VELOCITY'][1].append(cons[i][2]/cons[i][0]); 
+        #     nozzle.responses['VELOCITY'][2].append(0.0); 
+
+        # Return -1 showing lack of data
+        for i in range(len(x)):
+            nozzle.responses['VELOCITY'][0].append(-1.);
+            nozzle.responses['VELOCITY'][1].append(-1.);
+            nozzle.responses['VELOCITY'][2].append(-1.);
 
     if output == 'verbose':
         sys.stdout.write('SU2 responses obtained\n');
