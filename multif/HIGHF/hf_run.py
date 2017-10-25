@@ -151,11 +151,11 @@ def Run( nozzle, **kwargs ):
 
     # Obtain mass (volume is currently not accepted as a nozzle response)
     if 'MASS' in nozzle.responses or 'MASS_WALL_ONLY' in nozzle.responses:
-        mass = getMass(nozzle, output)
+        total_mass, wall_mass = getMass(nozzle, output)
         if 'MASS' in nozzle.responses:
-            nozzle.responses['MASS'] = np.sum(mass)
+            nozzle.responses['MASS'] = total_mass;
         if 'MASS_WALL_ONLY' in nozzle.responses:
-            nozzle.responses['MASS_WALL_ONLY'] = np.sum(mass[0:2])
+            nozzle.responses['MASS_WALL_ONLY'] = wall_mass;
 
     # # Calculate mass gradients if necessary
     # if 'MASS' in nozzle.gradients and nozzle.gradients['MASS'] is not None:

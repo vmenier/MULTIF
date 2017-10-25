@@ -13,10 +13,6 @@ from SU2postprocessing import ExtractSolutionAtWall
 
 def getMass ( nozzle, output='verbose' ):
 
-    mass = [0, 0, 0]; # mass of thermal layer
-                      # mass of load layers
-                      # mass of stringers and baffles
-
     # Check that runAEROS has previously been called to generate the mesh and
     # AeroS input files. If not, call runAEROS to generate mesh etc.
     if not os.path.exists('nozzle.aeros.mass'):
@@ -26,7 +22,8 @@ def getMass ( nozzle, output='verbose' ):
     os.system("aeros nozzle.aeros.cmc.mass"); # execute the structural analysis
     m1 = float(np.loadtxt("MASS.txt.cmc"));
 
-    # Calculate mass of thermal model
+    # Calculate mass of thermal model (thermal layers + approximate load layers)
+    # Currently inaccurate due to averaging of load layers.
     os.system("aeros nozzle.aeroh.mass"); 
     m2 = float(np.loadtxt("MASS.txt.thermal"));
 
@@ -34,11 +31,10 @@ def getMass ( nozzle, output='verbose' ):
     os.system("aeros nozzle.aeros.mass");
     m3 = float(np.loadtxt("MASS.txt"));
 
-    mass[0] = m1;
-    mass[1] = m2 - m1;
-    mass[2] = m3 - m2 + m1;
-    print mass
-    return mass
+    total_mass = m1 + m3;
+    wall_mass = -1; # cannot be accurately calculated as of yet
+
+    return total_mass, wall_mass
 
 
 def runAEROS ( nozzle, output='verbose', run_analysis=1 ):      
