@@ -19,20 +19,21 @@ def getMass ( nozzle, output='verbose' ):
         runAEROS(nozzle, output=output, run_analysis=0);
 
     # Calculate mass of thermal layer
-    os.system("aeros nozzle.aeros.cmc.mass"); # execute the structural analysis
-    m1 = float(np.loadtxt("MASS.txt.cmc"));
+    os.system("aeros nozzle.aeros.cmc.mass");
+    m1 = float(np.loadtxt("MASS.txt.cmc")); # mass of CMC structural model
 
     # Calculate mass of thermal model (thermal layers + approximate load layers)
-    # Currently inaccurate due to averaging of load layers.
-    os.system("aeros nozzle.aeroh.mass"); 
-    m2 = float(np.loadtxt("MASS.txt.thermal"));
+    # Inaccurate since load layers are averaged.
+    #os.system("aeros nozzle.aeroh.mass"); 
+    #m2 = float(np.loadtxt("MASS.txt.thermal")); # mass of thermal model
 
     # Calculate mass of load layers and stringers and baffles
     os.system("aeros nozzle.aeros.mass");
-    m3 = float(np.loadtxt("MASS.txt"));
+    m3a = float(np.loadtxt("MASS.txt")); # mass of structural model
+    m3b = float(np.loadtxt("MASS.txt.2")); # mass of load layer in structural model
 
-    total_mass = m1 + m3;
-    wall_mass = -1; # cannot be accurately calculated as of yet
+    total_mass = m1 + m3a;
+    wall_mass = m1 + m3b; # cannot be accurately calculated as of yet
 
     return total_mass, wall_mass
 
