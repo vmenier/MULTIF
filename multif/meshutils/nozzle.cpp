@@ -849,12 +849,16 @@ int writeAEROS(GModel *g,
 
   fprintf(fp11, "MASS \"MASS.txt\"\n");
   fprintf(fp11, "*\n");
+  fprintf(fp11, "GROUPS\n");
+  fprintf(fp11, "N surface 2 2\n");
+  fprintf(fp11, "*\n");
   fprintf(fp11, "INCLUDE \"%s\"\n*\n", "GEOMETRY.txt");
   fprintf(fp11, "INCLUDE \"%s\"\n*\n", "TOPOLOGY.txt");
   fprintf(fp11, "INCLUDE \"%s\"\n*\n", "ATTRIBUTES.txt");
   fprintf(fp11, "INCLUDE \"%s\"\n*\n", "MATERIAL.txt");
   fprintf(fp11, "INCLUDE \"%s\"\n*\n", "COMPOSITE.txt");
   fprintf(fp11, "INCLUDE \"%s\"\n*\n", "CFRAMES.txt");
+  fprintf(fp11, "INCLUDE \"%s\"\n*\n", "SURFACETOPO.txt");
   fprintf(fp11, "END\n");
 
   fclose(fp11);
