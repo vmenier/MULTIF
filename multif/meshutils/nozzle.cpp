@@ -70,20 +70,18 @@ MOD_INIT(_nozzle_module)
 #include "Context.h"
 #include "Geo/GModelIO_OCC.h"
 #include <BRep_Builder.hxx>
+#include <BRepBuilderAPI_MakeVertex.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
 #include <BRepBuilderAPI_MakeSolid.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
 #include <BRepBuilderAPI_Sewing.hxx>
-#include <BRepFeat_SplitShape.hxx>
 #include <BRepOffsetAPI_ThruSections.hxx>
 #include <BRepTools.hxx>
 #include <Geom_Plane.hxx>
-#include <GeomAPI_IntSS.hxx>
 #include <Geom2d_BSplineCurve.hxx>
 #include <Geom2dAPI_PointsToBSpline.hxx>
 #include <GeomAPI.hxx>
-#include <GeomAPI_IntSS.hxx>
 #include <GeomLProp_SLProps.hxx>
 #include <gp_Pln.hxx>
 #include <gp_Pnt.hxx>
@@ -900,9 +898,7 @@ int writeAEROH(GModel *g,
 
   // elements (all hexas and exterior boundary quads)
   FILE *fp2 = Fopen("TOPOLOGY.txt.thermal", "w");
-  FILE *fp5 = Fopen("TOPOLOGY.txt.thermal.mass", "w");
   fprintf(fp2, "TOPOLOGY\n");
-  fprintf(fp5, "TOPOLOGY\n");
   for(unsigned int i = 0; i < entities.size(); i++) {
     bool b = (std::find(exteriorBoundaryTags.begin(), exteriorBoundaryTags.end(),
               std::make_pair(entities[i]->geomType(),entities[i]->tag())) != exteriorBoundaryTags.end());
@@ -910,20 +906,16 @@ int writeAEROH(GModel *g,
       const char *str = entities[i]->getMeshElement(j)->getStringForBDF();
       if(str && std::strcmp(str,"CHEXA") == 0) { 
         writeElem(entities[i]->getMeshElement(j), fp2, 51);
-        writeElem(entities[i]->getMeshElement(j), fp5, 17);
       }
       else if(str && b && std::strcmp(str,"CQUAD4") == 0)
         writeElem(entities[i]->getMeshElement(j), fp2, 48); 
     }
   }
   fclose(fp2);
-  fclose(fp5);
 
   // attributes
   FILE *fp3 = Fopen("ATTRIBUTES.txt.thermal", "w");
-  FILE *fp8 = Fopen("ATTRIBUTES.txt.thermal.mass", "w");
   fprintf(fp3, "ATTRIBUTES\n");
-  fprintf(fp8, "ATTRIBUTES\n");
   for(unsigned int i = 0; i < entities.size(); i++) {
     bool b = (std::find(exteriorBoundaryTags.begin(), exteriorBoundaryTags.end(),
               std::make_pair(entities[i]->geomType(),entities[i]->tag())) != exteriorBoundaryTags.end());
@@ -931,8 +923,6 @@ int writeAEROH(GModel *g,
       const char *str = entities[i]->getMeshElement(j)->getStringForBDF();
       if(str && (std::strcmp(str,"CHEXA") == 0)) {
         writeAttr(entities[i]->getMeshElement(j), fp3, scalingFactor, entities[i]->physicals[0], points, vertices,
-                  segments);
-        writeAttr(entities[i]->getMeshElement(j), fp8, scalingFactor, entities[i]->physicals[0], points, vertices,
                   segments);
       }
       else if(str && b && std::strcmp(str,"CQUAD4") == 0) {
@@ -942,7 +932,6 @@ int writeAEROH(GModel *g,
     }
   }
   fclose(fp3);
-  fclose(fp8);
 
   // material properties
   std::ofstream fout("MATERIAL.txt.thermal");
@@ -1065,23 +1054,6 @@ int writeAEROH(GModel *g,
   fprintf(fp, "END\n");
 
   fclose(fp);
-
-  // file for computing the mass
-  FILE *fp9 = Fopen((name+".mass").c_str(), "w");
-  if(!fp9){
-    Msg::Error("Unable to open file '%s'", (name+".mass").c_str());
-    return 0;
-  }
-
-  fprintf(fp9, "MASS \"MASS.txt.thermal\"\n");
-  fprintf(fp9, "*\n");
-  fprintf(fp9, "INCLUDE \"%s\"\n*\n", "GEOMETRY.txt.thermal");
-  fprintf(fp9, "INCLUDE \"%s\"\n*\n", "TOPOLOGY.txt.thermal.mass");
-  fprintf(fp9, "INCLUDE \"%s\"\n*\n", "ATTRIBUTES.txt.thermal.mass");
-  fprintf(fp9, "INCLUDE \"%s\"\n*\n", "MATERIAL.txt.thermal");
-  fprintf(fp9, "END\n");
-
-  fclose(fp9);
 
   return 1;
 }
@@ -1306,7 +1278,7 @@ void generateNozzle(std::vector<PointData> &points,
   // parameters used by Geom2dAPI_PointsToBSpline
   const int DegMin = 3;                          // default is 3
   const int DegMax = 8;                          // default is 8
-  enum Approx_ParametrizationType ParType = Approx_IsoParametric; // default is Approx_ChordLength
+  enum Approx_ParametrizationType ParType = Approx_ChordLength; // default is Approx_ChordLength
   const GeomAbs_Shape Continuity2D = GeomAbs_C2; // default is GeomAbs_C2
   const double Tol2D = 1.0e-15;                  // default is 1.0e-6
 
@@ -1314,20 +1286,18 @@ void generateNozzle(std::vector<PointData> &points,
   const GeomAbs_Shape Continuity3D = GeomAbs_C2; // default is GeomAbs_C2
   const double Pres3D = 1.0e-6;                  // default is 1.0e-6
 
-  // parameters used by GeomAPI_IntSS
-  const double IntSSTol = 1.0e-7;                // recommended value is 1.0e-7
-
   // parameters used by ConnectEdgesToWires
   const double ConnectEdgesToWiresTol = 1.0e-4;
 
   // parameters associated with the geometry and mesh
   const bool UseChebyshevNodes = true;
   const int MeshingMethod = MESH_TRANSFINITE;
-  const int NbControlPoints = 61;
-  const int NbExteriorControlPoints = 41;
-  const int NbPanels = 2; // Note: currently this must be set to 2
-  const int NbThruSections = 11;
-  const int NbInnerThruSections = 11;
+  const int NbLoftedDataPoints = 50;  // number of data points per half-section used to construct lofted wires
+  const int NbInnerDataPoints  = 50;  // number of data points per half-section used to construct inner wires
+  const int NbOuterDataPoints  = 50;  // number of data points per top or bottom segment of section used to construct outer wires
+  const int NbPanels = 2;             // Note: currently this must be set to 2
+  const int NbThruSections = 16;      // number of thru-sections used to construct lofted and outer surfaces
+  const int NbInnerThruSections = 16; // number of thru-sections used to construct inner surface
 
   // local variables
   const int NbSegments = segments.size();
@@ -1341,6 +1311,18 @@ void generateNozzle(std::vector<PointData> &points,
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // 1. define some lambda functions
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  auto add_vertex_to_model = [&](const TopoDS_Vertex &vertex, int physicalTag) -> void {
+    // add a face to the gmsh model
+    GVertex *gvertex = gm->getOCCInternals()->addVertexToModel(gm, vertex);
+    gvertex->addPhysicalEntity(physicalTag);
+  };
+
+  auto add_edge_to_model = [&](const TopoDS_Edge &edge, int physicalTag) -> void {
+    // add a face to the gmsh model
+    GEdge *gedge = gm->getOCCInternals()->addEdgeToModel(gm, edge);
+    gedge->addPhysicalEntity(physicalTag);
+  };
 
   auto make_curve = [&](const std::vector<std::vector<double>> &controlpoints,
                         const std::vector<double> &knots,
@@ -1366,7 +1348,7 @@ void generateNozzle(std::vector<PointData> &points,
     return new Geom2d_BSplineCurve(_controlpoints, _weights, _knots, _mult, degree, false);
   };
 
-  auto locate_x_curve_bisection = [&](Handle(Geom2d_Curve) curve, double x, double tol = 2e-14, int maxit = 1000,
+  auto locate_x_curve_bisection = [&](Handle(Geom2d_Curve) curve, double x, double tol = 4e-14, int maxit = 1000,
                                       bool verbose = false) -> double {
     // solve e->Value(u).X() - x = 0 using bisection method
     double pFirst = curve->FirstParameter(), pLast = curve->LastParameter(), pMiddle;
@@ -1376,7 +1358,7 @@ void generateNozzle(std::vector<PointData> &points,
       if(verbose) std::cerr << "i = " << i << ", p.X() = " << p.X() << ", x = " << x << std::endl;
       if(std::abs(p.X()-x) < tol) break;
       if(i == maxit) {
-        std::cerr << "Warning: bisection solver did not converge in " << maxit << " iterations (residual = " << p.X()-x << ")\n";
+        std::cerr << "Warning: bisection solver #1 did not converge in " << maxit << " iterations (residual = " << p.X()-x << ")\n";
         break;
       }
       if(p.X() < x) pFirst = pMiddle;
@@ -1385,7 +1367,7 @@ void generateNozzle(std::vector<PointData> &points,
     return pMiddle;
   };
 
-  auto locate_y_curve_bisection = [&](Handle(Geom2d_Curve) curve, double y, double tol = 2e-14, int maxit = 1000,
+  auto locate_y_curve_bisection = [&](Handle(Geom2d_Curve) curve, double y, double tol = 4e-14, int maxit = 1000,
                                       bool verbose = false) -> double {
     // solve e->Value(u).Y() - y = 0 using bisection method
     double pFirst = curve->FirstParameter(), pLast = curve->LastParameter(), pMiddle;
@@ -1395,7 +1377,7 @@ void generateNozzle(std::vector<PointData> &points,
       if(verbose) std::cerr << "i = " << i << ", p.Y() = " << p.Y() << ", y = " << y << std::endl;
       if(std::abs(p.Y()-y) < tol) break;
       if(i == maxit) {
-        std::cerr << "Warning: bisection solver did not converge in " << maxit << " iterations (residual = " << p.Y()-y << ")\n";
+        std::cerr << "Warning: bisection solver #2 did not converge in " << maxit << " iterations (residual = " << p.Y()-y << ")\n";
         break;
       }
       if(p.Y() < y) pFirst = pMiddle;
@@ -1404,7 +1386,7 @@ void generateNozzle(std::vector<PointData> &points,
     return pMiddle;
   };
 
-  auto locate_x_surface_bisection = [&](Handle(Geom_Surface) s, double x, double u, double tol = 2e-14, int maxit = 1000,
+  auto locate_x_surface_bisection = [&](Handle(Geom_Surface) s, double x, double u, double tol = 4e-14, int maxit = 1000,
                                         bool verbose = false) -> double {
     // solve s->Value(u,v).X() - x = 0 for unknown v using bisection method
     double umin, umax, vmin, vmax;
@@ -1416,7 +1398,7 @@ void generateNozzle(std::vector<PointData> &points,
       if(verbose) std::cerr << "i = " << i << ", p.X() = " << p.X() << ", x = " << x << std::endl;
       if(std::abs(p.X()-x) < tol) break;
       if(i == maxit) {
-        std::cerr << "Warning: bisection solver did not converge in " << maxit << " iterations (residual = " << p.X()-x << ")\n";
+        std::cerr << "Warning: bisection solver #3 did not converge in " << maxit << " iterations (residual = " << p.X()-x << ")\n";
         break;
       }
       if(p.X() < x) pFirst = pMiddle;
@@ -1425,7 +1407,7 @@ void generateNozzle(std::vector<PointData> &points,
     return pMiddle;
   };
 
-  auto locate_x_curve_newton = [&](Handle(Geom2d_Curve) e, double x, double u0, int maxit = 20, double tol = 2e-14,
+  auto locate_x_curve_newton = [&](Handle(Geom2d_Curve) e, double x, double u0, int maxit = 20, double tol = 4e-14,
                                    bool verbose = false) -> double {
     // solve e->Value(u).X() - x = 0 using Newton's method with initial guess u0
     double u = u0;
@@ -1433,7 +1415,7 @@ void generateNozzle(std::vector<PointData> &points,
       double f = e->Value(u).X() - x;
       if(verbose) std::cerr << "i = " << i << ", f = " << f << std::endl;
       if(std::abs(f) < tol) break;
-      if(i == maxit) { std::cerr << "Warning: Newton solver did not converge in " << maxit << " iterations (residual = " << f << ")\n";
+      if(i == maxit) { std::cerr << "Warning: Newton solver #1 did not converge in " << maxit << " iterations (residual = " << f << ")\n";
                        if(std::isnan(f)) u = u0;
                        break; }
       double dfdu = e->DN(u, 1).X();
@@ -1442,7 +1424,7 @@ void generateNozzle(std::vector<PointData> &points,
     return u;
   };
 
-  auto locate_y_curve_newton = [&](Handle(Geom2d_Curve) e, double y, double u0, int maxit = 20, double tol = 2e-14,
+  auto locate_y_curve_newton = [&](Handle(Geom2d_Curve) e, double y, double u0, int maxit = 20, double tol = 4e-14,
                                    bool verbose = false) -> double {
     // solve e->Value(u).Y() - y = 0 using Newton's method with initial guess u0
     double u = u0;
@@ -1450,7 +1432,7 @@ void generateNozzle(std::vector<PointData> &points,
       double f = e->Value(u).Y() - y;
       if(verbose) std::cerr << "i = " << i << ", f = " << f << std::endl;
       if(std::abs(f) < tol) break;
-      if(i == maxit) { std::cerr << "Warning: Newton solver did not converge in " << maxit << " iterations (residual = " << f << ")\n";
+      if(i == maxit) { std::cerr << "Warning: Newton solver #2 did not converge in " << maxit << " iterations (residual = " << f << ")\n";
                        if(std::isnan(f)) u = u0;
                        break; }
       double dfdu = e->DN(u, 1).Y();
@@ -1459,18 +1441,42 @@ void generateNozzle(std::vector<PointData> &points,
     return u;
   };
 
-  auto locate_x_curve = [&](Handle(Geom2d_Curve) e, double x, int maxit = 20, double tol = 2e-14,
+  auto locate_x_surface_newton = [&](Handle(Geom_Surface) s, double x, double u, double v0, int maxit = 20, double tol = 4e-14,
+                                     bool verbose = false) -> double {
+    // solve s->Value(u,v).X() - x = 0 for unknown v using Newton's method with initial guess v0
+    double v = v0;
+    for(int i = 0; ; ++i) {
+      double f = s->Value(u,v).X() - x;
+      if(verbose) std::cerr << "i = " << i << ", f = " << f << std::endl;
+      if(std::abs(f) < tol) break;
+      if(i == maxit) { std::cerr << "Warning: Newton solver #3 did not converge in " << maxit << " iterations (residual = " << f << ")\n";
+                       if(std::isnan(f)) v = v0;
+                       break; }
+      double dfdv = s->DN(u, v, 0, 1).X();
+      v -= f/dfdv;
+    }
+    return v;
+  };
+
+  auto locate_x_curve = [&](Handle(Geom2d_Curve) e, double x, int maxit = 20, double tol = 4e-14,
                                    bool verbose = false) -> double {
     // solve e->Value(u).X() - x = 0 using Newton's method with initial guess u0 obtained using bisection method
     double u0 = locate_x_curve_bisection(e, x, 0.05, 100, verbose);
     return locate_x_curve_newton(e, x, u0, maxit, tol, verbose);
   };
 
-  auto locate_y_curve = [&](Handle(Geom2d_Curve) e, double y, int maxit = 20, double tol = 2e-14,
+  auto locate_y_curve = [&](Handle(Geom2d_Curve) e, double y, int maxit = 20, double tol = 4e-14,
                                    bool verbose = false) -> double {
     // solve e->Value(u).Y() - y = 0 using Newton's method with initial guess u0 obtained using bisection method
     double u0 = locate_y_curve_bisection(e, y, 0.05, 100, verbose);
     return locate_y_curve_newton(e, y, u0, maxit, tol, verbose);
+  };
+
+  auto locate_x_surface = [&](Handle(Geom_Surface) s, double x, double u, int maxit = 20, double tol = 4e-14,
+                                     bool verbose = false) -> double {
+    // solve s->Value(u,v).X() - x = 0 for unknown v using Newton's method with initial guess v0 obtained using bisection method
+    double v0 = locate_x_surface_bisection(s, x, u, 0.05, 100, verbose);
+    return locate_x_surface_newton(s, x, u, v0, maxit, tol, verbose);
   };
 
   auto make_inner_sections = [&](Handle(Geom2d_Curve) e0, Handle(Geom2d_Curve) e1, Handle(Geom2d_Curve) e2) -> void {
@@ -1593,15 +1599,29 @@ void generateNozzle(std::vector<PointData> &points,
     const double alpha = (xc-x_in)/(x_out-x_in);
     double theta_loc = alpha*theta_out + (1-alpha)*theta_in;
     double z_theta = rz*std::cos(theta_loc);
-    TColgp_Array1OfPnt2d ctrlPoints(1, NbControlPoints);
-    for(int j = 0; j < NbControlPoints; j++) {
-      double theta_ell = false/*UseChebyshevNodes*/ ? (-M_PI*std::cos(j*M_PI/(NbControlPoints-1))) : (-M_PI + j*2*M_PI/(NbControlPoints-1));
+    TColgp_Array1OfPnt2d dataPoints(1, 2*NbInnerDataPoints);
+    // set the first data point and all those points on one side of the symmetry plane 
+    for(int j = 0; j < NbInnerDataPoints; j++) {
+      double theta_ell = -M_PI + j*2*M_PI/(2*NbInnerDataPoints-1);
       double y_ell = -ry*std::sin(theta_ell), z_ell = rz*std::cos(theta_ell);
       double y = y_ell, z = zc + ((z_ell > z_theta) ? z_ell : (1-alpha)*z_ell + alpha*z_theta);
-      ctrlPoints.SetValue(j+1, gp_Pnt2d(z, -y)); // local x,y axes of the 2d coordinate system correspond to global z,-y axes
+      dataPoints.SetValue(j+1, gp_Pnt2d(z, -y)); // local x,y axes of the 2d coordinate system correspond to global z,-y axes
     }
+
+    // set the data points on the other side of the symmetry plane including the last one which is the same as the first
+    for(int j = NbInnerDataPoints, k = NbInnerDataPoints; j < 2*NbInnerDataPoints; ++j, --k) {
+      dataPoints.SetValue(j+1, gp_Pnt2d(dataPoints(k).X(), -dataPoints(k).Y()));
+    }
+
+#ifdef ADD_DATA_POINTS_TO_MODEL
+    for(int k = 0; k < dataPoints.Size(); ++k) {
+      gp_Pnt p(xc, -dataPoints(k+1).Y(), dataPoints(k+1).X());
+      TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(p);
+      add_vertex_to_model(v, 0);
+    }
+#endif
     Geom2dAPI_PointsToBSpline curve_maker;
-    curve_maker.Init(ctrlPoints, ParType, DegMin, DegMax, Continuity2D, Tol2D);
+    curve_maker.Init(dataPoints, ParType, DegMin, DegMax, Continuity2D, Tol2D);
     if(!curve_maker.IsDone()) std::cerr << "points to bspline #1 is not done\n";
     Handle(Geom2d_BSplineCurve) curve2d = curve_maker.Curve();
     curve2d->SetPeriodic();
@@ -1611,26 +1631,38 @@ void generateNozzle(std::vector<PointData> &points,
   auto make_outer_wire = [&](int i) -> TopoDS_Wire {
     // 1. make 2d curves defining the profiles of the top and bottom surfaces at the i-th thru-section
     const double& xc = sections[i].xc;
-    TColgp_Array1OfPnt2d ctrlPoints_top(1, NbExteriorControlPoints), ctrlPoints_bot(1, NbExteriorControlPoints);
-    for(int j = 0; j < NbExteriorControlPoints; j++) {
+    TColgp_Array1OfPnt2d dataPoints_top(1, NbOuterDataPoints), dataPoints_bot(1, NbOuterDataPoints);
+    for(int j = 0; j < NbOuterDataPoints; j++) {
       double theta_top = UseChebyshevNodes ?
-                         (0 - M_PI/2*std::cos(j*M_PI/(NbExteriorControlPoints-1))) : (-M_PI/2 + j*M_PI/(NbExteriorControlPoints-1));
+                         (0 - M_PI/2*std::cos(j*M_PI/(NbOuterDataPoints-1))) : (-M_PI/2 + j*M_PI/(NbOuterDataPoints-1));
       double theta_bot = UseChebyshevNodes ?
-                         (M_PI + M_PI/2*std::cos(j*M_PI/(NbExteriorControlPoints-1))) : (3*M_PI/2 - j*M_PI/(NbExteriorControlPoints-1));
+                         (M_PI + M_PI/2*std::cos(j*M_PI/(NbOuterDataPoints-1))) : (3*M_PI/2 - j*M_PI/(NbOuterDataPoints-1));
       std::pair<double,double> p_top = top.coord(x_out-xc, theta_top+M_PI/2);
       std::pair<double,double> p_bot = bot.coord(x_out-xc, theta_bot+M_PI/2);
       double z_top = p_top.second, z_bot = p_bot.second;
       double y_top = p_top.first,  y_bot = p_bot.first;
-      ctrlPoints_top.SetValue(j+1, gp_Pnt2d(z_top, -y_top));
-      ctrlPoints_bot.SetValue(j+1, gp_Pnt2d(z_bot, -y_bot));
+      dataPoints_top.SetValue(j+1, gp_Pnt2d(z_top, -y_top));
+      dataPoints_bot.SetValue(j+1, gp_Pnt2d(z_bot, -y_bot));
     }
+#ifdef ADD_DATA_POINTS_TO_MODEL
+    for(int k = 0; k < dataPoints_top.Size(); ++k) {
+      gp_Pnt p(xc, -dataPoints_top(k+1).Y(), dataPoints_top(k+1).X());
+      TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(p);
+      add_vertex_to_model(v, 0);
+    }
+    for(int k = 0; k < dataPoints_bot.Size(); ++k) {
+      gp_Pnt p(xc, -dataPoints_bot(k+1).Y(), dataPoints_bot(k+1).X());
+      TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(p);
+      add_vertex_to_model(v, 0);
+    }
+#endif
     Geom2dAPI_PointsToBSpline curve_maker_top;
-    curve_maker_top.Init(ctrlPoints_top, ParType, DegMin, DegMax, Continuity2D, Tol2D);
+    curve_maker_top.Init(dataPoints_top, ParType, DegMin, DegMax, Continuity2D, Tol2D);
     if(!curve_maker_top.IsDone()) std::cerr << "points to bspline #2 is not done\n";
     Handle(Geom2d_BSplineCurve) curve2d_top = curve_maker_top.Curve();
 
     Geom2dAPI_PointsToBSpline curve_maker_bot;
-    curve_maker_bot.Init(ctrlPoints_bot, ParType, DegMin, DegMax, Continuity2D, Tol2D);
+    curve_maker_bot.Init(dataPoints_bot, ParType, DegMin, DegMax, Continuity2D, Tol2D);
     if(!curve_maker_bot.IsDone()) std::cerr << "points to bspline #3 is not done\n";
     Handle(Geom2d_BSplineCurve) curve2d_bot = curve_maker_bot.Curve();
 
@@ -1639,6 +1671,7 @@ void generateNozzle(std::vector<PointData> &points,
     double p2_top = locate_y_curve(curve2d_top, 0.);
     double p3_top = locate_y_curve(curve2d_top, -baffle_half_width);
     double p1_bot = locate_y_curve(curve2d_bot, baffle_half_width);
+    double p2_bot = locate_y_curve(curve2d_bot, 0.);
     double p3_bot = locate_y_curve(curve2d_bot, -baffle_half_width);
 
     // 3. convert 2d curves to 3d
@@ -1649,21 +1682,35 @@ void generateNozzle(std::vector<PointData> &points,
     BRepBuilderAPI_MakeWire wire_maker;
     TopoDS_Edge edge12_top = BRepBuilderAPI_MakeEdge(curve_top, p1_top, p2_top);
     TopoDS_Edge edge23_top = BRepBuilderAPI_MakeEdge(curve_top, p2_top, p3_top);
-    TopoDS_Edge edge13_bot = BRepBuilderAPI_MakeEdge(curve_bot->Reversed(), (1-p1_bot), (1-p3_bot));
+    TopoDS_Edge edge12_bot = BRepBuilderAPI_MakeEdge(curve_bot->Reversed(), (1-p1_bot), (1-p2_bot));
+    TopoDS_Edge edge23_bot = BRepBuilderAPI_MakeEdge(curve_bot->Reversed(), (1-p2_bot), (1-p3_bot));
 
-    TopTools_IndexedMapOfShape top23_vertexMap, bot13_vertexMap;
+    TopTools_IndexedMapOfShape top23_vertexMap, bot23_vertexMap;
     TopExp::MapShapes(edge23_top, TopAbs_VERTEX, top23_vertexMap);
-    TopExp::MapShapes(edge13_bot, TopAbs_VERTEX, bot13_vertexMap);
-    TopoDS_Edge edge33 = BRepBuilderAPI_MakeEdge(TopoDS::Vertex(bot13_vertexMap(2)), TopoDS::Vertex(top23_vertexMap(1)));
-    TopTools_IndexedMapOfShape top12_vertexMap;
+    TopExp::MapShapes(edge23_bot, TopAbs_VERTEX, bot23_vertexMap);
+    TopoDS_Edge edge33 = BRepBuilderAPI_MakeEdge(TopoDS::Vertex(bot23_vertexMap(2)), TopoDS::Vertex(top23_vertexMap(1)));
+
+    TopTools_IndexedMapOfShape top12_vertexMap, bot12_vertexMap;
     TopExp::MapShapes(edge12_top, TopAbs_VERTEX, top12_vertexMap);
-    TopoDS_Edge edge11 = BRepBuilderAPI_MakeEdge(TopoDS::Vertex(top12_vertexMap(2)), TopoDS::Vertex(bot13_vertexMap(1)));
+    TopExp::MapShapes(edge12_bot, TopAbs_VERTEX, bot12_vertexMap);
+    TopoDS_Edge edge11 = BRepBuilderAPI_MakeEdge(TopoDS::Vertex(top12_vertexMap(2)), TopoDS::Vertex(bot12_vertexMap(1)));
+
+#ifdef ADD_THRU_SECTIONS_TO_MODEL
+    add_edge_to_model(edge12_top, 0);
+    add_edge_to_model(edge11, 0);
+    add_edge_to_model(edge12_bot, 0);
+    add_edge_to_model(edge23_bot, 0);
+    add_edge_to_model(edge33, 0);
+    add_edge_to_model(edge23_top, 0);
+#endif
 
     wire_maker.Add(edge12_top);
     wire_maker.Add(edge11);
-    wire_maker.Add(edge13_bot);
+    wire_maker.Add(edge12_bot);
+    wire_maker.Add(edge23_bot);
     wire_maker.Add(edge33);
     wire_maker.Add(edge23_top);
+
     if(!wire_maker.IsDone()) std::cerr << "make wire is not done\n";
 
     return wire_maker.Wire();
@@ -1677,6 +1724,9 @@ void generateNozzle(std::vector<PointData> &points,
     BRepBuilderAPI_MakeWire wire_maker;
     double pFirst = curve->FirstParameter(), pLast = curve->LastParameter();
     TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(curve, pFirst, pLast);
+#ifdef ADD_THRU_SECTIONS_TO_MODEL
+    add_edge_to_model(edge, 0);
+#endif
     wire_maker.Add(edge);
     if(!wire_maker.IsDone()) std::cerr << "make wire is not done\n";
     return wire_maker.Wire();
@@ -1690,13 +1740,16 @@ void generateNozzle(std::vector<PointData> &points,
     BRepBuilderAPI_MakeWire wire_maker;
     double pFirst = curve->FirstParameter(), pLast = curve->LastParameter();
     TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(curve, pFirst, pLast);
+#ifdef ADD_THRU_SECTIONS_TO_MODEL
+    add_edge_to_model(edge, 0);
+#endif
     wire_maker.Add(edge);
     if(!wire_maker.IsDone()) std::cerr << "make wire is not done\n";
 
     return wire_maker.Wire();
   };
 
-  auto split_shape_x = [&](const TopoDS_Shape& myShape, double xc) -> TopoDS_Shape {
+  auto split_shape_x = [&](const TopoDS_Shape& myShape, double xc, double zc) -> TopoDS_Shape {
     // split a surface into pieces to facilitate placement of baffles
     TopoDS_Compound aNewCompound;
     BRep_Builder aBld;
@@ -1708,23 +1761,12 @@ void generateNozzle(std::vector<PointData> &points,
 
       double umin, umax, vmin, vmax;
       BRepTools::UVBounds(face, umin, umax, vmin, vmax);
+      double umid = umin+(umax-umin)/2;
       Handle_Geom_Surface aSurface1 = BRep_Tool::Surface(face);
-      if(aSurface1->Value((umin+umax)/2,vmin).X() < xc && aSurface1->Value((umin+umax)/2,vmax).X() > xc) {
-        gp_Pln gp_pln(gp_Pnt(xc, 0., 0.), gp_Dir(1., 0., 0.));
-        Handle_Geom_Surface aSurface2 = new Geom_Plane(gp_pln);
-        GeomAPI_IntSS aInterSS(aSurface1, aSurface2, IntSSTol);
-        if(!aInterSS.IsDone()) std::cerr << "Error: intersection is not done\n";
-
-        BRepFeat_SplitShape aSplitter(face);
-        for(int i = 0; i < aInterSS.NbLines(); ++i) {
-          Handle(Geom_Curve) aCurve = aInterSS.Line(i+1);
-          TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(aCurve);
-          aSplitter.Add(edge, face);
-        }
-        aSplitter.Build();
-        if(!aSplitter.IsDone()) std::cerr << "Error: splitting is not done\n";
-        TopoDS_Shape splitShape = aSplitter.Shape();
-        aBld.Add(aNewCompound, splitShape);
+      if(aSurface1->Value(umid,vmin).X() < xc && aSurface1->Value(umid,vmax).X() > xc) {
+        double v = locate_x_surface(aSurface1, xc, umid);
+        aBld.Add(aNewCompound, BRepBuilderAPI_MakeFace(aSurface1, umin, umax, vmin, v, 1e-8));
+        aBld.Add(aNewCompound, BRepBuilderAPI_MakeFace(aSurface1, umin, umax, v, vmax, 1e-8));
       }
       else {
         aBld.Add(aNewCompound, face);
@@ -1745,23 +1787,11 @@ void generateNozzle(std::vector<PointData> &points,
 
       double umin, umax, vmin, vmax;
       BRepTools::UVBounds(face, umin, umax, vmin, vmax);
+      double umid = umin+(umax-umin)/2;
       Handle_Geom_Surface aSurface1 = BRep_Tool::Surface(face);
       {
-        gp_Pln gp_pln(gp_Pnt(0., 0., 0.), gp_Dir(0., 1., 0.));
-        Handle_Geom_Surface aSurface2 = new Geom_Plane(gp_pln);
-        GeomAPI_IntSS aInterSS(aSurface1, aSurface2, IntSSTol);
-        if(!aInterSS.IsDone()) std::cerr << "Error: intersection is not done\n";
-
-        BRepFeat_SplitShape aSplitter(face);
-        for(int i = 0; i < aInterSS.NbLines(); ++i) {
-          Handle(Geom_Curve) aCurve = aInterSS.Line(i+1);
-          TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(aCurve);
-          aSplitter.Add(edge, face);
-        }
-        aSplitter.Build();
-        if(!aSplitter.IsDone()) std::cerr << "Error: splitting is not done\n";
-        TopoDS_Shape splitShape = aSplitter.Shape();
-        aBld.Add(aNewCompound, splitShape);
+        aBld.Add(aNewCompound, BRepBuilderAPI_MakeFace(aSurface1, umin, umid, vmin, vmax, 1e-8));
+        aBld.Add(aNewCompound, BRepBuilderAPI_MakeFace(aSurface1, umid, umax, vmin, vmax, 1e-8));
       }
     }
     return aNewCompound;
@@ -1796,23 +1826,17 @@ void generateNozzle(std::vector<PointData> &points,
     shell_maker.CheckCompatibility(Standard_True);
     shell_maker.Build();
     if(!shell_maker.IsDone()) std::cerr << "thru sections #2 failed\n";
-    TopoDS_Shape myShape = split_shape_y(shell_maker.Shape());
+    TopoDS_Shape myShape = shell_maker.Shape();
     {
-      /*TopTools_IndexedMapOfShape faceMap;
-      TopExp::MapShapes(myShape, TopAbs_FACE, faceMap);
-      std::cerr << "make_outer_shell #1, faceMap.Extent() = " << faceMap.Extent() << std::endl;*/
       for(int i = 1; i < vertices.size()-1; ++i) {
-        myShape = split_shape_x(myShape, points[vertices[i].p].xyz[0]);
-        /*TopTools_IndexedMapOfShape faceMap;
-        TopExp::MapShapes(myShape, TopAbs_FACE, faceMap);
-        std::cerr << "make_outer_shell #2, faceMap.Extent() = " << faceMap.Extent() << std::endl;*/
+        myShape = split_shape_x(myShape, points[vertices[i].p].xyz[0], points[vertices[i].p].xyz[2]);
       }
     }
     return myShape;
   };
 
   auto locate_x_surface_offset = [&](Handle(Geom_Surface) s, double xc, double zc, double u, double& v0, int l,
-                                     int maxit = 20, double tol = 2e-14, bool verbose = false) -> gp_Pnt {
+                                     int maxit = 20, double tol = 4e-14, bool verbose = false) -> gp_Pnt {
     // solve s->Value(u,v).X()+Normal(u,v).X()*offset - xc = 0 for unknown v using Newton's method with initial guess v0
     double v = v0, offset, umin, umax, vmin, vmax;
     s->Bounds(umin, umax, vmin, vmax);
@@ -1823,7 +1847,7 @@ void generateNozzle(std::vector<PointData> &points,
       double f = p.Value().X()+p.Normal().X()*offset - xc; // assuming outward pointing normal
       if(verbose) std::cerr << "#3: i = " << i << ", |f| = " << std::abs(f) << ", v = " << v << std::endl;
       if(std::abs(f) < tol) { v0 = v; break; }
-      if(i == maxit) { std::cerr << "Error: Newton solver #3 did not converge in " << maxit << " iterations (residual = " << std::abs(f) << ")\n";
+      if(i == maxit) { std::cerr << "Error: Newton solver #4 did not converge in " << maxit << " iterations (residual = " << std::abs(f) << ")\n";
                        if(std::isnan(f)) v = v0;
                        break; }
       double NormalSquareMagnitude = p.D1U().SquareMagnitude()*p.D1V().SquareMagnitude() - std::pow(p.D1U().Dot(p.D1V()), 2);
@@ -1846,7 +1870,7 @@ void generateNozzle(std::vector<PointData> &points,
   };
 
   auto locate_xy_surface_offset = [&](Handle(Geom_Surface) s, double xc, double zc, double& u0, double& v0, int l,
-                                      int maxit = 20, double tol = 2e-14, bool verbose = false) -> gp_Pnt {
+                                      int maxit = 20, double tol = 4e-14, bool verbose = false) -> gp_Pnt {
     // solve [s->Value(u,v).X()+Normal(u,v).X()*offset - xc] = [0] for unknowns u,v using Newton's method with initial guess u0,v0
     //       [s->Value(u,v).Y()+Normal(u,v).X()*offset     ]   [0]
     double u = u0, v = v0, offset, umin, umax, vmin, vmax;
@@ -1860,7 +1884,7 @@ void generateNozzle(std::vector<PointData> &points,
       double fnorm = std::sqrt(fx*fx+fy*fy);
       if(verbose) std::cerr << "#4: i = " << i << ", |f| = " << fnorm << ", u = " << u << ", v = " << v << std::endl;
       if(fnorm < tol) { u0 = u; v0 = v; break; }
-      if(i == maxit) { std::cerr << "Error: Newton solver #4 did not converge in " << maxit << " iterations (residual = " << fnorm << ")\n";
+      if(i == maxit) { std::cerr << "Error: Newton solver #5 did not converge in " << maxit << " iterations (residual = " << fnorm << ")\n";
                        if(std::isnan(fnorm)) { v = v0; u = u0; }
                        break; }
       double NormalSquareMagnitude = p.D1U().SquareMagnitude()*p.D1V().SquareMagnitude() - std::pow(p.D1U().Dot(p.D1V()), 2);
@@ -1897,8 +1921,8 @@ void generateNozzle(std::vector<PointData> &points,
     // make a single periodic 2d curve defining the profile of the entire cross-section
     // i is the segment index
     double u, umin, umax, v, vmin, vmax;
-    TColgp_Array1OfPnt2d ctrlPoints(1, NbControlPoints);
-    int ctrlPointIndex = 1;
+    TColgp_Array1OfPnt2d dataPoints(1, 2*NbLoftedDataPoints);
+    int dataPointIndex = 1;
     assert(faceMap.Extent() == 1);
     const TopoDS_Face &inner_face = TopoDS::Face(faceMap(1));
     Handle_Geom_Surface surface = BRep_Tool::Surface(inner_face);
@@ -1908,24 +1932,32 @@ void generateNozzle(std::vector<PointData> &points,
     double vtop = locate_x_surface_bisection(surface, xc, utop, 0.01);
     gp_Pnt qtop = locate_xy_surface_offset(surface, xc, zc, utop, vtop, l);
 
-    // set the first control point
-    ctrlPoints.SetValue(ctrlPointIndex++, gp_Pnt2d(qtop.Z(), 0.));
+    // set the first data point
+    dataPoints.SetValue(dataPointIndex++, gp_Pnt2d(qtop.Z(), 0.));
 
-    // set the second to the second last control points
+    // set the other data points on one side of symmetry plane
     v = vtop;
-    for(int k = 1; k < (NbControlPoints-1); ++k) {
-      u = false/*UseChebyshevNodes*/ ?
-           (utop+(umax-umin)/2 + (umin-umax)/2*std::cos(k*M_PI/(NbControlPoints-1))) : (utop + k*(umax-umin)/(NbControlPoints-1));
+    for(int k = 1; k < NbLoftedDataPoints; ++k) {
+      u = utop + k*(umax-umin)/(2*NbLoftedDataPoints-1);
       if(u > umax) u -= umax;
       gp_Pnt q = locate_x_surface_offset(surface, xc, zc, u, v, l);
-      ctrlPoints.SetValue(ctrlPointIndex++, gp_Pnt2d(q.Z(), -q.Y()));
+      dataPoints.SetValue(dataPointIndex++, gp_Pnt2d(q.Z(), -q.Y()));
     }
 
-    // set the last control point (same as first)
-    ctrlPoints.SetValue(ctrlPointIndex++, gp_Pnt2d(qtop.Z(), 0.));
-   
+    // set the data points on the other side of the symmetry plane including the last one which is the same as the first
+    for(int k = NbLoftedDataPoints, l = NbLoftedDataPoints; k < 2*NbLoftedDataPoints; ++k, --l) {
+      dataPoints.SetValue(dataPointIndex++, gp_Pnt2d(dataPoints(l).X(), -dataPoints(l).Y()));
+    }
+
+#ifdef ADD_DATA_POINTS_TO_MODEL
+    for(int k = 0; k < dataPoints.Size(); ++k) {
+      gp_Pnt p(xc, -dataPoints(k+1).Y(), dataPoints(k+1).X());
+      TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(p);
+      add_vertex_to_model(v, 0);
+    }
+#endif
     Geom2dAPI_PointsToBSpline curve_maker;
-    curve_maker.Init(ctrlPoints, ParType, DegMin, DegMax, Continuity2D, Tol2D);
+    curve_maker.Init(dataPoints, ParType, DegMin, DegMax, Continuity2D, Tol2D);
     if(!curve_maker.IsDone()) std::cerr << "points to bspline #4 is not done\n";
     Handle(Geom2d_BSplineCurve) curve2d = curve_maker.Curve();
     curve2d->SetPeriodic();
@@ -1950,14 +1982,8 @@ void generateNozzle(std::vector<PointData> &points,
     if(!shell_maker.IsDone()) std::cerr << "thru sections #3 failed\n";
     TopoDS_Shape myShape = split_shape_y(shell_maker.Shape());
     {
-      /*TopTools_IndexedMapOfShape faceMap;
-      TopExp::MapShapes(myShape, TopAbs_FACE, faceMap);
-      std::cerr << "make_lofted_shell #1, faceMap.Extent() = " << faceMap.Extent() << std::endl;*/
       for(int i = 1; i < vertices.size()-1; ++i) {
-        myShape = split_shape_x(myShape, points[vertices[i].p].xyz[0]);
-        /*TopTools_IndexedMapOfShape faceMap;
-        TopExp::MapShapes(myShape, TopAbs_FACE, faceMap);
-        std::cerr << "make_lofted_shell #2, i = " << i << ", faceMap.Extent() = " << faceMap.Extent() << std::endl;*/
+        myShape = split_shape_x(myShape, points[vertices[i].p].xyz[0], points[vertices[i].p].xyz[2]);
       }
     }
     return myShape;
@@ -2017,23 +2043,27 @@ void generateNozzle(std::vector<PointData> &points,
     for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++it) {
       (*it)->meshAttributes.method = MeshingMethod;
       (*it)->meshAttributes.coeffTransfinite = 1.0;
-      int edgeIndex = std::distance(edges.begin(), it);
-      if(edgeIndex == 0) {
+      if(std::find(surfaceTags.begin(), surfaceTags.end(), std::make_pair((*it)->geomType(), (*it)->tag())) != surfaceTags.end()) {
+        //std::cout << "Info    : Found stringer edge on transfinite surface\n";
         (*it)->meshAttributes.nbPointsTransfinite = nbPointsTransfinite0;
       }
       else {
         double length = (*it)->length((*it)->getLowerBound(), (*it)->getUpperBound());
         (*it)->meshAttributes.nbPointsTransfinite = std::max(2, int(std::ceil(length/lc))+1);
-      }
-      if(edgeIndex == 2) {
-        boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(), (*it)->getBeginVertex()->tag()));
-        boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(), (*it)->getEndVertex()->tag()));
-        boundaryTags.push_back(std::make_pair((*it)->geomType(), (*it)->tag()));
+        auto p0 = std::make_pair((*it)->getBeginVertex()->geomType(), (*it)->getBeginVertex()->tag());
+        auto p1 = std::make_pair((*it)->getEndVertex()->geomType(), (*it)->getEndVertex()->tag());
+        if((std::find(surfaceTags.begin(), surfaceTags.end(), p0) == surfaceTags.end()) &&
+           (std::find(surfaceTags.begin(), surfaceTags.end(), p1) == surfaceTags.end())) {
+          //std::cout << "Info    : Found stringer edge on exterior boundary\n";
+          boundaryTags.push_back(p0);
+          boundaryTags.push_back(p1);
+          boundaryTags.push_back(std::make_pair((*it)->geomType(), (*it)->tag()));
+        }
       }
     }
   };
 
-  auto add_baffle_face_to_model = [&](const TopoDS_Face &face, int physicalTag, int nbPointsTransfinite0) -> void {
+  auto add_baffle_face_to_model = [&](const TopoDS_Face &face, int physicalTag, int nbPointsTransfinite0, int edge0 = 0) -> void {
     // add a baffle face to the gmsh model and set its mesh parameters
     // nbPointsTransfinite0 is the number of transfinite points on edge 0
     GFace *gface = gm->getOCCInternals()->addFaceToModel(gm, face);
@@ -2048,18 +2078,22 @@ void generateNozzle(std::vector<PointData> &points,
     for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++it) {
       (*it)->meshAttributes.method = MeshingMethod;
       (*it)->meshAttributes.coeffTransfinite = 1.0;
-      int edgeIndex = std::distance(edges.begin(), it);
-      if(edgeIndex == 0) {
+      if(std::find(surfaceTags.begin(), surfaceTags.end(), std::make_pair((*it)->geomType(), (*it)->tag())) != surfaceTags.end()) {
+        //std::cout << "Info    : Found baffle edge on transfinite surface\n";
         (*it)->meshAttributes.nbPointsTransfinite = nbPointsTransfinite0;
       }
       else {
         double length = (*it)->length((*it)->getLowerBound(), (*it)->getUpperBound());
         (*it)->meshAttributes.nbPointsTransfinite = std::max(2, int(std::ceil(length/lc))+1);
-      }
-      if(edgeIndex == 2 || edgeIndex == 3 || edgeIndex == 4) {
-        boundaryTags.push_back(std::make_pair((*it)->getBeginVertex()->geomType(), (*it)->getBeginVertex()->tag()));
-        boundaryTags.push_back(std::make_pair((*it)->getEndVertex()->geomType(), (*it)->getEndVertex()->tag()));
-        boundaryTags.push_back(std::make_pair((*it)->geomType(), (*it)->tag()));
+        auto p0 = std::make_pair((*it)->getBeginVertex()->geomType(), (*it)->getBeginVertex()->tag());
+        auto p1 = std::make_pair((*it)->getEndVertex()->geomType(), (*it)->getEndVertex()->tag());
+        if((std::find(surfaceTags.begin(), surfaceTags.end(), p0) == surfaceTags.end()) &&
+           (std::find(surfaceTags.begin(), surfaceTags.end(), p1) == surfaceTags.end())) {
+          //std::cout << "Info    : Found baffle edge on exterior boundary\n";
+          boundaryTags.push_back(p0);
+          boundaryTags.push_back(p1);
+          boundaryTags.push_back(std::make_pair((*it)->geomType(), (*it)->tag()));
+        }
       }
     }
   };
@@ -2081,8 +2115,8 @@ void generateNozzle(std::vector<PointData> &points,
         int faceIndex = j*NbSegments+i+1;
         assert(faceIndex <= faceMap.Extent());
         const TopoDS_Face &face = TopoDS::Face(faceMap(faceIndex));
-        int nbPointsTransfinite02 = (i == NbSegments-1 && j == 0) ? segments[i].mn : segments[i].nn;
-        int nbPointsTransfinite13 = (i == NbSegments-1 && j == 0) ? segments[i].nn : segments[i].mn;
+        int nbPointsTransfinite02 = segments[i].nn;
+        int nbPointsTransfinite13 = segments[i].mn;
         add_lofted_shell_face_to_model(face, physicalTag, nbPointsTransfinite02, nbPointsTransfinite13);
       }
     }
@@ -2109,25 +2143,13 @@ void generateNozzle(std::vector<PointData> &points,
         (*it2)->meshAttributes.method = MeshingMethod;
         (*it2)->meshAttributes.coeffTransfinite = 1.0;
         int edgeIndex = std::distance(edges.begin(),it2);
-        if(i == NbSegments-1 && j == 0) {
-          if(((faceIndex == 0 || faceIndex == 2) && (edgeIndex == 0 || edgeIndex == 2)) ||
-             ((faceIndex == 1 || faceIndex == 5) && (edgeIndex == 0 || edgeIndex == 2))) {
-            (*it2)->meshAttributes.nbPointsTransfinite = segments[i].mn; // circumferential edge
-          }
-          if(((faceIndex == 0 || faceIndex == 2) && (edgeIndex == 1 || edgeIndex == 3)) ||
-             ((faceIndex == 3 || faceIndex == 4) && (edgeIndex == 0 || edgeIndex == 2))) {
-            (*it2)->meshAttributes.nbPointsTransfinite = segments[i].nn; // longitudinal edge
-          }
+        if(((faceIndex == 0 || faceIndex == 2) && (edgeIndex == 0 || edgeIndex == 2)) ||
+           ((faceIndex == 1 || faceIndex == 4) && (edgeIndex == 0 || edgeIndex == 2))) {
+          (*it2)->meshAttributes.nbPointsTransfinite = segments[i].nn; // longitudinal edge
         }
-        else {
-          if(((faceIndex == 0 || faceIndex == 2) && (edgeIndex == 0 || edgeIndex == 2)) ||
-             ((faceIndex == 1 || faceIndex == 4) && (edgeIndex == 0 || edgeIndex == 2))) {
-            (*it2)->meshAttributes.nbPointsTransfinite = segments[i].nn; // longitudinal edge
-          }
-          if(((faceIndex == 0 || faceIndex == 2) && (edgeIndex == 1 || edgeIndex == 3)) || 
-             ((faceIndex == 3 || faceIndex == 5) && (edgeIndex == 0 || edgeIndex == 2))) {
-            (*it2)->meshAttributes.nbPointsTransfinite = segments[i].mn; // circumferential edge
-          }
+        if(((faceIndex == 0 || faceIndex == 2) && (edgeIndex == 1 || edgeIndex == 3)) || 
+           ((faceIndex == 3 || faceIndex == 5) && (edgeIndex == 0 || edgeIndex == 2))) {
+          (*it2)->meshAttributes.nbPointsTransfinite = segments[i].mn; // circumferential edge
         }
         if(((faceIndex == 1 || faceIndex == 4) && (edgeIndex == 1 || edgeIndex == 3)) || 
            ((faceIndex == 3 || faceIndex == 5) && (edgeIndex == 1 || edgeIndex == 3))) {
@@ -2239,28 +2261,13 @@ void generateNozzle(std::vector<PointData> &points,
         TopExp::MapShapes(outer_faceMap(outerFaceIndex2), TopAbs_EDGE, outer_edgeMap2);
         TopExp::MapShapes(outer_faceMap(outerFaceIndex3), TopAbs_EDGE, outer_edgeMap3);
         if(vertices[i].wb > 0) { // baffle at i-th vertex
-          int edgeIndex = (i == NbSegments-1) ? 4 : 2;
-          if(i == 0) {
-            TopoDS_Face face = make_baffle_face(TopoDS::Edge(inner_edgeMap(edgeIndex)),  TopoDS::Edge(outer_edgeMap1(edgeIndex)),
-                                                TopoDS::Edge(outer_edgeMap2(edgeIndex)), TopoDS::Edge(outer_edgeMap3(edgeIndex)));
-            add_baffle_face_to_model(face, 5+baffle_index, segments[i].mn);
-          }
-          else {
-            TopoDS_Face face = make_baffle_face(TopoDS::Edge(inner_edgeMap(edgeIndex)),  TopoDS::Edge(outer_edgeMap3(edgeIndex)),
-                                                TopoDS::Edge(outer_edgeMap2(edgeIndex)), TopoDS::Edge(outer_edgeMap1(edgeIndex)));
-            add_baffle_face_to_model(face, 5+baffle_index, segments[i].mn);
-          }
+          TopoDS_Face face = make_baffle_face(TopoDS::Edge(inner_edgeMap(2)),  TopoDS::Edge(outer_edgeMap1(2)),
+                                              TopoDS::Edge(outer_edgeMap2(2)), TopoDS::Edge(outer_edgeMap3(2)));
+          add_baffle_face_to_model(face, 5+baffle_index, segments[i].mn);
         }
         { // stringer
-          int edgeIndex = (i == NbSegments-1) ? 3 : 1;
-          if(i == NbSegments-1 && j == 0) { // XXX in first panel of the last segment the edge numberings of the inner and outer faces do not match
-            TopoDS_Face face = make_face(TopoDS::Edge(inner_edgeMap(2)), TopoDS::Edge(outer_edgeMap1(edgeIndex)));
-            add_stringer_face_to_model(face, 4, segments[i].nn);
-          }
-          else {
-            TopoDS_Face face = make_face(TopoDS::Edge(inner_edgeMap(edgeIndex)), TopoDS::Edge(outer_edgeMap1(edgeIndex)));
-            add_stringer_face_to_model(face, 4, segments[i].nn);
-          }
+          TopoDS_Face face = make_face(TopoDS::Edge(inner_edgeMap(1)), TopoDS::Edge(outer_edgeMap1(1)));
+          add_stringer_face_to_model(face, 4, segments[i].nn);
         }
       }
       if(vertices[i].wb > 0) baffle_index++;
@@ -2325,8 +2332,17 @@ void generateNozzle(std::vector<PointData> &points,
   };
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // 2. do some pre-processing of the input parameters
+  // 2. initialization
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  GmshInitialize();
+  gm = new GModel();
+  gm->setFactory("OpenCASCADE");
+  gm->createOCCInternals();
+
+  GmshSetOption("General","Terminal", 1.);
+  GmshSetOption("Mesh","CharacteristicLengthMin", lc);
+  GmshSetOption("Mesh","CharacteristicLengthMax", lc);
 
   Handle(Geom2d_Curve) centerline = make_curve(controlpoints[0], knots[0], mult[0]);
   Handle(Geom2d_Curve) majoraxis  = make_curve(controlpoints[1], knots[1], mult[1]);
@@ -2369,17 +2385,9 @@ void generateNozzle(std::vector<PointData> &points,
   // 4. construct the Gmsh model and output to file
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  GmshInitialize();
-  gm = new GModel();
-  gm->setFactory("OpenCASCADE");
-  gm->createOCCInternals();
-
-  GmshSetOption("General","Terminal", 1.);
-  GmshSetOption("Mesh","CharacteristicLengthMin", lc);
-  GmshSetOption("Mesh","CharacteristicLengthMax", lc);
-
   //DEBUG ONLY: add_faces_to_model(inner_shell, 0);        // add inner surface to gmsh model
   add_lofted_shell_to_model(shell3, 2);                    // add load layer (mid-surface) to gmsh model
+
   //DEBUG ONLY: add_faces_to_model(outer_shell, 0);        // add outer surface to gmsh model
   add_stringers_and_baffles_to_model(shell3, outer_shell); // add stringers and baffles (mid-surface) to gmsh model
 
