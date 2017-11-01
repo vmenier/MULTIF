@@ -1,4 +1,4 @@
-#include "meshutils.h"
+#include "amgio.h"
 
 /*
 Victorien Menier Feb 2016
@@ -55,7 +55,7 @@ int LoadGMFMesh (char *MshNam, Mesh *Msh)
 	strcpy(Msh->MshNam, MshNam);
 	Msh->FilTyp = FILE_GMF;
 
-  printf("  %%%% %s OPENED (READ)\n",MshNam);
+  //printf("  %%%% %s OPENED (READ)\n",MshNam);
 		
 	Msh->NbrVer = Msh->NbrTri = Msh->NbrEfr = 0;
 	Msh->NbrTet = Msh->NbrHex = Msh->NbrQua = 0;
@@ -183,7 +183,7 @@ int LoadGMFSolution(char *SolNam, Mesh *Msh)
 		return 0;
   }
 
-  printf("  %%%% %s OPENED\n",SolNam);
+  //printf("  %%%% %s OPENED\n",SolNam);
 	
 	strcpy(Msh->SolNam, SolNam);
 
@@ -378,7 +378,7 @@ int WriteGMFMesh(char *nam, Mesh *Msh, int OptBin)
     printf("  ## ERROR: Cannot open mesh file %s ! \n",OutFil);
 		return 0;
   }
-  printf("  %%%% %s OPENED (WRITE)\n",OutFil);
+  //printf("  %%%% %s OPENED (WRITE)\n",OutFil);
   
   //--- Write vertices
   GmfSetKwd(OutMsh, GmfVertices, NbrVer);
@@ -495,10 +495,8 @@ int WriteGMFSolution(char *SolNam, double *Sol, int SolSiz, int NbrVer, int Dim,
     fprintf(stderr,"  ## ERROR: Cannot open solution file %s ! \n",SolNam);
     exit(1);
   }
-  printf("  %%%% %s OPENED (WRITE)\n",SolNam);
-	
-	printf("OUTSOL=%d\n", OutSol);
-	
+  //printf("  %%%% %s OPENED (WRITE)\n",SolNam);
+
   GmfSetKwd(OutSol, GmfSolAtVertices, NbrVer, NbrFld, FldTab);
 	
   for (iVer=1; iVer<=NbrVer; ++iVer) {

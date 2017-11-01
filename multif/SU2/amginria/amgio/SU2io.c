@@ -1,4 +1,4 @@
-#include "meshutils.h"
+#include "amgio.h"
 
 /*
 Victorien Menier Feb 2016
@@ -605,6 +605,35 @@ int LoadSU2Mesh(char *FilNam, Mesh *Msh)
 }
 
 
+int GetSU2SolSize(char *SolNam)
+{ 
+	int NbrLin=0;
+	char *tok=NULL, *lin=NULL;
+	char str[1024];
+	
+	int i, iVer, iVerMax;
+	size_t  len = 0;
+	FILE *FilHdl=NULL;
+		
+	FilHdl = fopen(SolNam,"r");
+	
+	// Skip header
+	getline(&lin, &len, FilHdl);
+
+	//--- Count
+	
+	iVerMax = -1;
+	
+	NbrLin=0;
+	while ( getline(&lin, &len, FilHdl) != -1 ) {
+		NbrLin++;
+		tok = strtok (lin, "	,");
+		iVer = atoi(tok)+1;
+		iVerMax = max(iVer, iVerMax);		
+	}
+	return iVerMax;
+}
+
 
 int LoadSU2Solution(char *SolNam, Mesh *Msh)
 {
@@ -713,10 +742,6 @@ int LoadSU2Solution(char *SolNam, Mesh *Msh)
 			if ( idx == SolSiz )
 				break;
 		}
-		
-		if ( NbrLin == Msh->NbrVer )
-			break;
-		
 	}
 	
 	
@@ -791,7 +816,7 @@ void WriteSU2Mesh(char *nam, Mesh *Msh)
 		printf("  ## ERROR Write SU2: Can't open %s\n", OutNam);
 	}
  	
-  printf("  %%%% %s OPENED (WRITE)\n",OutNam);
+  //printf("  %%%% %s OPENED (WRITE)\n",OutNam);
   
   fprintf(OutFil, "NDIME= %d\n", Dim);
 
@@ -1004,7 +1029,7 @@ int WriteSU2Solution (char *SolNam, Mesh *Msh, double *Sol, int NbrVer, int SolS
 		printf("  ## ERROR WriteSU2Solution: Can't open %s\n", SolNam);
 	}
  	
-  printf("  %%%% %s OPENED (WRITE)\n",SolNam);
+  //printf("  %%%% %s OPENED (WRITE)\n",SolNam);
 	
 	//--- Write header
 	

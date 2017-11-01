@@ -180,6 +180,8 @@ class folder(object):
         if not os.path.exists(folder):
             os.makedirs(folder)
         
+        
+        print pull
         # copy pull files
         for name in pull:
             old_name = os.path.abspath(name)
@@ -187,6 +189,7 @@ class folder(object):
             new_name = os.path.join(folder,new_name)
             if old_name == new_name: continue
             if os.path.exists( new_name ): 
+                #if force: shutil.rmtree( new_name ); 
                 if force: os.remove( new_name )
                 else: continue
             shutil.copy(old_name,new_name)

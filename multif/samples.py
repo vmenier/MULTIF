@@ -27,6 +27,8 @@ class Sample:
         
         sys.stdout.write('-- Running sample %d \n' % self.run_id);
         
+        redirect = True;
+        
         run_id = self.run_id;
         
         #--- Go to root working dir
@@ -52,6 +54,7 @@ class Sample:
         
         #--- Open log files
         
+        
         stdout_hdl = open(self.stdout,'w'); # new targets
         stderr_hdl = open(self.stderr,'w');
         
@@ -60,8 +63,10 @@ class Sample:
         
         try: # run with redirected outputs
             
-            sav_stdout, sys.stdout = sys.stdout, stdout_hdl; 
-            sav_stderr, sys.stderr = sys.stderr, stderr_hdl; 
+            
+            if redirect:
+                sav_stdout, sys.stdout = sys.stdout, stdout_hdl; 
+                sav_stderr, sys.stderr = sys.stderr, stderr_hdl; 
                         
             #--- Copy cfg file
             shutil.copyfile(os.path.join(self.working_rootdir,self.cfg_file),self.cfg_file);
@@ -75,6 +80,7 @@ class Sample:
             #--- Setup nozzle data structure
     	    config = multif.SU2.io.Config(self.cfg_file);
             config.INPUT_DV_NAME = self.input_file;
+            config.OUTPUT_GRADIENTS= 'NO'
     	    nozzle = multif.nozzle.NozzleSetup(config, self.fidelity);
     	    nozzle.partitions = int(self.partitions);
             
@@ -102,13 +108,16 @@ class Sample:
             success = True;
             
         except:
-            sys.stdout = sav_stdout;
-            sys.stderr = sav_stderr;
+            if redirect:
+                sys.stdout = sav_stdout;
+                sys.stderr = sav_stderr;
             sys.stderr.write("## Error : Run %d failed.\n" % run_id);
+            raise;
             return success, val_out;
         
-        sys.stdout = sav_stdout;
-        sys.stderr = sav_stderr;
+        if redirect:
+            sys.stdout = sav_stdout;
+            sys.stderr = sav_stderr;
         
         return success, val_out;
 
@@ -267,7 +276,7 @@ class Sample:
         run_id = self.run_id;
         
         samples_filename = os.path.join(self.working_rootdir,self.samples_file);
-        
+                
         try:
             hdl = np.loadtxt(samples_filename);
         except:
@@ -279,7 +288,7 @@ class Sample:
             sys.exit(0);
         
         # --- Write 
-        
+                
         try:  
             fil = open(self.input_file, "w");
             for i in range(len(hdl[run_id])):

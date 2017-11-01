@@ -78,6 +78,7 @@ def calcGradientsFD(nozzle,fd_step,output='verbose'):
         for j in range(len(nozzleEval[i].outputCode)):
             nozzleEval[i].outputCode[j] = 1; # get value only
         nozzleEval[i].partitions = 1; # run evaluation on 1 core
+        
                     
     # Run gradient evaluations in serial
     if nozzle.partitions <= 1:   
@@ -93,6 +94,7 @@ def calcGradientsFD(nozzle,fd_step,output='verbose'):
             
             if output == 'verbose':
                 sys.stdout.write('Directory %s created and entered\n' % dirname);    
+            
             
             # Run model analysis
             if nozzle.dim == '1D':

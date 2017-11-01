@@ -413,6 +413,8 @@ class Nozzle:
         
         nozzle = self;
         
+        adap = "NO";
+        
         if output == 'verbose':
             print config;
 
@@ -458,6 +460,14 @@ class Nozzle:
         # information to nozzle if fidelity level is the one requested to be run.
         for i in range(NbrFidLev):
             
+            idxLvl = 0;
+            
+            # Init variables
+            thermostructural = False;
+            analysisType = '';
+            thermostructuralFidelityLevel = '';
+            linear = '';
+            
             tag = fidelity_tags[i];
             kwd = "DEF_%s" % tag;
 
@@ -468,8 +478,10 @@ class Nozzle:
 
             cfgLvl = config[kwd].strip('()');
             cfgLvl = cfgLvl.split(",");
-
-            method = cfgLvl[0];
+            
+            #method = cfgLvl[0];
+            method = cfgLvl[idxLvl];
+            idxLvl += 1;
 
             description = "";
 
@@ -480,6 +492,10 @@ class Nozzle:
             if method == 'NONIDEALNOZZLE':
                 
                 tol = float(cfgLvl[1]);
+                #tol = float(cfgLvl[idxLvl]);
+                #idxLvl += 1;
+                
+                
                 if tol < 1e-16:
                     sys.stderr.write("\n ## ERROR : Wrong tolerance for "     \
                      "fidelity level %d (tagged %s)\n\n" % (i,tag));
@@ -547,24 +563,44 @@ class Nozzle:
 
                 nozzle.cfd.max_cfl = 30.0;
 
-                dim = cfgLvl[1];
+                #dim = cfgLvl[1];
+                dim = cfgLvl[idxLvl];
+                idxLvl += 1;
+                
+                
                 if dim != '2D' and dim != '3D':
                     sys.stderr.write("\n ## ERROR : Wrong dimension for "     \
                       "fidelity level %d (tagged %s) : only 2D or 3D "        \
                       "simulations\n\n" % (i,tag));
                     sys.exit(0);
                 
-                meshsize = cfgLvl[2];    
+                #meshsize = cfgLvl[2]; 
+                meshsize = cfgLvl[idxLvl]; 
+                idxLvl += 1;
+                   
                 if( meshsize != 'COARSE' 
                 and meshsize != 'MEDIUM' 
-                and meshsize != 'FINE' ):
+                and meshsize != 'FINE' 
+                and meshsize != 'ADAP'):
                     sys.stderr.write("\n ## ERROR : Wrong mesh level for "    \
                       "fidelity level %d (tagged %s) : must be set to "       \
-                      "either COARSE, MEDIUM or FINE" % (i,tag));
+                      "either COARSE, MEDIUM, FINE, or ADAP" % (i,tag));
                     sys.exit(0);
                 description += "%s %s CFD, %s mesh" \
                   % (dim, method, meshsize);
-                  
+                
+                if meshsize == 'ADAP':
+                    
+                    adap_param = float(cfgLvl[idxLvl]); 
+                    idxLvl += 1;
+                    
+                    if adap_param < 0 or adap_param > 1:
+                        sys.stderr.write("\n ## ERROR : Mesh adaptation parameter must be in [0,1]\n\n");
+                        sys.exit(0);
+                    
+                    adap = 'YES';
+                    meshsize = 'COARSE'; # use coarse baseline mesh to start mesh adaptation
+                
                 # --- Setup convergence parameter
                 
                 if 'SU2_CONVERGENCE_ORDER' in config:
@@ -592,20 +628,44 @@ class Nozzle:
                     else:
                         nozzle.cfd.su2_max_iterations = 5000;
                 description += ", max iterations %i" % nozzle.cfd.su2_max_iterations;
-                  
+                
                 # Set thermostructural parameters if necessary
-                if len(cfgLvl) == 6:
-                    if cfgLvl[4] == 'LINEAR':
+                
+                if len(cfgLvl)-idxLvl == 3:
+                    
+                    thermostructural = True;
+                    analysisType                  = cfgLvl[idxLvl];
+                    linear                        = cfgLvl[idxLvl+1];
+                    thermostructuralFidelityLevel = float(cfgLvl[idxLvl+2]);
+                    
+                    if linear == 'LINEAR':
                         description += ", linear structural analysis"
-                    elif cfgLvl[4] == 'NONLINEAR':
+                    elif linear == 'NONLINEAR':
                         description += ", nonlinear structural analysis"
                     else:
                         sys.stderr.write('\n ## ERROR: Only LINEAR or '   \
                           'NONLINEAR can be specified for structural '    \
                           'analysis type. %s specified instead in.\n\n'   \
-                          % cfgLvl[4]);
+                          % linear);
                         sys.exit(0);                    
-                    description += ', thermostructural fidelity level %s' % cfgLvl[5];
+                    description += ', thermostructural fidelity level %s' % thermostructuralFidelityLevel;
+                    
+                    if( thermostructuralFidelityLevel < 0 or 
+                    thermostructuralFidelityLevel > 1):
+                        sys.stderr.write('\n ## ERROR: thermostructural ' \
+                          'fidelity level must range from 0 (low) to 1 '\
+                          '(high). %f provided instead.\n\n' % 
+                          thermostructuralFidelityLevel);
+                        sys.exit(0);
+                    
+                    analysisTypeTab = ['AEROTHERMOSTRUCTURAL', 'AEROTHERMAL', 'AEROSTRUCTURAL', 'THERMOSTRUCTURAL', 'AERO'];
+                    if not analysisType in analysisTypeTab:
+                        sys.stderr.write('\n ## ERROR: AEROTHERMOSTRUCTURAL, '        \
+                          'THERMOSTRUCTURAL, AEROTHERMAL, AEROSTRUCTURAL, or AERO ' \
+                          'must be provided as a keyword for analyis '    \
+                          'type. %s provided instead.\n\n' % analysisType);
+                        sys.exit(0);                  
+                        
                     
                 if i == flevel:
                     
@@ -639,27 +699,31 @@ class Nozzle:
                     	    scaleMesh = 0.9;
                     	    nozzle.cfd.bl_yplus = 1.0;	
 
+                    if adap == 'YES':
+                        nozzle.cfd.adap = 'YES';
+                        nozzle.cfd.adap_param = adap_param;
+                    
                     nozzle.cfd.meshhl = scaleMesh*np.asarray([0.1, 0.07, 0.06, 0.006, 0.0108]);
 
-                    # Set analysis type
-                    try:
-                        analysisType = cfgLvl[3];
-                    except:
-                        sys.stderr.write('\n ## WARNING : Analysis type '     \
-                          'could not be determined. AEROTHERMOSTRUCTURAL, '   \
-                          'AEROTHERMAL, AEROSTRUCTURAL, or AERO keyword must' \
-                          ' be provided in the model definition of '          \
-                          'fidelity level %d.\n\n' % flevel);
-                        sys.exit(0);
-                        
+                    ## Set analysis type
+                    #try:
+                    #    analysisType = cfgLvl[3];
+                    #except:
+                    #    sys.stderr.write('\n ## WARNING : Analysis type '     \
+                    #      'could not be determined. AEROTHERMOSTRUCTURAL, '   \
+                    #      'AEROTHERMAL, AEROSTRUCTURAL, or AERO keyword must' \
+                    #      ' be provided in the model definition of '          \
+                    #      'fidelity level %d.\n\n' % flevel);
+                    #    sys.exit(0);
+                    
                     # Set thermostructural parameters if necessary
-                    if len(cfgLvl) == 6:
-                        if cfgLvl[4] == 'LINEAR':
+                    if thermostructural == True:
+                        if linear  == 'LINEAR':
                             nozzle.linearStructuralAnalysisFlag = 1;
-                        elif cfgLvl[4] == 'NONLINEAR':
+                        elif linear == 'NONLINEAR':
                             nozzle.linearStructuralAnalysisFlag = 0;      
                             
-                        nozzle.thermostructuralFidelityLevel = float(cfgLvl[5]);
+                        nozzle.thermostructuralFidelityLevel = float(thermostructuralFidelityLevel);
                         if( nozzle.thermostructuralFidelityLevel < 0 or 
                         nozzle.thermostructuralFidelityLevel > 1):
                             sys.stderr.write('\n ## ERROR: thermostructural ' \
@@ -684,6 +748,7 @@ class Nozzle:
                   textwrap.fill(description, 70,                              \
                   subsequent_indent="".ljust(26))) );
                   
+        
         # Setup thermal and structural analysis
         if analysisType == 'AEROTHERMOSTRUCTURAL':
             nozzle.aeroFlag = 1;

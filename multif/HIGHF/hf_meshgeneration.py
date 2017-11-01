@@ -1958,6 +1958,10 @@ def HF_GenerateMesh_Deform(nozzle):
     
     config.MESH_FILENAME= basNamSU2;
     config.DV_KIND= "SURFACE_FILE"
+    #config.DV_PARAM= "(1)"     # necessary dummy value
+    #config.DV_VALUE= 0.001    # necessary dummy value
+    
+    
     config.DV_MARKER= "( 9, 10 )"
     config.MOTION_FILENAME= "mesh_motion.dat"
     

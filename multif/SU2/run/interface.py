@@ -126,7 +126,7 @@ def CFD(config):
         the_Command = 'SU2_CFD ' + tempname
 
 		
-    the_Command = '%s/%s' % (base,the_Command);
+    the_Command = os.path.join(base,the_Command);
 			
     the_Command = build_command( the_Command , processes )
 		
@@ -180,11 +180,9 @@ def DEF(config):
     
     the_Command = 'SU2_DEF ' + tempname
 	
-    the_Command = '%s%s' % (base,the_Command);
+    the_Command = os.path.join(base,the_Command);
 	
     the_Command = build_command( the_Command , processes )
-
-    print the_Command
 
     run_command( the_Command )
     
@@ -229,9 +227,9 @@ def DOT(config):
 		the_Command = 'SU2_DOT ' + tempname
 		
 		
-	the_Command = '%s/%s' % (base,the_Command);
+	the_Command = os.path.join(base,the_Command);
 	
-	print " -- Running SU2_DOT. Command = %s\n" % the_Command;
+	#print " -- Running SU2_DOT. Command = %s\n" % the_Command;
 	
 	
 	the_Command = build_command( the_Command , processes )

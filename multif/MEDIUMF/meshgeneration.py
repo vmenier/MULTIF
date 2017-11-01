@@ -494,6 +494,14 @@ def GenerateNozzleMesh_Deform (nozzle):
     
     config.MESH_FILENAME= "baseline_coarse.su2"
     config.DV_KIND= "SURFACE_FILE"
+    
+    
+    
+    config.DV_PARAM = { 'FFDTAG' : [[]]     ,
+                       'PARAM'  : [[1]] ,
+                       'SIZE'   : [1]}
+    config.DV_VALUE = [0.001];
+    
     config.DV_MARKER= "( PhysicalLine7 )"
     config.MOTION_FILENAME= "mesh_motion.dat"
     

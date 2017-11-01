@@ -133,9 +133,8 @@ int LoadGMFSolution(char *SolNam, VMesh *Msh)
   if ( (Msh == NULL) || (SolNam == NULL) ) {
     printf("  ## ERROR: LoadGMFSolution : MESH/FILE NAME NOT ALLOCATED \n");
     return 0; 
-  }
+  }	
 	
-	printf("SolNam %s GmfRead %d \n", SolNam, GmfRead);
   if ( !(SolMsh = GmfOpenMesh(SolNam,GmfRead,&FilVer,&dim)) ) {
     printf(" Solution data file %s.sol[b] not found ! \n",SolNam);
 		return 0;

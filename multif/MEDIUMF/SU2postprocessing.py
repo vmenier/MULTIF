@@ -13,9 +13,10 @@ def PostProcess ( nozzle, output ):
     
     # --- Check residual convergence
     
-    IniRes, FinRes = CheckConvergence(nozzle);
-    ResDif = FinRes - IniRes;
-    sys.stdout.write("Initial res = %le, Final res = %lf, Diff = %lf\n" % (IniRes, FinRes, ResDif));
+    from multif import MEDIUMF
+    history, FinRes, ResDif = MEDIUMF.checkResidual();
+    
+    sys.stdout.write("Fluid calculation convergence: Final density residual = %.2lf, Residual reduction = %.2lf\n" % (FinRes, ResDif));
     
     # --- Interpolate and extract all the solution fields along the nozzle exit
     # SolExtract : Solution (x, y, sol1, sol2, etc.)
@@ -83,7 +84,9 @@ def PostProcess ( nozzle, output ):
 
         x = nozzle.outputLocations['VELOCITY'][:,0];
         y = nozzle.outputLocations['VELOCITY'][:,1];
-        cons = ExtractSolutionAtXY (x, y, ["Conservative_1","Conservative_2","Conservative_3"]);
+        #cons = ExtractSolutionAtXY (x, y, ["Conservative_1","Conservative_2","Conservative_3"]);
+        cons = ExtractSolutionAtXY (x, y, ["Density","X-Momentum","Y-Momentum"]);
+        
         
         nozzle.responses['VELOCITY'] = [[],[],[]]
         for i in range(len(cons)):
@@ -96,28 +99,7 @@ def PostProcess ( nozzle, output ):
     
     return 0;  
         
- 
-def CheckConvergence ( nozzle ) :    
 
-    plot_format      = nozzle.cfd.output_format;
-    plot_extension   = SU2.io.get_extension(plot_format)
-    history_filename = nozzle.cfd.conv_filename + plot_extension
-    #special_cases    = SU2.io.get_specialCases(config)
-    
-    history      = SU2.io.read_history( history_filename )
-    
-    plot = SU2.io.read_plot(history_filename);
-    
-    RhoRes = history['Res_Flow[0]'];
-    NbrIte = len(RhoRes);
-    
-    IniRes = RhoRes[0];
-    FinRes = RhoRes[NbrIte-1];
-        
-    #print "Initial res = %le, Final res = %lf, DIFF = %lf\n" % (IniRes, FinRes, ResDif);
-    return IniRes, FinRes;
-
-    
 def ExtractSolutionAtExit ( nozzle ):
 
     mesh_name    = nozzle.cfd.mesh_name;
@@ -191,14 +173,24 @@ def ComputeThrust_2 ( options, SolExtract, Size, Header )    :
 
     ## --- Get solution field indices
 
+    # Deprecated keywords : 
+    #iMach  = Header['Mach'];
+    #iTem   = Header['Temperature'];
+    #iCons1 = Header['Conservative_1'];
+    #iCons2 = Header['Conservative_2'];
+    #iCons3 = Header['Conservative_3'];
+    #iCons4 = Header['Conservative_4'];
+    #iPres  = Header['Pressure'];
+    
+    # New keywords (> SU2 Raven 5.0)
     iMach  = Header['Mach'];
     iTem   = Header['Temperature'];
-    iCons1 = Header['Conservative_1'];
-    iCons2 = Header['Conservative_2'];
-    iCons3 = Header['Conservative_3'];
-    iCons4 = Header['Conservative_4'];
+    iCons1 = Header['Density'];
+    iCons2 = Header['X-Momentum'];
+    iCons3 = Header['Y-Momentum'];
+    iCons4 = Header['Energy'];
     iPres  = Header['Pressure'];
-
+    
     # --- Compute thrust    
 
     Thrust = 0;
@@ -369,13 +361,24 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )    :
     
     ## --- Get solution field indices
     
+    # Deprecated keywords:
+    #iMach  = Header['Mach'];
+    #iTem   = Header['Temperature'];
+    #iCons1 = Header['Conservative_1'];
+    #iCons2 = Header['Conservative_2'];
+    #iCons3 = Header['Conservative_3'];
+    #iCons4 = Header['Conservative_4'];
+    #iPres  = Header['Pressure'];
+    
+    # New keywords (> SU2 Raven 5.0)
     iMach  = Header['Mach'];
     iTem   = Header['Temperature'];
-    iCons1 = Header['Conservative_1'];
-    iCons2 = Header['Conservative_2'];
-    iCons3 = Header['Conservative_3'];
-    iCons4 = Header['Conservative_4'];
+    iCons1 = Header['Density'];
+    iCons2 = Header['X-Momentum'];
+    iCons3 = Header['Y-Momentum'];
+    iCons4 = Header['Energy'];
     iPres  = Header['Pressure'];
+    
     
     # --- Compute thrust    
         

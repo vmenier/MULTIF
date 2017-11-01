@@ -285,13 +285,22 @@ def HF_Compute_Thrust (options):
     for iFld in range(0,len(Header)):
         idHeader[Header[iFld]] = iFld+1;
     
-    iMach  = idHeader['Mach'];
-    iTem   = idHeader['Temperature'];
-    iCons1 = idHeader['Conservative_1'];
-    iCons2 = idHeader['Conservative_2'];
-    iCons3 = idHeader['Conservative_3'];
-    iCons4 = idHeader['Conservative_4'];
-    iPres  = idHeader['Pressure'];
+    #iMach  = idHeader['Mach'];
+    #iTem   = idHeader['Temperature'];
+    #iCons1 = idHeader['Conservative_1'];
+    #iCons2 = idHeader['Conservative_2'];
+    #iCons3 = idHeader['Conservative_3'];
+    #iCons4 = idHeader['Conservative_4'];
+    #iPres  = idHeader['Pressure'];
+    
+    # New keywords (> SU2 Raven 5.0)
+    iMach  = Header['Mach'];
+    iTem   = Header['Temperature'];
+    iCons1 = Header['Density'];
+    iCons2 = Header['X-Momentum'];
+    iCons3 = Header['Y-Momentum'];
+    iCons4 = Header['Energy'];
+    iPres  = Header['Pressure'];
       
     # --- Compute thrust    
   

@@ -3,6 +3,7 @@
 /*
 Victorien Menier May 2017
 */
+
 double GetThetaProj(double y, double z);
 int GetEllipseNormal (double r1, double r2, double theta, double *nor);
 int GetVecCur (double *crd0, double *crd1, double *vec);
@@ -56,6 +57,130 @@ int ProjectNozzleWall_Down_DV (double *CrdOld, double *CrdNew, CadNozzle * NozBa
 	return 1;
 	
 }
+
+int ProjectNozzleWall_Down_DV_3 (double *CrdOld, double *CrdNew, CadNozzle * Noz, CadNozzle *NozBas)
+{
+	
+	double thetaCut, zcut, alp, theta;
+	double x, r1, r2, zcen, xin, xout;
+	double x_bas, r1_bas, r2_bas, zbas, xin_bas, xout_bas;
+		
+	//--- Get alp
+	
+	x_bas     = CrdOld[0];
+	xin_bas   = NozBas->Bsp_center->Coefs[0];
+	xout_bas  = NozBas->Bsp_center->Coefs[NozBas->Bsp_center->NbrCoefs/2-1];
+	
+	if ( x_bas < xin_bas-1e-6 || x_bas > xout_bas+1e-6  ) {
+		printf("  ## ERROR ProjectNozzleWall_Down : x out of range!\n");
+		exit(1);
+	}
+	
+	alp = (x_bas-xin_bas)/(xout_bas-xin_bas);
+	
+	//--- Evaluate baseline nozzle
+	
+	Evaluate_Nozzle ( NozBas, &x_bas, &r1_bas, &r2_bas, &zbas );
+	
+	//--- Evaluate nozzle at crd
+	
+	xin   = Noz->Bsp_center->Coefs[0];
+	xout  = Noz->Bsp_center->Coefs[Noz->Bsp_center->NbrCoefs/2-1];
+	x = xin + alp*(xout-xin);
+		
+	Evaluate_Nozzle ( Noz, &x, &r1, &r2, &zcen );
+	
+	thetaCut  = alp*Noz->ThetaCutOut + (1.0-alp)*Noz->ThetaCutIn;
+	zcut      = zcen+r2*cos(thetaCut);	
+	
+	//--- Newton
+	
+	int    count;
+	double dist, ldist;
+	double eps=1e-30;
+	double U1[3], V1[3], U2[3], V2[3], P0[3], dx[3], UV[3];
+	double uv[2],uvs[2];
+	double b0, b1, a00, a10, a11, det;
+	
+	// Initial guess
+	
+	uv[0] = 0.0;
+	uv[1] = PI_NUMBER-asin(CrdOld[1]/r1_bas);
+
+	ldist = 1e308;
+	
+	//--- Newton-Raphson
+	
+	double a, b, t, t1[3], t2[3], nrm;
+	double tmin = thetaCut;
+	double tmax = PI_NUMBER;
+	
+	// Initial guess
+	t = PI_NUMBER-asin(CrdOld[1]/r1_bas);
+	
+	CrdNew[0] = x;
+	CrdNew[1] = r1*sin(t);
+	CrdNew[2] = (1.0-alp)*(zcen+r2*cos(t)) + alp*zcut;
+	
+	return 1;
+	
+	for (count = 0; count < 10; count++) {
+		
+		if ((t < tmin) || (t > tmax))	break;
+		
+		P0[1] = r1*sin(t);
+		P0[2] = (1.0-alp)*(zcen+r2*cos(t)) + alp*zcut;
+		
+		dx[0] = 0.0; 
+		dx[1] = P0[1]-CrdOld[1];
+		dx[2] = (P0[2]-zcen)-(CrdOld[2]-zbas);
+		
+		t1[0] = 0.0;
+		t1[1] = r1*cos(t);
+		t1[2] = -(1.0-alp)*r2*sin(t);
+		nrm = sqrt(t1[1]*t1[1]+t1[2]*t1[2]);
+		t1[1] /= nrm;
+		t1[2] /= nrm;
+		
+		t2[0] = 0.0;
+		t2[1] = -r1*sin(t);
+		t2[2] = -(1.0-alp)*r2*cos(t);
+		nrm = sqrt(t2[1]*t2[1]+t2[2]*t2[2]);
+		t2[1] /= nrm;
+		t2[2] /= nrm;
+		
+		dist  = sqrt(dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2]);
+		
+		if ( count == 0 )
+			ldist = dist;
+		
+		if (dist < eps) break;
+		
+		b     = -( dx[0]*t1[0] +  dx[1]*t1[1] +  dx[2]*t1[2]);
+		a     =  ( t1[0]*t1[0] +  t1[1]*t1[1] + t1[2]*t1[2]) +
+		         ( dx[0]*t2[0] +  dx[1]*t2[1] +  dx[2]*t2[2]);
+		
+		if (a == 0.0)	break;
+		
+		printf("   %d: t=%lf   d=%le \n", count, t, ldist);
+		
+		b /= a;
+    if (fabs(b) < 1.e-10*(tmax-tmin)) { printf("BREAK DIST %.3le\n", dist); break;}
+    t += b;
+		
+	}
+	
+  if (t < tmin) t = tmin;
+  if (t > tmax) t = tmax;
+	 
+	CrdNew[0] = x;
+	CrdNew[1] = r1*sin(t);
+	CrdNew[2] = (1.0-alp)*(zcen+r2*cos(t)) + alp*zcut;
+	
+	return 1;
+	
+}
+
 
 
 double NormalEllipseProjection (double r1, double r2, double *Crd, double t0)
@@ -1028,17 +1153,6 @@ int NozzleWallProjection_DV (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, Cad
 	
 	for (iTri=1; iTri<=Msh->NbrTri; iTri++) {
 		ref = Msh->Tri[iTri][3];
-		if ( ref != refDown )
-			continue;
-		for (j=0; j<3; j++) {
-			vid = Msh->Tri[iTri][j];
-			Tag[vid] = ref;
-		}
-		NbrTriPrj++;
-	}
-	
-	for (iTri=1; iTri<=Msh->NbrTri; iTri++) {
-		ref = Msh->Tri[iTri][3];
 		if ( ref != refUp  )
 			continue;
 		for (j=0; j<3; j++) {
@@ -1047,6 +1161,17 @@ int NozzleWallProjection_DV (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, Cad
 		}
 		NbrTriPrj++;
 	}	
+	
+	for (iTri=1; iTri<=Msh->NbrTri; iTri++) {
+		ref = Msh->Tri[iTri][3];
+		if ( ref != refDown )
+			continue;
+		for (j=0; j<3; j++) {
+			vid = Msh->Tri[iTri][j];
+			Tag[vid] = ref;
+		}
+		NbrTriPrj++;
+	}
 	
 	//--- Create mesh for visu
 	
@@ -1100,14 +1225,34 @@ int NozzleWallProjection_DV (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, Cad
 		
 		patch = -1;
 		
+		//if ( Tag[iVer] == refUp ) {
+		//	//---
+		//	ProjectNozzleWall_Up_DV (Msh->Ver[iVer], CrdNew, CadNoz_bas);			
+		//	patch = NOZZLEUP;
+		//}
+		//else if ( Tag[iVer] == refDown ) {			
+		//	//---
+		//	ProjectNozzleWall_Down_DV (Msh->Ver[iVer], CrdNew, CadNoz_bas);
+		//	patch = NOZZLEDOWN;
+		//}
+		//
+		//if ( patch == -1 ) {
+		//	if ( verbose > 0 )
+		//		printf("  ## ERROR : Wrong nozzle CAD patch.\n");
+		//	exit(1);
+		//}
+		//
+		//ProjectToDV_DV(CrdNew, CadNoz, CadNoz_bas, patch);
+
 		if ( Tag[iVer] == refUp ) {
 			//---
-			ProjectNozzleWall_Up_DV (Msh->Ver[iVer], CrdNew, CadNoz_bas);			
+			ProjectNozzleWall_Up_DV (Msh->Ver[iVer], CrdNew, CadNoz_bas);	
+			ProjectToDV_DV(CrdNew, CadNoz, CadNoz_bas, patch);		
 			patch = NOZZLEUP;
 		}
 		else if ( Tag[iVer] == refDown ) {			
 			//---
-			ProjectNozzleWall_Down_DV (Msh->Ver[iVer], CrdNew, CadNoz_bas);
+			ProjectNozzleWall_Down_DV_3 (Msh->Ver[iVer], CrdNew, CadNoz, CadNoz_bas);
 			patch = NOZZLEDOWN;
 		}
 		
@@ -1117,9 +1262,11 @@ int NozzleWallProjection_DV (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, Cad
 			exit(1);
 		}
 		
-		ProjectToDV_DV(CrdNew, CadNoz, CadNoz_bas, patch);
-		
-		
+
+		//CrdNew[0] = Msh->Ver[iVer][0];
+		//CrdNew[1] = Msh->Ver[iVer][1];
+		//CrdNew[2] = Msh->Ver[iVer][2];
+		//	
 		if ( WrtMsh == 1 ) {
 			MshViz->NbrVer++;
 			AddVertex(MshViz, MshViz->NbrVer, CrdNew);
