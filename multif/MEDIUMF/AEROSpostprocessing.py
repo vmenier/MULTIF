@@ -22,7 +22,7 @@ def assignTotalStress(k, filename, output='verbose'):
     # Load data
     try:
         data = np.loadtxt(filename,dtype=float,skiprows=3); # stresses in 4th column (0-indexed)
-    except:
+    except IOError:
         sys.stdout.write('WARNING: could not open %s\n' % filename);
         return 0;
         
@@ -254,10 +254,9 @@ def interpolateRadialDataOnConvexHull(nozzle, interpLoc, coord, data, output='ve
  
     # Determine ray information for intersection with convex hull
     if( nozzle.dim == '3D' ): # reference from centerline
-        y_offset = nozzle.wall.centerline.radius(interpLoc[:,0]);
-        r = nozzle.wall.minoraxis.radius(interpLoc[:,0]);
-        sys.stdout.write('\n Pointwise stresses not implemented for 3D parameterization.\n\n');
-        sys.exit(0);
+        sys.stderr.write('WARNING: Pointwise stresses not implemented for 3D parameterization.\n');
+        #sys.exit(0);
+        return [-1]*len(interpLoc);
     else:        
         x = interpLoc[:,0];
         r = nozzle.wall.geometry.radius(interpLoc[:,0]);

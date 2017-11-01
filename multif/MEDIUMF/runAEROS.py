@@ -11,7 +11,34 @@ from .. import _nozzle_module
 from AEROSpostprocessing import *
 from SU2postprocessing import ExtractSolutionAtWall
 
-def runAEROS ( nozzle, output='verbose' ):      
+def getMass ( nozzle, output='verbose' ):
+
+    # Check that runAEROS has previously been called to generate the mesh and
+    # AeroS input files. If not, call runAEROS to generate mesh etc.
+    if not os.path.exists('nozzle.aeros.mass'):
+        runAEROS(nozzle, output=output, run_analysis=0);
+
+    # Calculate mass of thermal layer
+    os.system("aeros nozzle.aeros.cmc.mass");
+    m1 = float(np.loadtxt("MASS.txt.cmc")); # mass of CMC structural model
+
+    # Calculate mass of thermal model (thermal layers + approximate load layers)
+    # Inaccurate since load layers are averaged.
+    #os.system("aeros nozzle.aeroh.mass"); 
+    #m2 = float(np.loadtxt("MASS.txt.thermal")); # mass of thermal model
+
+    # Calculate mass of load layers and stringers and baffles
+    os.system("aeros nozzle.aeros.mass");
+    m3a = float(np.loadtxt("MASS.txt")); # mass of structural model
+    m3b = float(np.loadtxt("MASS.txt.2")); # mass of load layer in structural model
+
+    total_mass = m1 + m3a;
+    wall_mass = m1 + m3b; # cannot be accurately calculated as of yet
+
+    return total_mass, wall_mass
+
+
+def runAEROS ( nozzle, output='verbose', run_analysis=1 ):      
 
     # --- Set important flags
     
@@ -462,25 +489,86 @@ def runAEROS ( nozzle, output='verbose' ):
 
     # END NOZZLE.txt writing
     
+    f2 = open("BOUNDARY.txt", 'w');
     if nozzle.dim != '3D':
-        f2 = open("BOUNDARY.txt", 'w');
         print >> f2, "%d" % (Size[0]);
         if nozzle.wallTempFlag == 1: # wall temperature is assigned by user
             for i in range(0,Size[0]):
                 Temp = nozzle.wall.temperature.geometry.radius(SolExtract[i][0])
                 print >> f2, "%0.16e %0.16e %0.16e %0.16e" % (SolExtract[i][0], SolExtract[i][iPres], Temp, nozzle.environment.T);
-            f2.close();        
         else: # wall temperature is extracted from flow
             for i in range(0,Size[0]):
                 print >> f2, "%0.16e %0.16e %0.16e %0.16e" % (SolExtract[i][0], SolExtract[i][iPres], SolExtract[i][iTemp], nozzle.environment.T);
-            f2.close();
+    else:
+        print >> f2, "2";
+        print >> f2, "%0.16e 0 0 %0.16e" % (nozzle.wall.geometry.xstart, nozzle.environment.T);
+        print >> f2, "%0.16e 0 0 %0.16e" % (nozzle.wall.geometry.xend, nozzle.environment.T);
+    f2.close();
     
     _nozzle_module.generate();       # generate the meshes for thermal and structural analyses
 
-    if thermalFlag > 0:
-      os.system("aeros nozzle.aeroh"); # execute the thermal analysis
-      _nozzle_module.convert();        # convert temperature output from thermal analysis to input for structural analysis
-    os.system("aeros nozzle.aeros"); # execute the structural analysis
-    os.system("aeros nozzle.aeros.cmc"); # execute the structural analysis of the cmc layer
-    
+    if nozzle.dim == '3D' and run_analysis == 1:
+        #--- Get solution from fluid calculation
+
+        print "Interface AEROS";
+
+        MshNam_str = "nozzle.mesh";
+        MshNam_cfd = "nozzle.su2";
+        SolNam_cfd = "nozzle.dat";
+
+        Crd, Tri, Pres, Temp = multif.HIGHF.hf_FluidStructureInterpolation(MshNam_str, MshNam_cfd, SolNam_cfd);
+        sys.stdout.flush();
+
+        if thermalFlag > 0:
+            # temperatures for the thermal model
+            f0 = open("TEMPERATURES.txt.thermal", 'r');
+            f0.readline()
+            f1 = open("TEMPERATURES.txt.thermal.3d", 'w');
+            print >> f1, "TEMPERATURE"
+            for line in f0:
+                nodeId = int(line.split()[0]);
+                print >> f1, "%d %0.16e" % (nodeId, Temp[nodeId-1]);
+            f0.close();
+            f1.close();
+            os.rename("TEMPERATURES.txt.thermal.3d", "TEMPERATURES.txt.thermal");
+        else:
+            # temperatures for the structural model
+            f0 = open("TEMPERATURES.txt", 'r');
+            f0.readline()
+            f1 = open("TEMPERATURES.txt.3d", 'w');
+            print >> f1, "TEMPERATURE"
+            for line in f0:
+                nodeId = int(line.split()[0]);
+                print >> f1, "%d %0.16e" % (nodeId, Temp[nodeId-1]);
+            f0.close();
+            f1.close();
+            os.rename("TEMPERATURES.txt.3d", "TEMPERATURES.txt");
+        
+        # pressures for the structural model
+        f0 = open("PRESSURES.txt", 'r');
+        f0.readline()
+        f1 = open("PRESSURES.txt.3d", 'w');
+        print >> f1, "PRESSURE"
+        i = 0;
+        for line in f0:
+            elemId = int(line.split()[0]);
+            avgPres = (Pres[Tri[i][0]]+Pres[Tri[i][1]]+Pres[Tri[i][2]])/3;
+            print >> f1, "%d %0.16e" % (elemId, avgPres);
+            i = i+1;
+        f0.close();
+        f1.close();
+        os.rename("PRESSURES.txt.3d", "PRESSURES.txt");
+
+    # --- Execute analyses
+    if run_analysis == 1:
+        if thermalFlag > 0:
+            # Thermal analysis
+            os.system("aeros nozzle.aeroh");
+            # Convert temp. output from thermal analysis to input for structural analysis
+            _nozzle_module.convert();
+            # Structural analysis of CMC layer
+            os.system("aeros nozzle.aeros.cmc");
+        # Structural analysis of load layers + baffles and stringers
+        os.system("aeros nozzle.aeros");
+
     return 0;

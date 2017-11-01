@@ -1049,6 +1049,9 @@ def Quasi1D(nozzle,output='verbose'):
     tempoutside = np.array(tempoutside)
     netthrust = netthrust[0]
 
+    # plt.plot(x,mach,'.')
+    # plt.show()
+
     ps = p*(1+(g-1)*mach**2/2.)**(g/(g-1.)) # stagnation pressure
     
     # Run secondary thermal analysis and structural analysis if necessary
@@ -1056,13 +1059,10 @@ def Quasi1D(nozzle,output='verbose'):
         nozzle.wallResults = np.transpose(np.array([x, tempinside, ps]))
         nozzle.runAEROS = 0
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
-            
-            try:
-                runAEROS(nozzle, output)
-                AEROSPostProcess(nozzle, output)
-            except:
-                sys.stderr.write("## ERROR : Call to AEROS ignored.\n");
-    
+
+            runAEROS(nozzle, output)
+            AEROSPostProcess(nozzle, output)
+
     return netthrust, x, tempinside, ps, p, u
 
 

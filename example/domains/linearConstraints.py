@@ -62,7 +62,7 @@ def bspline(x, v, throatIndex, slopeLimits, xLimits=(None,None), delta=1e-2,
         B[m,throatIndex] = 1; B[m,throatIndex-1] = -1; c[m] = 0.1; m = m+1
     if(output=='verbose'):
         print 'constraints %i and %i used for max width of throat' % (m_initial+1,m_initial+2);
-    
+
     if throatIsLowest == 1:
         # Construct linear constraints for throat is lowest point on left of throat
         if throatIndex != 0:
@@ -89,7 +89,7 @@ def bspline(x, v, throatIndex, slopeLimits, xLimits=(None,None), delta=1e-2,
     # Set lower bound in slope segments prior to throat
     if throatIndex != 0 and slopeLimits[0] is not None:
         m_initial = m;
-        n_seg = len(range(1,throatIndex+1));
+        n_seg = len(range(1,throatIndex)); # RWF used to be throatIndex+1
         if isinstance(slopeLimits[0],list):
             if len(slopeLimits[0]) == n_seg:
                 m_bound = slopeLimits[0];
@@ -99,7 +99,7 @@ def bspline(x, v, throatIndex, slopeLimits, xLimits=(None,None), delta=1e-2,
         else:
             m_bound = [slopeLimits[0]]*n_seg; # lower bound on normalized slope
         j = 0;
-        for i in range(1,throatIndex+1):
+        for i in range(1,throatIndex): # RWF used to be throatIndex+1
             B[m,i] = m_bound[j]; B[m,i-1] = -m_bound[j]; B[m,i+nx] = -1; B[m,i+nx-1] = 1; c[m] = 0; m = m+1; j = j+1
         if(output=='verbose'):
             print 'constraints %i through %i used for lower bound on slope segments prior' % (m_initial+1,m);
@@ -107,7 +107,7 @@ def bspline(x, v, throatIndex, slopeLimits, xLimits=(None,None), delta=1e-2,
     # Set upper bound in slope segments prior to throat
     if throatIndex != 0 and slopeLimits[1] is not None:
         m_initial = m;
-        n_seg = len(range(1,throatIndex+1));
+        n_seg = len(range(1,throatIndex)); # RWF used to be throatIndex+1
         if isinstance(slopeLimits[1],list):
             if len(slopeLimits[1]) == n_seg:
                 m_bound = slopeLimits[1];
@@ -117,7 +117,7 @@ def bspline(x, v, throatIndex, slopeLimits, xLimits=(None,None), delta=1e-2,
         else:
             m_bound = [slopeLimits[1]]*n_seg; # lower bound on normalized slope
         j = 0;
-        for i in range(1,throatIndex+1):
+        for i in range(1,throatIndex): # RWF used to be throatIndex+1
             B[m,i] = -m_bound[j]; B[m,i-1] = m_bound[j]; B[m,i+nx] = 1; B[m,i+nx-1] = -1; c[m] = 0; m = m+1; j = j+1
         if(output=='verbose'):            
             print 'constraints %i through %i used for upper bound on slope segments prior' % (m_initial+1,m);
@@ -125,7 +125,7 @@ def bspline(x, v, throatIndex, slopeLimits, xLimits=(None,None), delta=1e-2,
     # Set lower bounds in slope segments after the throat
     if slopeLimits[2] is not None:
         m_initial = m;
-        n_seg = len(range(throatIndex,nx-1));
+        n_seg = len(range(throatIndex+2,nx-1)); # RWF used to be throatIndex
         if isinstance(slopeLimits[2],list):
             if len(slopeLimits[2]) == n_seg:
                 m_bound = slopeLimits[2];
@@ -136,7 +136,7 @@ def bspline(x, v, throatIndex, slopeLimits, xLimits=(None,None), delta=1e-2,
             m_bound = [slopeLimits[2]]*n_seg; # lower bound on normalized slope  
          ## can make m_bound adaptive according to n_seg
         j = 0;
-        for i in range(throatIndex+1,nx):
+        for i in range(throatIndex+3,nx): # RWF used to be throatIndex+1
             B[m,i] = m_bound[j]; B[m,i-1] = -m_bound[j]; B[m,i+nx] = -1; B[m,i+nx-1] = 1; c[m] = 0; m = m+1; j = j+1
         if(output=='verbose'):  
             print 'constraints %i through %i used for lower bound on slope segments after' % (m_initial+1,m);
@@ -144,7 +144,7 @@ def bspline(x, v, throatIndex, slopeLimits, xLimits=(None,None), delta=1e-2,
     # Set upper bounds in slope segments after the throat
     if slopeLimits[3] is not None:
         m_initial = m;
-        n_seg = len(range(throatIndex,nx-1));
+        n_seg = len(range(throatIndex+2,nx-1)); # RWF used to be throatIndex
         if isinstance(slopeLimits[3],list):
             if len(slopeLimits[3]) == n_seg:
                 m_bound = slopeLimits[3];
@@ -155,7 +155,7 @@ def bspline(x, v, throatIndex, slopeLimits, xLimits=(None,None), delta=1e-2,
             m_bound = [slopeLimits[3]]*n_seg; # upper bound on normalized slope
         ## can make m_bound adaptive according to n_seg
         j = 0;
-        for i in range(throatIndex+1,nx):
+        for i in range(throatIndex+3,nx): # RWF used to be throatIndex+1
             B[m,i] = -m_bound[j]; B[m,i-1] = m_bound[j]; B[m,i+nx] = 1; B[m,i+nx-1] = -1; c[m] = 0; m = m+1; j = j+1
         if(output=='verbose'):
             print 'constraints %i through %i used for upper bound on slope segments after' % (m_initial+1,m);

@@ -50,7 +50,7 @@ def main():
     config = multif.SU2.io.Config(options.filename)        
     nozzle = multif.nozzle.NozzleSetup(config, options.flevel, output);
     nozzle.partitions = int(options.partitions);
-    
+        
     postpro = 0;
     if options.postpro :
         postpro = 1;
