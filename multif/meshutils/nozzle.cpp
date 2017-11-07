@@ -2555,7 +2555,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
   int nc[3], nk[3], na1, na2, na3, na4; double sa, ea, bw, ta, to, at, bt, ba, bo, ab, bb;
   fin3 >> nc[0] >> nk[0] >> nc[1] >> nk[1] >> nc[2] >> nk[2] >> sa >> ea >> bw >> ta >> to >> at >> bt >> ba >> bo >> ab >> bb
        >> np >> na1 >> na2 >> na3 >> na4;
-  assert(np == points.size());
+  assert(np == 0 || np == points.size());
   if(vf) {
     std::cout << "Number of centerline control points: " << nc[0] << std::endl;
     std::cout << "Number of centerline knots: " << nk[0] << std::endl;
@@ -2599,7 +2599,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
     for(int j = 0; j < na1; ++j) {
       double xi, ai, ti;
       fin3 >> xi >> ai >> ti;
-      assert(xi == points[i].xyz[0]);
+      assert(std::abs(xi - points[i].xyz[0]) < 1e-8);
       points[i].at1.push_back(std::make_pair(ai*M_PI/180,ti));
       if(vf) std::cout << "Thickness of inner load layer at point " << i+1 << " and angular coordinate " << points[i].at1.back().first
                        << ": " << points[i].at1.back().second << std::endl;
@@ -2609,7 +2609,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
     for(int j = 0; j < na2; ++j) {
       double xi, ai, ti;
       fin3 >> xi >> ai >> ti;
-      assert(xi == points[i].xyz[0]);
+      assert(std::abs(xi - points[i].xyz[0]) < 1e-8);
       points[i].at2.push_back(std::make_pair(ai*M_PI/180,ti));
       if(vf) std::cout << "Thickness of middle load layer at point " << i+1 << " and angular coordinate " << points[i].at2.back().first
                        << ": " << points[i].at2.back().second << std::endl;
@@ -2619,7 +2619,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
     for(int j = 0; j < na3; ++j) {
       double xi, ai, ti;
       fin3 >> xi >> ai >> ti;
-      assert(xi == points[i].xyz[0]);
+      assert(std::abs(xi - points[i].xyz[0]) < 1e-8);
       points[i].at3.push_back(std::make_pair(ai*M_PI/180,ti));
       if(vf) std::cout << "Thickness of outer load layer at point " << i+1 << " and angular coordinate " << points[i].at3.back().first
                        << ": " << points[i].at3.back().second << std::endl;
@@ -2629,7 +2629,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
     for(int j = 0; j < na4; ++j) {
       double xi, ai, ti;
       fin3 >> xi >> ai >> ti;
-      assert(xi == points[i].xyz[0]);
+      assert(std::abs(xi - points[i].xyz[0]) < 1e-8);
       points[i].at4.push_back(std::make_pair(ai*M_PI/180,ti));
       if(vf) std::cout << "Thickness of thermal layer at point " << i+1 << " and angular coordinate " << points[i].at4.back().first
                        << ": " << points[i].at4.back().second << std::endl;
