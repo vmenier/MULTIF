@@ -334,7 +334,7 @@ class EllipticalExterior:
             # self.b = 0.05; # m, minor axis
 
             # Parameterization for 44cm inlet, fixed inlet
-            self.angle = -10.; # degrees
+            self.angle = -12.; # degrees
             self.a = 4.0; # m, major axis
             self.b = 0.12; # m, minor axis
             self.spacer = 0.2; # m, minimum space between interior surface of
