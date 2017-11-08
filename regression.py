@@ -161,18 +161,18 @@ if( test['all'] or test['medfi'] ):
     test_list.append(medfi_3dparam);
 
 # ----------------------- 3D param, 2D dim, med-fi ----------------------------
-# if( test['all'] or test['medfi'] ):
+if( test['all'] or test['medfi'] ):
 
-#     medfi_3dparam_rans = TestCase('medfi_3dparam_rans');
-#     medfi_3dparam_rans.description = 'General, 3D->2D, parallel, med-fi (RANS) analysis';
-#     medfi_3dparam_rans.cfg_dir = 'example';
-#     medfi_3dparam_rans.cfg_file = 'general-3d.cfg';
-#     medfi_3dparam_rans.input_file = 'general-3d.in';
-#     medfi_3dparam_rans.compare_file = 'example/regression/medfi_3dparam_rans.out';
-#     medfi_3dparam_rans.fidelity = 4;
-#     medfi_3dparam_rans.nproc = nCores;
-#     medfi_3dparam_rans.diff_tol = 1e-6;
-#     test_list.append(medfi_3dparam_rans);
+    medfi_3dparam_rans = TestCase('medfi_3dparam_rans');
+    medfi_3dparam_rans.description = 'General, 3D->2D, parallel, med-fi (RANS) analysis';
+    medfi_3dparam_rans.cfg_dir = 'example';
+    medfi_3dparam_rans.cfg_file = 'general-3d.cfg';
+    medfi_3dparam_rans.input_file = 'general-3d.in';
+    medfi_3dparam_rans.compare_file = 'example/regression/medfi_3dparam_rans.out';
+    medfi_3dparam_rans.fidelity = 8;
+    medfi_3dparam_rans.nproc = nCores;
+    medfi_3dparam_rans.diff_tol = 1e-6;
+    test_list.append(medfi_3dparam_rans);
 
 # ------------------ 2D param, 2D dim med-fi, adjoint gradients ---------------
 if( test['all'] or test['medfi'] or test['adjoint'] ):
@@ -214,7 +214,7 @@ if( test['all'] or test['hifi'] or test['fea'] ):
     hifi_euler.cfg_file = 'general-3d.cfg';
     hifi_euler.input_file = 'general-3d.in';
     hifi_euler.compare_file = 'example/regression/hifi_euler.out';
-    hifi_euler.fidelity = 3;
+    hifi_euler.fidelity = 5;
     hifi_euler.nproc = nCores;
     hifi_euler.diff_tol = 1e-6;
     test_list.append(hifi_euler);
@@ -228,7 +228,7 @@ if( test['all'] or test['hifi'] ):
     hifi_rans.cfg_file = 'general-3d.cfg';
     hifi_rans.input_file = 'general-3d.in';
     hifi_rans.compare_file = 'example/regression/hifi_rans.out';
-    hifi_rans.fidelity = 5;
+    hifi_rans.fidelity = 11;
     hifi_rans.nproc = nCores;
     hifi_rans.diff_tol = 1e-6;
     test_list.append(hifi_rans);
