@@ -222,10 +222,10 @@ def buildDesignDomain(output='verbose'):
     load_layer_outside_domain = LinIneqDomain(A, b, lb = lb, ub = ub, center = x_load_layer_outside)
     
     #            BAFFLES, 10, 
-    x_baffles = np.array([0.2, 0.4, 0.6, 0.8, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01])
+    x_baffles = np.array([0.2, 0.4, 0.6, 0.8, 0.01, 0.01, 0.01, 0.01, 0.01])
     _, A, b = baffles(x_baffles)
-    lb = np.hstack((lb_perc * x_baffles[0:4], 0.0074*np.ones(6)))
-    ub = np.hstack((ub_perc * x_baffles[0:4], 0.0359*np.ones(6)))
+    lb = np.hstack((lb_perc * x_baffles[0:4], 0.0074*np.ones(5)))
+    ub = np.hstack((ub_perc * x_baffles[0:4], 0.0359*np.ones(5)))
     baffles_domain = LinIneqDomain(A, b, lb = lb, ub = ub, center = x_baffles)
 
     #            STRINGERS_THICKNESS_VALUES, 6,
@@ -236,7 +236,7 @@ def buildDesignDomain(output='verbose'):
 
 
     design_domains = [inner_wall_domain, thermal_layer_domain, air_gap_domain, load_layer_inner_domain,
-            load_layer_middle_domain, load_layer_outside_domain, baffles_domain, stringer_domain] 
+            load_layer_middle_domain, load_layer_outside_domain, stringer_domain, baffles_domain] 
 
     return ComboDomain(design_domains)
 
