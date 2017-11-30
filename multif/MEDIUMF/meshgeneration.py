@@ -414,37 +414,37 @@ def GenerateNozzleMesh_Deform (nozzle):
         
     # --- Project thrust marker
     
-    if nozzle.method == "EULER":
+    # if nozzle.method == "EULER":
         
-        ref_thrust = 9;
+    #     ref_thrust = 9;
         
-        Nbv = len(Bdr[ref_thrust]);
+    #     Nbv = len(Bdr[ref_thrust]);
         
-        x = Bdr[ref_thrust][0][1];
-        xnew = xx[0] + (x-xbas_min)/(xbas_max-xbas_min)*(xwall_max-xx[0]);
+    #     x = Bdr[ref_thrust][0][1];
+    #     xnew = xx[0] + (x-xbas_min)/(xbas_max-xbas_min)*(xwall_max-xx[0]);
         
-        ynew_tab = [];
-        dydx = [];
+    #     ynew_tab = [];
+    #     dydx = [];
         
-        if nozzle.param == "2D":
-            _meshutils_module.py_BSplineGeo3LowF (nozzle.wall.knots, nozzle.wall.coefs, xnew_tab, ynew_tab, dydx);
-        else :
-            xnew_tab = np.array([xnew]);
-            ynew_tab = Get3Dto2DEquivArea(nozzle, xnew_tab);
+    #     if nozzle.param == "2D":
+    #         _meshutils_module.py_BSplineGeo3LowF (nozzle.wall.knots, nozzle.wall.coefs, xnew_tab, ynew_tab, dydx);
+    #     else :
+    #         xnew_tab = np.array([xnew]);
+    #         ynew_tab = Get3Dto2DEquivArea(nozzle, xnew_tab);
             
-        ymax = ynew_tab[0];
+    #     ymax = ynew_tab[0];
         
-        ymax_bas =  max(float(l[2]) for l in Bdr[ref_thrust])
+    #     ymax_bas =  max(float(l[2]) for l in Bdr[ref_thrust])
         
-        for i in range(Nbv):
+    #     for i in range(Nbv):
             
-            vid = Bdr[ref_thrust][i][0];
-            y   = Bdr[ref_thrust][i][2];
+    #         vid = Bdr[ref_thrust][i][0];
+    #         y   = Bdr[ref_thrust][i][2];
             
-            ynew = y/ymax_bas*ymax;
+    #         ynew = y/ymax_bas*ymax;
             
-            motion_hdl.append([vid-1, xnew, ynew, Bdr[ref_thrust][i][1], Bdr[ref_thrust][i][2]]);
-            #fil.write("%d %le %le\n" % (vid-1, xnew, ynew));
+    #         motion_hdl.append([vid-1, xnew, ynew, Bdr[ref_thrust][i][1], Bdr[ref_thrust][i][2]]);
+    #         #fil.write("%d %le %le\n" % (vid-1, xnew, ynew));
         
     
     #--- Write mesh motion file
