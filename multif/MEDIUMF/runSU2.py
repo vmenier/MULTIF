@@ -588,112 +588,112 @@ def runSU2 ( nozzle ):
     su2history.write('Residual reduction: %0.16f\n' % residualReduction);
     su2history.close();
 
-    # --- Rerun SU2 if necessary (EULER only)
-    if( nozzle.method == 'EULER' ):
-        if( finalResidual > 0 ): # SU2 diverged
+    # # --- Rerun SU2 if necessary (EULER only)
+    # if( nozzle.method == 'EULER' ):
+    #     if( finalResidual > 0 ): # SU2 diverged
 
-            # Copy all original files into a directory for troubleshooting
-            if not os.path.isdir(dirname):
-                os.mkdir(dirname);
-            for f in savefiles:
-                if( os.path.isfile(f) ):
-                    shutil.copyfile(f,os.path.join(dirname,f));
+    #         # Copy all original files into a directory for troubleshooting
+    #         if not os.path.isdir(dirname):
+    #             os.mkdir(dirname);
+    #         for f in savefiles:
+    #             if( os.path.isfile(f) ):
+    #                 shutil.copyfile(f,os.path.join(dirname,f));
 
-            # Notify reason for 2nd run
-            su2history = open('about.txt','a');
-            su2history.write('Rerunning SU2 with more conservative parameters.\n');
-            su2history.write('Failed run files are stored in %s.\n' % dirname);
-            su2history.close(); 
+    #         # Notify reason for 2nd run
+    #         su2history = open('about.txt','a');
+    #         su2history.write('Rerunning SU2 with more conservative parameters.\n');
+    #         su2history.write('Failed run files are stored in %s.\n' % dirname);
+    #         su2history.close(); 
 
-            # Change SU2 parameters
-            config = SetupConfig(solver_options);
-            if( solver_options.LocalRelax == 'YES' ):
-                config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 10.0 )';
-                config.LIMITER_ITER= int(config.LIMITER_ITER)*2.; 
-                config.EXT_ITER = int(config.EXT_ITER)*3.;           
-            else:
-                config.CFL_NUMBER = float(config.CFL_NUMBER)/2.;
-                config.LIMITER_ITER = int(config.LIMITER_ITER)*2.;
-                config.EXT_ITER = int(config.EXT_ITER)*3.;
+    #         # Change SU2 parameters
+    #         config = SetupConfig(solver_options);
+    #         if( solver_options.LocalRelax == 'YES' ):
+    #             config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 10.0 )';
+    #             config.LIMITER_ITER= int(config.LIMITER_ITER)*2.; 
+    #             config.EXT_ITER = int(config.EXT_ITER)*3.;           
+    #         else:
+    #             config.CFL_NUMBER = float(config.CFL_NUMBER)/2.;
+    #             config.LIMITER_ITER = int(config.LIMITER_ITER)*2.;
+    #             config.EXT_ITER = int(config.EXT_ITER)*3.;
 
-            # Rerun SU2      
-            info = SU2.run.CFD(config);
+    #         # Rerun SU2      
+    #         info = SU2.run.CFD(config);
 
-            # Check residual
-            history, finalResidual, residualReduction = checkResidual(config);
-            su2history = open('about.txt','a');
-            su2history.write('Final residual: %0.16f\n' % finalResidual);
-            su2history.write('Residual reduction: %0.16f\n' % residualReduction);
-            su2history.close(); 
+    #         # Check residual
+    #         history, finalResidual, residualReduction = checkResidual(config);
+    #         su2history = open('about.txt','a');
+    #         su2history.write('Final residual: %0.16f\n' % finalResidual);
+    #         su2history.write('Residual reduction: %0.16f\n' % residualReduction);
+    #         su2history.close(); 
 
-        elif( residualReduction < config.RESIDUAL_REDUCTION ): # residual not reduced enough
+    #     elif( residualReduction < config.RESIDUAL_REDUCTION ): # residual not reduced enough
 
-            # Copy all original files into a directory for troubleshooting
-            if not os.path.isdir(dirname):
-                os.mkdir(dirname);
-            for f in savefiles:
-                if( os.path.isfile(f) ):
-                    shutil.copyfile(f,os.path.join(dirname,f));
+    #         # Copy all original files into a directory for troubleshooting
+    #         if not os.path.isdir(dirname):
+    #             os.mkdir(dirname);
+    #         for f in savefiles:
+    #             if( os.path.isfile(f) ):
+    #                 shutil.copyfile(f,os.path.join(dirname,f));
 
-            # Notify reason for 2nd run
-            su2history = open('about.txt','a');
-            su2history.write('Rerunning SU2 since residual reduction is inadequate.\n');
-            su2history.write('Initial run files are stored in %s.\n' % dirname);
-            su2history.close();
+    #         # Notify reason for 2nd run
+    #         su2history = open('about.txt','a');
+    #         su2history.write('Rerunning SU2 since residual reduction is inadequate.\n');
+    #         su2history.write('Initial run files are stored in %s.\n' % dirname);
+    #         su2history.close();
 
-            # Change SU2 parameters
-            config = SetupConfig(solver_options);
-            if( os.path.isfile('nozzle.dat') ): # implement restart
+    #         # Change SU2 parameters
+    #         config = SetupConfig(solver_options);
+    #         if( os.path.isfile('nozzle.dat') ): # implement restart
 
-                config.RESTART_SOL= 'YES'; # restart from previous solution
-                os.rename('nozzle.dat','solution_flow.dat');
+    #             config.RESTART_SOL= 'YES'; # restart from previous solution
+    #             os.rename('nozzle.dat','solution_flow.dat');
                 
-                # Gauge progress made in last N iter
-                N = min(300,history[:,0].size);
-                modVarLast300Iters = np.mean(np.abs(history[-N:-1,11] - np.mean(history[-N:-1,11])));
-                if( modVarLast300Iters > 0.5 ): # sufficient progress made, make no changes
-                    pass; # originally 0.2 was used
-                elif( solver_options.LocalRelax == 'YES' ): # no progress made, tighten CFL
-                    su2history = open('about.txt','a');
-                    su2history.write('More conservative parameters are being used.\n');
-                    su2history.close(); 
-                    config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 10.0 )';
-                    config.LIMITER_ITER= int(config.LIMITER_ITER)*2; 
-                    config.EXT_ITER = int(config.EXT_ITER)*2;              
-                else:
-                    su2history = open('about.txt','a');
-                    su2history.write('More conservative parameters are being used.\n');
-                    su2history.close(); 
-                    config.CFL_NUMBER = float(config.CFL_NUMBER)/2;
-                    config.LIMITER_ITER = int(config.LIMITER_ITER)*2;
-                    config.EXT_ITER = int(config.EXT_ITER)*2;
+    #             # Gauge progress made in last N iter
+    #             N = min(300,history[:,0].size);
+    #             modVarLast300Iters = np.mean(np.abs(history[-N:-1,11] - np.mean(history[-N:-1,11])));
+    #             if( modVarLast300Iters > 0.5 ): # sufficient progress made, make no changes
+    #                 pass; # originally 0.2 was used
+    #             elif( solver_options.LocalRelax == 'YES' ): # no progress made, tighten CFL
+    #                 su2history = open('about.txt','a');
+    #                 su2history.write('More conservative parameters are being used.\n');
+    #                 su2history.close(); 
+    #                 config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 10.0 )';
+    #                 config.LIMITER_ITER= int(config.LIMITER_ITER)*2; 
+    #                 config.EXT_ITER = int(config.EXT_ITER)*2;              
+    #             else:
+    #                 su2history = open('about.txt','a');
+    #                 su2history.write('More conservative parameters are being used.\n');
+    #                 su2history.close(); 
+    #                 config.CFL_NUMBER = float(config.CFL_NUMBER)/2;
+    #                 config.LIMITER_ITER = int(config.LIMITER_ITER)*2;
+    #                 config.EXT_ITER = int(config.EXT_ITER)*2;
 
-                config.RESIDUAL_REDUCTION = float(config.RESIDUAL_REDUCTION) - residualReduction;
+    #             config.RESIDUAL_REDUCTION = float(config.RESIDUAL_REDUCTION) - residualReduction;
 
-            else: # possibly a different residual diverged, etc.
+    #         else: # possibly a different residual diverged, etc.
 
-                su2history = open('about.txt','a');
-                su2history.write('More conservative parameters are being used.');
-                su2history.close(); 
+    #             su2history = open('about.txt','a');
+    #             su2history.write('More conservative parameters are being used.');
+    #             su2history.close(); 
 
-                if( solver_options.LocalRelax == 'YES' ):
-                    config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 10.0 )';
-                    config.LIMITER_ITER= int(config.LIMITER_ITER)*2; 
-                    config.EXT_ITER = int(config.EXT_ITER)*3;           
-                else:
-                    config.CFL_NUMBER = float(config.CFL_NUMBER)/2;
-                    config.LIMITER_ITER = int(config.LIMITER_ITER)*2;
-                    config.EXT_ITER = int(config.EXT_ITER)*3;
+    #             if( solver_options.LocalRelax == 'YES' ):
+    #                 config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 10.0 )';
+    #                 config.LIMITER_ITER= int(config.LIMITER_ITER)*2; 
+    #                 config.EXT_ITER = int(config.EXT_ITER)*3;           
+    #             else:
+    #                 config.CFL_NUMBER = float(config.CFL_NUMBER)/2;
+    #                 config.LIMITER_ITER = int(config.LIMITER_ITER)*2;
+    #                 config.EXT_ITER = int(config.EXT_ITER)*3;
 
-            # Rerun SU2
-            info = SU2.run.CFD(config);
+    #         # Rerun SU2
+    #         info = SU2.run.CFD(config);
 
-            # Check residual
-            history, finalResidual, residualReduction = checkResidual(config);
-            su2history = open('about.txt','a');
-            su2history.write('Final residual: %0.16f\n' % finalResidual);
-            su2history.write('Residual reduction: %0.16f\n' % residualReduction);
-            su2history.close(); 
+    #         # Check residual
+    #         history, finalResidual, residualReduction = checkResidual(config);
+    #         su2history = open('about.txt','a');
+    #         su2history.write('Final residual: %0.16f\n' % finalResidual);
+    #         su2history.write('Residual reduction: %0.16f\n' % residualReduction);
+    #         su2history.close(); 
         
     # --- Adjoint computation (if required)
     
