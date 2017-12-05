@@ -74,20 +74,20 @@ def runAEROS ( nozzle, output='verbose', run_analysis=1 ):
     # Tn1: number of nodes through thickness of thermal insulating layer
     # Tn2: number of nodes through thickness of gap between thermal and load layers
     # Ln: number of nodes through each half of the thickness of the load layer (thermal model)
-    # Mn: number of nodes in circumferential direction per baffle
+    # Mn: number of nodes in circumferential direction per baffle (note: for transfinite meshing of baffles, set Mn such that (Mn-1)%3 == 0)
     if nozzle.thermostructuralFidelityLevel <= 0.5:
         lc = np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[0.32,0.16]);
         Tn1 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[2,4]));
         Tn2 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[1,2]));
         Ln = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[1,2]));
-        Mn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[25,40]));
+        Mn = 3*np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[8,13]))+1;
         Sn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[5,8]));
     else: # nozzle.thermostructuralFidelityLevel betwen 0.5 and 1
         lc = np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[0.16,0.08]);
         Tn1 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[4,8]));
         Tn2 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[2,4]));
         Ln = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[2,4]));
-        Mn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[40,55]));
+        Mn = 3*np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[13,18]))+1;
         Sn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[8,11]));    
     # Ns: number of panels (i.e. circumferential subdivisions of the mesh)        
     Ns   = max(2,nozzle.stringers.n); 

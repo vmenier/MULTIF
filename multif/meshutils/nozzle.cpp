@@ -2028,9 +2028,10 @@ void generateNozzle(std::vector<PointData> &points,
     }
   };
 
-  auto add_stringer_face_to_model = [&](const TopoDS_Face &face, int physicalTag, int nbPointsTransfinite0) -> void {
+  auto add_stringer_face_to_model = [&](const TopoDS_Face &face, int physicalTag, int nbPointsTransfinite0, int nbPointsTransfinite1) -> void {
     // add a stringer face to the gmsh model and set its mesh parameters
-    // nbPointsTransfinite0 is the number of transfinite points on edge 0
+    // nbPointsTransfinite0 is the number of transfinite points on edge 0 and it's opposite edge
+    // nbPointsTransfinite1 is the number of transfinite points on the other two edges; if this is -1 then the method is set to unstructured
     GFace *gface = gm->getOCCInternals()->addFaceToModel(gm, face);
     gface->addPhysicalEntity(physicalTag);
 
@@ -2038,7 +2039,7 @@ void generateNozzle(std::vector<PointData> &points,
       surfaceTags.push_back(std::make_pair(gface->geomType(), gface->tag()));
     }
 
-    gface->meshAttributes.method = MESH_UNSTRUCTURED;
+    gface->meshAttributes.method = (nbPointsTransfinite1 == -1) ? MESH_UNSTRUCTURED : MeshingMethod;
     std::list<GEdge*> edges = gface->edges();
     for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++it) {
       (*it)->meshAttributes.method = MeshingMethod;
@@ -2049,23 +2050,27 @@ void generateNozzle(std::vector<PointData> &points,
       }
       else {
         double length = (*it)->length((*it)->getLowerBound(), (*it)->getUpperBound());
-        (*it)->meshAttributes.nbPointsTransfinite = std::max(2, int(std::ceil(length/lc))+1);
         auto p0 = std::make_pair((*it)->getBeginVertex()->geomType(), (*it)->getBeginVertex()->tag());
         auto p1 = std::make_pair((*it)->getEndVertex()->geomType(), (*it)->getEndVertex()->tag());
         if((std::find(surfaceTags.begin(), surfaceTags.end(), p0) == surfaceTags.end()) &&
            (std::find(surfaceTags.begin(), surfaceTags.end(), p1) == surfaceTags.end())) {
           //std::cout << "Info    : Found stringer edge on exterior boundary\n";
+          (*it)->meshAttributes.nbPointsTransfinite = (nbPointsTransfinite1 == -1) ? std::max(2, int(std::ceil(length/lc))+1) : nbPointsTransfinite0;
           boundaryTags.push_back(p0);
           boundaryTags.push_back(p1);
           boundaryTags.push_back(std::make_pair((*it)->geomType(), (*it)->tag()));
+        }
+        else {
+          (*it)->meshAttributes.nbPointsTransfinite = (nbPointsTransfinite1 == -1) ? std::max(2, int(std::ceil(length/lc))+1) : nbPointsTransfinite1;
         }
       }
     }
   };
 
-  auto add_baffle_face_to_model = [&](const TopoDS_Face &face, int physicalTag, int nbPointsTransfinite0, int edge0 = 0) -> void {
+  auto add_baffle_face_to_model = [&](const TopoDS_Face &face, int physicalTag, int nbPointsTransfinite0, int nbPointsTransfinite1) -> void {
     // add a baffle face to the gmsh model and set its mesh parameters
-    // nbPointsTransfinite0 is the number of transfinite points on edge 0
+    // nbPointsTransfinite0 is the number of transfinite points on edge 0 and its opposite edges
+    // nbPointsTransfinite1 is the number of transfinite points on the other two edges; if this is -1 then the method is set to unstructured
     GFace *gface = gm->getOCCInternals()->addFaceToModel(gm, face);
     gface->addPhysicalEntity(physicalTag);
 
@@ -2073,7 +2078,7 @@ void generateNozzle(std::vector<PointData> &points,
       surfaceTags.push_back(std::make_pair(gface->geomType(), gface->tag()));
     }
 
-    gface->meshAttributes.method = MESH_UNSTRUCTURED;
+    gface->meshAttributes.method = (nbPointsTransfinite1 == -1) ? MESH_UNSTRUCTURED : MeshingMethod;
     std::list<GEdge*> edges = gface->edges();
     for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++it) {
       (*it)->meshAttributes.method = MeshingMethod;
@@ -2084,15 +2089,22 @@ void generateNozzle(std::vector<PointData> &points,
       }
       else {
         double length = (*it)->length((*it)->getLowerBound(), (*it)->getUpperBound());
-        (*it)->meshAttributes.nbPointsTransfinite = std::max(2, int(std::ceil(length/lc))+1);
         auto p0 = std::make_pair((*it)->getBeginVertex()->geomType(), (*it)->getBeginVertex()->tag());
         auto p1 = std::make_pair((*it)->getEndVertex()->geomType(), (*it)->getEndVertex()->tag());
         if((std::find(surfaceTags.begin(), surfaceTags.end(), p0) == surfaceTags.end()) &&
            (std::find(surfaceTags.begin(), surfaceTags.end(), p1) == surfaceTags.end())) {
           //std::cout << "Info    : Found baffle edge on exterior boundary\n";
+          (*it)->meshAttributes.nbPointsTransfinite = (nbPointsTransfinite1 == -1) ? std::max(2, int(std::ceil(length/lc))+1) : nbPointsTransfinite0/3+1;
           boundaryTags.push_back(p0);
           boundaryTags.push_back(p1);
           boundaryTags.push_back(std::make_pair((*it)->geomType(), (*it)->tag()));
+        }
+        else {
+          if(gface->meshAttributes.method == MESH_TRANSFINITE) {
+            gface->meshAttributes.corners.push_back((*it)->getBeginVertex());
+            gface->meshAttributes.corners.push_back((*it)->getEndVertex());
+          }
+          (*it)->meshAttributes.nbPointsTransfinite = (nbPointsTransfinite1 == -1) ? std::max(2, int(std::ceil(length/lc))+1) : nbPointsTransfinite1;
         }
       }
     }
@@ -2263,11 +2275,11 @@ void generateNozzle(std::vector<PointData> &points,
         if(vertices[i].wb > 0) { // baffle at i-th vertex
           TopoDS_Face face = make_baffle_face(TopoDS::Edge(inner_edgeMap(2)),  TopoDS::Edge(outer_edgeMap1(2)),
                                               TopoDS::Edge(outer_edgeMap2(2)), TopoDS::Edge(outer_edgeMap3(2)));
-          add_baffle_face_to_model(face, 5+baffle_index, segments[i].mn);
+          add_baffle_face_to_model(face, 5+baffle_index, segments[i].mn, vertices[i].nb);
         }
         { // stringer
           TopoDS_Face face = make_face(TopoDS::Edge(inner_edgeMap(1)), TopoDS::Edge(outer_edgeMap1(1)));
-          add_stringer_face_to_model(face, 4, segments[i].nn);
+          add_stringer_face_to_model(face, 4, segments[i].nn, segments[i].sn);
         }
       }
       if(vertices[i].wb > 0) baffle_index++;
