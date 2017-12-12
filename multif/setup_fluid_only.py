@@ -29,6 +29,8 @@ setup(ext_modules=[ \
 ])
 
 
+
+
 setup(ext_modules=[Extension("_mshint_module",
       sources=["./mshint/boule.c"      , \
 			"./mshint/bucket.c"     , \
@@ -46,8 +48,20 @@ setup(ext_modules=[Extension("_mshint_module",
 			"./mshint/SU2io.c" , \
 			"./mshint/mesh.c" ,\
 			"./mshint/scalem.c"] , \
-			extra_compile_args=["-O3","-c","-Wuninitialized","-Wunused","-Winline","-Wshadow","-fexpensive-optimizations","-funroll-loops"])
+			extra_compile_args=["-O3","-c","-Wuninitialized","-Wunused","-Winline","-Wshadow","-fexpensive-optimizations","-funroll-loops"]),
 		#	extra_compile_args=["-std=c99","-Wno-unused-variable","-Wno-unused-result"])
+        
+        Extension("./SU2/amginria/_amgio",
+        sources=[ "./SU2/amginria/amgio/amgio_py.c", \
+        			 "./SU2/amginria/amgio/mesh.c", \
+        			 "./SU2/amginria/amgio/GMFio.c", \
+        			 "./SU2/amginria/amgio/SU2io.c", \
+        			 "./SU2/amginria/amgio/option.c", \
+        			 "./SU2/amginria/amgio/libmesh6.c", \
+                  "./SU2/amginria/amgio/amgio_py.i", \
+        			 "./SU2/amginria/amgio/convert.c"],
+         extra_compile_args=["-std=c99","-Wno-unused-variable","-Wno-unused-result"])
+        
 ])
 
 

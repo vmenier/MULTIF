@@ -2,16 +2,22 @@
 
 from tools     import *
 from interface import *
-from setup import setup_amgio
+#from setup import setup_amgio
 
 try:
     import _amgio
 except:
-    try:
-        setup_amgio();
-    except:
-        raise
-    try:
-        import _amgio
-    except:
-        raise;
+    raise;
+
+#try:
+#    import _amgio
+#except:
+#    try:
+#        setup_amgio();
+#    except:
+#        raise
+#    try:
+#        import _amgio
+#    except:
+#        raise;
+#
