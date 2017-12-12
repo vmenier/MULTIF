@@ -145,7 +145,8 @@ def Run( nozzle, **kwargs ):
                 # Check for other required gradients
                 otherRequiredGradients = 0;
                 for k in nozzle.gradients:
-                    if k not in ['MASS','VOLUME','MASS_WALL_ONLY','THRUST']:
+                    #if k not in ['MASS','VOLUME','MASS_WALL_ONLY','THRUST']:
+                    if k not in ['THRUST']:
                         otherRequiredGradients = 1;
                         sys.stderr.write(' ## WARNING: QoI gradients desired using ADJOINT '
                             'method which do not have an associated adjoint calculation.\n'
