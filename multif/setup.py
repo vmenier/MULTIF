@@ -47,6 +47,18 @@ setup(ext_modules=[ \
 			    "./mshint/scalem.c"] , \
 	   extra_compile_args=["-O3","-c","-Wuninitialized","-Wunused",
 	   "-Winline","-Wshadow","-fexpensive-optimizations","-funroll-loops"]),   
+       
+       Extension("./SU2/amginria/_amgio",
+       sources=[ "./SU2/amginria/amgio/amgio_py.c", \
+       			 "./SU2/amginria/amgio/mesh.c", \
+       			 "./SU2/amginria/amgio/GMFio.c", \
+       			 "./SU2/amginria/amgio/SU2io.c", \
+       			 "./SU2/amginria/amgio/option.c", \
+       			 "./SU2/amginria/amgio/libmesh6.c", \
+                 "./SU2/amginria/amgio/amgio_py.i", \
+       			 "./SU2/amginria/amgio/convert.c"],
+        extra_compile_args=["-std=c99","-Wno-unused-variable","-Wno-unused-result"]), 
+       
 	   
 	  Extension("LOWF/_quasi1dnozzle",
       sources=["./LOWF/quasi1dnozzle_py.c", \
@@ -57,3 +69,6 @@ setup(ext_modules=[ \
       extra_compile_args=["-std=c99","-Wno-unused-variable","-Wno-unused-result"])
     
        ]);
+       
+       
+       
