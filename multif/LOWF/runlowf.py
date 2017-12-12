@@ -1055,8 +1055,9 @@ def Quasi1D(nozzle,output='verbose'):
     ps = p*(1+(g-1)*mach**2/2.)**(g/(g-1.)) # stagnation pressure
     
     # Run secondary thermal analysis and structural analysis if necessary
+    nozzle.wallResults = np.transpose(np.array([x, tempinside, ps]))
     if nozzle.structuralFlag == 1:    
-        nozzle.wallResults = np.transpose(np.array([x, tempinside, ps]))
+        #nozzle.wallResults = np.transpose(np.array([x, tempinside, ps]))
         nozzle.runAEROS = 0
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
 
@@ -1213,7 +1214,7 @@ def Run(nozzle, **kwargs):
             gradFile = open(nozzle.gradientsFile,'w');
             for k in nozzle.outputTags:
 			    np.savetxt(gradFile,nozzle.gradients[k]);
-            gradFile.close();          
+            gradFile.close();
         
     # Write data
     if writeToFile:
