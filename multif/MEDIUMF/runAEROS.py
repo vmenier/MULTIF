@@ -38,7 +38,7 @@ def getMass ( nozzle, output='verbose' ):
     return total_mass, wall_mass
 
 
-def runAEROS ( nozzle, output='verbose', run_analysis=1 ):      
+def runAEROS ( nozzle, output='verbose', run_analysis=1, mesh_params=None ):      
 
     # --- Set important flags
     
@@ -60,6 +60,20 @@ def runAEROS ( nozzle, output='verbose', run_analysis=1 ):
     #     1: both thermal and structural analyses
     thermalFlag = 1 if nozzle.thermalFlag == 1 else 0;
 
+    # Determine whether to perform structural analysis:
+    #     0: no
+    #     1: yes
+    structuralFlag = 1 if nozzle.structuralFlag == 1 else 0;
+
+    # Determine whether thermal model needs to be built so mass can be
+    # calculated. A thermal analysis is not necessarily run unless needed.
+    if 'MASS' in nozzle.responses or 'MASS_WALL_ONLY' in nozzle.responses:
+        thermalFlagForMass = 1
+    elif thermalFlag == 1:
+        thermalFlagForMass = 1
+    else:
+        thermalFlagForMass = 0
+
     # Determine structural analysis type:
     #     0: nonlinear structural analysis
     #     1: linear structural analysis
@@ -74,24 +88,46 @@ def runAEROS ( nozzle, output='verbose', run_analysis=1 ):
     # Tn1: number of nodes through thickness of thermal insulating layer
     # Tn2: number of nodes through thickness of gap between thermal and load layers
     # Ln: number of nodes through each half of the thickness of the load layer (thermal model)
-    # Mn: number of nodes in circumferential direction per baffle
-    if nozzle.thermostructuralFidelityLevel <= 0.5:
-        lc = np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[0.32,0.16]);
-        Tn1 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[2,4]));
-        Tn2 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[1,2]));
-        Ln = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[1,2]));
-        Mn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[25,40]));
-        Sn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[5,8]));
-    else: # nozzle.thermostructuralFidelityLevel betwen 0.5 and 1
-        lc = np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[0.16,0.08]);
-        Tn1 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[4,8]));
-        Tn2 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[2,4]));
-        Ln = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[2,4]));
-        Mn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[40,55]));
-        Sn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[8,11]));    
-    # Ns: number of panels (i.e. circumferential subdivisions of the mesh)        
-    Ns   = max(2,nozzle.stringers.n); 
-    
+    # Mn: number of nodes in circumferential direction per baffle (note: for transfinite meshing of baffles, set Mn such that (Mn-1)%3 == 0)
+    # Ns: number of panels (i.e. circumferential subdivisions of mesh)
+    # Nn: number of nodes on longitudinal edge
+    # Nb: number of nodes on radial edge of baffle (not including overlap with
+    #     stringer). If set to -1, unstructured meshing is used for baffle
+    # Sn: number of nodes on radial edges of stringers. Should be the same as
+    #     Nb. If set to -1, unstructured meshing is used for stringers.
+    if mesh_params is not None:
+
+        lc = mesh_params['lc']
+        Tn1 = mesh_params['Tn1']
+        Tn2 = mesh_params['Tn2']
+        Ln = mesh_params['Ln']
+        Mn = mesh_params['Mn']
+        #Sn = mesh_params['Sn']
+        Ns = mesh_params['Ns']
+        Nn = mesh_params['Nn']
+        Nb = mesh_params['Nb']
+
+    else:
+        if nozzle.thermostructuralFidelityLevel <= 0.5:
+            lc = np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[0.32,0.16]);
+            Tn1 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[2,4]));
+            Tn2 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[1,2]));
+            Ln = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[1,2]));
+            Mn = 3*np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[10,30]))+1;
+            #Sn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[5,8]));
+        else: # nozzle.thermostructuralFidelityLevel betwen 0.5 and 1
+            lc = np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[0.16,0.08]);
+            Tn1 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[4,8]));
+            Tn2 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[2,4]));
+            Ln = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[2,4]));
+            Mn = 3*np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[30,50]))+1;
+            #Sn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[8,11]));    
+        # Ns: number of panels (i.e. circumferential subdivisions of the mesh)        
+        Ns   = max(2,nozzle.stringers.n);     
+        Nn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,1],[10,40]));
+        Nb = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,1],[20,50]));
+    Sn = Nb;
+
     #Mn   = max(2,(2*math.pi*nozzle.wall.geometry.radius(points[0])/Ns)/lc+1); # Number of nodes in circumferential direction per panel
     #if stringerFlag == 0: # height defined w.r.t. nozzle exterior wall
     #    Sn = max(nozzle.stringers.height.radius(0)/lc+1,2) if nozzle.stringers.n > 0 else 0; # number of nodes on radial edge of stringers
@@ -118,8 +154,6 @@ def runAEROS ( nozzle, output='verbose', run_analysis=1 ):
                     list(nozzle.wall.layer[4].thicknessNodes[:,0])+ \
                     list(nozzle.stringers.thicknessNodes[:,0])+ \
                     list(nozzle.stringers.heightNodes[:,0]))))
-    #for k in range(len(points)):
-    #    print ' k = %d, points[k] = %f' % (k, points[k])
     
     # --- Material properties
     
@@ -322,7 +356,7 @@ def runAEROS ( nozzle, output='verbose', run_analysis=1 ):
             verboseFlag = 1.;
         print >> f1, "%d %d %d %f %d %d %d %d %d %d %d" % (len(points), \
             len(vertices), len(nozzle.materials), lc, boundaryFlag, \
-            thermalFlag, 3, 2, linearFlag, verboseFlag, stringerFlag);
+            thermalFlagForMass, 3, 2, linearFlag, verboseFlag, stringerFlag);
         
         # points
         for i in range(len(points)):
@@ -354,10 +388,6 @@ def runAEROS ( nozzle, output='verbose', run_analysis=1 ):
             # Wb = nozzle.baffles.height[nozzle.baffles.location.index(vertices[i])] \
             #     if vertices[i] in nozzle.baffles.location else 0
             Wb = 1 if vertices[i] in nozzle.baffles.location else 0;
-            # Nb: number of nodes on radial edge of baffle (not including overlap with stringer)
-            #Nb = max(Wb/lc-Ns+1,2); 
-            #Nb = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,1],[2,4]));
-            Nb = -1;
             Tb = nozzle.baffles.thickness[nozzle.baffles.location.index(vertices[i])] \
                 if vertices[i] in nozzle.baffles.location else 0 # thickness of baffle
             print >> f1, "%d %0.16e %d %d %0.16e" % (points.index(vertices[i]), Wb, Mb, Nb, Tb);
@@ -365,9 +395,8 @@ def runAEROS ( nozzle, output='verbose', run_analysis=1 ):
         # panels
         for i in range(1,len(vertices)):
             #Nn = max(2,(vertices[i]-vertices[i-1])/lc+1); # number of nodes on longitudial edge
-            Nn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,1],[7,15]));
 #            print >> f1, "%d %d %d %d %d %d %d %d %d %d %d %d %d" % (M[2], M[3], M[4], Ns, Ms, Nn, Mn, Sn, M[0], M[1], Tn1, Tn2, Ln);
-            print >> f1, "%d %d %d %d %d %d %d %d %d %d %d %d %d" % (M[2], M[3], M[4], Ns, Ms, Nn, Mn, -1, M[0], M[1], Tn1, Tn2, Ln);
+            print >> f1, "%d %d %d %d %d %d %d %d %d %d %d %d %d" % (M[2], M[3], M[4], Ns, Ms, Nn, Mn, Sn, M[0], M[1], Tn1, Tn2, Ln);
 
         # material properties
         for k in nozzle.materials:
@@ -403,7 +432,7 @@ def runAEROS ( nozzle, output='verbose', run_analysis=1 ):
             verboseFlag = 1.;
         print >> f1, "%d %d %d %f %d %d %d %d %d %d %d" % (len(points), \
             len(vertices), len(nozzle.materials), lc, boundaryFlag, \
-            thermalFlag, 3, 2, linearFlag, verboseFlag, stringerFlag);
+            thermalFlagForMass, 3, 2, linearFlag, verboseFlag, stringerFlag);
         
         # points
         for i in range(len(points)):
@@ -447,10 +476,6 @@ def runAEROS ( nozzle, output='verbose', run_analysis=1 ):
             # Wb = nozzle.baffles.height[nozzle.baffles.location.index(vertices[i])] \
             #     if vertices[i] in nozzle.baffles.location else 0
             Wb = 1 if vertices[i] in nozzle.baffles.location else 0;
-            # Nb: number of nodes on radial edge of baffle (not including overlap with stringer)
-            #Nb = max(Wb/lc-Ns+1,2); 
-            #Nb = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,1],[2,4]));
-            Nb = -1;
             Tb = nozzle.baffles.thickness[nozzle.baffles.location.index(vertices[i])] \
                 if vertices[i] in nozzle.baffles.location else 0 # thickness of baffle
             print >> f1, "%d %0.16e %d %d %0.16e" % (points.index(vertices[i]), Wb, Mb, Nb, Tb);
@@ -458,7 +483,6 @@ def runAEROS ( nozzle, output='verbose', run_analysis=1 ):
         # panels
         for i in range(1,len(vertices)):
             #Nn = max(2,(vertices[i]-vertices[i-1])/lc+1); # number of nodes on longitudial edge
-            Nn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,1],[7,15]));
             print >> f1, "%d %d %d %d %d %d %d %d %d %d %d %d %d" % (M[2], M[3], M[4], Ns, Ms, Nn, Mn, Sn, M[0], M[1], Tn1, Tn2, Ln);
 
         # material properties
@@ -568,7 +592,8 @@ def runAEROS ( nozzle, output='verbose', run_analysis=1 ):
             _nozzle_module.convert();
             # Structural analysis of CMC layer
             os.system("aeros nozzle.aeros.cmc");
-        # Structural analysis of load layers + baffles and stringers
-        os.system("aeros nozzle.aeros");
+        if structuralFlag > 0:
+            # Structural analysis of load layers + baffles and stringers
+            os.system("aeros nozzle.aeros");
 
     return 0;

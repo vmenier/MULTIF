@@ -321,7 +321,7 @@ class EllipticalExterior:
             self.angle = 6.; # degrees
             self.a = 3.0; # m, major axis
             self.b = 0.4; # m, minor axis
-            self.spacer = 0.1; # m, minimum space between interior surface of
+            self.spacer = 0.2; # m, minimum space between interior surface of
                                # outlet and exterior in y-z plane. Maximum wall 
                                # thickness is 0.0879 m.
             self.offset = zoutlettop - self.b + self.spacer; # m
@@ -334,7 +334,7 @@ class EllipticalExterior:
             # self.b = 0.05; # m, minor axis
 
             # Parameterization for 44cm inlet, fixed inlet
-            self.angle = -10.; # degrees
+            self.angle = -12.; # degrees
             self.a = 4.0; # m, major axis
             self.b = 0.12; # m, minor axis
             self.spacer = 0.2; # m, minimum space between interior surface of

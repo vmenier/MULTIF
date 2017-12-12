@@ -2,6 +2,7 @@
 
 import os, sys
 from .. import SU2
+from runSU2 import CheckSU2Convergence
 
 import numpy as np
 from scipy.interpolate import interp1d 
@@ -93,6 +94,10 @@ def PostProcess ( nozzle, output ):
             nozzle.responses['VELOCITY'][0].append(cons[i][1]/cons[i][0]); 
             nozzle.responses['VELOCITY'][1].append(cons[i][2]/cons[i][0]); 
             nozzle.responses['VELOCITY'][2].append(0.0); 
+
+    if 'SU2_RESIDUAL' in nozzle.responses:
+
+        nozzle.responses['SU2_RESIDUAL'] = FinRes
 
     if output == 'verbose':
         sys.stdout.write('SU2 responses obtained\n');

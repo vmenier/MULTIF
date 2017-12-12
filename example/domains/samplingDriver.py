@@ -39,10 +39,10 @@ from util import find_feasible_boundary
 # ============================================================================
 # Controls for sampling and sweeps
 # ============================================================================
-param = '3D'; # nozzle parameterization, either 2D or 3D
+param = '2D'; # nozzle parameterization, either 2D or 3D
 N = 10000; # number of samples
-P = 0; # number of sweeps
-S = 50; # number of points in each sweep
+P = 1; # number of sweeps
+S = 10; # number of points in each sweep
 samplefilename = '3d_samples.dat'; # filename to save samples in
 sweepfilenameprefix = '3d_sweep'; # prefix of filename to save sweep points in
 dN = 1000; # save every dN samples to the above samples file

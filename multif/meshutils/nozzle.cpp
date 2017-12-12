@@ -686,6 +686,7 @@ int writeAEROS(GModel *g,
     fprintf(fp, "stressvm 14 7 \"STRESS.4\" 1 NG 4 median nodalpartialgroup\n");
   for(int k = 0; k < baffleCount; ++k) 
     fprintf(fp, "stressvm 14 7 \"STRESS.%d\" 1 NG %d median nodalpartialgroup\n", 5+k, 5+k);
+  /*
   if(lf == 1) {
     fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS\" 1 lower thermal\n");
     fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.1\" 1 NG 2 lower nodalpartialgroup thermal\n");
@@ -703,7 +704,7 @@ int writeAEROS(GModel *g,
       fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.4\" 1 NG 4 median nodalpartialgroup mechanical\n");
     for(int k = 0; k < baffleCount; ++k)
       fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.%d\" 1 NG %d median nodalpartialgroup mechanical\n", 5+k, 5+k);
-  }
+  }*/
   // 1st principal stress
   fprintf(fp, "stressp1 14 7 \"STRESSP1\" 1 lower\n");
   fprintf(fp, "stressp1 14 7 \"STRESSP1.1\" 1 NG 2 lower nodalpartialgroup\n");
@@ -713,6 +714,7 @@ int writeAEROS(GModel *g,
     fprintf(fp, "stressp1 14 7 \"STRESSP1.4\" 1 NG 4 median nodalpartialgroup\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressp1 14 7 \"STRESSP1.%d\" 1 NG %d median nodalpartialgroup\n", 5+k, 5+k);
+  /*
   if(lf == 1) {
     fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1\" 1 lower thermal\n");
     fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.1\" 1 NG 2 lower nodalpartialgroup thermal\n");
@@ -730,7 +732,7 @@ int writeAEROS(GModel *g,
       fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.4\" 1 NG 4 median nodalpartialgroup mechanical\n");
     for(int k = 0; k < baffleCount; ++k)
       fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.%d\" 1 NG %d median nodalpartialgroup mechanical\n", 5+k, 5+k);
-  }
+  }*/
   // 2nd principal stress
   fprintf(fp, "stressp2 14 7 \"STRESSP2\" 1 lower\n");
   fprintf(fp, "stressp2 14 7 \"STRESSP2.1\" 1 NG 2 lower nodalpartialgroup\n");
@@ -740,7 +742,7 @@ int writeAEROS(GModel *g,
     fprintf(fp, "stressp2 14 7 \"STRESSP2.4\" 1 NG 4 median nodalpartialgroup\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressp2 14 7 \"STRESSP2.%d\" 1 NG %d median nodalpartialgroup\n", 5+k, 5+k);
-  if(lf == 1) {
+  /*if(lf == 1) {
     fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2\" 1 lower thermal\n");
     fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.1\" 1 NG 2 lower nodalpartialgroup thermal\n");
     fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.2\" 1 NG 2 median nodalpartialgroup thermal\n");
@@ -757,7 +759,7 @@ int writeAEROS(GModel *g,
       fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.4\" 1 NG 4 median nodalpartialgroup mechanical\n");
     for(int k = 0; k < baffleCount; ++k)
       fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.%d\" 1 NG %d median nodalpartialgroup mechanical\n", 5+k, 5+k);
-  }
+  }*/
   // 3rd principal stress
   fprintf(fp, "stressp3 14 7 \"STRESSP3\" 1 lower\n");
   fprintf(fp, "stressp3 14 7 \"STRESSP3.1\" 1 NG 2 lower nodalpartialgroup\n");
@@ -767,7 +769,7 @@ int writeAEROS(GModel *g,
     fprintf(fp, "stressp3 14 7 \"STRESSP3.4\" 1 NG 4 median nodalpartialgroup\n");
   for(int k = 0; k < baffleCount; ++k)
     fprintf(fp, "stressp3 14 7 \"STRESSP3.%d\" 1 NG %d median nodalpartialgroup\n", 5+k, 5+k);
-  if(lf == 1) {
+  /*if(lf == 1) {
     fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3\" 1 lower thermal\n");
     fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.1\" 1 NG 2 lower nodalpartialgroup thermal\n");
     fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.2\" 1 NG 2 median nodalpartialgroup thermal\n");
@@ -784,7 +786,7 @@ int writeAEROS(GModel *g,
       fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.4\" 1 NG 4 median nodalpartialgroup mechanical\n");
     for(int k = 0; k < baffleCount; ++k)
       fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.%d\" 1 NG %d median nodalpartialgroup mechanical\n", 5+k, 5+k);
-  }
+  }*/
   // stresses and strains in the x and y directions of the material coordinate frame (layers 1 and 3 only)
   fprintf(fp, "stressxx 14 7 \"STRESSXX.1\" 1 NG 2 lower nodalpartialgroup matfrm\n");
   fprintf(fp, "stressxx 14 7 \"STRESSXX.3\" 1 NG 2 upper nodalpartialgroup matfrm\n");
@@ -1176,39 +1178,39 @@ int writeAEROS2(GModel *g,
   // von mises stress
   fprintf(fp, "stressvm 14 7 \"STRESS.cmc\" 1\n");
   fprintf(fp, "stressvm 14 7 \"STRESS.0\" 1 NG 1\n");
-  if(lf == 1) {
+  /*if(lf == 1) {
     fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.cmc\" 1 thermal\n");
     fprintf(fp, "stressvm 14 7 \"THERMAL_STRESS.0\" 1 NG 1 thermal\n");
     fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.cmc\" 1 mechanical\n");
     fprintf(fp, "stressvm 14 7 \"MECHANICAL_STRESS.0\" 1 NG 1 mechanical\n");
-  }
+  }*/
   // 1st principal stress
   fprintf(fp, "stressp1 14 7 \"STRESSP1.cmc\" 1\n");
   fprintf(fp, "stressp1 14 7 \"STRESSP1.0\" 1 NG 1\n");
-  if(lf == 1) {
+  /*if(lf == 1) {
     fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.cmc\" 1 thermal\n");
     fprintf(fp, "stressp1 14 7 \"THERMAL_STRESSP1.0\" 1 NG 1 thermal\n");
     fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.cmc\" 1 mechanical\n");
     fprintf(fp, "stressp1 14 7 \"MECHANICAL_STRESSP1.0\" 1 NG 1 mechanical\n");
-  }
+  }*/
   // 2nd principal stress
   fprintf(fp, "stressp2 14 7 \"STRESSP2.cmc\" 1\n");
   fprintf(fp, "stressp2 14 7 \"STRESSP2.0\" 1 NG 1\n");
-  if(lf == 1) {
+  /*if(lf == 1) {
     fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.cmc\" 1 thermal\n");
     fprintf(fp, "stressp2 14 7 \"THERMAL_STRESSP2.0\" 1 NG 1 thermal\n");
     fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.cmc\" 1 mechanical\n");
     fprintf(fp, "stressp2 14 7 \"MECHANICAL_STRESSP2.0\" 1 NG 1 mechanical\n");
-  }
+  }*/
   // 3rd principal stress
   fprintf(fp, "stressp3 14 7 \"STRESSP3.cmc\" 1\n");
   fprintf(fp, "stressp3 14 7 \"STRESSP3.0\" 1 NG 1\n");
-  if(lf == 1) {
+  /*if(lf == 1) {
     fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.cmc\" 1 thermal\n");
     fprintf(fp, "stressp3 14 7 \"THERMAL_STRESSP3.0\" 1 NG 1 thermal\n");
     fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.cmc\" 1 mechanical\n");
     fprintf(fp, "stressp3 14 7 \"MECHANICAL_STRESSP3.0\" 1 NG 1 mechanical\n");
-  }
+  }*/
   // 1st principal strain
   fprintf(fp, "strainp1 14 7 \"STRAINP1.cmc\" 1\n");
   fprintf(fp, "strainp1 14 7 \"STRAINP1.0\" 1 NG 1\n");
@@ -1296,8 +1298,8 @@ void generateNozzle(std::vector<PointData> &points,
   const int NbInnerDataPoints  = 50;  // number of data points per half-section used to construct inner wires
   const int NbOuterDataPoints  = 50;  // number of data points per top or bottom segment of section used to construct outer wires
   const int NbPanels = 2;             // Note: currently this must be set to 2
-  const int NbThruSections = 16;      // number of thru-sections used to construct lofted and outer surfaces
-  const int NbInnerThruSections = 16; // number of thru-sections used to construct inner surface
+  const int NbThruSections = 32;      // number of thru-sections used to construct lofted and outer surfaces
+  const int NbInnerThruSections = 32; // number of thru-sections used to construct inner surface
 
   // local variables
   const int NbSegments = segments.size();
@@ -2028,9 +2030,10 @@ void generateNozzle(std::vector<PointData> &points,
     }
   };
 
-  auto add_stringer_face_to_model = [&](const TopoDS_Face &face, int physicalTag, int nbPointsTransfinite0) -> void {
+  auto add_stringer_face_to_model = [&](const TopoDS_Face &face, int physicalTag, int nbPointsTransfinite0, int nbPointsTransfinite1) -> void {
     // add a stringer face to the gmsh model and set its mesh parameters
-    // nbPointsTransfinite0 is the number of transfinite points on edge 0
+    // nbPointsTransfinite0 is the number of transfinite points on edge 0 and it's opposite edge
+    // nbPointsTransfinite1 is the number of transfinite points on the other two edges; if this is -1 then the method is set to unstructured
     GFace *gface = gm->getOCCInternals()->addFaceToModel(gm, face);
     gface->addPhysicalEntity(physicalTag);
 
@@ -2038,7 +2041,7 @@ void generateNozzle(std::vector<PointData> &points,
       surfaceTags.push_back(std::make_pair(gface->geomType(), gface->tag()));
     }
 
-    gface->meshAttributes.method = MESH_UNSTRUCTURED;
+    gface->meshAttributes.method = (nbPointsTransfinite1 == -1) ? MESH_UNSTRUCTURED : MeshingMethod;
     std::list<GEdge*> edges = gface->edges();
     for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++it) {
       (*it)->meshAttributes.method = MeshingMethod;
@@ -2049,23 +2052,27 @@ void generateNozzle(std::vector<PointData> &points,
       }
       else {
         double length = (*it)->length((*it)->getLowerBound(), (*it)->getUpperBound());
-        (*it)->meshAttributes.nbPointsTransfinite = std::max(2, int(std::ceil(length/lc))+1);
         auto p0 = std::make_pair((*it)->getBeginVertex()->geomType(), (*it)->getBeginVertex()->tag());
         auto p1 = std::make_pair((*it)->getEndVertex()->geomType(), (*it)->getEndVertex()->tag());
         if((std::find(surfaceTags.begin(), surfaceTags.end(), p0) == surfaceTags.end()) &&
            (std::find(surfaceTags.begin(), surfaceTags.end(), p1) == surfaceTags.end())) {
           //std::cout << "Info    : Found stringer edge on exterior boundary\n";
+          (*it)->meshAttributes.nbPointsTransfinite = (nbPointsTransfinite1 == -1) ? std::max(2, int(std::ceil(length/lc))+1) : nbPointsTransfinite0;
           boundaryTags.push_back(p0);
           boundaryTags.push_back(p1);
           boundaryTags.push_back(std::make_pair((*it)->geomType(), (*it)->tag()));
+        }
+        else {
+          (*it)->meshAttributes.nbPointsTransfinite = (nbPointsTransfinite1 == -1) ? std::max(2, int(std::ceil(length/lc))+1) : nbPointsTransfinite1;
         }
       }
     }
   };
 
-  auto add_baffle_face_to_model = [&](const TopoDS_Face &face, int physicalTag, int nbPointsTransfinite0, int edge0 = 0) -> void {
+  auto add_baffle_face_to_model = [&](const TopoDS_Face &face, int physicalTag, int nbPointsTransfinite0, int nbPointsTransfinite1) -> void {
     // add a baffle face to the gmsh model and set its mesh parameters
-    // nbPointsTransfinite0 is the number of transfinite points on edge 0
+    // nbPointsTransfinite0 is the number of transfinite points on edge 0 and its opposite edges
+    // nbPointsTransfinite1 is the number of transfinite points on the other two edges; if this is -1 then the method is set to unstructured
     GFace *gface = gm->getOCCInternals()->addFaceToModel(gm, face);
     gface->addPhysicalEntity(physicalTag);
 
@@ -2073,7 +2080,7 @@ void generateNozzle(std::vector<PointData> &points,
       surfaceTags.push_back(std::make_pair(gface->geomType(), gface->tag()));
     }
 
-    gface->meshAttributes.method = MESH_UNSTRUCTURED;
+    gface->meshAttributes.method = (nbPointsTransfinite1 == -1) ? MESH_UNSTRUCTURED : MeshingMethod;
     std::list<GEdge*> edges = gface->edges();
     for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++it) {
       (*it)->meshAttributes.method = MeshingMethod;
@@ -2084,15 +2091,22 @@ void generateNozzle(std::vector<PointData> &points,
       }
       else {
         double length = (*it)->length((*it)->getLowerBound(), (*it)->getUpperBound());
-        (*it)->meshAttributes.nbPointsTransfinite = std::max(2, int(std::ceil(length/lc))+1);
         auto p0 = std::make_pair((*it)->getBeginVertex()->geomType(), (*it)->getBeginVertex()->tag());
         auto p1 = std::make_pair((*it)->getEndVertex()->geomType(), (*it)->getEndVertex()->tag());
         if((std::find(surfaceTags.begin(), surfaceTags.end(), p0) == surfaceTags.end()) &&
            (std::find(surfaceTags.begin(), surfaceTags.end(), p1) == surfaceTags.end())) {
           //std::cout << "Info    : Found baffle edge on exterior boundary\n";
+          (*it)->meshAttributes.nbPointsTransfinite = (nbPointsTransfinite1 == -1) ? std::max(2, int(std::ceil(length/lc))+1) : nbPointsTransfinite0/3+1;
           boundaryTags.push_back(p0);
           boundaryTags.push_back(p1);
           boundaryTags.push_back(std::make_pair((*it)->geomType(), (*it)->tag()));
+        }
+        else {
+          if(gface->meshAttributes.method == MESH_TRANSFINITE) {
+            gface->meshAttributes.corners.push_back((*it)->getBeginVertex());
+            gface->meshAttributes.corners.push_back((*it)->getEndVertex());
+          }
+          (*it)->meshAttributes.nbPointsTransfinite = (nbPointsTransfinite1 == -1) ? std::max(2, int(std::ceil(length/lc))+1) : nbPointsTransfinite1;
         }
       }
     }
@@ -2263,11 +2277,11 @@ void generateNozzle(std::vector<PointData> &points,
         if(vertices[i].wb > 0) { // baffle at i-th vertex
           TopoDS_Face face = make_baffle_face(TopoDS::Edge(inner_edgeMap(2)),  TopoDS::Edge(outer_edgeMap1(2)),
                                               TopoDS::Edge(outer_edgeMap2(2)), TopoDS::Edge(outer_edgeMap3(2)));
-          add_baffle_face_to_model(face, 5+baffle_index, segments[i].mn);
+          add_baffle_face_to_model(face, 5+baffle_index, segments[i].mn, vertices[i].nb);
         }
         { // stringer
           TopoDS_Face face = make_face(TopoDS::Edge(inner_edgeMap(1)), TopoDS::Edge(outer_edgeMap1(1)));
-          add_stringer_face_to_model(face, 4, segments[i].nn);
+          add_stringer_face_to_model(face, 4, segments[i].nn, segments[i].sn);
         }
       }
       if(vertices[i].wb > 0) baffle_index++;
@@ -2555,7 +2569,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
   int nc[3], nk[3], na1, na2, na3, na4; double sa, ea, bw, ta, to, at, bt, ba, bo, ab, bb;
   fin3 >> nc[0] >> nk[0] >> nc[1] >> nk[1] >> nc[2] >> nk[2] >> sa >> ea >> bw >> ta >> to >> at >> bt >> ba >> bo >> ab >> bb
        >> np >> na1 >> na2 >> na3 >> na4;
-  assert(np == points.size());
+  assert(np == 0 || np == points.size());
   if(vf) {
     std::cout << "Number of centerline control points: " << nc[0] << std::endl;
     std::cout << "Number of centerline knots: " << nk[0] << std::endl;
@@ -2599,7 +2613,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
     for(int j = 0; j < na1; ++j) {
       double xi, ai, ti;
       fin3 >> xi >> ai >> ti;
-      assert(xi == points[i].xyz[0]);
+      assert(std::abs(xi - points[i].xyz[0]) < 1e-8);
       points[i].at1.push_back(std::make_pair(ai*M_PI/180,ti));
       if(vf) std::cout << "Thickness of inner load layer at point " << i+1 << " and angular coordinate " << points[i].at1.back().first
                        << ": " << points[i].at1.back().second << std::endl;
@@ -2609,7 +2623,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
     for(int j = 0; j < na2; ++j) {
       double xi, ai, ti;
       fin3 >> xi >> ai >> ti;
-      assert(xi == points[i].xyz[0]);
+      assert(std::abs(xi - points[i].xyz[0]) < 1e-8);
       points[i].at2.push_back(std::make_pair(ai*M_PI/180,ti));
       if(vf) std::cout << "Thickness of middle load layer at point " << i+1 << " and angular coordinate " << points[i].at2.back().first
                        << ": " << points[i].at2.back().second << std::endl;
@@ -2619,7 +2633,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
     for(int j = 0; j < na3; ++j) {
       double xi, ai, ti;
       fin3 >> xi >> ai >> ti;
-      assert(xi == points[i].xyz[0]);
+      assert(std::abs(xi - points[i].xyz[0]) < 1e-8);
       points[i].at3.push_back(std::make_pair(ai*M_PI/180,ti));
       if(vf) std::cout << "Thickness of outer load layer at point " << i+1 << " and angular coordinate " << points[i].at3.back().first
                        << ": " << points[i].at3.back().second << std::endl;
@@ -2629,7 +2643,7 @@ static PyObject *nozzle_generate(PyObject *self, PyObject *args)
     for(int j = 0; j < na4; ++j) {
       double xi, ai, ti;
       fin3 >> xi >> ai >> ti;
-      assert(xi == points[i].xyz[0]);
+      assert(std::abs(xi - points[i].xyz[0]) < 1e-8);
       points[i].at4.push_back(std::make_pair(ai*M_PI/180,ti));
       if(vf) std::cout << "Thickness of thermal layer at point " << i+1 << " and angular coordinate " << points[i].at4.back().first
                        << ": " << points[i].at4.back().second << std::endl;

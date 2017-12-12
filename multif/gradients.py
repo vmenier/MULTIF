@@ -144,8 +144,9 @@ def calcGradientsFD(nozzle,fd_step,rerun_center=0,output='verbose'):
 
             # Only calculate gradients that are requested, and avoid calculating 
             # mass gradient since it has already been calculated
-            if nozzle.gradients[k] is not None and k not in ['MASS'] and \
-                k not in ['MASS_WALL_ONLY']:
+            # if nozzle.gradients[k] is not None and k not in ['MASS'] and \
+            #     k not in ['MASS_WALL_ONLY']:
+            if nozzle.gradients[k] is not None:
 
                 if rerun_center == 0:
                     nozzleResponse = nozzle.responses[k];
@@ -204,8 +205,9 @@ def calcGradientsFD(nozzle,fd_step,rerun_center=0,output='verbose'):
 
                 # Only calculate gradients that are requested, and avoid calculating 
                 # mass gradient since it has already been calculated
-                if nozzle.gradients[k] is not None and k not in ['MASS'] and  \
-                  k not in ['MASS_WALL_ONLY']:
+                # if nozzle.gradients[k] is not None and k not in ['MASS'] and  \
+                #   k not in ['MASS_WALL_ONLY']:
+                if nozzle.gradients[k] is not None:
                     if isinstance(fd_step,list):
                         localGrad = (rEval[i].responses[k] - nozzleResponse)/fd_step[derivativesDV[i]];
                     else:

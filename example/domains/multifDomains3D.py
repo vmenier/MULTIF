@@ -121,8 +121,8 @@ def buildDesignDomain(output='verbose'):
     # Baffles
     BAFFLES_LOCATION= (0, 0.2, 0.4, 0.6, 0.8)
     BAFFLES_THICKNESS= (0.01, 0.01, 0.01, 0.01, 0.01)
-    BAFFLES_TRANSVERSE_EXTENT= (0.45)
-    BAFFLES_DV= (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+    BAFFLES_TRANSVERSE_EXTENT= (1.1)
+    BAFFLES_DV= (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
 
     # Top and bottom stringer
     STRINGERS_ANGLES= (90, 270)
@@ -263,11 +263,10 @@ def buildDesignDomain(output='verbose'):
                      BAFFLES_TRANSVERSE_EXTENT, BAFFLES_DV, 0.1, 
                      0.26, output=output);
     Abaffles, bbaffles = cleanupConstraintMatrix(Alist=[A9],blist=[b9]);
-    x_baffles = list(BAFFLES_LOCATION) + list(BAFFLES_THICKNESS) + \
-                list([BAFFLES_TRANSVERSE_EXTENT]);
+    x_baffles = list(BAFFLES_LOCATION) + list(BAFFLES_THICKNESS);
     x_baffles = np.array([x_baffles[i] for i in range(len(x_baffles)) if BAFFLES_DV[i] != 0]);
-    lb = np.hstack((x_baffles[0:4]-0.15, 0.0074*np.ones(5), x_baffles[-1]-0.2));
-    ub = np.hstack((x_baffles[0:4]+0.15, 0.0359*np.ones(5), x_baffles[-1]+0.2));
+    lb = np.hstack((x_baffles[0:4]-0.15, 0.0074*np.ones(5)));
+    ub = np.hstack((x_baffles[0:4]+0.15, 0.0359*np.ones(5)));
     baffles_domain = LinIneqDomain(Abaffles, np.squeeze(bbaffles), lb = lb, ub = ub, center = x_baffles)
     
     # -------------------------------- FULL CONSTRAINTS --------------------------
@@ -296,7 +295,7 @@ def buildRandomDomain(output='verbose', clip = None):
     #            CMC_THERMAL_EXPANSION_COEF, 1, 
         UniformDomain(0.228e-6, 0.252e-6),     
     #            CMC_PRINCIPLE_FAILURE_STRAIN, 1, 
-        LogNormalDomain(-2.6694, 0.1421**2,clip = clip),
+        LogNormalDomain(-2.6694, 0.1421**2, scaling=1e-2, clip = clip),
     #            CMC_MAX_SERVICE_TEMPERATURE, 1, 
         UniformDomain(963, 983),
     #
@@ -350,7 +349,7 @@ def buildRandomDomain(output='verbose', clip = None):
     #            AIR_THERMAL_CONDUCTIVITY, 1, 
         UniformDomain(0.0320, 0.0530),
     #            PANEL_YIELD_STRESS, 1, 
-        LogNormalDomain(5.7736, 0.1196**2, scaling = 1e6, clip = clip), 
+        LogNormalDomain(4.3191, 0.1196**2, scaling = 1e6, clip = clip), 
     #            INLET_PSTAG, 1, 
         LogNormalDomain(11.5010, 0.0579**2, clip = clip),
     #            INLET_TSTAG, 1, 
