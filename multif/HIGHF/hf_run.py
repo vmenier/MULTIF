@@ -57,6 +57,7 @@ def Run( nozzle, **kwargs ):
     for k in nozzle.responses:
         if k not in ['MASS','VOLUME','MASS_WALL_ONLY']:
             runAeroThermalStructuralProblem = 1;    
+            break;
     
     # Run aero-thermal-structural gradient analysis if necessary
     if nozzle.gradientsFlag == 1:
@@ -192,49 +193,49 @@ def Run( nozzle, **kwargs ):
     #             'method.\n');
     #         sys.exit(1);
         
-        # Calculate gradients if necessary
-        if nozzle.gradientsFlag == 1 and runAeroThermalStructuralGradients:
-    
-            if ( nozzle.gradientsMethod == 'ADJOINT' ):
-                
-                if gradCalc == 0: # i.e. failed adjoint calculation, use finite differences
+    # Calculate gradients if necessary
+    if nozzle.gradientsFlag == 1 and runAeroThermalStructuralGradients:
+
+        if ( nozzle.gradientsMethod == 'ADJOINT' ):
+            
+            if gradCalc == 0: # i.e. failed adjoint calculation, use finite differences
+                # Rerun center point with same number of cores as differences.
+                multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,rerun_center=1,output=output);
+            else:
+                # Check for other required gradients
+                otherRequiredGradients = 0;
+                for k in nozzle.gradients:
+                    if k not in ['THRUST']:
+                        otherRequiredGradients = 1;
+                        sys.stderr.write(' ## WARNING: QoI gradients desired using ADJOINT '
+                            'method which do not have an associated adjoint calculation.\n'
+                            ' Namely: %s. The current implementation requires finite '
+                            'differencing across the aero analysis, so this method is '
+                            'equivalent in computational cost to choosing the FINITE_DIFF'
+                            ' method\n' % k);
+                # Do finite difference for other QoI if there are any, but use
+                # adjoint gradients for thrust
+                if otherRequiredGradients:
+                    saveThrustGradients = nozzle.gradients['THRUST'];
+                    nozzle.gradients['THRUST'] = None;
                     # Rerun center point with same number of cores as differences.
                     multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,rerun_center=1,output=output);
-                else:
-                    # Check for other required gradients
-                    otherRequiredGradients = 0;
-                    for k in nozzle.gradients:
-                        if k not in ['THRUST']:
-                            otherRequiredGradients = 1;
-                            sys.stderr.write(' ## WARNING: QoI gradients desired using ADJOINT '
-                              'method which do not have an associated adjoint calculation.\n'
-                              ' Namely: %s. The current implementation requires finite '
-                              'differencing across the aero analysis, so this method is '
-                              'equivalent in computational cost to choosing the FINITE_DIFF'
-                              ' method\n' % k);
-                    # Do finite difference for other QoI if there are any, but use
-                    # adjoint gradients for thrust
-                    if otherRequiredGradients:
-                        saveThrustGradients = nozzle.gradients['THRUST'];
-                        nozzle.gradients['THRUST'] = None;
-                        # Rerun center point with same number of cores as differences.
-                        multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,rerun_center=1,output=output);
-                        nozzle.gradients['THRUST'] = saveThrustGradients;
+                    nozzle.gradients['THRUST'] = saveThrustGradients;
+                    
+        elif ( nozzle.gradientsMethod == 'FINITE_DIFF' ):
+            # Rerun center point with same number of cores as differences.
+            multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,rerun_center=1,output=output);  
                         
-            elif ( nozzle.gradientsMethod == 'FINITE_DIFF' ):
-                # Rerun center point with same number of cores as differences.
-                multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,rerun_center=1,output=output);  
-                         
-            else:
-                sys.stderr.write('  ## ERROR : Unknown gradients computation '
-                  'method.\n');
-                sys.exit(1);
-                
-         # Write separate gradients file
-            gradFile = open(nozzle.gradientsFile,'w');
-            for k in nozzle.outputTags:
-                np.savetxt(gradFile,nozzle.gradients[k]);
-            gradFile.close();               
+        else:
+            sys.stderr.write('  ## ERROR : Unknown gradients computation '
+                'method.\n');
+            sys.exit(1);
+            
+        # Write separate gradients file
+        gradFile = open(nozzle.gradientsFile,'w');
+        for k in nozzle.outputTags:
+            np.savetxt(gradFile,nozzle.gradients[k]);
+        gradFile.close();               
     
     # Write data
     if writeToFile:

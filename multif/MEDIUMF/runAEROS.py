@@ -60,6 +60,20 @@ def runAEROS ( nozzle, output='verbose', run_analysis=1, mesh_params=None ):
     #     1: both thermal and structural analyses
     thermalFlag = 1 if nozzle.thermalFlag == 1 else 0;
 
+    # Determine whether to perform structural analysis:
+    #     0: no
+    #     1: yes
+    structuralFlag = 1 if nozzle.structuralFlag == 1 else 0;
+
+    # Determine whether thermal model needs to be built so mass can be
+    # calculated. A thermal analysis is not necessarily run unless needed.
+    if 'MASS' in nozzle.responses or 'MASS_WALL_ONLY' in nozzle.responses:
+        thermalFlagForMass = 1
+    elif thermalFlag == 1:
+        thermalFlagForMass = 1
+    else:
+        thermalFlagForMass = 0
+
     # Determine structural analysis type:
     #     0: nonlinear structural analysis
     #     1: linear structural analysis
@@ -99,19 +113,19 @@ def runAEROS ( nozzle, output='verbose', run_analysis=1, mesh_params=None ):
             Tn1 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[2,4]));
             Tn2 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[1,2]));
             Ln = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[1,2]));
-            Mn = 3*np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[8,13]))+1;
+            Mn = 3*np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[10,30]))+1;
             #Sn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,0.5],[5,8]));
         else: # nozzle.thermostructuralFidelityLevel betwen 0.5 and 1
             lc = np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[0.16,0.08]);
             Tn1 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[4,8]));
             Tn2 = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[2,4]));
             Ln = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[2,4]));
-            Mn = 3*np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[13,18]))+1;
+            Mn = 3*np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[30,50]))+1;
             #Sn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0.5,1],[8,11]));    
         # Ns: number of panels (i.e. circumferential subdivisions of the mesh)        
         Ns   = max(2,nozzle.stringers.n);     
-        Nn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,1],[7,15]));
-        Nb = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,1],[10,25]));
+        Nn = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,1],[10,40]));
+        Nb = np.round(np.interp(nozzle.thermostructuralFidelityLevel,[0,1],[20,50]));
     Sn = Nb;
 
     #Mn   = max(2,(2*math.pi*nozzle.wall.geometry.radius(points[0])/Ns)/lc+1); # Number of nodes in circumferential direction per panel
@@ -342,7 +356,7 @@ def runAEROS ( nozzle, output='verbose', run_analysis=1, mesh_params=None ):
             verboseFlag = 1.;
         print >> f1, "%d %d %d %f %d %d %d %d %d %d %d" % (len(points), \
             len(vertices), len(nozzle.materials), lc, boundaryFlag, \
-            thermalFlag, 3, 2, linearFlag, verboseFlag, stringerFlag);
+            thermalFlagForMass, 3, 2, linearFlag, verboseFlag, stringerFlag);
         
         # points
         for i in range(len(points)):
@@ -418,7 +432,7 @@ def runAEROS ( nozzle, output='verbose', run_analysis=1, mesh_params=None ):
             verboseFlag = 1.;
         print >> f1, "%d %d %d %f %d %d %d %d %d %d %d" % (len(points), \
             len(vertices), len(nozzle.materials), lc, boundaryFlag, \
-            thermalFlag, 3, 2, linearFlag, verboseFlag, stringerFlag);
+            thermalFlagForMass, 3, 2, linearFlag, verboseFlag, stringerFlag);
         
         # points
         for i in range(len(points)):
@@ -578,7 +592,8 @@ def runAEROS ( nozzle, output='verbose', run_analysis=1, mesh_params=None ):
             _nozzle_module.convert();
             # Structural analysis of CMC layer
             os.system("aeros nozzle.aeros.cmc");
-        # Structural analysis of load layers + baffles and stringers
-        os.system("aeros nozzle.aeros");
+        if structuralFlag > 0:
+            # Structural analysis of load layers + baffles and stringers
+            os.system("aeros nozzle.aeros");
 
     return 0;

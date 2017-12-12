@@ -94,6 +94,10 @@ def PostProcess ( nozzle, output ):
             nozzle.responses['VELOCITY'][1].append(-1.);
             nozzle.responses['VELOCITY'][2].append(-1.);
 
+    if 'SU2_RESIDUAL' in nozzle.responses:
+
+        nozzle.responses['SU2_RESIDUAL'] = FinRes;
+
     if output == 'verbose':
         sys.stdout.write('SU2 responses obtained\n');
     
