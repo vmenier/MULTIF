@@ -70,127 +70,6 @@ def CheckSU2Convergence ( history_filename, field_name ) :
     #print "Initial res = %le, Final res = %lf, DIFF = %lf\n" % (IniRes, FinRes, ResDif);
     return IniRes, FinRes;
 
-def SetupConfig_old (solver_options):
-    
-    config = SU2.io.Config();
-    
-    # --- Options
-    
-    Mach = solver_options.Mach;
-    Pres = solver_options.Pres;
-    Temp = solver_options.Temp;
-    
-    InletPstag = solver_options.InletPstag;
-    InletTstag = solver_options.InletTstag;
-    
-    LocalRelax = solver_options.LocalRelax;
-    
-    NbrIte = solver_options.NbrIte;
-    
-    mesh_name = solver_options.mesh_name;
-    restart_name = solver_options.restart_name;
-    
-    convergence_order = solver_options.convergence_order;
-    
-    partitions = solver_options.partitions;
-
-    MaxCFL = solver_options.MaxCFL;
-    
-    # --- SU2_RUN
-    
-    config.SU2_RUN = solver_options.SU2_RUN;
-    
-    # --- Governing
-    config.PHYSICAL_PROBLEM= 'EULER';
-    config.MATH_PROBLEM= 'DIRECT';
-    config.RESTART_SOL= 'NO';
-    config.SYSTEM_MEASUREMENTS= 'SI';
-    
-    # --- Free stream
-    
-    config.MACH_NUMBER='%lf' % Mach;
-    config.FREESTREAM_PRESSURE='%lf' % Pres;
-    config.FREESTREAM_TEMPERATURE='%lf' % Temp;
-    config.REF_DIMENSIONALIZATION= 'DIMENSIONAL';
-    
-    # --- Boundary conditions
-    
-    config.MARKER_EULER= '( 9, 10, 11, 12 )';
-    config.MARKER_INLET= '( 13, %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag);
-    config.MARKER_FAR= '( 6, 7, 8 )';
-    config.MARKER_SYM= '( 1, 2 )';
-    config.MARKER_OUTLET= '( 3, %lf,  4, %lf,  5, %lf)' % (Pres, Pres, Pres);
-    
-    # --- Numerical method
-    
-    config.NUM_METHOD_GRAD= 'WEIGHTED_LEAST_SQUARES';
-    config.CFL_NUMBER= '%lf' % MaxCFL;
-    config.CFL_ADAPT= 'NO';
-    config.MAX_DELTA_TIME= '1E6';
-    config.EXT_ITER= NbrIte;
-    config.LINEAR_SOLVER= 'FGMRES';
-    config.LINEAR_SOLVER_ERROR= '1E-6';
-    config.LINEAR_SOLVER_ITER= '3';
-    
-    # --- Slope limiter
-    
-    config.REF_ELEM_LENGTH= '0.005 ';
-    config.LIMITER_COEFF= '0.3';
-    config.SHARP_EDGES_COEFF= '3.0';
-    config.LIMITER_ITER= '200';
-    config.REF_SHARP_EDGES= '3.0';
-    config.SENS_REMOVE_SHARP= 'YES';
-    
-    # --- Multigrid
-    
-    config.MGLEVEL= '3';
-    config.MGCYCLE= 'V_CYCLE';
-    config.MG_PRE_SMOOTH= '( 1, 2, 3, 3 )';
-    config.MG_POST_SMOOTH= '( 0, 0, 0, 0 )';
-    config.MG_CORRECTION_SMOOTH= '( 0, 0, 0, 0 )';
-    config.MG_DAMP_RESTRICTION= '0.75';
-    config.MG_DAMP_PROLONGATION= '0.75';
-    
-    # --- Flow numerical method
-    
-    config.CONV_NUM_METHOD_FLOW= 'ROE';
-    config.SPATIAL_ORDER_FLOW= '2ND_ORDER_LIMITER';
-    config.SLOPE_LIMITER_FLOW= 'VENKATAKRISHNAN';
-    config.AD_COEFF_FLOW= '( 0.15, 0.5, 0.05 )';
-    config.TIME_DISCRE_FLOW= 'EULER_IMPLICIT';
-    
-    # --- Convergence parameters
-    
-    config.CONV_CRITERIA= 'RESIDUAL';
-    config.RESIDUAL_REDUCTION= convergence_order;
-    config.RESIDUAL_MINVAL= '-12';
-    config.STARTCONV_ITER= '25';
-    
-    # --- Input/Output
-    
-    config.MESH_FILENAME= mesh_name;
-    config.OUTPUT_FORMAT= 'TECPLOT';
-    config.CONV_FILENAME= 'history';
-    config.RESTART_FLOW_FILENAME= restart_name;
-    config.WRT_SOL_FREQ= '1000';
-    config.WRT_CON_FREQ= '1';
-    
-    # --- Misc
-    config.NUMBER_PART= partitions;
-    
-    # --- Local relaxation / CFL
-    #     Note: these options are only available in a custom version of su2:
-    #                     https://github.com/vmenier/SU2/tree/darpa
-    if (LocalRelax == 'YES') :
-        config.RELAXATION_LOCAL= 'YES';
-        config.CFL_ADAPT_LOCAL= 'YES';
-        config.HARD_LIMITING_PARAM= '(0.15, 1e-5)';
-        config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, %lf )' % MaxCFL;
-        config.RESIDUAL_MAXVAL= 2;
-                
-    return config;
-
-
 def HF_SetupConfig (solver_options):
     
     config = SU2.io.Config();
@@ -207,7 +86,7 @@ def HF_SetupConfig (solver_options):
     LocalRelax = solver_options.LocalRelax;
     
     NbrIte = 5000;#solver_options.NbrIte;
-    
+        
     mesh_name = solver_options.mesh_name;
     restart_name = solver_options.restart_name;
     
@@ -237,6 +116,8 @@ def HF_SetupConfig (solver_options):
     
     if Dim == '2D' :
         config.AXISYMMETRIC= 'YES';
+    
+
     
     # --- Governing
     
@@ -294,29 +175,33 @@ def HF_SetupConfig (solver_options):
     
     # --- Boundary conditions
     
+    # Refs   
+    refs_wall = [7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 20];
+    refs_inlet = [12];
+    refs_far = [1, 2, 3, 5, 6];
+    refs_sym = [4, 21];
+    refs_thrust = [19];
+    
     if Dim == '2D':
         print "  ## ERROR : High fidelity model is 3D."
         sys.exit(1)
 
+
+
     else:
         
         if method == 'EULER':
-            config.MARKER_EULER = '( 7, 8, 9, 10, 11)'
-            config.MARKER_INLET = '(12, %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag)
-            config.MARKER_FAR   = '( 1, 2, 3, 5, 6)'
-            config.MARKER_SYM   = '( 4 )'
-        
+            config.MARKER_EULER = '(7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 20)'
         elif method == 'RANS':
-            config.MARKER_HEATFLUX = '( 7, 0.0, 8, 0.0, 9, 0.0, 10, 0.0, 11, 0.0)'
-            config.MARKER_INLET    = '(12, %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag)
-            config.MARKER_FAR      = '( 1, 2, 3, 5, 6)'
-            config.MARKER_SYM      = '( 4 )'
+            config.MARKER_HEATFLUX = '( 7, 0.0, 8, 0.0, 9, 0.0, 10, 0.0, 11, 0.0, 13, 0.0, 14, 0.0, 15, 0.0, 16, 0.0, 17, 0.0, 18, 0.0, 20, 0.0)'
+        
+        config.MARKER_INLET    = '(12, %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag)
+        config.MARKER_FAR      = '( 1, 2, 3, 5, 6)'
+        config.MARKER_SYM      = '( 4, 21 )'
+        config.MARKER_THRUST   = '( 19 )'
         
     # --- Slope limiter
     
-    config.REF_ELEM_LENGTH= '0.01 ';
-    config.LIMITER_COEFF= '0.3';
-    config.SHARP_EDGES_COEFF= '3.0';
     config.REF_SHARP_EDGES= '3.0';
     config.SENS_REMOVE_SHARP= 'NO';
     
@@ -330,26 +215,29 @@ def HF_SetupConfig (solver_options):
     config.MG_DAMP_RESTRICTION= '0.75';
     config.MG_DAMP_PROLONGATION= '0.75';
     
+    config.MUSCL_FLOW= 'YES'
+    config.VENKAT_LIMITER_COEFF= 0.05;
+    config.JST_SENSOR_COEFF= '( 0.5, 0.02 )';
+    
     # --- Flow numerical method
     if method == 'EULER':
         config.CONV_NUM_METHOD_FLOW= 'JST';
-        config.SPATIAL_ORDER_FLOW= '2ND_ORDER_LIMITER';
+        #config.SPATIAL_ORDER_FLOW= '2ND_ORDER_LIMITER';
         config.SLOPE_LIMITER_FLOW= 'VENKATAKRISHNAN';
-        config.AD_COEFF_FLOW= '( 0.15, 0.5, 0.05 )';
+        #config.AD_COEFF_FLOW= '( 0.15, 0.5, 0.05 )';
         config.TIME_DISCRE_FLOW= 'EULER_IMPLICIT';
     else :
         config.CONV_NUM_METHOD_FLOW= 'JST';
-        config.SPATIAL_ORDER_FLOW= '2ND_ORDER_LIMITER';
+        #config.SPATIAL_ORDER_FLOW= '2ND_ORDER_LIMITER';
         config.SLOPE_LIMITER_FLOW= 'VENKATAKRISHNAN';
-        config.AD_COEFF_FLOW= '( 0.15, 0.5, 0.05 )';
+        #config.AD_COEFF_FLOW= '( 0.15, 0.5, 0.05 )';
         config.TIME_DISCRE_FLOW= 'EULER_IMPLICIT';
         config.ENTROPY_FIX_COEFF= 0.0;
-        config.AD_COEFF_FLOW= "( 0.15, 0.5, 0.02 )";
     
         config.CONV_NUM_METHOD_TURB= 'SCALAR_UPWIND'
-        config.SPATIAL_ORDER_TURB= '1ST_ORDER'
+        #config.SPATIAL_ORDER_TURB= '1ST_ORDER'
         config.SLOPE_LIMITER_TURB= 'VENKATAKRISHNAN'
-        config.VISCOUS_LIMITER_TURB= 'NO'
+        #config.VISCOUS_LIMITER_TURB= 'NO'
         config.TIME_DISCRE_TURB= 'EULER_IMPLICIT'
         config.CFL_REDUCTION_TURB= '0.5'
         config.RELAXATION_FACTOR_TURB= '1.0'
@@ -366,7 +254,10 @@ def HF_SetupConfig (solver_options):
     
     # --- Input/Output
     
-    config.THRUST_FILENAME= "thrust_nodef.dat";
+    config.WRT_BINARY_RESTART= 'NO'
+    config.READ_BINARY_RESTART= 'NO'
+    
+    #config.THRUST_FILENAME= "thrust_nodef.dat";
     
     config.MESH_FILENAME= mesh_name;
     config.OUTPUT_FORMAT= solver_options.output_format;
@@ -386,10 +277,13 @@ def HF_SetupConfig (solver_options):
     #    config.CFL_ADAPT_LOCAL_PARAM= '( 0.1, 1.5, 1e-12, 20.0 )';
     #    config.RESIDUAL_MAXVAL= 2;
     #    
-    config.RELAXATION_LOCAL= 'NO';
+    #config.RELAXATION_LOCAL= 'NO';
     # --- Setup wall temp distribution
     
     if ( wall_temp == 1 ) :
+        
+        sys.stderr.write("## ERROR : Wall temperature prescription is temporarily disabled.\n");
+        sys.exit(1);
         
         nbv = len(wall_temp_values);
         
@@ -465,43 +359,44 @@ def HF_runSU2 ( nozzle ):
     
     solver_options.dv_coefs = [];
     
-    # --- Specify wall variable data when adjoint gradients are requested
-    if( nozzle.gradientsMethod == 'ADJOINT' ):
-        
-        sys.stderr.write("  ## ERROR : Adjoint computation not available in 3D yet.\n");
-        sys.exit(1);
+    ## --- Specify wall variable data when adjoint gradients are requested
+    #if( nozzle.gradientsMethod == 'ADJOINT' ):
+    #    
+    #    sys.stderr.write("  ## ERROR : Adjoint computation not available in 3D yet.\n");
+    #    sys.exit(1);
+    #
+    #    #iTag = -1;
+    #    #for i in range(len(nozzle.DV_Tags)):
+    #    #    Tag = nozzle.DV_Tags[i];
+    #    #    if (Tag == "WALL"):
+    #    #        iTag = i;
+    #    #        break;
+    #    #
+    #    #if ( iTag < 0 ):
+    #    #    sys.stderr.write("  ## ERROR SU2 adjoint computation: Wall parameterization not specified.\n");
+    #    #    sys.exit();
+    #    #
+    #    #nbr_dv = max(nozzle.wall.dv)+1;
+    #    #
+    #    #for i in range(nbr_dv):
+    #    #    id_dv = nozzle.DV_Head[iTag] + i;
+    #    #    print "id_dv %d val %lf" % (id_dv, nozzle.dvList[id_dv])
+    #    #    solver_options.dv_coefs.append(nozzle.dvList[id_dv]);
+    #    #
+    #    ##for iCoef in range(len(nozzle.wall.dv)):
+    #    ##    id_dv = nozzle.DV_Head[iTag] + nozzle.wall.dv[iCoef];  
+    #    ##    if id_dv >= nozzle.DV_Head[iTag]:
+    #    ##        print "id_dv %d val %lf" % (id_dv, nozzle.dvList[id_dv])
+    #    ##        solver_options.dv_coefs.append(nozzle.dvList[id_dv]);
+    #    ##
+    #    #solver_options.gradients     = nozzle.gradientsMethod;
+    #    #solver_options.wall_coefs    = nozzle.wall.coefs;
+    #    #solver_options.wall_coefs_dv = nozzle.wall.dv;
+    #    
+    #else:
+    #
     
-        #iTag = -1;
-        #for i in range(len(nozzle.DV_Tags)):
-        #    Tag = nozzle.DV_Tags[i];
-        #    if (Tag == "WALL"):
-        #        iTag = i;
-        #        break;
-        #
-        #if ( iTag < 0 ):
-        #    sys.stderr.write("  ## ERROR SU2 adjoint computation: Wall parameterization not specified.\n");
-        #    sys.exit();
-        #
-        #nbr_dv = max(nozzle.wall.dv)+1;
-        #
-        #for i in range(nbr_dv):
-        #    id_dv = nozzle.DV_Head[iTag] + i;
-        #    print "id_dv %d val %lf" % (id_dv, nozzle.dvList[id_dv])
-        #    solver_options.dv_coefs.append(nozzle.dvList[id_dv]);
-        #
-        ##for iCoef in range(len(nozzle.wall.dv)):
-        ##    id_dv = nozzle.DV_Head[iTag] + nozzle.wall.dv[iCoef];  
-        ##    if id_dv >= nozzle.DV_Head[iTag]:
-        ##        print "id_dv %d val %lf" % (id_dv, nozzle.dvList[id_dv])
-        ##        solver_options.dv_coefs.append(nozzle.dvList[id_dv]);
-        ##
-        #solver_options.gradients     = nozzle.gradientsMethod;
-        #solver_options.wall_coefs    = nozzle.wall.coefs;
-        #solver_options.wall_coefs_dv = nozzle.wall.dv;
-        
-    else:
-    
-        solver_options.gradients     = nozzle.gradientsMethod;
+    solver_options.gradients     = nozzle.gradientsMethod;
     
     gam   = 1.4;
     R     = 287.06;
@@ -536,9 +431,9 @@ def HF_runSU2 ( nozzle ):
     solver_options.Dimension = '3D';
     
     #HF_GenerateExitMesh(nozzle); # SKIP. generate that one in postprocessing
+    
     HF_GenerateMesh_Deform(nozzle);
     
-    sys.exit(1)
     
     #if ( nozzle.meshDeformationFlag ):
     #    GenerateNozzleMesh_Deform(nozzle);
@@ -553,8 +448,7 @@ def HF_runSU2 ( nozzle ):
     config.OBJECTIVE_FUNCTION= 'THRUST_NOZZLE'
     
     # --- Remove thrust file if it exists
-    
-    if os.path.exists("thrust_nodef.dat"): os.remove("thrust_nodef.dat")
+    #if os.path.exists("thrust_nodef.dat"): os.remove("thrust_nodef.dat")
     
     # --- Setup file and flags to record SU2's progress
     
@@ -564,7 +458,7 @@ def HF_runSU2 ( nozzle ):
 
     # --- Run SU2 
     
-    config.EXT_ITER = 2;
+    #config.EXT_ITER = 5;
     
     try:
         info = SU2.run.CFD(config);
@@ -724,7 +618,7 @@ def HF_runSU2 ( nozzle ):
     if nozzle.cfd.adap == 'YES':
         
         print "MESH ADAPTATION HERE"
-    
+        
         HF_RunMeshAdaptation(nozzle, config);
         
         sys.exit(1)
@@ -1036,22 +930,22 @@ def setupConfig_DOT (solver_options):
     
     if Dim == '2D':
         if method == 'EULER':
-            config.MARKER_EULER= '( PhysicalLine1, PhysicalLine2, PhysicalLine3 )';
+            config.MARKER_EULER= '( 1, 2, 3 )';
         elif method == 'RANS':
-            config.MARKER_HEATFLUX= '( PhysicalLine1, 0.0, PhysicalLine2, 0.0, PhysicalLine3, 0.0 )';
-        config.MARKER_INLET= '( PhysicalLine8, %lf, %lf, 1.0, 0.0, 0.0, PhysicalLine4,  %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag,Tt, Pt);
-        config.MARKER_FAR= '( PhysicalLine5 )';
-        config.MARKER_SYM= '( PhysicalLine7 )';
-        config.MARKER_OUTLET= '( PhysicalLine6, %lf)' % (Pres);
-        config.MARKER_THRUST= '( PhysicalLine9 )'
+            config.MARKER_HEATFLUX= '( 1, 0.0, 2, 0.0, 3, 0.0 )';
+        config.MARKER_INLET= '( 8, %lf, %lf, 1.0, 0.0, 0.0, 4,  %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag,Tt, Pt);
+        config.MARKER_FAR= '( 5 )';
+        config.MARKER_SYM= '( 7 )';
+        config.MARKER_OUTLET= '( 6, %lf)' % (Pres);
+        config.MARKER_THRUST= '( 9 )'
     else:
-        config.MARKER_EULER= '( PhysicalSurface1, PhysicalSurface2, PhysicalSurface3, PhysicalSurface4, \
-        PhysicalSurface5, PhysicalSurface6, PhysicalSurface7, PhysicalSurface8, PhysicalSurface9, PhysicalSurface10, \
-        PhysicalSurface11, PhysicalSurface12, PhysicalSurface13, PhysicalSurface14 )';
-        config.MARKER_INLET= '( PhysicalSurface15, %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag);
-        config.MARKER_FAR= '( PhysicalSurface17, PhysicalSurface18, PhysicalSurface21 )';
-        config.MARKER_SYM= '( PhysicalSurface19, PhysicalSurface20 )';
-        config.MARKER_OUTLET= '( PhysicalSurface22, %lf)' % (Pres);
+        config.MARKER_EULER= '( 1, 2, 3, 4, \
+        5, 6, 7, 8, 9, 10, \
+        11, 12, 13, 14 )';
+        config.MARKER_INLET= '( 15, %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag);
+        config.MARKER_FAR= '( 17, 18, 21 )';
+        config.MARKER_SYM= '( 19, 20 )';
+        config.MARKER_OUTLET= '( 22, %lf)' % (Pres);
     
     config.REF_ELEM_LENGTH= 0.01 
     config.LIMITER_COEFF= 0.3
@@ -1066,7 +960,7 @@ def setupConfig_DOT (solver_options):
     config.MG_DAMP_RESTRICTION= 0.75
     config.MG_DAMP_PROLONGATION= 0.75
     config.CONV_NUM_METHOD_FLOW= 'JST'
-    config.SPATIAL_ORDER_FLOW= '2ND_ORDER_LIMITER'
+    #config.SPATIAL_ORDER_FLOW= '2ND_ORDER_LIMITER'
     config.SLOPE_LIMITER_FLOW= 'VENKATAKRISHNAN'
     config.AD_COEFF_FLOW= '( 0.15, 0.5, 0.02 )'
     config.TIME_DISCRE_FLOW= 'EULER_IMPLICIT'
@@ -1168,7 +1062,7 @@ def SetupConfig_DEF (solver_options):
     method = solver_options.Method;
 
     Dim = solver_options.Dimension;
-
+    
     Pt = solver_options.Pt;
     Tt = solver_options.Tt;
     
@@ -1180,6 +1074,11 @@ def SetupConfig_DEF (solver_options):
 
     config.MESH_FILENAME= 'nozzle.su2'
     config.DV_KIND= 'SURFACE_FILE'
+    
+    
+    #config.DV_PARAM= '(1)' # necessary dummy values
+    #config.DV_VALUE= 0.001
+    
     config.DV_MARKER= '( PhysicalLine1 )'
     config.MOTION_FILENAME= 'mesh_motion.dat'
     config.DEFORM_LINEAR_SOLVER= 'FGMRES'
@@ -1198,22 +1097,22 @@ def SetupConfig_DEF (solver_options):
 
     if Dim == '2D':
         if method == 'EULER':
-            config.MARKER_EULER= '( PhysicalLine1, PhysicalLine2, PhysicalLine3 )';
+            config.MARKER_EULER= '( 1, 2, 3 )';
         elif method == 'RANS':
-            config.MARKER_HEATFLUX= '( PhysicalLine1, 0.0, PhysicalLine2, 0.0, PhysicalLine3, 0.0 )';
-        config.MARKER_INLET= '( PhysicalLine8, %lf, %lf, 1.0, 0.0, 0.0, PhysicalLine4,  %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag,Tt, Pt);
-        config.MARKER_FAR= '( PhysicalLine5 )';
-        config.MARKER_SYM= '( PhysicalLine7 )';
-        config.MARKER_OUTLET= '( PhysicalLine6, %lf)' % (Pres);
-        config.MARKER_THRUST= '( PhysicalLine9 )'
+            config.MARKER_HEATFLUX= '( 1, 0.0, 2, 0.0, 3, 0.0 )';
+        config.MARKER_INLET= '( 8, %lf, %lf, 1.0, 0.0, 0.0, 4,  %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag,Tt, Pt);
+        config.MARKER_FAR= '( 5 )';
+        config.MARKER_SYM= '( 7 )';
+        config.MARKER_OUTLET= '( 6, %lf)' % (Pres);
+        config.MARKER_THRUST= '( 9 )'
     else:
-        config.MARKER_EULER= '( PhysicalSurface1, PhysicalSurface2, PhysicalSurface3, PhysicalSurface4, \
-        PhysicalSurface5, PhysicalSurface6, PhysicalSurface7, PhysicalSurface8, PhysicalSurface9, PhysicalSurface10, \
-        PhysicalSurface11, PhysicalSurface12, PhysicalSurface13, PhysicalSurface14 )';
-        config.MARKER_INLET= '( PhysicalSurface15, %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag);
-        config.MARKER_FAR= '( PhysicalSurface17, PhysicalSurface18, PhysicalSurface21 )';
-        config.MARKER_SYM= '( PhysicalSurface19, PhysicalSurface20 )';
-        config.MARKER_OUTLET= '( PhysicalSurface22, %lf)' % (Pres);
+        config.MARKER_EULER= '( 1, 2, 3, 4, \
+        5, 6, 7, 8, 9, 10, \
+        11, 12, 13, 14 )';
+        config.MARKER_INLET= '( 15, %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag);
+        config.MARKER_FAR= '( 17, 18, 21 )';
+        config.MARKER_SYM= '( 19, 20 )';
+        config.MARKER_OUTLET= '( 22, %lf)' % (Pres);
     
     
     return config;
@@ -1392,15 +1291,15 @@ def Compute_Thrust_Gradients_FD (nozzle):
         
         # --- Call CFD
         
-        thrust_filename = 'thrust_%d.dat' % idv; # output from SU2 containing thrust
-        
-        if os.path.exists(thrust_filename): os.remove(thrust_filename)
-        
+        #thrust_filename = 'thrust_%d.dat' % idv; # output from SU2 containing thrust
+        #if os.path.exists(thrust_filename): os.remove(thrust_filename)
+        #config_CFD.THRUST_FILENAME= thrust_filename; # DEPRECATED
+                
         config_CFD = SetupConfig(solver_options);
         
         config_CFD.OBJECTIVE_FUNCTION= 'THRUST_NOZZLE'
         config_CFD.MARKER_THRUST= '( PhysicalLine9 ) '
-        config_CFD.THRUST_FILENAME= thrust_filename;
+
         config_CFD.MESH_FILENAME= config_DEF.MESH_OUT_FILENAME;
         config_CFD.RESTART_FLOW_FILENAME= "nozzle_%d.dat" % idv
         #config_CFD.EXT_ITER= 1

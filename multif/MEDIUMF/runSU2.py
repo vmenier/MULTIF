@@ -130,7 +130,8 @@ def SetupConfig (solver_options):
     
         config.NUM_METHOD_GRAD= 'WEIGHTED_LEAST_SQUARES';
         config.CFL_NUMBER= '5';
-        config.CFL_ADAPT= 'NO';
+        config.CFL_ADAPT= 'YES';
+        config.CFL_ADAPT_PARAM= '( 1.5, 0.5, 1.25, 50.0 )'
         config.MAX_DELTA_TIME= '1E6';
         config.LINEAR_SOLVER= 'FGMRES';
         config.LINEAR_SOLVER_ERROR= '1E-6';
@@ -151,7 +152,8 @@ def SetupConfig (solver_options):
         config.NUM_METHOD_GRAD= 'GREEN_GAUSS';
         
         config.CFL_NUMBER= '2';
-        config.CFL_ADAPT= 'NO';
+        config.CFL_ADAPT= 'YES';
+        config.CFL_ADAPT_PARAM= '( 1.5, 0.5, 1.25, 50.0 )'
         
         config.LINEAR_SOLVER= 'FGMRES';
         config.LINEAR_SOLVER_PREC= 'LU_SGS';
@@ -181,14 +183,14 @@ def SetupConfig (solver_options):
     
     if Dim == '2D':
         if method == 'EULER':
-            config.MARKER_EULER= '( PhysicalLine1, PhysicalLine2, PhysicalLine3 )';
+            config.MARKER_EULER= '( 1, 2, 3, 10 )';
         elif method == 'RANS':
-            config.MARKER_HEATFLUX= '( PhysicalLine1, 0.0, PhysicalLine2, 0.0, PhysicalLine3, 0.0 )';
-        config.MARKER_INLET= '( PhysicalLine8, %lf, %lf, 1.0, 0.0, 0.0, PhysicalLine4,  %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag,Tt, Pt);
-        config.MARKER_FAR= '( PhysicalLine5 )';
-        config.MARKER_SYM= '( PhysicalLine7 )';
-        config.MARKER_OUTLET= '( PhysicalLine6, %lf)' % (Pres);
-        config.MARKER_THRUST= '( PhysicalLine9 )'
+            config.MARKER_HEATFLUX= '( 1, 0.0, 2, 0.0, 3, 0.0, 10, 0.0 )';
+        config.MARKER_INLET= '( 8, %lf, %lf, 1.0, 0.0, 0.0)' % (InletTstag,InletPstag);
+        config.MARKER_FAR= '( 4, 5, 6 )';
+        config.MARKER_SYM= '( 7 )';
+        #config.MARKER_OUTLET= '( 6, %lf)' % (Pres);
+        config.MARKER_THRUST= '( 9 )'
     else:
         config.MARKER_EULER= '( PhysicalSurface1, PhysicalSurface2, PhysicalSurface3, PhysicalSurface4, \
         PhysicalSurface5, PhysicalSurface6, PhysicalSurface7, PhysicalSurface8, PhysicalSurface9, PhysicalSurface10, \
@@ -234,10 +236,16 @@ def SetupConfig (solver_options):
         config.TIME_DISCRE_FLOW= 'EULER_IMPLICIT';
         config.ENTROPY_FIX_COEFF= 0.0;
     
+        #config.CONV_NUM_METHOD_TURB= 'SCALAR_UPWIND'
+        #config.SPATIAL_ORDER_TURB= '2ND_ORDER_LIMITER'
+        #config.SLOPE_LIMITER_TURB= 'VENKATAKRISHNAN'
+        #config.VISCOUS_LIMITER_TURB= 'NO'
+        #config.TIME_DISCRE_TURB= 'EULER_IMPLICIT'
+        #config.CFL_REDUCTION_TURB= '0.5'
+        #config.RELAXATION_FACTOR_TURB= '1.0'
+    
         config.CONV_NUM_METHOD_TURB= 'SCALAR_UPWIND'
-        config.SPATIAL_ORDER_TURB= '2ND_ORDER_LIMITER'
         config.SLOPE_LIMITER_TURB= 'VENKATAKRISHNAN'
-        config.VISCOUS_LIMITER_TURB= 'NO'
         config.TIME_DISCRE_TURB= 'EULER_IMPLICIT'
         config.CFL_REDUCTION_TURB= '0.5'
         config.RELAXATION_FACTOR_TURB= '1.0'
@@ -285,7 +293,7 @@ def SetupConfig (solver_options):
     
         temp_kwd = "(%s)" % temp_kwd;
         
-        config.MARKER_WALL_TEMP= "( PhysicalLine1 )";
+        config.MARKER_WALL_TEMP= "( 1 )";
         config.WALL_TEMP_DEFINITION = temp_kwd;
     
     #--- I/O
@@ -315,9 +323,22 @@ def checkResidual(config=[]):
         finalResidual = history[-1,11];
         residualReduction = max(history[:,11]) - history[-1,11];
     elif( os.path.isfile('history.vtk') ):
-        history = np.loadtxt('history.vtk',skiprows=3,delimiter=',');
-        finalResidual = history[-1,13];
-        residualReduction = max(history[:,13]) - history[-1,13];
+        history = np.loadtxt('history.vtk',skiprows=1,delimiter=',');
+        
+        filres=open('history.vtk','r')
+        header=filres.readline()
+        kwd=filres.readline().split(",")
+        
+        idRes=-1;
+        for i in range(len(kwd)):
+            if kwd[i] == '"Res_Flow[0]"':
+                idRes = i;
+                break;
+        
+        filres.close()
+        
+        finalResidual = history[-1,idRes];
+        residualReduction = max(history[:,idRes]) - history[-1,idRes];
     else: # bypass solution checking
         history = -1;
         finalResidual = -1;
@@ -467,7 +488,7 @@ def runSU2 ( nozzle ):
     su2history = open('about.txt','w');
     su2history.close();
     gradCalc = 0; # 0 = failure, 1 = success
-    savefiles = ['config_CFD.cfg','history.csv','history.dat',
+    savefiles = ['config_CFD.cfg','history.csv','history.dat','history.vtk',
     'nozzle.su2','nozzle.dat']; # list of files to save in case of SU2 failure
     dirname = 'su2_run1'; # local subdirectory to store files in case of SU2 failure
 
@@ -605,7 +626,7 @@ def runSU2 ( nozzle ):
             
             # --- AD            
             config_AD = setupConfig_AD (solver_options);
-            #info = SU2.run.CFD(config_AD);
+            info = SU2.run.CFD(config_AD);
             
             # --- DOT            
             config_DOT = setupConfig_DOT (solver_options);            
@@ -752,14 +773,15 @@ def setupConfig_AD (solver_options):
     
     if Dim == '2D':
         if method == 'EULER':
-            config.MARKER_EULER= '( PhysicalLine1, PhysicalLine2, PhysicalLine3 )';
+            config.MARKER_EULER= '( 1, 2, 3, 10 )';
         elif method == 'RANS':
-            config.MARKER_HEATFLUX= '( PhysicalLine1, 0.0, PhysicalLine2, 0.0, PhysicalLine3, 0.0 )';
-        config.MARKER_INLET= '( PhysicalLine8, %lf, %lf, 1.0, 0.0, 0.0, PhysicalLine4,  %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag,Tt, Pt);
-        config.MARKER_FAR= '( PhysicalLine5 )';
-        config.MARKER_SYM= '( PhysicalLine7 )';
-        config.MARKER_OUTLET= '( PhysicalLine6, %lf)' % (Pres);
-        config.MARKER_THRUST= '( PhysicalLine9 )'
+            config.MARKER_HEATFLUX= '( 1, 0.0, 2, 0.0, 3, 0.0, 10, 0.0 )';
+        #config.MARKER_INLET= '( 8, %lf, %lf, 1.0, 0.0, 0.0, 4,  %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag,Tt, Pt);
+        config.MARKER_INLET= '( 8, %lf, %lf, 1.0, 0.0, 0.0)' % (InletTstag,InletPstag);
+        config.MARKER_FAR= '( 4, 5, 6 )';
+        config.MARKER_SYM= '( 7 )';
+        #config.MARKER_OUTLET= '( 6, %lf)' % (Pres);
+        config.MARKER_THRUST= '( 9 )'
     else:
         config.MARKER_EULER= '( PhysicalSurface1, PhysicalSurface2, PhysicalSurface3, PhysicalSurface4, \
         PhysicalSurface5, PhysicalSurface6, PhysicalSurface7, PhysicalSurface8, PhysicalSurface9, PhysicalSurface10, \
@@ -817,7 +839,7 @@ def setupConfig_AD (solver_options):
     config.LIMIT_ADJFLOW= '1E6'
     config.MG_ADJFLOW= 'YES'    
     
-    config.MARKER_MONITORING= '( PhysicalLine9 )'
+    config.MARKER_MONITORING= '( 9 )'
 
 
     #--- I/O
@@ -901,7 +923,8 @@ def setupConfig_DOT (solver_options):
     
         config.NUM_METHOD_GRAD= 'WEIGHTED_LEAST_SQUARES';
         config.CFL_NUMBER= '15';
-        config.CFL_ADAPT= 'NO';
+        config.CFL_ADAPT= 'YES';
+        config.CFL_ADAPT_PARAM= '( 1.5, 0.5, 1.25, 50.0 )'
         config.MAX_DELTA_TIME= '1E6';
         config.LINEAR_SOLVER= 'FGMRES';
         config.LINEAR_SOLVER_ERROR= '1E-6';
@@ -922,7 +945,9 @@ def setupConfig_DOT (solver_options):
         config.NUM_METHOD_GRAD= 'GREEN_GAUSS';
     
         config.CFL_NUMBER= '5';
-        config.CFL_ADAPT= 'NO';
+        
+        config.CFL_ADAPT= 'YES';
+        config.CFL_ADAPT_PARAM= '( 1.5, 0.5, 1.25, 50.0 )'
     
         config.LINEAR_SOLVER= 'FGMRES';
         config.LINEAR_SOLVER_PREC= 'LU_SGS';
@@ -972,14 +997,14 @@ def setupConfig_DOT (solver_options):
     
     if Dim == '2D':
         if method == 'EULER':
-            config.MARKER_EULER= '( PhysicalLine1, PhysicalLine2, PhysicalLine3 )';
+            config.MARKER_EULER= '( 1, 2, 3, 10 )';
         elif method == 'RANS':
-            config.MARKER_HEATFLUX= '( PhysicalLine1, 0.0, PhysicalLine2, 0.0, PhysicalLine3, 0.0 )';
-        config.MARKER_INLET= '( PhysicalLine8, %lf, %lf, 1.0, 0.0, 0.0, PhysicalLine4,  %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag,Tt, Pt);
-        config.MARKER_FAR= '( PhysicalLine5 )';
-        config.MARKER_SYM= '( PhysicalLine7 )';
-        config.MARKER_OUTLET= '( PhysicalLine6, %lf)' % (Pres);
-        config.MARKER_THRUST= '( PhysicalLine9 )'
+            config.MARKER_HEATFLUX= '( 1, 0.0, 2, 0.0, 3, 0.0, 10, 0.0 )';
+        config.MARKER_INLET= '( 8, %lf, %lf, 1.0, 0.0, 0.0, 4,  %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag,Tt, Pt);
+        config.MARKER_FAR= '( 5 )';
+        config.MARKER_SYM= '( 7 )';
+        config.MARKER_OUTLET= '( 6, %lf)' % (Pres);
+        config.MARKER_THRUST= '( 9 )'
     else:
         config.MARKER_EULER= '( PhysicalSurface1, PhysicalSurface2, PhysicalSurface3, PhysicalSurface4, \
         PhysicalSurface5, PhysicalSurface6, PhysicalSurface7, PhysicalSurface8, PhysicalSurface9, PhysicalSurface10, \
@@ -1027,8 +1052,8 @@ def setupConfig_DOT (solver_options):
     # ------------- DOT PARAMETERS -------------
 
     config.GEO_MODE= 'FUNCTION'
-    config.GEO_MARKER= '( PhysicalLine1 )'
-    config.DV_MARKER= '( PhysicalLine1 )'
+    config.GEO_MARKER= '( 1 )'
+    config.DV_MARKER= '( 1 )'
     
     
 
@@ -1191,10 +1216,13 @@ def SetupConfig_DEF (solver_options):
     config.MESH_FILENAME= 'nozzle.su2'
     config.DV_KIND= 'SURFACE_FILE'
     
-    config.DV_PARAM= '(1)' # necessary dummy values
-    config.DV_VALUE= 0.001
+    config.DV_PARAM = { 'FFDTAG' : [[]]     ,
+                       'PARAM'  : [[1]] ,
+                       'SIZE'   : [1]}
+    config.DV_VALUE = [0.001];
     
-    config.DV_MARKER= '( PhysicalLine1 )'
+    
+    config.DV_MARKER= '( 1 )'
     config.MOTION_FILENAME= 'mesh_motion.dat'
     config.DEFORM_LINEAR_SOLVER= 'FGMRES'
     config.DEFORM_LINEAR_ITER= 200
@@ -1205,23 +1233,23 @@ def SetupConfig_DEF (solver_options):
     config.HOLD_GRID_FIXED= 'NO'
     config.HOLD_GRID_FIXED_COORD= '(-1e6,-1e6,-1e6,1e6,1e6,1e6)'
     config.VISUALIZE_DEFORMATION= 'YES'
-    config.MARKER_MOVING= '( PhysicalLine1 )'
+    config.MARKER_MOVING= '( 1 )'
     config.NUMBER_PART= 1
 
     # --- Boundary conditions
 
     if Dim == '2D':
         if method == 'EULER':
-            config.MARKER_EULER= '( PhysicalLine1, PhysicalLine2, PhysicalLine3 )';
+            config.MARKER_EULER= '( 1, 2, 3, 10 )';
             config.DEFORM_LINEAR_ITER= 200
         elif method == 'RANS':
-            config.MARKER_HEATFLUX= '( PhysicalLine1, 0.0, PhysicalLine2, 0.0, PhysicalLine3, 0.0 )';
+            config.MARKER_HEATFLUX= '( 1, 0.0, 2, 0.0, 3, 0.0, 10, 0.0 )';
             config.DEFORM_LINEAR_ITER= 500
-        config.MARKER_INLET= '( PhysicalLine8, %lf, %lf, 1.0, 0.0, 0.0, PhysicalLine4,  %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag,Tt, Pt);
-        config.MARKER_FAR= '( PhysicalLine5 )';
-        config.MARKER_SYM= '( PhysicalLine7 )';
-        config.MARKER_OUTLET= '( PhysicalLine6, %lf)' % (Pres);
-        config.MARKER_THRUST= '( PhysicalLine9 )'
+        config.MARKER_INLET= '( 8, %lf, %lf, 1.0, 0.0, 0.0, 4,  %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag,Tt, Pt);
+        config.MARKER_FAR= '( 5 )';
+        config.MARKER_SYM= '( 7 )';
+        config.MARKER_OUTLET= '( 6, %lf)' % (Pres);
+        config.MARKER_THRUST= '( 9 )'
     else:
         config.MARKER_EULER= '( PhysicalSurface1, PhysicalSurface2, PhysicalSurface3, PhysicalSurface4, \
         PhysicalSurface5, PhysicalSurface6, PhysicalSurface7, PhysicalSurface8, PhysicalSurface9, PhysicalSurface10, \
@@ -1416,7 +1444,7 @@ def Compute_Thrust_Gradients_FD (nozzle):
         config_CFD = SetupConfig(solver_options);
         
         config_CFD.OBJECTIVE_FUNCTION= 'THRUST_NOZZLE'
-        config_CFD.MARKER_THRUST= '( PhysicalLine9 ) '
+        config_CFD.MARKER_THRUST= '( 9 ) '
         config_CFD.THRUST_FILENAME= thrust_filename;
         config_CFD.MESH_FILENAME= config_DEF.MESH_OUT_FILENAME;
         config_CFD.RESTART_FLOW_FILENAME= "nozzle_%d.dat" % idv

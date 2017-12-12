@@ -940,6 +940,64 @@ int py_PiecewiseLinear (PyObject *pyxnodes, PyObject *pyynodes, PyObject *pyx, P
 	return 0;
 }
 
+// Output tet refs
+void py_ReadMesh2 (char *MshNam, char *SolNam, PyObject *pyVer, PyObject *pyTri, PyObject *pyTet, PyObject *pyEdg, PyObject *pySol)
+{
+	int i, j, d;
+	
+	Options *mshopt = AllocOptions();
+	
+	strcpy(mshopt->InpNam,MshNam);
+	strcpy(mshopt->SolNam,SolNam);
+	
+	//--- Open mesh/solution file
+	Mesh *Msh = NULL;
+	Msh = SetupMeshAndSolution (mshopt->InpNam, mshopt->SolNam);
+	
+	//PrintMeshInfo (Msh);
+  //if ( !Msh->Sol ) {
+	//	printf("  ## ERROR SolutionExtraction : A solution must be provided.\n");
+	//	return;
+	//}
+	
+	for (i=1; i<=Msh->NbrVer; i++){
+		for (d=0; d<3; d++)
+			PyList_Append(pyVer, PyFloat_FromDouble(Msh->Ver[i][d]));
+	}
+	
+	for (i=1; i<=Msh->NbrTri; i++){
+		for (j=0; j<4; j++)
+			PyList_Append(pyTri, PyFloat_FromDouble(Msh->Tri[i][j]));
+	}
+	
+	for (i=1; i<=Msh->NbrTet; i++){
+		for (j=0; j<5; j++)
+			PyList_Append(pyTet, PyFloat_FromDouble(Msh->Tet[i][j]));
+	}
+	
+	for (i=1; i<=Msh->NbrEfr; i++){
+		for (j=0; j<3; j++)
+			PyList_Append(pyEdg, PyFloat_FromDouble(Msh->Efr[i][j]));
+	}
+	
+	if ( Msh->Sol ) {
+		
+		//--- Output solution
+		int iVer;
+		for (iVer=1; iVer<=Msh->NbrVer; iVer++) {
+			for (i=0; i<Msh->SolSiz; i++) {
+				PyList_Append(pySol, PyFloat_FromDouble(Msh->Sol[iVer*Msh->SolSiz+i]));
+			}
+		}
+		
+	}
+	
+	if ( Msh )
+ 		FreeMesh(Msh);
+	
+}
+
+
 
 void py_ReadMesh (char *MshNam, char *SolNam, PyObject *pyVer, PyObject *pyTri, PyObject *pyTet, PyObject *pyEdg, PyObject *pySol)
 {
@@ -1262,11 +1320,11 @@ void py_WriteMesh(char *OutNam, PyObject *pyVer, PyObject *pyTri, PyObject *pyTe
   {
 			siz = PyList_Size(pyTet);
 			
-			for (i=0; i<siz/4; i++)
+			for (i=0; i<siz/5; i++)
       {
-				idx = 4*i;
+				idx = 5*i;
 				
-				for (j=0; j<4; j++) {
+				for (j=0; j<5; j++) {
 	       	PyObject *oo = PyList_GetItem(pyTet,idx+j);
 	       	if ( PyInt_Check(oo) )
 	       	{
@@ -1275,7 +1333,7 @@ void py_WriteMesh(char *OutNam, PyObject *pyVer, PyObject *pyTri, PyObject *pyTe
 				}
 				
 				Msh->NbrTet++;
-				AddTetrahedron(Msh,Msh->NbrTet,is,0);
+				AddTetrahedron(Msh,Msh->NbrTet,is,is[4]);
 				
 				//printf("-- Add tet %d : %d %d %d (ref %d)\n", Msh->NbrTet, is[0], is[1], is[2], is[3],ref);
 				//exit(1);
@@ -1299,7 +1357,7 @@ void py_WriteMesh(char *OutNam, PyObject *pyVer, PyObject *pyTri, PyObject *pyTe
 	       	}
 				}
 				
-				PyObject *oo = PyList_GetItem(pyTet,idx+2);
+				PyObject *oo = PyList_GetItem(pyEdg,idx+2);
 				ref = (int) PyInt_AS_LONG(oo);
 				
 				Msh->NbrEfr++;

@@ -148,6 +148,10 @@ def py_ReadMesh(MshNam, SolNam, pyVer, pyTri, pyTet, pyEdg, pySol):
     return _meshutils_module.py_ReadMesh(MshNam, SolNam, pyVer, pyTri, pyTet, pyEdg, pySol)
 py_ReadMesh = _meshutils_module.py_ReadMesh
 
+def py_ReadMesh2(MshNam, SolNam, pyVer, pyTri, pyTet, pyEdg, pySol):
+    return _meshutils_module.py_ReadMesh2(MshNam, SolNam, pyVer, pyTri, pyTet, pyEdg, pySol)
+py_ReadMesh2 = _meshutils_module.py_ReadMesh2
+
 def py_WriteMesh(OutNam, pyVer, pyTri, pyTet, pyEdg, pySol):
     return _meshutils_module.py_WriteMesh(OutNam, pyVer, pyTri, pyTet, pyEdg, pySol)
 py_WriteMesh = _meshutils_module.py_WriteMesh

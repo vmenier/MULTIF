@@ -1,7 +1,7 @@
 from multif import _mshint_module
 from multif import _meshutils_module
 import numpy as np
-import sys
+import sys, math
 import os
 import multif
 
@@ -11,9 +11,13 @@ def PostProcess ( nozzle, output ):
     
     # --- Check residual convergence
     
-    IniRes, FinRes = CheckConvergence(nozzle);
-    ResDif = FinRes - IniRes;
-    sys.stdout.write("Initial res = %le, Final res = %lf, Diff = %lf\n" % (IniRes, FinRes, ResDif));
+    from multif import MEDIUMF
+    history, FinRes, ResDif = MEDIUMF.checkResidual();
+    sys.stdout.write("Fluid calculation convergence: Final density residual = %.2lf, Residual reduction = %.2lf\n" % (FinRes, ResDif));
+    
+    #IniRes, FinRes = CheckConvergence(nozzle);
+    #ResDif = FinRes - IniRes;
+    #sys.stdout.write("Initial res = %le, Final res = %lf, Diff = %lf\n" % (IniRes, FinRes, ResDif));
     
     # --- Interpolate and extract all the solution fields along the nozzle exit
     # SolExtract : Solution (x, y, sol1, sol2, etc.)
@@ -21,7 +25,7 @@ def PostProcess ( nozzle, output ):
     # Header : Name of the solution fields (Conservative_1, Mach, etc.)    
     #SolExtract, Size, Header  = ExtractSolutionAtExit(nozzle);
 
-     # Extract solution at wall
+    # Extract solution at wall
 # XXX    SolExtract_w, Size_w, idHeader_w  = ExtractSolutionAtWall(nozzle);
 # XXX    iPres = idHeader_w['Pressure'];
 # XXX    iTemp = idHeader_w['Temperature'];
@@ -116,7 +120,7 @@ def CheckConvergence ( nozzle ) :
     
     IniRes = RhoRes[0];
     FinRes = RhoRes[NbrIte-1];
-        
+    
     #print "Initial res = %le, Final res = %lf, DIFF = %lf\n" % (IniRes, FinRes, ResDif);
     return IniRes, FinRes;
 
@@ -249,82 +253,218 @@ def HF_Integrate_Sol_Wall(nozzle):
     return AreaTot, PresAvg, TempAvg;
 
 
+#
+#def HF_Compute_Thrust (options):
+#    
+#    info = [];
+#    Crd  = [];
+#    Tri  = [];
+#    Tet  = [];
+#    Sol  = [];
+#    Header = [];
+#    
+#    exitNam = "%s/baseline_meshes/nozzle_exit.mesh" % (os.path.dirname(os.path.abspath(__file__)));
+#    exitNamLoc = "./nozzle_exit_hin.mesh";
+#    
+#    try :
+#        os.symlink(exitNam, exitNamLoc);
+#    except:
+#        # ---
+#        sys.stdout.write("%s already exists\n" % exitNamLoc);
+#    
+#    out = _mshint_module.py_Interpolation (exitNamLoc, options["mesh_name"], options["restart_name"],\
+#    info, Crd, Tri, Tet, Sol, Header);
+#    
+#    dim    = info[0];
+#    NbrVer = info[1]; 
+#    NbrTri = info[2];
+#    NbrTet = info[3];
+#    SolSiz = info[4];
+#    
+#    #for i in range(40):
+#    #    print "SOL %d = %.5le" % (i, Sol[i])
+#    #
+#    #for i in range(1,4):
+#    #    idx = (i-1)*dim;
+#    #    idxs = (i-1)*SolSiz;
+#    #    print "Ver %d : %lf %lf %lf / idxs %d  Sol = %le %le ..." % (i, Crd[idx], Crd[idx+1], Crd[idx+2], idxs, Sol[idxs+0], Sol[idxs+1])
+#    
+#    # --- Get solution field indices
+#    
+#    idHeader = dict();
+#    for iFld in range(0,len(Header)):
+#        idHeader[Header[iFld]] = iFld+1;
+#    
+#    #iMach  = idHeader['Mach'];
+#    #iTem   = idHeader['Temperature'];
+#    #iCons1 = idHeader['Conservative_1'];
+#    #iCons2 = idHeader['Conservative_2'];
+#    #iCons3 = idHeader['Conservative_3'];
+#    #iCons4 = idHeader['Conservative_4'];
+#    #iPres  = idHeader['Pressure'];
+#    
+#    # New keywords (> SU2 Raven 5.0)
+#    
+#    iMach  = idHeader['Mach'];
+#    iTem   = idHeader['Temperature'];
+#    iCons1 = idHeader['Density'];
+#    iCons2 = idHeader['X-Momentum'];
+#    iCons3 = idHeader['Y-Momentum'];
+#    iCons4 = idHeader['Energy'];
+#    iPres  = idHeader['Pressure'];
+#      
+#    # --- Compute thrust    
+#  
+#    Thrust = 0.0;
+#  
+#    #P0  = nozzle.environment.P;
+#    #M0  = nozzle.mission.mach;
+#    #Gam = nozzle.fluid.gam;
+#    #Rs  = nozzle.fluid.R;
+#    #T0  = nozzle.environment.T;
+#    #U0  = M0*np.sqrt(Gam*Rs*T0);
+#    
+#    P0  = options["P0"];
+#    M0  = options["M0"];
+#    Gam = options["Gam"];
+#    Rs  = options["Rs"];
+#    T0  = options["T0"];
+#    U0  = options["U0"];
+#    
+#    v = np.zeros([3,3]);
+#    a = np.zeros(3);
+#    b = np.zeros(3);
+#    
+#    areatot = 0;
+#    
+#    for iTri in range(1, NbrTri) :
+#        idt = 3*(iTri-1);
+#        
+#        rho  = 0.0;
+#        rhoU = 0.0;
+#        Pres = 0.0;
+#        Mach = 0.0;
+#        Temp = 0.0;
+#        
+#        for j in range(0,3):
+#            iVer = int(Tri[idt+j]);
+#            
+#            idv = 3*(iVer-1);
+#            ids = SolSiz*(iVer-1);
+#            
+#            for d in range(0,3):
+#                v[j][d] = Crd[idv+d];
+#            
+#            
+#            #if iTri == 1:
+#            #    print "rho %d (%d) = %.3le (ids %d)" % (j,iVer,Sol[ids+iCons1], ids)
+#                
+#            rho  = rho  + Sol[ids+iCons1];
+#            rhoU = rhoU + Sol[ids+iCons2];
+#            Pres = Pres + Sol[ids+iPres];
+#            Mach = Mach + Sol[ids+iMach];
+#            Temp = Temp + Sol[ids+iTem];    
+#        
+#        us3 = 1./3.;
+#        rho  = us3*rho; 
+#        rhoU = us3*rhoU; 
+#        Pres = us3*Pres; 
+#        Mach = us3*Mach; 
+#        Temp = us3*Temp; 
+#        
+#        # --- Compute triangle area
+#        
+#        for d in range(0,3):
+#            a[d] = v[1][d] - v[0][d];
+#            b[d] = v[2][d] - v[0][d];
+#        
+#        area = 0.;
+#        
+#        area = area + (a[1]*b[2]-a[2]*b[1])*(a[1]*b[2]-a[2]*b[1]);
+#        area = area + (a[2]*b[0]-a[0]*b[2])*(a[2]*b[0]-a[0]*b[2]);
+#        area = area + (a[0]*b[1]-a[1]*b[0])*(a[0]*b[1]-a[1]*b[0]);
+#        
+#        area = 0.5*np.sqrt(area);
+#        
+#        areatot += area;
+#                
+#        # --- Compute thrust
+#                    
+#        if rho < 1e-30:
+#            sys.stderr.write("## ERROR HF_Compute_Thrust: rho == 0 for triangle %d\n" % iTri);
+#            sys.exit(1);
+#        
+#        U = rhoU/rho;
+#        
+#        if iTri < 10:
+#            print "Tri %d Pres %lf rho %lf U %lf rhoU %lf U0 %lf P0 %lf area %lf" % (iTri, Pres, rho, U, rhoU, U0, P0, area)
+#        
+#        try :
+#            Thrust += area*(rhoU*(U-U0)+Pres-P0);
+#        except :
+#            Thrust = -1;
+#        #Thrust = Thrust + area*(rhoU*(U*U0-U0)+P0*Pres-P0);
+#    
+#    Thrust = 2*Thrust; # symmetry
+#    
+#    print "AREA TOT %lf " % areatot;
+#    
+#    return Thrust;
+#    
+#
+
 def HF_Compute_Thrust (options):
+        
+    MshNam = "nozzle.su2"
+    SolNam = "nozzle.dat"
     
-    info = [];
-    Crd  = [];
-    Tri  = [];
-    Tet  = [];
-    Sol  = [];
-    Header = [];
+    #--- Extract surface patches from fluid mesh
     
+    pyVer = [];
+    pyTri = [];
+    pySol = [];
+    Ref = [19];
     
-    exitNam = "%s/baseline_meshes/nozzle_exit.mesh" % (os.path.dirname(os.path.abspath(__file__)));
-    exitNamLoc = "./nozzle_exit_hin.mesh";
+    _meshutils_module.py_ExtractSurfacePatches (MshNam, SolNam, pyVer, pyTri, pySol, Ref);
     
-    try :
-        os.symlink(exitNam, exitNamLoc);
-    except:
-        # ---
-        sys.stdout.write("%s already exists\n" % exitNamLoc);
+    pyVer = map(float, pyVer);
+    pyTri = map(int, pyTri);
+    pySol = map(float, pySol);
     
-    out = _mshint_module.py_Interpolation (exitNamLoc, options["mesh_name"], options["restart_name"],\
-    info, Crd, Tri, Tet, Sol, Header);
+    NbrVer = len(pyVer)/3;
+    Ver = np.array(pyVer).reshape(NbrVer,3).tolist();
     
-    dim    = info[0];
-    NbrVer = info[1]; 
-    NbrTri = info[2];
-    NbrTet = info[3];
-    SolSiz = info[4];
+    NbrTri = len(pyTri)/4;
+    Tri = np.array(pyTri).reshape(NbrTri,4).tolist();
     
-    #for i in range(40):
-    #    print "SOL %d = %.5le" % (i, Sol[i])
-    #
-    #for i in range(1,4):
-    #    idx = (i-1)*dim;
-    #    idxs = (i-1)*SolSiz;
-    #    print "Ver %d : %lf %lf %lf / idxs %d  Sol = %le %le ..." % (i, Crd[idx], Crd[idx+1], Crd[idx+2], idxs, Sol[idxs+0], Sol[idxs+1])
+    SolSiz = len(pySol)/NbrVer;
+    Sol = np.array(pySol).reshape(NbrVer,SolSiz).tolist();
+        
+    iCons1 = 0; #idHeader['Density'];
+    iCons2 = 1; #idHeader['X-Momentum'];
+    iCons3 = 2; #idHeader['Y-Momentum'];
+    iCons4 = 3; #idHeader['Energy'];
+    iPres  = 5; #idHeader['Pressure'];
     
-    # --- Get solution field indices
+    #for iVer in range(10):
+    #    
+    #    dens = Sol[iVer][iCons1];
+    #    
+    #    velx = Sol[iVer][iCons2]/dens;
+    #    vely = Sol[iVer][iCons3]/dens;
+    #    velz = Sol[iVer][iCons4]/dens;
+    #    
+    #    vel  = math.sqrt(velx*velx+vely*vely+velz*velz);
+    #    pres = Sol[iVer][iPres];
+    #    
+    #    print "%d %lf %lf %lf  %lf  %lf  %lf" % (iVer, Ver[iVer][0], Ver[iVer][1], Ver[iVer][2], dens, vel, pres);
     
-    idHeader = dict();
-    for iFld in range(0,len(Header)):
-        idHeader[Header[iFld]] = iFld+1;
+    #--- Compute Thrust
     
-    #iMach  = idHeader['Mach'];
-    #iTem   = idHeader['Temperature'];
-    #iCons1 = idHeader['Conservative_1'];
-    #iCons2 = idHeader['Conservative_2'];
-    #iCons3 = idHeader['Conservative_3'];
-    #iCons4 = idHeader['Conservative_4'];
-    #iPres  = idHeader['Pressure'];
+    pres_inf  = options["P0"];
+    vel_inf   = options["U0"];
     
-    # New keywords (> SU2 Raven 5.0)
-    iMach  = Header['Mach'];
-    iTem   = Header['Temperature'];
-    iCons1 = Header['Density'];
-    iCons2 = Header['X-Momentum'];
-    iCons3 = Header['Y-Momentum'];
-    iCons4 = Header['Energy'];
-    iPres  = Header['Pressure'];
-      
-    # --- Compute thrust    
-  
     Thrust = 0.0;
-  
-    #P0  = nozzle.environment.P;
-    #M0  = nozzle.mission.mach;
-    #Gam = nozzle.fluid.gam;
-    #Rs  = nozzle.fluid.R;
-    #T0  = nozzle.environment.T;
-    #U0  = M0*np.sqrt(Gam*Rs*T0);
-    
-    P0  = options["P0"];
-    M0  = options["M0"];
-    Gam = options["Gam"];
-    Rs  = options["Rs"];
-    T0  = options["T0"];
-    U0  = options["U0"];
     
     v = np.zeros([3,3]);
     a = np.zeros(3);
@@ -332,75 +472,49 @@ def HF_Compute_Thrust (options):
     
     areatot = 0;
     
-    for iTri in range(1, NbrTri) :
-        idt = 3*(iTri-1);
-        
-        rho  = 0.0;
-        rhoU = 0.0;
-        Pres = 0.0;
-        Mach = 0.0;
-        Temp = 0.0;
+    for iTri in range(NbrTri) :
+            
+        #--- Compute triangle area
         
         for j in range(0,3):
-            iVer = int(Tri[idt+j]);
-            
-            idv = 3*(iVer-1);
-            ids = SolSiz*(iVer-1);
+            iVer = int(Tri[iTri][j])-1;
             
             for d in range(0,3):
-                v[j][d] = Crd[idv+d];
-            
-            
-            #if iTri == 1:
-            #    print "rho %d (%d) = %.3le (ids %d)" % (j,iVer,Sol[ids+iCons1], ids)
-                
-            rho  = rho  + Sol[ids+iCons1];
-            rhoU = rhoU + Sol[ids+iCons2];
-            Pres = Pres + Sol[ids+iPres];
-            Mach = Mach + Sol[ids+iMach];
-            Temp = Temp + Sol[ids+iTem];    
-        
-        us3 = 1./3.;
-        rho  = us3*rho; 
-        rhoU = us3*rhoU; 
-        Pres = us3*Pres; 
-        Mach = us3*Mach; 
-        Temp = us3*Temp; 
-        
-        # --- Compute triangle area
+                v[j][d] = float(Ver[iVer][d]);
         
         for d in range(0,3):
             a[d] = v[1][d] - v[0][d];
             b[d] = v[2][d] - v[0][d];
         
         area = 0.;
-        
         area = area + (a[1]*b[2]-a[2]*b[1])*(a[1]*b[2]-a[2]*b[1]);
         area = area + (a[2]*b[0]-a[0]*b[2])*(a[2]*b[0]-a[0]*b[2]);
         area = area + (a[0]*b[1]-a[1]*b[0])*(a[0]*b[1]-a[1]*b[0]);
-        
         area = 0.5*np.sqrt(area);
         
-        areatot = areatot+area;
-                
-        # --- Compute thrust
-                    
-        if rho < 1e-30:
-            sys.stderr.write("## ERROR HF_Compute_Thrust: rho == 0 for triangle %d\n" % iTri);
-            sys.exit(1);
+        areatot += area;
+    
+        #--- Increment thrust value
         
-        U = rhoU/rho;
-        
-        #if iTri < 10:
-        #    print "Tri %d Pres %lf rho %lf U %lf rhoU %lf U0 %lf P0 %lf area %lf" % (iTri, Pres, rho, U, rhoU, U0, P0, area)
-        #
-        try :
-            Thrust = Thrust + area*(rhoU*(U-U0)+Pres-P0);
-        except :
-            Thrust = -1;
-        #Thrust = Thrust + area*(rhoU*(U*U0-U0)+P0*Pres-P0);
+        for j in range(0,3):
+            
+            iVer = int(Tri[iTri][j])-1;
+            
+            dens = Sol[iVer][iCons1];
+            
+            velx = Sol[iVer][iCons2]/dens;
+            vely = Sol[iVer][iCons3]/dens;
+            velz = Sol[iVer][iCons4]/dens;
+            
+            vel  = math.sqrt(velx*velx+vely*vely+velz*velz);
+            pres = Sol[iVer][iPres];
+            
+            Thrust += area/3.0*(dens*vel*(vel-vel_inf)+pres-pres_inf);
     
     Thrust = 2*Thrust; # symmetry
+    
+    print "THRUST %lf" % Thrust
+    print "AREA TOT %lf " % areatot;
     
     return Thrust;
     

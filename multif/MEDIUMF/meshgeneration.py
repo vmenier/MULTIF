@@ -278,7 +278,7 @@ def GenerateNozzleMesh_Deform (nozzle):
         Expected: %s\n" % mesh_name);
         sys.exit(1);
     
-    pyRefs = [1, 2, 3, 9];
+    pyRefs = [1];
     
     Bdr = Extract_Boundary_Vertices(mesh_name, pyRefs);
         
@@ -302,83 +302,83 @@ def GenerateNozzleMesh_Deform (nozzle):
     #    
     #sys.exit(1)
     
-    #--- Write outside of nozzle's deformation file
-    
-    ref_outside = 3;
-    
-    xbas_max = max(float(l[1]) for l in Bdr[ref_outside])
-    xbas_min = min(float(l[1]) for l in Bdr[ref_outside])
-    
-    #xx = [-0.67 , -0.65 , 0.1548, xwall[-1]];
-    #yy = [0.7244, 0.4244, 0.41,   ywall[-1]+h_tip]
-    
-    xx = [-0.67 , -0.65 , 0.148,  xwall[-1]];
-    yy = [0.7244, 0.7244, 0.7,  ywall[-1]+h_tip]
-    
-    #print "xwall %lf ywall end %lf h_tip %lf " % (xwall[-1],ywall[-1],h_tip)
-    #sys.exit(1)
-    
-    tck = splrep(xx, yy, xb=xx[0], xe=xx[-1], k=2)
-    
-    f_outside = itp.interp1d(xx, yy, kind='cubic')
-    
-    ######## BEGIN PLOT
-    ###x3 = np.linspace(xx[0], xx[-1], 200)
-    ###y3 = splev(x3, tck)
-    ###
-    ###y32 = f_outside(x3)
-    ###
-    ###import matplotlib.pyplot as plt
-    ###plt.plot(x3,y3, '-')
-    ###plt.plot(x3,y32, '-')
-    ###plt.plot(xx,yy, 'o')
-    ###plt.show()
-    ###
-    ###sys.exit(1);
-    ###
-    ######## END PLOT
-    
-    Nbv = len(Bdr[ref_outside]);
-    
-    for i in range(Nbv):
-        
-        vid = Bdr[ref_outside][i][0];
-        x = Bdr[ref_outside][i][1];
-        
-        #print "x %lf xbax in %lf %lf xwall in %lf %lf " % (x, xbas_min, xbas_max, xx[0], xwall_max)
-        xnew = xx[0] + (x-xbas_min)/(xbas_max-xbas_min)*(xwall_max-xx[0]);
-        #print "xnew %lf x %lf xbax in %lf %lf xwall in %lf %lf " % (xnew, x, xbas_min, xbas_max, xx[0], xwall_max)
-        
-        ynew = f_outside(xnew);
-        
-        motion_hdl.append([vid-1, xnew, ynew, Bdr[ref_outside][i][1], Bdr[ref_outside][i][2]]);
-        
-        #fil.write("%d %le %le\n" % (vid-1, xnew, ynew));
-    
-    #--- Project tip of nozzle
-    
-    ref_tip = 2;
-    
-    Nbv = len(Bdr[ref_tip]);
-    
-    ymax = max(float(l[2]) for l in Bdr[ref_tip])
-    ymin = min(float(l[2]) for l in Bdr[ref_tip])
-    
-    for i in range(Nbv):
-        
-        vid = Bdr[ref_tip][i][0];
-        x   = Bdr[ref_tip][i][1];
-        y   = Bdr[ref_tip][i][2];
-        
-        #print "x %lf xbax in %lf %lf xwall in %lf %lf " % (x, xbas_min, xbas_max, xx[0], xwall_max)
-        xnew = xwall[-1];
-        #print "xnew %lf x %lf xbax in %lf %lf xwall in %lf %lf " % (xnew, x, xbas_min, xbas_max, xx[0], xwall_max)
-        ynew = ywall[-1] + (y-ymin)/(ymax-ymin)*h_tip;
-        
-        #print "ref %d : ver %d : (%lf %lf) -> (%lf %lf)" % (ref_tip, vid, x, y, xnew, ynew)
-        
-        motion_hdl.append([vid-1, xnew, ynew, Bdr[ref_tip][i][1], Bdr[ref_tip][i][2]]);
-        #fil.write("%d %le %le\n" % (vid-1, xnew, ynew));
+    ###--- Write outside of nozzle's deformation file
+    ##
+    ##ref_outside = 3;
+    ##
+    ##xbas_max = max(float(l[1]) for l in Bdr[ref_outside])
+    ##xbas_min = min(float(l[1]) for l in Bdr[ref_outside])
+    ##
+    ###xx = [-0.67 , -0.65 , 0.1548, xwall[-1]];
+    ###yy = [0.7244, 0.4244, 0.41,   ywall[-1]+h_tip]
+    ##
+    ##xx = [-0.67 , -0.65 , 0.148,  xwall[-1]];
+    ##yy = [0.7244, 0.7244, 0.7,  ywall[-1]+h_tip]
+    ##
+    ###print "xwall %lf ywall end %lf h_tip %lf " % (xwall[-1],ywall[-1],h_tip)
+    ###sys.exit(1)
+    ##
+    ##tck = splrep(xx, yy, xb=xx[0], xe=xx[-1], k=2)
+    ##
+    ##f_outside = itp.interp1d(xx, yy, kind='cubic')
+    ##
+    ########## BEGIN PLOT
+    #####x3 = np.linspace(xx[0], xx[-1], 200)
+    #####y3 = splev(x3, tck)
+    #####
+    #####y32 = f_outside(x3)
+    #####
+    #####import matplotlib.pyplot as plt
+    #####plt.plot(x3,y3, '-')
+    #####plt.plot(x3,y32, '-')
+    #####plt.plot(xx,yy, 'o')
+    #####plt.show()
+    #####
+    #####sys.exit(1);
+    #####
+    ########## END PLOT
+    ##
+    ##Nbv = len(Bdr[ref_outside]);
+    ##
+    ##for i in range(Nbv):
+    ##    
+    ##    vid = Bdr[ref_outside][i][0];
+    ##    x = Bdr[ref_outside][i][1];
+    ##    
+    ##    #print "x %lf xbax in %lf %lf xwall in %lf %lf " % (x, xbas_min, xbas_max, xx[0], xwall_max)
+    ##    xnew = xx[0] + (x-xbas_min)/(xbas_max-xbas_min)*(xwall_max-xx[0]);
+    ##    #print "xnew %lf x %lf xbax in %lf %lf xwall in %lf %lf " % (xnew, x, xbas_min, xbas_max, xx[0], xwall_max)
+    ##    
+    ##    ynew = f_outside(xnew);
+    ##    
+    ##    motion_hdl.append([vid-1, xnew, ynew, Bdr[ref_outside][i][1], Bdr[ref_outside][i][2]]);
+    ##    
+    ##    #fil.write("%d %le %le\n" % (vid-1, xnew, ynew));
+    ##
+    ###--- Project tip of nozzle
+    ##
+    ##ref_tip = 2;
+    ##
+    ##Nbv = len(Bdr[ref_tip]);
+    ##
+    ##ymax = max(float(l[2]) for l in Bdr[ref_tip])
+    ##ymin = min(float(l[2]) for l in Bdr[ref_tip])
+    ##
+    ##for i in range(Nbv):
+    ##    
+    ##    vid = Bdr[ref_tip][i][0];
+    ##    x   = Bdr[ref_tip][i][1];
+    ##    y   = Bdr[ref_tip][i][2];
+    ##    
+    ##    #print "x %lf xbax in %lf %lf xwall in %lf %lf " % (x, xbas_min, xbas_max, xx[0], xwall_max)
+    ##    xnew = xwall[-1];
+    ##    #print "xnew %lf x %lf xbax in %lf %lf xwall in %lf %lf " % (xnew, x, xbas_min, xbas_max, xx[0], xwall_max)
+    ##    ynew = ywall[-1] + (y-ymin)/(ymax-ymin)*h_tip;
+    ##    
+    ##    #print "ref %d : ver %d : (%lf %lf) -> (%lf %lf)" % (ref_tip, vid, x, y, xnew, ynew)
+    ##    
+    ##    motion_hdl.append([vid-1, xnew, ynew, Bdr[ref_tip][i][1], Bdr[ref_tip][i][2]]);
+    ##    #fil.write("%d %le %le\n" % (vid-1, xnew, ynew));
         
     # --- Project inner wall
     
@@ -412,40 +412,40 @@ def GenerateNozzleMesh_Deform (nozzle):
         motion_hdl.append([vid-1, xnew_tab[i], ynew_tab[i], Bdr[ref_wall][i][1], Bdr[ref_wall][i][2]]);
         #fil.write("%d %le %le\n" % (vid-1, xnew_tab[i], ynew_tab[i]));
         
-    # --- Project thrust marker
-    
-    if nozzle.method == "EULER":
-        
-        ref_thrust = 9;
-        
-        Nbv = len(Bdr[ref_thrust]);
-        
-        x = Bdr[ref_thrust][0][1];
-        xnew = xx[0] + (x-xbas_min)/(xbas_max-xbas_min)*(xwall_max-xx[0]);
-        
-        ynew_tab = [];
-        dydx = [];
-        
-        if nozzle.param == "2D":
-            _meshutils_module.py_BSplineGeo3LowF (nozzle.wall.knots, nozzle.wall.coefs, xnew_tab, ynew_tab, dydx);
-        else :
-            xnew_tab = np.array([xnew]);
-            ynew_tab = Get3Dto2DEquivArea(nozzle, xnew_tab);
-            
-        ymax = ynew_tab[0];
-        
-        ymax_bas =  max(float(l[2]) for l in Bdr[ref_thrust])
-        
-        for i in range(Nbv):
-            
-            vid = Bdr[ref_thrust][i][0];
-            y   = Bdr[ref_thrust][i][2];
-            
-            ynew = y/ymax_bas*ymax;
-            
-            motion_hdl.append([vid-1, xnew, ynew, Bdr[ref_thrust][i][1], Bdr[ref_thrust][i][2]]);
-            #fil.write("%d %le %le\n" % (vid-1, xnew, ynew));
-        
+    ### --- Project thrust marker
+    ##
+    ##if nozzle.method == "EULER":
+    ##    
+    ##    ref_thrust = 9;
+    ##    
+    ##    Nbv = len(Bdr[ref_thrust]);
+    ##    
+    ##    x = Bdr[ref_thrust][0][1];
+    ##    xnew = xx[0] + (x-xbas_min)/(xbas_max-xbas_min)*(xwall_max-xx[0]);
+    ##    
+    ##    ynew_tab = [];
+    ##    dydx = [];
+    ##    
+    ##    if nozzle.param == "2D":
+    ##        _meshutils_module.py_BSplineGeo3LowF (nozzle.wall.knots, nozzle.wall.coefs, xnew_tab, ynew_tab, dydx);
+    ##    else :
+    ##        xnew_tab = np.array([xnew]);
+    ##        ynew_tab = Get3Dto2DEquivArea(nozzle, xnew_tab);
+    ##        
+    ##    ymax = ynew_tab[0];
+    ##    
+    ##    ymax_bas =  max(float(l[2]) for l in Bdr[ref_thrust])
+    ##    
+    ##    for i in range(Nbv):
+    ##        
+    ##        vid = Bdr[ref_thrust][i][0];
+    ##        y   = Bdr[ref_thrust][i][2];
+    ##        
+    ##        ynew = y/ymax_bas*ymax;
+    ##        
+    ##        motion_hdl.append([vid-1, xnew, ynew, Bdr[ref_thrust][i][1], Bdr[ref_thrust][i][2]]);
+    ##        #fil.write("%d %le %le\n" % (vid-1, xnew, ynew));
+    ##    
     
     #--- Write mesh motion file
     
@@ -486,11 +486,17 @@ def GenerateNozzleMesh_Deform (nozzle):
     config = SU2.io.Config();
     
     # -- Note : the values don't matter. All markers must be defined otherwise SU2 exits.
-    config.MARKER_HEATFLUX = "( PhysicalLine6, 0.0, PhysicalLine7, 0.0 )"
-    config.MARKER_INLET    = "( PhysicalLine1, 955.000000, 97585.000000, 1.0, 0.0, 0.0 )"
-    config.MARKER_FAR      = "( ( PhysicalLine5, PhysicalLine4 ) )"
-    config.MARKER_SYM      = "( ( PhysicalLine2 ) )"
-    config.MARKER_OUTLET   = "( PhysicalLine3, 18754.000000)"
+    #config.MARKER_HEATFLUX = "( PhysicalLine6, 0.0, PhysicalLine7, 0.0 )"
+    #config.MARKER_INLET    = "( PhysicalLine1, 955.000000, 97585.000000, 1.0, 0.0, 0.0 )"
+    #config.MARKER_FAR      = "( ( PhysicalLine5, PhysicalLine4 ) )"
+    #config.MARKER_SYM      = "( ( PhysicalLine2 ) )"
+    #config.MARKER_OUTLET   = "( PhysicalLine3, 18754.000000)"
+    
+    #config.MARKER_HEATFLUX = "( 6, 0.0, 7, 0.0 )"
+    #config.MARKER_INLET    = "( 1, 955.000000, 97585.000000, 1.0, 0.0, 0.0 )"
+    #config.MARKER_FAR      = "( ( 5, 4 ) )"
+    #config.MARKER_SYM      = "( ( 2 ) )"
+    #config.MARKER_OUTLET   = "( 3, 18754.000000)"
     
     config.MESH_FILENAME= "baseline_coarse.su2"
     config.DV_KIND= "SURFACE_FILE"
@@ -502,7 +508,7 @@ def GenerateNozzleMesh_Deform (nozzle):
                        'SIZE'   : [1]}
     config.DV_VALUE = [0.001];
     
-    config.DV_MARKER= "( PhysicalLine7 )"
+    config.DV_MARKER= "( 7 )"
     config.MOTION_FILENAME= "mesh_motion.dat"
     
     config.DEFORM_LINEAR_SOLVER  = "FGMRES"
@@ -515,14 +521,14 @@ def GenerateNozzleMesh_Deform (nozzle):
     config.HOLD_GRID_FIXED       = "NO"
     config.HOLD_GRID_FIXED_COORD = "(-1e6,-1e6,-1e6,1e6,1e6,1e6)"
     config.VISUALIZE_DEFORMATION = "YES"
-    config.MARKER_MOVING         = "( PhysicalLine7 )"
+    config.MARKER_MOVING         = "( 7 )"
     
     config.NUMBER_PART = 1;
     
     
     config.MESH_FILENAME          = mesh_name
     config.DV_KIND                = 'SURFACE_FILE'
-    config.DV_MARKER              = '( ( PhysicalLine3, PhysicalLine2, PhysicalLine1, PhysicalLine9 ) )'
+    config.DV_MARKER              = '( 1 )'
     config.MOTION_FILENAME        = 'mesh_motion.dat'
     config.DEFORM_LINEAR_SOLVER   = 'FGMRES'
     config.DEFORM_LINEAR_ITER     = 500
@@ -533,14 +539,13 @@ def GenerateNozzleMesh_Deform (nozzle):
     config.HOLD_GRID_FIXED        = 'NO'
     config.HOLD_GRID_FIXED_COORD  = '(-1e6,-1e6,-1e6,1e6,1e6,1e6)'
     config.VISUALIZE_DEFORMATION  = 'YES'
-    config.MARKER_MOVING          = '( PhysicalLine3, PhysicalLine2, PhysicalLine1, PhysicalLine9 )'
+    config.MARKER_MOVING          = '( 1 )'
     config.NUMBER_PART            =  1
-    config.MARKER_EULER           = '( ( PhysicalLine1, PhysicalLine2, PhysicalLine3 ) )'
-    config.MARKER_INLET           = '( PhysicalLine8, 955.000000, 97585.000000, 1.0, 0.0, 0.0, PhysicalLine4,  228.016984, 22181.944264, 1.0, 0.0, 0.0 )'
-    config.MARKER_FAR             = '( ( PhysicalLine5 ) )'
-    config.MARKER_SYM             = '( ( PhysicalLine7 ) )'
-    config.MARKER_OUTLET          = '( PhysicalLine6, 18754.000000)'
-    config.MARKER_THRUST          = '( PhysicalLine9 )'
+    config.MARKER_EULER           = '( 1, 2, 3, 10 )'
+    config.MARKER_INLET           = '( 8, 955.000000, 97585.000000, 1.0, 0.0, 0.0  )'
+    config.MARKER_FAR             = '( 4, 5, 6 )'
+    config.MARKER_SYM             = '( 7 )'
+    config.MARKER_THRUST          = '( 9 )'
     config.MESH_OUT_FILENAME      = nozzle.cfd.mesh_name;
     
     config.SU2_RUN = nozzle.cfd.su2_run;
@@ -930,7 +935,8 @@ def NozzleGeoFile(FilNam, Mesh_options):
         fil.write('Plane Surface(18) = {17};                                 \n');
         fil.write('Line Loop(19) = {1, -16, 15, 13};                         \n');
         fil.write('Plane Surface(20) = {19};                                 \n');
-        fil.write('Physical Surface(21) = {20, 18};                          \n');
+        fil.write('Physical Surface(1) = {20};                          \n');
+        fil.write('Physical Surface(2) = {18};                          \n');
         
         
         #fil.write('Physical Line(1)  = {1};                             \n');

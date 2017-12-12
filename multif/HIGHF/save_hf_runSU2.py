@@ -134,21 +134,39 @@ def SetupConfig (solver_options):
 	
 	if Dim == '2D':
 		if method == 'EULER':
-			config.MARKER_EULER= '( PhysicalLine6 )';
+			config.MARKER_EULER= '( 6 )';
 		elif method == 'RANS':
-			config.MARKER_HEATFLUX= '( PhysicalLine6, 0.0 )';
-		config.MARKER_INLET= '( PhysicalLine1, %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag);
-		config.MARKER_FAR= '( PhysicalLine5, PhysicalLine4 )';
-		config.MARKER_SYM= '( PhysicalLine2 )';
-		config.MARKER_OUTLET= '( PhysicalLine3, %lf)' % (Pres);
+			config.MARKER_HEATFLUX= '( 6, 0.0 )';
+		config.MARKER_INLET= '( 1, %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag);
+		config.MARKER_FAR= '( 5, 4 )';
+		config.MARKER_SYM= '( 2 )';
+		config.MARKER_OUTLET= '( 3, %lf)' % (Pres);
 	else:
-		config.MARKER_EULER= '( PhysicalSurface1, PhysicalSurface2, PhysicalSurface3, PhysicalSurface4, \
-		PhysicalSurface5, PhysicalSurface6, PhysicalSurface7, PhysicalSurface8, PhysicalSurface9, PhysicalSurface10, \
-		PhysicalSurface11, PhysicalSurface12, PhysicalSurface13, PhysicalSurface14 )';
-		config.MARKER_INLET= '( PhysicalSurface16, %lf, %lf, 1.0, 0.0, 0.0 , PhysicalSurface15, %lf, %lf, 1.0, 0.0, 0.0 )' % (Tt, Pt, InletTstag,InletPstag);
-		config.MARKER_FAR= '(  PhysicalSurface17, PhysicalSurface18, PhysicalSurface21 )';
-		config.MARKER_SYM= '( PhysicalSurface19, PhysicalSurface20 )';
-		config.MARKER_OUTLET= '( PhysicalSurface22, %lf)' % (Pres);
+		config.MARKER_EULER= '( 1, 2, 3, 4, \
+		5, 6, 7, 8, 9, 10, \
+		11, 12, 13, 14 )';
+		config.MARKER_INLET= '( 16, %lf, %lf, 1.0, 0.0, 0.0 , 15, %lf, %lf, 1.0, 0.0, 0.0 )' % (Tt, Pt, InletTstag,InletPstag);
+		config.MARKER_FAR= '(  17, 18, 21 )';
+		config.MARKER_SYM= '( 19, 20 )';
+		config.MARKER_OUTLET= '( 22, %lf)' % (Pres);
+    
+	#if Dim == '2D':
+	#	if method == 'EULER':
+	#		config.MARKER_EULER= '( PhysicalLine6 )';
+	#	elif method == 'RANS':
+	#		config.MARKER_HEATFLUX= '( PhysicalLine6, 0.0 )';
+	#	config.MARKER_INLET= '( PhysicalLine1, %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag);
+	#	config.MARKER_FAR= '( PhysicalLine5, PhysicalLine4 )';
+	#	config.MARKER_SYM= '( PhysicalLine2 )';
+	#	config.MARKER_OUTLET= '( PhysicalLine3, %lf)' % (Pres);
+	#else:
+	#	config.MARKER_EULER= '( PhysicalSurface1, PhysicalSurface2, PhysicalSurface3, PhysicalSurface4, \
+	#	PhysicalSurface5, PhysicalSurface6, PhysicalSurface7, PhysicalSurface8, PhysicalSurface9, PhysicalSurface10, \
+	#	PhysicalSurface11, PhysicalSurface12, PhysicalSurface13, PhysicalSurface14 )';
+	#	config.MARKER_INLET= '( PhysicalSurface16, %lf, %lf, 1.0, 0.0, 0.0 , PhysicalSurface15, %lf, %lf, 1.0, 0.0, 0.0 )' % (Tt, Pt, InletTstag,InletPstag);
+	#	config.MARKER_FAR= '(  PhysicalSurface17, PhysicalSurface18, PhysicalSurface21 )';
+	#	config.MARKER_SYM= '( PhysicalSurface19, PhysicalSurface20 )';
+	#	config.MARKER_OUTLET= '( PhysicalSurface22, %lf)' % (Pres);
 		
 		#MARKER_EULER= ( PhysicalSurface1, PhysicalSurface2, PhysicalSurface3, PhysicalSurface4, PhysicalSurface5, PhysicalSurface6, PhysicalSurface7, PhysicalSurface8, PhysicalSurface9, PhysicalSurface10, PhysicalSurface11, PhysicalSurface12, PhysicalSurface13, PhysicalSurface14 )
 		#MARKER_INLET= ( PhysicalSurface16,225.423, 8624.06, 1.0, 0.0, 0.0, PhysicalSurface15, 601, 275000, 1.0, 0.0, 0.0 )

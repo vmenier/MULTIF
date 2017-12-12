@@ -912,7 +912,7 @@ int NozzleWallProjection (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, int re
 		
 	//---
 	
-	int WrtMsh = 1, patch=-1;
+	int WrtMsh = 1, patch=-1, WrtFullMsh=1;
 		
 	int iTri, ref=0, i, j, iVer, vid=-1, is[3];
 	
@@ -1044,6 +1044,12 @@ int NozzleWallProjection (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, int re
 			Tag[iVer] = MshViz->NbrVer;
 		}
 		
+		if (WrtFullMsh == 1) {
+			Msh->Ver[iVer][0] = CrdNew[0];
+			Msh->Ver[iVer][1] = CrdNew[1];
+			Msh->Ver[iVer][2] = CrdNew[2];
+		}
+		
 		fprintf(motionHdl, "%d %le %le %le\n", iVer-1, CrdNew[0], CrdNew[1], CrdNew[2]);
 		
 	}
@@ -1068,6 +1074,10 @@ int NozzleWallProjection (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, int re
 		
 		printf("%d ver, %d tri\n", MshViz->NbrVer, MshViz->NbrTri);
 		WriteGMFMesh("visu", MshViz, 1);
+	}
+	
+	if (WrtFullMsh == 1) {
+		WriteGMFMesh("visu_full", Msh, 1);
 	}
 	
 	if (motionHdl)

@@ -1658,8 +1658,7 @@ def HF_GenerateMesh(nozzle):
     #sizes = [0.02, 0.1, 1,  0.03, 0.08 ];
     #sizes = [0.035, 0.1, 1,  0.06, 0.1 ];
     sizes = [0.035, 0.2, 1,  0.09, 0.15 ];
-    
-    
+       
     # --- Parse centerline bspline
     
     inpBsp = np.loadtxt('inputbspline.dat');
@@ -1672,7 +1671,7 @@ def HF_GenerateMesh(nozzle):
     def fz(x):
         return splev(x, tck)
     
-    # --- Get cross sections definition
+    #--- Get cross sections definition
     
     inpData = np.loadtxt('inputsection.dat');
     NbrSec = len(inpData);
@@ -1700,14 +1699,12 @@ def HF_GenerateMesh(nozzle):
         out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=None)
     except:
         raise;
-        
-        
+    
     try :
         cmd = [gmsh_executable, '-2', cadExitNam, '-o', nozzle.cfd.exit_mesh_name];
         out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=None)
     except:
         raise;
-
 
 def LoadBSplineParameters(FilNam):
     
@@ -1898,7 +1895,7 @@ def Get2DMeshArea(MshNam):
 def HF_GenerateMesh_Deform(nozzle):
     
     from .. import _meshutils_module
-    
+        
     RefUp   = [9];
     RefDown = [10];
     
@@ -1908,6 +1905,27 @@ def HF_GenerateMesh_Deform(nozzle):
     Coefs_r1     =  nozzle.wall.majoraxis.coefs;
     Knots_r2     =  nozzle.wall.minoraxis.knots;
     Coefs_r2     =  nozzle.wall.minoraxis.coefs;
+    
+    
+    #print len(Knots_center)
+    #print len(Coefs_center)
+    #print len(Knots_r1)
+    #print len(Coefs_r1)
+    #print len(Knots_r2)
+    #print len(Coefs_r2)
+    #for i in range(len(Knots_center)):
+    #    print "%lf" % Knots_center[i];
+    #for i in range(len(Coefs_center)):
+    #    print "%lf" % Coefs_center[i];
+    #for i in range(len(Knots_r1)):
+    #    print "%lf" % Knots_r1[i];
+    #for i in range(len(Coefs_r1)):
+    #    print "%lf" % Coefs_r1[i];
+    #for i in range(len(Knots_r2)):
+    #    print "%lf" % Knots_r2[i];
+    #for i in range(len(Coefs_r2)):
+    #    print "%lf" % Coefs_r2[i];
+    #sys.exit(1)
     
     
     #pathsrc = "%s/baseline_meshes/" % (os.path.dirname(os.path.abspath(__file__)));
@@ -1920,15 +1938,30 @@ def HF_GenerateMesh_Deform(nozzle):
     #Knots_r2, Coefs_r2  ,
     # "mesh_motion.dat");
     
-    
     pathsrc = "%s/baseline_meshes/" % (os.path.dirname(os.path.abspath(__file__)));
-    basNamGMF   = "%sbaseline_1_%s_%s.meshb" % (pathsrc, nozzle.method.lower(), nozzle.cfd.mesh_size.lower());
-    basNamDV = "%sbaseline_1_DV.dat" % pathsrc;
+    basNamGMF   = "%sbaseline_263_%s_%s.meshb" % (pathsrc, nozzle.method.lower(), nozzle.cfd.mesh_size.lower());
+    basNamDV = "%sbaseline_263_DV.dat" % pathsrc;
     basNamSU2    = "baseline_%s_%s.su2" % (nozzle.method.lower(), nozzle.cfd.mesh_size.lower());
     
     Knots_center_bas, Coefs_center_bas, \
     Knots_r1_bas, Coefs_r1_bas  , \
     Knots_r2_bas, Coefs_r2_bas  = LoadBSplineParameters(basNamDV);
+    
+
+    
+    #_meshutils_module.py_ProjectNozzleWall3D("%sbaseline_euler_coarse.meshb" % pathsrc, RefUp, RefDown,
+    #Knots_center_bas, Coefs_center_bas,
+    #Knots_r1_bas, Coefs_r1_bas  ,
+    #Knots_r2_bas, Coefs_r2_bas  ,
+    # "mesh_motion.dat");
+     
+     
+    #_meshutils_module.py_ProjectNozzleWall3D("%sbaseline_euler_coarse.meshb" % pathsrc, RefUp, RefDown,
+    #Knots_center, Coefs_center,
+    #Knots_r1, Coefs_r1  ,
+    #Knots_r2, Coefs_r2  ,
+    # "mesh_motion.dat");
+    #
         
     _meshutils_module.py_ProjectNozzleWall3D_DV(basNamGMF, RefUp, RefDown,
     Knots_center_bas, Coefs_center_bas,
@@ -1938,10 +1971,9 @@ def HF_GenerateMesh_Deform(nozzle):
     Knots_r1, Coefs_r1  ,
     Knots_r2, Coefs_r2  ,
      "mesh_motion.dat");
-     
+    
+    
     _meshutils_module.py_ConvertGMFToSU2(basNamGMF,"",basNamSU2);
-    
-    
     
     # --- Call SU2_DEF to deform baseline mesh
     # --- Setup config file
@@ -1951,16 +1983,26 @@ def HF_GenerateMesh_Deform(nozzle):
     config = SU2.io.Config();
     
     # -- Note : the values don't matter. All markers must be defined otherwise SU2 exits.
-    config.MARKER_EULER  = '( 7, 8, 9, 10, 12, 13, 14, 15, 16)'
-    config.MARKER_INLET  = '(11, 601, 275000, 1.0, 0.0, 0.0 )'
-    config.MARKER_FAR    = '( 1, 2, 3, 5, 6)'
-    config.MARKER_SYM    = '( 4 )'
+    #config.MARKER_EULER  = '( 7, 8, 9, 10, 12, 13, 14, 15, 16)'    
+    #config.MARKER_INLET  = '(11, 601, 275000, 1.0, 0.0, 0.0 )'
+    #config.MARKER_FAR    = '( 1, 2, 3, 5, 6)'
+    #config.MARKER_SYM    = '( 4 )'
+    #config.MARKER_MOVING = "( 9, 10 )"
+    
+    config.MARKER_EULER = '(7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 20)'
+    config.MARKER_INLET = '(12, 601, 275000, 1.0, 0.0, 0.0 )'
+    config.MARKER_FAR   = '( 1, 2, 3, 5, 6 )'
+    config.MARKER_SYM   = '(4, 21)'
+    config.MARKER_THRUST= '(19)'
+    config.MARKER_MOVING = '( 9, 10 )'
     
     config.MESH_FILENAME= basNamSU2;
     config.DV_KIND= "SURFACE_FILE"
-    #config.DV_PARAM= "(1)"     # necessary dummy value
-    #config.DV_VALUE= 0.001    # necessary dummy value
     
+    config.DV_PARAM = { 'FFDTAG' : [[]]     ,
+                       'PARAM'  : [[1]] ,
+                       'SIZE'   : [1]}
+    config.DV_VALUE = [0.001];
     
     config.DV_MARKER= "( 9, 10 )"
     config.MOTION_FILENAME= "mesh_motion.dat"
@@ -1975,7 +2017,6 @@ def HF_GenerateMesh_Deform(nozzle):
     config.HOLD_GRID_FIXED       = "NO"
     config.HOLD_GRID_FIXED_COORD = "(-1e6,-1e6,-1e6,1e6,1e6,1e6)"
     config.VISUALIZE_DEFORMATION = "YES"
-    config.MARKER_MOVING         = "( 9, 10 )"
     
     config.MESH_OUT_FILENAME      = nozzle.cfd.mesh_name;
     

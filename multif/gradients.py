@@ -115,7 +115,6 @@ def calcGradientsFD(nozzle,fd_step,rerun_center=0,output='verbose'):
             if output == 'verbose':
                 sys.stdout.write('Directory %s created and entered\n' % dirname);    
             
-
             # Write input file corresponding to this analysis for debugging
             if nozzleEval[i].inputDVformat == 'DAKOTA':
                 sys.stdout.write('Note: PLAIN input format is used for writing of design variable input file\n');

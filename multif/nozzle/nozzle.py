@@ -699,6 +699,7 @@ class Nozzle:
                     	    scaleMesh = 0.9;
                     	    nozzle.cfd.bl_yplus = 1.0;	
 
+                    nozzle.cfd.adap = 'NO'
                     if adap == 'YES':
                         nozzle.cfd.adap = 'YES';
                         nozzle.cfd.adap_param = adap_param;
