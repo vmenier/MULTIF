@@ -97,10 +97,14 @@ def calcGradientsFD(nozzle,fd_step,rerun_center=0,output='verbose'):
             nozzleEval[-1].gradients[k] = None; # do not request gradients
         for j in range(len(nozzleEval[-1].outputCode)):
             nozzleEval[-1].outputCode[j] = 1; # get value only
-        nozzleEval[-1].partitions = 1; # run evaluation on 1 core
+        # nozzleEval[-1].partitions = 8; # run evaluation on 1 core
+        # print "Altered nozzle partitions"
+
+    # Home directory where all subfolders are stored
+    homedir = os.getcwd();
                     
     # Run gradient evaluations in serial
-    if nozzle.partitions <= 1:   
+    if nozzle.partitions <= 1:  
     
         # For each design variable
         saveResponse = [];
@@ -162,9 +166,6 @@ def calcGradientsFD(nozzle,fd_step,rerun_center=0,output='verbose'):
     
     # Run gradient evaluations in parallel            
     else:
-
-        # Home directory where all subfolders are stored
-        homedir = os.getcwd();
         
         # Start Python's multiprocessing pool
         if output == 'verbose':

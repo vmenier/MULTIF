@@ -317,34 +317,6 @@ def runAEROS ( nozzle, output='verbose', run_analysis=1, mesh_params=None ):
                         (points[i], angle, nozzle.wall.layer[0].thickness.height(points[i],angle));
 
     f0.close();
-
-    # --- Extract flow solution at the wall
-    
-    # SolExtract : Solution (x, y, sol1, sol2, etc.)
-    # Size : [NbrVer, SolSiz]
-    # idHeader : id of each solution field, 
-    #            e.g. mach_ver89 = SolExtract[89][idHeader['MACH']]
-    if nozzle.dim != '3D':
-        if nozzle.method == 'NONIDEALNOZZLE':
-            SolExtract = nozzle.wallResults;
-            Size = [x for x in nozzle.wallResults.shape];
-            idHeader = {'Temperature': 1, 'Pressure': 2};
-        else:
-            SolExtract, Size, idHeader  = ExtractSolutionAtWall(nozzle);
-
-        iPres = idHeader['Pressure'];
-        iTemp = idHeader['Temperature'];
-    else:
-        print "************************************************"
-        print "Extraction of flow solution for 3d fluid analysis unavailable"
-        print "************************************************"
-        #raise NotImplementedError("Extraction of flow solution for 3d fluid analysis unavailable");
-
-    ## How to get x, y, P, T :
-    #for i in range(0,Size[0]):
-    #    print "VER %d : (x,y) = (%.*lf, %.*lf) , Pres = %lf, Temp = %lf" % \
-    #                    (i, 16, SolExtract[i][0], 16, SolExtract[i][1], \
-    #                    SolExtract[i][iPres], SolExtract[i][iTemp]);
     
     # --- Write nozzle definition to file for Aero-S
 
@@ -512,22 +484,59 @@ def runAEROS ( nozzle, output='verbose', run_analysis=1, mesh_params=None ):
         f1.close();
 
     # END NOZZLE.txt writing
+
+    # --- Extract flow solution at the wall
     
-    f2 = open("BOUNDARY.txt", 'w');
-    if nozzle.dim != '3D':
-        print >> f2, "%d" % (Size[0]);
-        if nozzle.wallTempFlag == 1: # wall temperature is assigned by user
-            for i in range(0,Size[0]):
-                Temp = nozzle.wall.temperature.geometry.radius(SolExtract[i][0])
-                print >> f2, "%0.16e %0.16e %0.16e %0.16e" % (SolExtract[i][0], SolExtract[i][iPres], Temp, nozzle.environment.T);
-        else: # wall temperature is extracted from flow
-            for i in range(0,Size[0]):
-                print >> f2, "%0.16e %0.16e %0.16e %0.16e" % (SolExtract[i][0], SolExtract[i][iPres], SolExtract[i][iTemp], nozzle.environment.T);
-    else:
+    try:
+        # SolExtract : Solution (x, y, sol1, sol2, etc.)
+        # Size : [NbrVer, SolSiz]
+        # idHeader : id of each solution field, 
+        #            e.g. mach_ver89 = SolExtract[89][idHeader['MACH']]
+        if nozzle.dim != '3D':
+            if nozzle.method == 'NONIDEALNOZZLE':
+                SolExtract = nozzle.wallResults;
+                Size = [x for x in nozzle.wallResults.shape];
+                idHeader = {'Temperature': 1, 'Pressure': 2};
+            else:
+                SolExtract, Size, idHeader  = ExtractSolutionAtWall(nozzle);
+
+            iPres = idHeader['Pressure'];
+            iTemp = idHeader['Temperature'];
+        else:
+            print "************************************************"
+            print "Extraction of flow solution for 3d fluid analysis unavailable"
+            print "************************************************"
+            #raise NotImplementedError("Extraction of flow solution for 3d fluid analysis unavailable");
+
+        ## How to get x, y, P, T :
+        #for i in range(0,Size[0]):
+        #    print "VER %d : (x,y) = (%.*lf, %.*lf) , Pres = %lf, Temp = %lf" % \
+        #                    (i, 16, SolExtract[i][0], 16, SolExtract[i][1], \
+        #                    SolExtract[i][iPres], SolExtract[i][iTemp]);
+        
+        f2 = open("BOUNDARY.txt", 'w');
+        if nozzle.dim != '3D':
+            print >> f2, "%d" % (Size[0]);
+            if nozzle.wallTempFlag == 1: # wall temperature is assigned by user
+                for i in range(0,Size[0]):
+                    Temp = nozzle.wall.temperature.geometry.radius(SolExtract[i][0])
+                    print >> f2, "%0.16e %0.16e %0.16e %0.16e" % (SolExtract[i][0], SolExtract[i][iPres], Temp, nozzle.environment.T);
+            else: # wall temperature is extracted from flow
+                for i in range(0,Size[0]):
+                    print >> f2, "%0.16e %0.16e %0.16e %0.16e" % (SolExtract[i][0], SolExtract[i][iPres], SolExtract[i][iTemp], nozzle.environment.T);
+        else:
+            print >> f2, "2";
+            print >> f2, "%0.16e 0 0 %0.16e" % (nozzle.wall.geometry.xstart, nozzle.environment.T);
+            print >> f2, "%0.16e 0 0 %0.16e" % (nozzle.wall.geometry.xend, nozzle.environment.T);
+        f2.close();
+    except:
+        f2 = open("BOUNDARY.txt", 'w');
         print >> f2, "2";
         print >> f2, "%0.16e 0 0 %0.16e" % (nozzle.wall.geometry.xstart, nozzle.environment.T);
         print >> f2, "%0.16e 0 0 %0.16e" % (nozzle.wall.geometry.xend, nozzle.environment.T);
-    f2.close();
+        f2.close();
+        print "ERROR: BOUNDARY.txt could not be written"
+        print
     
     _nozzle_module.generate();       # generate the meshes for thermal and structural analyses
 
