@@ -120,13 +120,13 @@ def hf_FluidStructureInterpolation(MshNam_str, MshNam_cfd, SolNam_cfd):
     Tri = np.array(Tri).reshape(NbrTri,3).tolist();
     Sol = np.array(Sol).reshape(NbrVer+1,SolSiz).tolist();
     
-    Pres = np.zeros(NbrVer);
-    Temp = np.zeros(NbrVer);
+    Pres = np.zeros(NbrVer+1);
+    Temp = np.zeros(NbrVer+1);
     
-    for i in range(0,NbrVer):
-        Pres[i] = Sol[i][iPres];
-        Temp[i] = Sol[i][iTemp];
-
+    for i in range(1,NbrVer):
+        Pres[i] = Sol[i-1][iPres];
+        Temp[i] = Sol[i-1][iTemp];
+    
     
     return Ver, Tri, Pres, Temp;
     
