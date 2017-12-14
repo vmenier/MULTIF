@@ -145,7 +145,8 @@ def Run( nozzle, **kwargs ):
                 # Check for other required gradients
                 otherRequiredGradients = 0;
                 for k in nozzle.gradients:
-                    if k not in ['MASS','VOLUME','MASS_WALL_ONLY','THRUST']:
+                    #if k not in ['MASS','VOLUME','MASS_WALL_ONLY','THRUST']:
+                    if k not in ['THRUST']:
                         otherRequiredGradients = 1;
                         sys.stderr.write(' ## WARNING: QoI gradients desired using ADJOINT '
                             'method which do not have an associated adjoint calculation.\n'
@@ -157,12 +158,18 @@ def Run( nozzle, **kwargs ):
                 # adjoint gradients for thrust
                 if otherRequiredGradients:
                     saveThrustGradients = nozzle.gradients['THRUST'];
-                    nozzle.gradients['THRUST'] = None;
+                    saveThrustResponse = nozzle.responses['THRUST'];
+                    nozzle.gradients.pop('THRUST',None);
+                    nozzle.responses.pop('THRUST',None); # avoid calculating thrust
+                    thrustIndex = nozzle.outputTags.index('THRUST');
+                    nozzle.outputTags.remove('THRUST'); # temporarily remove THRUST
                     # Rerun center point with same number of cores as differences.
                     # This is to avoid a bug where SU2 converges differently when
                     # run on different number of processors.
                     multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,rerun_center=1,output=output);
                     nozzle.gradients['THRUST'] = saveThrustGradients;
+                    nozzle.responses['THRUST'] = saveThrustResponse;
+                    nozzle.outputTags.insert(thrustIndex,'THRUST');
                     
         elif ( nozzle.gradientsMethod == 'FINITE_DIFF' ):
             # Rerun center point with same number of cores as differences.
