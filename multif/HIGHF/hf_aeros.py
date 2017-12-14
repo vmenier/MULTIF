@@ -86,7 +86,7 @@ def hf_FluidStructureInterpolation(MshNam_str, MshNam_cfd, SolNam_cfd):
     
     hf_SurfaceFluidMeshFull (MshNam_cfd, SolNam_cfd, BasNamOut);
     
-    # --- Interpolate solution
+    #--- Interpolate solution
     
     info   = [];
     Crd    = [];
@@ -97,6 +97,16 @@ def hf_FluidStructureInterpolation(MshNam_str, MshNam_cfd, SolNam_cfd):
     
     out = _mshint_module.py_Interpolation (MshNam_str, "%s.meshb"%BasNamOut, "%s.solb"%BasNamOut,\
         info, Crd, Tri, Tet, Sol, Header);
+        
+    #--- Get Pres and Temp indices
+    
+    header=np.genfromtxt(SolNam_cfd,dtype='str', max_rows=1)
+    idHeader = dict();
+    for i in range(len(header)):
+        idHeader[header[i].strip('\"')] = i;
+    
+    iPres = idHeader['Pressure']-3;
+    iTemp = idHeader['Temperature']-3;
         
     #--- Return Pres and Temp
     
@@ -110,28 +120,13 @@ def hf_FluidStructureInterpolation(MshNam_str, MshNam_cfd, SolNam_cfd):
     Tri = np.array(Tri).reshape(NbrTri,3).tolist();
     Sol = np.array(Sol).reshape(NbrVer+1,SolSiz).tolist();
     
-    #idHeader = dict();
-    #for iFld in range(0,len(Header)):
-    #    idHeader[Header[iFld]] = iFld+1;
-    #
-    #print Header
-    #print idHeader
-    #
-    #iPres = idHeader['Pressure'];
-    #iTemp = idHeader['Temperature'];
-    
-    # Not using the su2 format -> field id are hard-coded
-    
-    iPres = 5;
-    iTemp = 6;
-    
-    Pres = np.zeros(NbrVer+1);
-    Temp = np.zeros(NbrVer+1);
+    Pres = np.zeros(NbrVer);
+    Temp = np.zeros(NbrVer);
     
     for i in range(0,NbrVer):
         Pres[i] = Sol[i][iPres];
         Temp[i] = Sol[i][iTemp];
+
     
     return Ver, Tri, Pres, Temp;
-    
     
