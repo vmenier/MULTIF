@@ -296,7 +296,7 @@ void writeMate(MElement *m, FILE *fp, double scalingFactor, const std::vector<Bo
     } break;
 
     case 1 : case 2 : case 3 : { // load layer (layered composite, material properties defined elsewhere)
-      fprintf(fp, "%d 0 %g %g %g 0 0 %g 0 %g 0 %g 0 0 0\n",
+      fprintf(fp, "%d 0 %.8g %.8g %.8g 0 0 %.8g 0 %.8g 0 %.8g 0 0 0\n",
               m->getNum(), 0., 0., 0., 0., Taval, 0.);
     } break;
 
@@ -312,7 +312,7 @@ void writeMate(MElement *m, FILE *fp, double scalingFactor, const std::vector<Bo
       tval = (it2-1)->ts + (it2->ts - (it2-1)->ts)*(x - (it2-1)->xyz[0])/(it2->xyz[0] - (it2-1)->xyz[0]);
       mat = materials[(segments.begin()+std::distance(vertices.begin(),it-1))->ms];
 
-      fprintf(fp, "%d 0 %g %g %g 0 0 %g 0 %g 0 %g 0 0 0\n",
+      fprintf(fp, "%d 0 %.8g %.8g %.8g 0 0 %.8g 0 %.8g 0 %.8g 0 0 0\n",
               m->getNum(), mat.E, mat.nu, mat.rho, tval, Taval, mat.w);
     } break;
 
@@ -332,7 +332,7 @@ void writeMate(MElement *m, FILE *fp, double scalingFactor, const std::vector<Bo
         mat = materials[(it-1)->mb];
       }
 
-      fprintf(fp, "%d 0 %g %g %g 0 0 %g 0 %g 0 %g 0 0 0\n",
+      fprintf(fp, "%d 0 %.8g %.8g %.8g 0 0 %.8g 0 %.8g 0 %.8g 0 0 0\n",
               m->getNum(), mat.E, mat.nu, mat.rho, tval, Taval, mat.w);
     } break;
   }
@@ -938,6 +938,7 @@ int writeAEROH(GModel *g,
   // material properties
   std::ofstream fout("MATERIAL.txt.thermal");
   fout << "MATERIALS\n";
+  fout.precision(12);
   for(std::vector<MaterialData>::const_iterator it = materials.begin(); it != materials.end(); ++it) {
     fout << std::distance(materials.begin(),it)+1 << " 0 0 0 " << it->rho
          << " " << it->h << " " << it->k << " 0 0 0 0 0 0 0 0\n";
@@ -1145,6 +1146,7 @@ int writeAEROS2(GModel *g,
   // material properties
   std::ofstream fout("MATERIAL.txt.cmc");
   fout << "MATERIALS\n";
+  fout.precision(12);
   for(std::vector<MaterialData>::const_iterator it = materials.begin(); it != materials.end(); ++it) {
     fout << std::distance(materials.begin(),it)+1 << " 0 " << it->E << " " << it->nu << " " << it->rho
          << " 0 0 0 0 " << boundaries.begin()->Ta << " 0 " << it->w << " 0 0 0\n"; // XXX
