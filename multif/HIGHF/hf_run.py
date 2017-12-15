@@ -151,12 +151,12 @@ def Run( nozzle, **kwargs ):
            AEROSpostprocessing.PostProcess(nozzle, output);
 
     # Obtain mass (volume is currently not accepted as a nozzle response)
-    #if 'MASS' in nozzle.responses or 'MASS_WALL_ONLY' in nozzle.responses:
-    #    total_mass, wall_mass = getMass(nozzle, output)
-    #    if 'MASS' in nozzle.responses:
-    #        nozzle.responses['MASS'] = total_mass;
-    #    if 'MASS_WALL_ONLY' in nozzle.responses:
-    #        nozzle.responses['MASS_WALL_ONLY'] = wall_mass;
+    if 'MASS' in nozzle.responses or 'MASS_WALL_ONLY' in nozzle.responses:
+       total_mass, wall_mass = getMass(nozzle, output)
+       if 'MASS' in nozzle.responses:
+           nozzle.responses['MASS'] = total_mass;
+       if 'MASS_WALL_ONLY' in nozzle.responses:
+           nozzle.responses['MASS_WALL_ONLY'] = wall_mass;
 
     # # Calculate mass gradients if necessary
     # if 'MASS' in nozzle.gradients and nozzle.gradients['MASS'] is not None:
@@ -217,10 +217,18 @@ def Run( nozzle, **kwargs ):
                 # adjoint gradients for thrust
                 if otherRequiredGradients:
                     saveThrustGradients = nozzle.gradients['THRUST'];
-                    nozzle.gradients['THRUST'] = None;
+                    saveThrustResponse = nozzle.responses['THRUST'];
+                    nozzle.gradients.pop('THRUST',None);
+                    nozzle.responses.pop('THRUST',None); # avoid calculating thrust
+                    thrustIndex = nozzle.outputTags.index('THRUST');
+                    nozzle.outputTags.remove('THRUST'); # temporarily remove THRUST
                     # Rerun center point with same number of cores as differences.
+                    # This is to avoid a bug where SU2 converges differently when
+                    # run on different number of processors.
                     multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,rerun_center=1,output=output);
                     nozzle.gradients['THRUST'] = saveThrustGradients;
+                    nozzle.responses['THRUST'] = saveThrustResponse;
+                    nozzle.outputTags.insert(thrustIndex,'THRUST');
                     
         elif ( nozzle.gradientsMethod == 'FINITE_DIFF' ):
             # Rerun center point with same number of cores as differences.
