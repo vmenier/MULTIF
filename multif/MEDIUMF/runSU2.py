@@ -314,14 +314,16 @@ def SetupConfig (solver_options):
     
 def checkResidual(config=[]):
     
+    idRes = 13;
+    
     if( os.path.isfile('history.csv') ):
         history = np.loadtxt('history.csv',skiprows=1,delimiter=',');
         finalResidual = history[-1,11];
-        residualReduction = max(history[:,11]) - history[-1,11];        
+        residualReduction = max(history[:,idRes]) - history[-1,idRes];        
     elif( os.path.isfile('history.dat') ):
         history = np.loadtxt('history.dat',skiprows=3,delimiter=',');
-        finalResidual = history[-1,11];
-        residualReduction = max(history[:,11]) - history[-1,11];
+        finalResidual = history[-1,idRes];
+        residualReduction = max(history[:,idRes]) - history[-1,idRes];
     elif( os.path.isfile('history.vtk') ):
         history = np.loadtxt('history.vtk',skiprows=1,delimiter=',');
         
