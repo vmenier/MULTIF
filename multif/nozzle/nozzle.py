@@ -458,15 +458,16 @@ class Nozzle:
 
         # Cycle through each fidelity level and compile information. Assign 
         # information to nozzle if fidelity level is the one requested to be run.
+
+        # Init variables
+        thermostructural = False;
+        analysisType = '';
+        thermostructuralFidelityLevel = '';
+        linear = '';
+
         for i in range(NbrFidLev):
             
             idxLvl = 0;
-            
-            # Init variables
-            thermostructural = False;
-            analysisType = '';
-            thermostructuralFidelityLevel = '';
-            linear = '';
             
             tag = fidelity_tags[i];
             kwd = "DEF_%s" % tag;
@@ -494,8 +495,7 @@ class Nozzle:
                 tol = float(cfgLvl[1]);
                 #tol = float(cfgLvl[idxLvl]);
                 #idxLvl += 1;
-                
-                
+                               
                 if tol < 1e-16:
                     sys.stderr.write("\n ## ERROR : Wrong tolerance for "     \
                      "fidelity level %d (tagged %s)\n\n" % (i,tag));
@@ -516,7 +516,7 @@ class Nozzle:
                           % cfgLvl[3]);
                         sys.exit(0); 
                     description += ', thermostructural fidelity level %s' % cfgLvl[4];
-                        
+                
                 if i == flevel:      
                     
                     # Set nozzle analysis dimension
@@ -530,15 +530,7 @@ class Nozzle:
                     nozzle.solverApparentThroatLocation = tol;
 
                     # Set analysis type
-                    try:
-                        analysisType = cfgLvl[2];
-                    except:
-                        sys.stderr.write('\n ## WARNING : Analysis type '     \
-                          'could not be determined. AEROTHERMOSTRUCTURAL, '       \
-                          'AEROTHERMAL, or AERO keyword must be provided '  \
-                          'in the model definition of fidelity level %d.\n\n' \
-                          % flevel);
-                        sys.exit(0);
+                    analysisType = cfgLvl[2];
                         
                     # Set thermostructural parameters if necessary
                     if len(cfgLvl) == 5:
@@ -556,6 +548,7 @@ class Nozzle:
                               nozzle.thermostructuralFidelityLevel);
                             sys.exit(0);
                     else:
+                        print "WARNING: Running defaul thermostructural fidelity level of 0.5";
                         nozzle.linearStructuralAnalysisFlag = 1;
                         nozzle.thermostructuralFidelityLevel = 0.5;
                         
@@ -566,8 +559,7 @@ class Nozzle:
                 #dim = cfgLvl[1];
                 dim = cfgLvl[idxLvl];
                 idxLvl += 1;
-                
-                
+                               
                 if dim != '2D' and dim != '3D':
                     sys.stderr.write("\n ## ERROR : Wrong dimension for "     \
                       "fidelity level %d (tagged %s) : only 2D or 3D "        \
@@ -601,40 +593,40 @@ class Nozzle:
                     adap = 'YES';
                     meshsize = 'COARSE'; # use coarse baseline mesh to start mesh adaptation
                 
-                # --- Setup convergence parameter
-                
-                if 'SU2_CONVERGENCE_ORDER' in config:
-                    nozzle.cfd.su2_convergence_order = int(config['SU2_CONVERGENCE_ORDER']);
-                else:
-                    nozzle.cfd.su2_convergence_order = 6;
-                description += ", relative convergence order %i" % nozzle.cfd.su2_convergence_order;
-                
-                if 'SU2_OUTPUT_FORMAT' in config:
-                    nozzle.cfd.output_format = config['SU2_OUTPUT_FORMAT'];
-                else:
-                    nozzle.cfd.output_format = 'TECPLOT';
+                if i == flevel:
+                    # --- Setup convergence parameter
+                    
+                    if 'SU2_CONVERGENCE_ORDER' in config:
+                        nozzle.cfd.su2_convergence_order = int(config['SU2_CONVERGENCE_ORDER']);
+                    else:
+                        nozzle.cfd.su2_convergence_order = 6;
+                    description += ", relative convergence order %i" % nozzle.cfd.su2_convergence_order;
+                    
+                    if 'SU2_OUTPUT_FORMAT' in config:
+                        nozzle.cfd.output_format = config['SU2_OUTPUT_FORMAT'];
+                    else:
+                        nozzle.cfd.output_format = 'TECPLOT';
 
-                # --- Setup max iterations for SU2
-                if 'SU2_MAX_ITERATIONS' in config:
-                    nozzle.cfd.su2_max_iterations = int(config['SU2_MAX_ITERATIONS']);
-                elif nozzle.dim == '2D':
-                    if nozzle.method == 'EULER':
-                        nozzle.cfd.su2_max_iterations = 600;
+                    # --- Setup max iterations for SU2
+                    if 'SU2_MAX_ITERATIONS' in config:
+                        nozzle.cfd.su2_max_iterations = int(config['SU2_MAX_ITERATIONS']);
+                    elif nozzle.dim == '2D':
+                        if nozzle.method == 'EULER':
+                            nozzle.cfd.su2_max_iterations = 600;
+                        else:
+                            nozzle.cfd.su2_max_iterations = 1000;   
                     else:
-                        nozzle.cfd.su2_max_iterations = 1000;   
-                else:
-                    if nozzle.method == 'EULER':
-                        nozzle.cfd.su2_max_iterations = 1200;
-                    else:
-                        nozzle.cfd.su2_max_iterations = 5000;
-                description += ", max iterations %i" % nozzle.cfd.su2_max_iterations;
+                        if nozzle.method == 'EULER':
+                            nozzle.cfd.su2_max_iterations = 1200;
+                        else:
+                            nozzle.cfd.su2_max_iterations = 5000;
                 
                 # Set thermostructural parameters if necessary
                 
                 if len(cfgLvl)-idxLvl == 3:
                     
                     thermostructural = True;
-                    analysisType                  = cfgLvl[idxLvl];
+                    #analysisType                  = cfgLvl[idxLvl];
                     linear                        = cfgLvl[idxLvl+1];
                     thermostructuralFidelityLevel = float(cfgLvl[idxLvl+2]);
                     
@@ -656,16 +648,7 @@ class Nozzle:
                           'fidelity level must range from 0 (low) to 1 '\
                           '(high). %f provided instead.\n\n' % 
                           thermostructuralFidelityLevel);
-                        sys.exit(0);
-                    
-                    analysisTypeTab = ['AEROTHERMOSTRUCTURAL', 'AEROTHERMAL', 'AEROSTRUCTURAL', 'THERMOSTRUCTURAL', 'AERO'];
-                    if not analysisType in analysisTypeTab:
-                        sys.stderr.write('\n ## ERROR: AEROTHERMOSTRUCTURAL, '        \
-                          'THERMOSTRUCTURAL, AEROTHERMAL, AEROSTRUCTURAL, or AERO ' \
-                          'must be provided as a keyword for analyis '    \
-                          'type. %s provided instead.\n\n' % analysisType);
-                        sys.exit(0);                  
-                        
+                        sys.exit(0);                       
                     
                 if i == flevel:
                     
@@ -706,16 +689,8 @@ class Nozzle:
                     
                     nozzle.cfd.meshhl = scaleMesh*np.asarray([0.1, 0.07, 0.06, 0.006, 0.0108]);
 
-                    ## Set analysis type
-                    #try:
-                    #    analysisType = cfgLvl[3];
-                    #except:
-                    #    sys.stderr.write('\n ## WARNING : Analysis type '     \
-                    #      'could not be determined. AEROTHERMOSTRUCTURAL, '   \
-                    #      'AEROTHERMAL, AEROSTRUCTURAL, or AERO keyword must' \
-                    #      ' be provided in the model definition of '          \
-                    #      'fidelity level %d.\n\n' % flevel);
-                    #    sys.exit(0);
+                    # Set analysis type
+                    analysisType = cfgLvl[3];
                     
                     # Set thermostructural parameters if necessary
                     if thermostructural == True:
@@ -747,8 +722,7 @@ class Nozzle:
                 sys.stdout.write("   %s | %s | %s \n" %                       \
                   ( ("%d" % i).ljust(7), tag.ljust(10),                       \
                   textwrap.fill(description, 70,                              \
-                  subsequent_indent="".ljust(26))) );
-                  
+                  subsequent_indent="".ljust(26))) );                  
         
         # Setup thermal and structural analysis
         if analysisType == 'AEROTHERMOSTRUCTURAL':
