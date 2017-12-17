@@ -97,7 +97,7 @@ def PostProcess ( nozzle, output ):
 
     if 'SU2_RESIDUAL' in nozzle.responses:
 
-        nozzle.responses['SU2_RESIDUAL'] = FinRes
+        nozzle.responses['SU2_RESIDUAL'] = ResDif
 
     if output == 'verbose':
         sys.stdout.write('SU2 responses obtained\n');
