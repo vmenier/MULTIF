@@ -25,7 +25,9 @@ class TestCase:
         self.input_file = 'general.in';
         self.dependencies = []; # list of strings giving other required MULTI-F files
         self.fidelity = 0;
-        self.nproc = 1; # number of processors for parallel calculation
+        self.ntasks = 1; # number of concurrent tasks (i.e. model runs)
+                         # only used when finite difference gradients are used
+        self.cpus_per_task = 1; # number of cores to be used for each model run
         
         # Termination information
         self.timeout = 15*60; # s
@@ -187,7 +189,7 @@ class TestCase:
             shutil.copyfile(os.path.join(self.multif_dir,self.cfg_dir,f),f);
             
         # Build shell command to run MULTI-F
-        command = ['python','%s/runModel.py'%self.multif_dir,'-f',self.cfg_file,'-l',str(self.fidelity),'-n',str(self.nproc)];
+        command = ['python','%s/runModel.py'%self.multif_dir,'-f',self.cfg_file,'-l',str(self.fidelity),'-n',str(self.ntasks),'-c',str(self.cpus_per_task)];
         
         # Write command line in file
         f = open(self.log_file,'a');

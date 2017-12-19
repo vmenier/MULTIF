@@ -24,11 +24,15 @@ from TestCase import TestCase
 
 # Set up options for regression testing
 parser = OptionParser();
-parser.add_option("-n", "--partitions", dest="partitions", default=1,
-                  help="number of PARTITIONS", metavar="PARTITIONS");
+parser.add_option("-n", "--ntasks", dest="nTasks", default=1,
+                    help="number of tasks", metavar="NTASKS")    
+parser.add_option("-c", "--cpus-per-task", dest="cpusPerTask",
+                    default=1, help="cpus requested per task",
+                    metavar="CPUS_PER_TASK")
 (options, args)=parser.parse_args();
 
-nCores = int(options.partitions);
+nTasks = int( options.nTasks )
+cpusPerTask = int( options.cpusPerTask )
 
 testNum = 1;
 
@@ -64,7 +68,8 @@ if( test['all'] or test['lofi'] or test['fea'] ):
     lofi_2dparam_1.input_file = 'general.in';
     lofi_2dparam_1.compare_file = 'example/regression/lofi_2dparam_1.out';
     lofi_2dparam_1.fidelity = 0;
-    lofi_2dparam_1.nproc = 1;
+    lofi_2dparam_1.ntasks = 1;
+    lofi_2dparam_1.cpus_per_task = 1;
     lofi_2dparam_1.diff_tol = 1e-6;
     test_list.append(lofi_2dparam_1);
 
@@ -78,7 +83,8 @@ if( test['all'] or test['lofi'] ):
     lofi_3dparam.input_file = 'general-3d.in';
     lofi_3dparam.compare_file = 'example/regression/lofi_3dparam.out';
     lofi_3dparam.fidelity = 0;
-    lofi_3dparam.nproc = 1;
+    lofi_3dparam.ntasks = 1;
+    lofi_3dparam.cpus_per_task = 1;
     lofi_3dparam.diff_tol = 1e-6;
     test_list.append(lofi_3dparam);
 
@@ -92,7 +98,8 @@ if( test['all'] or test['lofi'] or test['fd'] ):
     lofi_2dparam_fd.input_file = 'params.in';
     lofi_2dparam_fd.compare_file = 'example/regression/lofi_2dparam_fd.out';
     lofi_2dparam_fd.fidelity = 0;
-    lofi_2dparam_fd.nproc = nCores;
+    lofi_2dparam_fd.ntasks = nTasks;
+    lofi_2dparam_fd.cpus_per_task = cpusPerTask;
     lofi_2dparam_fd.diff_tol = 1e-6;
     test_list.append(lofi_2dparam_fd);
 
@@ -111,7 +118,8 @@ if( test['all'] or test['lofi'] ):
                                       'wall_temperature_locations-100.in'];
     lofi_2dparam_temp.compare_file = 'example/regression/lofi_2dparam_temp.out';
     lofi_2dparam_temp.fidelity = 0;
-    lofi_2dparam_temp.nproc = 1;
+    lofi_2dparam_temp.ntasks = 1;
+    lofi_2dparam_temp.cpus_per_task = 1;
     lofi_2dparam_temp.diff_tol = 1e-6;
     test_list.append(lofi_2dparam_temp);
 
@@ -125,7 +133,8 @@ if( test['all'] or test['lofi'] or test['fea'] ):
     lofi_2dparam_2.input_file = 'general.in';
     lofi_2dparam_2.compare_file = 'example/regression/lofi_2dparam_2.out';
     lofi_2dparam_2.fidelity = 1;
-    lofi_2dparam_2.nproc = 1;
+    lofi_2dparam_2.ntasks = 1;
+    lofi_2dparam_2.cpus_per_task = 1;
     lofi_2dparam_2.diff_tol = 1e-6;
     test_list.append(lofi_2dparam_2);
 
@@ -143,7 +152,8 @@ if( test['all'] or test['medfi'] ):
     medfi_2dparam.input_file = 'general.in';
     medfi_2dparam.compare_file = 'example/regression/medfi_2dparam.out';
     medfi_2dparam.fidelity = 2;
-    medfi_2dparam.nproc = nCores;
+    medfi_2dparam.ntasks = nTasks;
+    medfi_2dparam.cpus_per_task = cpusPerTask;
     medfi_2dparam.diff_tol = 1e-6;
     test_list.append(medfi_2dparam);
 
@@ -157,7 +167,8 @@ if( test['all'] or test['medfi'] ):
     medfi_3dparam.input_file = 'general-3d.in';
     medfi_3dparam.compare_file = 'example/regression/medfi_3dparam.out';
     medfi_3dparam.fidelity = 2;
-    medfi_3dparam.nproc = nCores;
+    medfi_3dparam.ntasks = nTasks;
+    medfi_3dparam.cpus_per_task = cpusPerTask;
     medfi_3dparam.diff_tol = 1e-6;
     test_list.append(medfi_3dparam);
 
@@ -171,7 +182,8 @@ if( test['all'] or test['medfi'] ):
     medfi_3dparam_rans.input_file = 'general-3d.in';
     medfi_3dparam_rans.compare_file = 'example/regression/medfi_3dparam_rans.out';
     medfi_3dparam_rans.fidelity = 8;
-    medfi_3dparam_rans.nproc = nCores;
+    medfi_3dparam_rans.ntasks = nTasks;
+    medfi_3dparam_rans.cpus_per_task = cpusPerTask;
     medfi_3dparam_rans.diff_tol = 1e-6;
     test_list.append(medfi_3dparam_rans);
 
@@ -185,7 +197,8 @@ if( test['all'] or test['medfi'] or test['adjoint'] ):
     medfi_2dparam_adjoint.input_file = 'params.in';
     medfi_2dparam_adjoint.compare_file = 'example/regression/medfi_2dparam_adjoint.out';
     medfi_2dparam_adjoint.fidelity = 0;
-    medfi_2dparam_adjoint.nproc = nCores;
+    medfi_2dparam_adjoint.ntasks = nTasks;
+    medfi_2dparam_adjoint.cpus_per_task = cpusPerTask;
     medfi_2dparam_adjoint.diff_tol = 1e-6;
     test_list.append(medfi_2dparam_adjoint);
 
@@ -198,7 +211,8 @@ if( test['all'] or test['medfi'] or test['fd'] ):
    medfi_2dparam_fd.input_file = 'params.in';
    medfi_2dparam_fd.compare_file = 'example/regression/medfi_2dparam_fd.out';
    medfi_2dparam_fd.fidelity = 1;
-   medfi_2dparam_fd.nproc = nCores;
+   medfi_2dparam_fd.ntasks = nTasks;
+   medfi_2dparam_fd.cpus_per_task = cpusPerTask;
    medfi_2dparam_fd.diff_tol = 1e-6;
    test_list.append(medfi_2dparam_fd);
 
@@ -216,7 +230,8 @@ if( test['all'] or test['hifi'] or test['fea'] ):
     hifi_euler.input_file = 'general-3d.in';
     hifi_euler.compare_file = 'example/regression/hifi_euler.out';
     hifi_euler.fidelity = 5;
-    hifi_euler.nproc = nCores;
+    hifi_euler.ntasks = nTasks;
+    hifi_euler.cpus_per_task = cpusPerTask;
     hifi_euler.diff_tol = 1e-6;
     test_list.append(hifi_euler);
 
@@ -230,7 +245,8 @@ if( test['all'] or test['hifi'] ):
     hifi_rans.input_file = 'general-3d.in';
     hifi_rans.compare_file = 'example/regression/hifi_rans.out';
     hifi_rans.fidelity = 11;
-    hifi_rans.nproc = nCores;
+    hifi_rans.ntasks = nTasks;
+    hifi_rans.cpus_per_task = cpusPerTask;
     hifi_rans.diff_tol = 1e-6;
     test_list.append(hifi_rans);
 
