@@ -418,7 +418,8 @@ def HF_runSU2 ( nozzle ):
     solver_options.Reynolds_length = D;
     solver_options.Reynolds        = Rey;
         
-    solver_options.nproc = nozzle.partitions;
+    #solver_options.nproc = nozzle.partitions;
+    solver_options.nproc = nozzle.cpusPerTask;
     
     solver_options.Pt = Ps + 0.5*rho*U*U;
     solver_options.Tt = Ts*(1.+0.5*(gam-1.)*M*M);
@@ -1221,7 +1222,8 @@ def Compute_Thrust_Gradients_FD (nozzle):
     solver_options.Reynolds_length = D;
     solver_options.Reynolds        = Rey;
     
-    solver_options.nproc = nozzle.partitions;
+    #solver_options.nproc = nozzle.partitions;
+    solver_options.nproc = nozzle.cpusPerTask;
     
     solver_options.Pt = Ps + 0.5*rho*U*U;
     solver_options.Tt = Ts*(1.+0.5*(gam-1.)*M*M);

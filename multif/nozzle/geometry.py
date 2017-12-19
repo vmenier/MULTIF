@@ -1185,9 +1185,6 @@ def calcMassGradientsFD(nozzle,fd_step,components='all'):
     elif components == 'wall-only': # calculate mass of wall layers only
         mass = nozzle.responses['MASS_WALL_ONLY'];
     
-    # For parallel computation
-    #print nozzle.partitions
-    
     # Perform serial forward finite difference on mass
     dmdx = [];
     

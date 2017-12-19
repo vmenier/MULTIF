@@ -2020,7 +2020,8 @@ def HF_GenerateMesh_Deform(nozzle):
     
     config.MESH_OUT_FILENAME      = nozzle.cfd.mesh_name;
     
-    config.NUMBER_PART = nozzle.partitions;
+    #config.NUMBER_PART = nozzle.partitions;
+    config.NUMBER_PART = nozzle.cpusPerTask;
     
     # --- Run SU2
     

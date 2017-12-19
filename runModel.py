@@ -24,8 +24,11 @@ def main():
     parser = OptionParser()
     parser.add_option("-f", "--file", dest="filename",
                       help="read config from FILE", metavar="FILE")
-    parser.add_option("-n", "--partitions", dest="partitions", default=1,
-                      help="number of PARTITIONS", metavar="PARTITIONS")    
+    parser.add_option("-n", "--ntasks", dest="nTasks", default=1,
+                      help="number of tasks", metavar="NTASKS")    
+    parser.add_option("-c", "--cpus-per-task", dest="cpusPerTask",
+                      default=1, help="cpus requested per task",
+                      metavar="CPUS_PER_TASK")
     parser.add_option("-l", "--flevel", dest="flevel", default=0,
                       help="fidelity level to run", metavar="FLEVEL")                  
     parser.add_option("-d", "--deform",
@@ -36,7 +39,8 @@ def main():
     
     (options, args)=parser.parse_args()
     
-    options.partitions = int( options.partitions )
+    options.nTasks = int( options.nTasks )
+    options.cpusPerTask = int( options.cpusPerTask )
     options.flevel     = int( options.flevel )
     
     if options.flevel < 0:
@@ -49,8 +53,14 @@ def main():
     
     config = multif.SU2.io.Config(options.filename)        
     nozzle = multif.nozzle.NozzleSetup(config, options.flevel, output);
-    nozzle.partitions = int(options.partitions);
-        
+    nozzle.nTasks = int(options.nTasks);
+    nozzle.cpusPerTask = int(options.cpusPerTask);
+
+    # --- Check parallel computing specifications
+    ncores = nozzle.nTasks*nozzle.cpusPerTask # requested by user
+    if output == 'verbose':
+        sys.stdout.write("User has requested %i total cores for calculation.\n" % ncores);
+            
     postpro = 0;
     if options.postpro :
         postpro = 1;

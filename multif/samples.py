@@ -82,7 +82,9 @@ class Sample:
             config.INPUT_DV_NAME = self.input_file;
             config.OUTPUT_GRADIENTS= 'NO'
     	    nozzle = multif.nozzle.NozzleSetup(config, self.fidelity);
-    	    nozzle.partitions = int(self.partitions);
+    	    #nozzle.partitions = int(self.partitions);
+            nozzle.nTasks = int(self.nTasks);
+            nozzle.cpusPerTask = int(self.cpusPerTask);
             
             tag_out, val_out, gra_out, gratag_out = nozzle.GetOutputFunctions();
             
@@ -168,7 +170,9 @@ class Sample:
     	    config = multif.SU2.io.Config(self.cfg_file);
             config.INPUT_DV_NAME = self.input_file;
     	    nozzle = multif.nozzle.NozzleSetup(config, self.fidelity);
-    	    nozzle.partitions = int(self.partitions);
+    	    #nozzle.partitions = int(self.partitions);
+            nozzle.nTasks = int(self.nTasks);
+            nozzle.cpusPerTask = int(self.cpusPerTask);
             
             tag_out, val_out, gra_out, gratag_out = nozzle.GetOutputFunctions();
             
@@ -234,7 +238,9 @@ class Sample:
         config = multif.SU2.io.Config(self.cfg_file);
         config.INPUT_DV_NAME = self.input_file;
         nozzle = multif.nozzle.NozzleSetup(config, self.fidelity);
-        nozzle.partitions = int(self.partitions);
+        #nozzle.partitions = int(self.partitions);
+        nozzle.nTasks = int(self.nTasks);
+        nozzle.cpusPerTask = int(self.cpusPerTask);
         
         visu_dirNam = os.path.join(self.working_rootdir,"visu");
         visu_prefix = "run%d_" % run_id; 

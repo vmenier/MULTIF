@@ -22,6 +22,7 @@ def Run( nozzle, **kwargs ):
     output = 'verbose';
     writeToFile=1;
     postpro = 0;
+    skipAero = 0;
     
     if 'output' in kwargs:
         output = kwargs['output'];
@@ -31,6 +32,9 @@ def Run( nozzle, **kwargs ):
         
     if 'postpro' in kwargs:
         postpro = int(kwargs['postpro']);
+
+    if 'skipAero' in kwargs and kwargs['skipAero'] == 1:
+        skipAero = 1;
 
     # # Obtain mass and volume
     # if 'MASS' in nozzle.responses or 'VOLUME' in nozzle.responses:
@@ -102,15 +106,19 @@ def Run( nozzle, **kwargs ):
     	        #CheckOptions (nozzle);
                 curDir = os.path.dirname(os.path.realpath(__file__));	
                 if nozzle.runDir != '':
-    	            os.chdir(nozzle.runDir);	
-                gradCalc = runSU2 (nozzle);
+    	            os.chdir(nozzle.runDir);
+                if skipAero:
+                    sys.stdout.write("WARNING: Skipping medium-fidelity aero analysis.\n")
+                else:	
+                    gradCalc = runSU2 (nozzle);
 	        
 	        # Run thermal/structural analyses
             if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
                 runAEROS(nozzle, output);  
         
         # Assign aero QoI if required
-        SU2postprocessing.PostProcess(nozzle, output);
+        if nozzle.aeroFlag == 1 and skipAero != 1:
+            SU2postprocessing.PostProcess(nozzle, output);
         
         # Assign thermal/structural QoI if required
         if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
@@ -183,10 +191,10 @@ def Run( nozzle, **kwargs ):
             sys.exit(1);
             
         # Write separate gradients file
-        gradFile = open(nozzle.gradientsFile,'w');
-        for k in nozzle.outputTags:
-            np.savetxt(gradFile,nozzle.gradients[k]);
-        gradFile.close();
+        # gradFile = open(nozzle.gradientsFile,'w');
+        # for k in nozzle.outputTags:
+        #     np.savetxt(gradFile,nozzle.gradients[k]);
+        # gradFile.close();
 
     # Write data
     if writeToFile:

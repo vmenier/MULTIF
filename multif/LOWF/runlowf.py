@@ -1069,13 +1069,17 @@ def Quasi1D(nozzle,output='verbose'):
 def Run(nozzle, **kwargs):
         
     output = 'verbose';
-    writeToFile=1;
+    writeToFile = 1;
+    skipAero = 0;
     
     if 'output' in kwargs:
         output = kwargs['output'];
         
     if 'writeToFile' in kwargs:
         writeToFile = int(kwargs['writeToFile']);
+
+    if 'skipAero' in kwargs and kwargs['skipAero'] == 1:
+        skipAero = 1;
     
     # Obtain mass and volume
     # if 'MASS' in nozzle.responses or 'VOLUME' in nozzle.responses:
@@ -1168,7 +1172,10 @@ def Run(nozzle, **kwargs):
         #         nozzle.outputLocations['VELOCITY'][:,0], xPosition, flowTuple[1])
 
         # Run aero analysis, and thermal and structural analyses if necessary
-        thrust, x, walltemp, wallpress, press, velocity = Quasi1D(nozzle, output)
+        if skipAero:
+            sys.stdout.write("WARNING: Skipping low-fidelity aero analysis.\n")
+        else:
+            thrust, x, walltemp, wallpress, press, velocity = Quasi1D(nozzle, output)
         
         # Assign function values        
         if 'THRUST' in nozzle.responses:
@@ -1203,8 +1210,6 @@ def Run(nozzle, **kwargs):
     # Calculate gradients if necessary
     if nozzle.gradientsFlag == 1 and runAeroThermalStructuralGradients:
     
-        print 'entered low-fi gradient calculation'
-    
         if ( output == 'verbose' ):
             sys.stdout.write('Running gradient analysis\n');
     
@@ -1220,12 +1225,11 @@ def Run(nozzle, **kwargs):
             sys.exit(1);
             
         # Write separate gradients file
-        gradFile = open(nozzle.gradientsFile,'w');
-        for k in nozzle.outputTags:
-            np.savetxt(gradFile,nozzle.gradients[k]);
-        gradFile.close();
+        # gradFile = open(nozzle.gradientsFile,'w');
+        # for k in nozzle.outputTags:
+        #     np.savetxt(gradFile,nozzle.gradients[k]);
+        # gradFile.close();
     
-    print nozzle.gradients
     # Write data
     if writeToFile:
         if nozzle.outputFormat == 'PLAIN':

@@ -103,6 +103,14 @@ class Nozzle:
         
         nozzle.DV_Tags = []; # tags: e.g. wall, tstag etc.
         nozzle.DV_Head = []; # correspondence b/w DV_Tags and dvList
+        nozzle.DV_Effect = []; # flag showing which analyses will be affected
+                             # by changing this design variable:
+                             # 1: aero analysis only
+                             # 2: thermal analysis only
+                             # 3: structural analysis only
+                             # 4: thermostructural analysis only
+                             # 5: aerothermal analysis only
+                             # 6: all analyses (aerothermostructural)
         NbrDVTot = 0; # keep track of number of DV            
              
         if 'DV_LIST' in config:
@@ -280,8 +288,44 @@ class Nozzle:
                 
                 # Append important information
                 nozzle.DV_Tags.append(key);
-                nozzle.DV_Head.append(NbrDVTot);   
-                 
+                nozzle.DV_Head.append(NbrDVTot);  
+
+                # Determine which analyses will be affected by changing this 
+                # design variable. 
+                # 1: aero analysis only
+                # 2: thermal analysis only
+                # 3: structural analysis only
+                # 4: thermostructural analysis only
+                # 5: aerothermal analysis only
+                # 6: all analyses (aerothermostructural)
+                if nozzle.dim == '1D': # 1.5-way coupling: aeroth <-> thermal -> 2nd thermal analysis -> structural
+                    if 'BAFFLES' in key or 'STRINGERS' in key:
+                        nozzle.DV_Effect.append(3) # only affects structural analysis
+                    elif 'PANEL' in key:
+                        nozzle.DV_Effect.append(3) # only affects structural analysis
+                    else: 
+                        nozzle.DV_Effect.append(6) # affects all analyses
+                else: # 1-way coupling enabled: aero -> thermal -> structural
+                    if 'BAFFLES' in key or 'STRINGERS' in key:
+                        nozzle.DV_Effect.append(3) # only affects structural analysis
+                    elif 'PANEL' in key:
+                        nozzle.DV_Effect.append(3) # only affects structural analysis
+                    elif 'TEMP' in key and nozzle.method == 'EULER':
+                        nozzle.DV_Effect.append(4) # only affects thermal/structural analysis
+                    elif 'THICKNESS' in key:
+                        nozzle.DV_Effect.append(4) # only affects thermal/structural analyses
+                    elif 'DENSITY' in key or 'MODULUS' in key or \
+                         'POISSON' in key or 'MUTUAL_INFLUENCE' in key or \
+                         'FAILURE_STRAIN' in key or 'YIELD_STRESS' in key:
+                        nozzle.DV_Effect.append(3) # only affects structural analysis
+                    elif 'CONDUCTIVITY' in key or 'EXPANSION_COEF' in key or \
+                         'HEAT_XFER' in key:
+                        nozzle.DV_Effect.append(4) # only affects thermal/structural analyses
+                    elif 'MAX_SERVICE_TEMP' in key:
+                        nozzle.DV_Effect.append(2) # only affects thermal analysis
+                    else:
+                        nozzle.DV_Effect.append(6) # affects all analyses
+
                 NbrDVTot = NbrDVTot + NbrDV;                    
 
                 # Search for design variables whose definitions differ b/w
@@ -395,6 +439,18 @@ class Nozzle:
                                     sys.exit(0);                                        
                 
             # for i in keys
+
+            # Write out some data if requested
+            if output == 'verbose':
+                sys.stdout.write("Perceived dependency of analyses on design variables:\n"
+                                "   1: aero analysis only\n"
+                                "   2: thermal analysis only\n"
+                                "   3: structural analysis only\n"
+                                "   4: thermostructural analysis only\n"
+                                "   5: aerothermal analysis only\n"
+                                "   6: all analyses (aerothermostructural)\n")
+                for i in range(0,2*dv_keys_size,2):
+                    sys.stdout.write("%i: %s\n" % (nozzle.DV_Effect[i/2],hdl[i]))
         
         else :
             sys.stdout.write('\n  -- Info : No design variable set was '      \
@@ -2217,6 +2273,35 @@ class Nozzle:
                      'TEMP_RATIO'];
         therm_field = ['WALL_TEMPERATURE'];
 
+        # Check that required analyses for each qoi will be run
+        if isinstance(qoi, list):
+            for qoiItem in qoi:
+                for item in aero_scalar+aero_field:
+                    if item in qoiItem and nozzle.aeroFlag == 0:
+                        sys.stderr.write("  ## ERROR : Response %s requires AERO analysis\n\n" % qoiItem);
+                        sys.exit(1);
+                for item in struct_scalar:
+                    if item in qoiItem and nozzle.structuralFlag == 0:
+                        sys.stderr.write("  ## ERROR : Response %s requires STRUCTURAL analysis\n\n" % qoiItem);
+                        sys.exit(1);    
+                for item in therm_scalar+therm_field:
+                    if item in qoiItem and nozzle.thermalFlag == 0:
+                        sys.stderr.write("  ## ERROR : Response %s requires THERMAL analysis\n\n" % qoiItem);
+                        sys.exit(1);                                            
+        else:
+            for item in aero_scalar+aero_field:
+                if item in qoi and nozzle.aeroFlag == 0:
+                    sys.stderr.write("  ## ERROR : Response %s requires AERO analysis\n\n" % qoi);
+                    sys.exit(1);
+            for item in struct_scalar:
+                if item in qoi and nozzle.structuralFlag == 0:
+                    sys.stderr.write("  ## ERROR : Response %s requires STRUCTURAL analysis\n\n" % qoi);
+                    sys.exit(1);    
+            for item in therm_scalar+therm_field:
+                if item in qoi and nozzle.thermalFlag == 0:
+                    sys.stderr.write("  ## ERROR : Response %s requires THERMAL analysis\n\n" % qoi);
+                    sys.exit(1); 
+
         # Prefixes which can be appended to stress and temperature outputs
         prefix = [];
         for i in range(len(nozzle.wall.layer)):
@@ -2255,8 +2340,6 @@ class Nozzle:
                 sys.stderr.write('  ## ERROR : %s not accepted as output QOI\n\n' % qoi);
                 sys.exit(1);
         
-        #print nozzle.gradients
-        #sys.exit(1)
         return;
       
         
@@ -2350,7 +2433,7 @@ class Nozzle:
 
         #if nozzle.inputDVformat == 'PLAIN' or nozzle.inputDVformat == 'DAKOTA' or :
         nozzle.ParseDesignVariables(nozzle);
-		
+
         for i in range(0, len(nozzle.outputTags)):     
             
             tag  = nozzle.outputTags[i];
