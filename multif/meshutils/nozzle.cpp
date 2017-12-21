@@ -1300,8 +1300,8 @@ void generateNozzle(std::vector<PointData> &points,
   const int NbInnerDataPoints  = 50;  // number of data points per half-section used to construct inner wires
   const int NbOuterDataPoints  = 50;  // number of data points per top or bottom segment of section used to construct outer wires
   const int NbPanels = 2;             // Note: currently this must be set to 2
-  const int NbThruSections = 32;      // number of thru-sections used to construct lofted and outer surfaces
-  const int NbInnerThruSections = 32; // number of thru-sections used to construct inner surface
+  const int NbThruSections = 16; //32;      // number of thru-sections used to construct lofted and outer surfaces
+  const int NbInnerThruSections = 16; //32; // number of thru-sections used to construct inner surface
 
   // local variables
   const int NbSegments = segments.size();
