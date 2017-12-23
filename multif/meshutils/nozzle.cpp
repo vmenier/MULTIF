@@ -83,6 +83,7 @@ MOD_INIT(_nozzle_module)
 #include <Geom2d_BSplineCurve.hxx>
 #include <Geom2dAPI_PointsToBSpline.hxx>
 #include <GeomAPI.hxx>
+#include <Geom_BSplineSurface.hxx>
 #include <GeomLProp_SLProps.hxx>
 #include <gp_Pln.hxx>
 #include <gp_Pnt.hxx>
@@ -1301,8 +1302,9 @@ void generateNozzle(std::vector<PointData> &points,
   const int NbInnerDataPoints  = 50;  // number of data points per half-section used to construct inner wires
   const int NbOuterDataPoints  = 50;  // number of data points per top or bottom segment of section used to construct outer wires
   const int NbPanels = 2;             // Note: currently this must be set to 2
-  const int NbThruSections = 16; //32;      // number of thru-sections used to construct lofted and outer surfaces
-  const int NbInnerThruSections = 16; //32; // number of thru-sections used to construct inner surface
+  const int NbThruSections = 32;      // number of thru-sections used to construct lofted and outer surfaces
+  const int NbInnerThruSections = 32; // number of thru-sections used to construct inner surface
+  const bool SetPeriodic = true;
 
   // local variables
   const int NbSegments = segments.size();
@@ -1816,6 +1818,13 @@ void generateNozzle(std::vector<PointData> &points,
     shell_maker.CheckCompatibility(Standard_True);
     shell_maker.Build();
     if(!shell_maker.IsDone()) std::cerr << "thru sections #1 failed\n";
+    if(SetPeriodic) {
+      TopTools_IndexedMapOfShape innerFaceMap;
+      TopExp::MapShapes(shell_maker.Shape(), TopAbs_FACE, innerFaceMap);
+      Handle_Geom_BSplineSurface surface = Handle_Geom_BSplineSurface::DownCast(BRep_Tool::Surface(TopoDS::Face(innerFaceMap(1))));
+      surface->UReverse();
+      surface->SetUPeriodic();
+    }
     return shell_maker.Shape();
   };
 
@@ -1985,6 +1994,13 @@ void generateNozzle(std::vector<PointData> &points,
     shell_maker.CheckCompatibility(Standard_True);
     shell_maker.Build();
     if(!shell_maker.IsDone()) std::cerr << "thru sections #3 failed\n";
+    if(SetPeriodic) {
+      TopTools_IndexedMapOfShape loftedFaceMap;
+      TopExp::MapShapes(shell_maker.Shape(), TopAbs_FACE, loftedFaceMap);
+      Handle_Geom_BSplineSurface surface = Handle_Geom_BSplineSurface::DownCast(BRep_Tool::Surface(TopoDS::Face(loftedFaceMap(1))));
+      surface->UReverse();
+      surface->SetUPeriodic();
+    }
     TopoDS_Shape myShape = split_shape_y(shell_maker.Shape());
     {
       for(int i = 1; i < vertices.size()-1; ++i) {
@@ -2249,11 +2265,11 @@ void generateNozzle(std::vector<PointData> &points,
       BRepBuilderAPI_MakeEdge edge_maker(v1,v2);
       edgesWire->Append(edge_maker.Edge());
     }
- 
+
     ShapeAnalysis_FreeBounds::ConnectEdgesToWires(edgesWire, ConnectEdgesToWiresTol, false, myWires);
     assert(myWires->Length() == 1);
     BRepBuilderAPI_MakeFace face_maker(TopoDS::Wire(myWires->Value(1)), true);
-    if(!face_maker.IsDone()) std::cerr << "make face failed\n";
+    if(!face_maker.IsDone()) std::cerr << "make baffle face failed\n";
     return face_maker.Face();
   };
 
