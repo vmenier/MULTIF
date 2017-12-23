@@ -21,7 +21,9 @@ class Sample:
         
         self.fidelity = 0;
         
-        self.partitions = 1;
+        #self.partitions = 1;
+        self.nTasks = 1;
+        self.cpusPerTask = 1;
         
     def RunSample(self):
         

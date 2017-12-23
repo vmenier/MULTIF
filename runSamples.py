@@ -42,7 +42,12 @@ def main():
     parser.add_option("-f", "--file", dest="filename", default=False,
                       help="read config from FILE", metavar="FILE")
     parser.add_option("-n", "--partitions", dest="partitions", default=1,
-                      help="number of PARTITIONS used to run each individual ", metavar="PARTITIONS")  
+                     help="number of PARTITIONS used to run each individual ", metavar="PARTITIONS")  
+    # parser.add_option("-n", "--ntasks", dest="nTasks", default=1,
+    #                   help="number of tasks", metavar="NTASKS")    
+    # parser.add_option("-c", "--cpus-per-task", dest="cpusPerTask",
+    #                   default=1, help="cpus requested per task",
+    #                   metavar="CPUS_PER_TASK")    
     parser.add_option("-p", "--poolpartitions", dest="poolpartitions", default=1,
                       help="number of partitions used for the whole set of runs", metavar="PARTITIONS")                   
     parser.add_option("-l", "--flevel", dest="flevel", default=-1,
@@ -73,6 +78,8 @@ def main():
     (options, args)=parser.parse_args()
     
     options.partitions     = int( options.partitions )
+    # options.nTasks = int( options.nTasks )
+    # options.cpusPerTask = int( options.cpusPerTask )    
     options.poolpartitions = int( options.poolpartitions )
     options.flevel         = int( options.flevel )
     
@@ -164,7 +171,8 @@ def main():
         samples_tab[-1].cfg_file        = options.filename;
         samples_tab[-1].input_file      = "inputDV.in";
         samples_tab[-1].fidelity        = options.flevel;
-        samples_tab[-1].partitions      = options.partitions;
+        #samples_tab[-1].partitions      = options.partitions;
+        samples_tab[-1].cpusPerTask      = options.partitions;
     
     #--- Create ./runs folder
     
