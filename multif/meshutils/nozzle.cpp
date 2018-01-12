@@ -1824,6 +1824,7 @@ void generateNozzle(std::vector<PointData> &points,
       Handle_Geom_BSplineSurface surface = Handle_Geom_BSplineSurface::DownCast(BRep_Tool::Surface(TopoDS::Face(innerFaceMap(1))));
       surface->UReverse();
       surface->SetUPeriodic();
+      surface->UReverse();
     }
     return shell_maker.Shape();
   };
@@ -2000,6 +2001,7 @@ void generateNozzle(std::vector<PointData> &points,
       Handle_Geom_BSplineSurface surface = Handle_Geom_BSplineSurface::DownCast(BRep_Tool::Surface(TopoDS::Face(loftedFaceMap(1))));
       surface->UReverse();
       surface->SetUPeriodic();
+      surface->UReverse();
     }
     TopoDS_Shape myShape = split_shape_y(shell_maker.Shape());
     {
