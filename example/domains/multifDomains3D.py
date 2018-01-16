@@ -187,7 +187,7 @@ def buildDesignDomain(output='verbose'):
     ub = np.inf*np.array(35*[1])
     inner_wall_domain = LinIneqDomain(Awall, np.squeeze(bwall), lb = lb, ub = ub, center = x_wall)
     
-    wall_shovel_height_domain = UniformDomain(-0.05, -0.15, center = -0.1)
+    wall_shovel_height_domain = UniformDomain(-0.15, -0.05, center = -0.1)
     wall_shovel_angle_domain = UniformDomain(5., 35., center = 20.)
                      
     # -------------------------------- THERMAL LAYER -----------------------------
