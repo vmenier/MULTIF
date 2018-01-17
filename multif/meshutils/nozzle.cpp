@@ -322,7 +322,7 @@ void writeMate(MElement *m, FILE *fp, double scalingFactor, const std::vector<Bo
 
       double tval;
       MaterialData mat;
-      Cmp cmp(points);
+      Cmp cmp(points, -0.01);
       std::vector<VertexData>::const_iterator it = std::lower_bound(vertices.begin(), vertices.end(), x, cmp); // returns it such that it->p.xyz[0] >= x
 
       if(it == vertices.begin()) {
@@ -1824,6 +1824,7 @@ void generateNozzle(std::vector<PointData> &points,
       Handle_Geom_BSplineSurface surface = Handle_Geom_BSplineSurface::DownCast(BRep_Tool::Surface(TopoDS::Face(innerFaceMap(1))));
       surface->UReverse();
       surface->SetUPeriodic();
+      surface->UReverse();
     }
     return shell_maker.Shape();
   };
@@ -2000,6 +2001,7 @@ void generateNozzle(std::vector<PointData> &points,
       Handle_Geom_BSplineSurface surface = Handle_Geom_BSplineSurface::DownCast(BRep_Tool::Surface(TopoDS::Face(loftedFaceMap(1))));
       surface->UReverse();
       surface->SetUPeriodic();
+      surface->UReverse();
     }
     TopoDS_Shape myShape = split_shape_y(shell_maker.Shape());
     {
@@ -2056,10 +2058,6 @@ void generateNozzle(std::vector<PointData> &points,
     GFace *gface = gm->getOCCInternals()->addFaceToModel(gm, face);
     gface->addPhysicalEntity(physicalTag);
 
-    if(physicalTag == 2) {
-      surfaceTags.push_back(std::make_pair(gface->geomType(), gface->tag()));
-    }
-
     gface->meshAttributes.method = (nbPointsTransfinite1 == -1) ? MESH_UNSTRUCTURED : MeshingMethod;
     std::list<GEdge*> edges = gface->edges();
     for(std::list<GEdge*>::iterator it = edges.begin(); it != edges.end(); ++it) {
@@ -2094,10 +2092,6 @@ void generateNozzle(std::vector<PointData> &points,
     // nbPointsTransfinite1 is the number of transfinite points on the other two edges; if this is -1 then the method is set to unstructured
     GFace *gface = gm->getOCCInternals()->addFaceToModel(gm, face);
     gface->addPhysicalEntity(physicalTag);
-
-    if(physicalTag == 2) {
-      surfaceTags.push_back(std::make_pair(gface->geomType(), gface->tag()));
-    }
 
     gface->meshAttributes.method = (nbPointsTransfinite1 == -1) ? MESH_UNSTRUCTURED : MeshingMethod;
     std::list<GEdge*> edges = gface->edges();
