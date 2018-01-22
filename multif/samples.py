@@ -39,7 +39,7 @@ class Sample:
         
         #--- Create run working dir
         
-        runs_dirNam = "runs"; # wrapping folder containing all local run dirs
+        runs_dirNam = "runs_%s_%d" % (self.samples_file, self.fidelity); # wrapping folder containing all local run dirs
         
         if not os.path.isdir(runs_dirNam):
             os.mkdir(runs_dirNam);
