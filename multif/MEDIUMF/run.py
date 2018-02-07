@@ -114,7 +114,7 @@ def Run( nozzle, **kwargs ):
 	        
 	        # Run thermal/structural analyses
             if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
-                runAEROS(nozzle, output);  
+                multif.MEDIUMF.runAEROS(nozzle, output);  
         
         # Assign aero QoI if required
         if nozzle.aeroFlag == 1 and skipAero != 1:

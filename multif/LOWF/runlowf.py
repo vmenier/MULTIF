@@ -865,7 +865,7 @@ def Quasi1D_old(nozzle,output='verbose'):
             #    AEROSPostProcess(nozzle, output);
             #except:
             #    sys.stdout.write("  ## WARNING : CALL TO AEROS IGNORED.\n");
-            runAEROS(nozzle, output);
+            multif.MEDIUMF.runAEROS(nozzle, output);
             AEROSPostProcess(nozzle, output);
 
     else: # do not perform structural analysis
@@ -1059,7 +1059,7 @@ def Quasi1D(nozzle,output='verbose'):
     nozzle.runAEROS = 0
     if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1 or \
         'MASS' in nozzle.responses or 'MASS_WALL_ONLY' in nozzle.responses:
-            runAEROS(nozzle, output)
+            multif.MEDIUMF.runAEROS(nozzle, output)
             AEROSPostProcess(nozzle, output)
 
     return netthrust, x, tempinside, ps, p, u

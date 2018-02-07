@@ -84,7 +84,7 @@ def Run( nozzle, **kwargs ):
           
         CheckSU2Version(nozzle);    
         CheckOptions(nozzle);
-
+        
         if postpro != 1:
             if nozzle.aeroFlag == 1:
                 # Run aero analysis (no adjoint available yet)
@@ -92,14 +92,14 @@ def Run( nozzle, **kwargs ):
                 if nozzle.runDir != '':
                     os.chdir(nozzle.runDir);
 
-                if skipAero:
+                if skipAero == 1:
                     sys.stdout.write("WARNING: Skipping high-fidelity aero analysis.\n")
                 else:                    
                     gradCalc = HF_runSU2(nozzle);
             
             # Run thermal/structural analyses
             if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
-                runAEROS(nozzle, output);
+                multif.MEDIUMF.runAEROS(nozzle, output);
                 # try:
                 #     runAEROS.runAEROS(nozzle, output);
                 # except:

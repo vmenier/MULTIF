@@ -37,6 +37,8 @@ def main():
                       
     parser.add_option("-g", "--postpro",dest="postpro", default=False, action="store_true",help="Run post-processing functions only?")
     
+    parser.add_option("-s", "--skipaero",dest="skipaero", default=False, action="store_true",help="Skip aero analysis")
+    
     (options, args)=parser.parse_args()
     
     options.nTasks = int( options.nTasks )
@@ -64,13 +66,18 @@ def main():
     postpro = 0;
     if options.postpro :
         postpro = 1;
+        
+    skipaero = 0;
+    if options.skipaero :
+        skipaero = 1;
+    
     
     if nozzle.method == 'NONIDEALNOZZLE' :
         multif.LOWF.Run(nozzle, output=output);
     elif nozzle.dim == '2D':
         multif.MEDIUMF.Run(nozzle, output=output, postpro=postpro);
     elif nozzle.dim == '3D':
-        multif.HIGHF.Run(nozzle,output=output, postpro=postpro);
+        multif.HIGHF.Run(nozzle,output=output, postpro=postpro, skipAero=skipaero);
     
     # --- Print warning in case the wrong SU2 version was run
     if nozzle.method != 'NONIDEALNOZZLE' and nozzle.cfd.su2_version != 'OK':
