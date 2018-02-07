@@ -176,7 +176,7 @@ def main():
     
     #--- Create ./runs folder
     
-    runs_dirNam = "runs"; # wrapping folder containing all local run dirs
+    runs_dirNam = runs_dirNam = "runs_%s_%d" % (options.samples_filename, options.flevel); # wrapping folder containing all local run dirs
     
     ## Save it if it already exists
     #if os.path.isdir(runs_dirNam):

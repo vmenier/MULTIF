@@ -13,9 +13,17 @@ from .. import nozzle as nozzlemod
 
 try:
     from multif.MEDIUMF.runAEROS import *
-    import multif.MEDIUMF.AEROSpostprocessing as AEROSpostprocessing
+    #import multif.MEDIUMF.AEROSpostprocessing as AEROSpostprocessing
 except ImportError as e:
     print 'Error importing all functions from runAEROS in hf_run.py.'
+    print e
+    print
+    
+try:
+    #from multif.MEDIUMF.runAEROS import *
+    import multif.MEDIUMF.AEROSpostprocessing as AEROSpostprocessing
+except ImportError as e:
+    print 'Error importing all AEROS postprocessing functionsin hf_run.py.'
     print e
     print
 
