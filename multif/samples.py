@@ -133,8 +133,11 @@ class Sample:
         run_id = self.run_id;
                         
         #--- Go to working dir
+        
+        runs_dirNam = "runs_%s_%d" % (self.samples_file, self.fidelity); # wrapping folder containing all local run dirs
+        
         dirNam = "run_%d" % run_id; # local run dir
-        locDir = os.path.join(self.working_rootdir,"runs",dirNam);
+        locDir = os.path.join(self.working_rootdir,runs_dirNam,dirNam);
         
         if not os.path.isdir(locDir):
             sys.stderr.write ("## ERROR : %s does not exit. Skip.\n" % locDir);
@@ -203,6 +206,88 @@ class Sample:
         sys.stderr = sav_stderr;
         
         return success, val_out;
+        
+    def RunSampleSkipAero(self):
+        
+        sys.stdout.write('-- Running sample %d skipaero\n' % self.run_id);
+        
+        run_id = self.run_id;
+                        
+        #--- Go to working dir
+        
+        runs_dirNam = "runs_%s_%d" % (self.samples_file, self.fidelity); # wrapping folder containing all local run dirs
+        
+        dirNam = "run_%d" % run_id; # local run dir
+        locDir = os.path.join(self.working_rootdir,runs_dirNam,dirNam);
+        
+        
+        if not os.path.isdir(locDir):
+            sys.stderr.write ("## ERROR : %s does not exit. Skip.\n" % locDir);
+            sys.exit(0);
+        else:
+            os.chdir(locDir);
+            
+            
+        #--- Copy cfg file
+        shutil.copyfile(os.path.join(self.working_rootdir,self.cfg_file),self.cfg_file);
+        
+        if not self.cfg_file:
+            sys.stderr.write ("## ERROR run %d: configuration file %s does not exit. Skip.\n" % (run_id, self.cfg_file));
+            sys.exit(0);
+        
+        if not self.input_file:
+            sys.stderr.write ("## ERROR run %d: input file %s does not exit. Skip.\n" % (run_id, self.input_file));
+            sys.exit(0);
+            
+        #--- Open log files
+        
+        stdout_hdl = open("skipaero_%s" % self.stdout,'w'); # new targets
+        stderr_hdl = open("skipaero_%s" % self.stderr,'w');
+        
+        success = False;
+        val_out = [False];
+        
+        try: # run with redirected outputs
+            
+            sav_stdout, sys.stdout = sys.stdout, stdout_hdl; 
+            sav_stderr, sys.stderr = sys.stderr, stderr_hdl; 
+            
+            #--- Setup nozzle data structure
+            
+    	    config = multif.SU2.io.Config(self.cfg_file);
+            config.INPUT_DV_NAME = self.input_file;
+    	    nozzle = multif.nozzle.NozzleSetup(config, self.fidelity);
+    	    #nozzle.partitions = int(self.partitions);
+            nozzle.nTasks = int(self.nTasks);
+            nozzle.cpusPerTask = int(self.cpusPerTask);
+            
+            tag_out, val_out, gra_out, gratag_out = nozzle.GetOutputFunctions();
+            
+            output = 'verbose';
+            
+            if nozzle.method == 'NONIDEALNOZZLE' :
+                sys.stderr.write("## ERROR : Skip aero only not available for 1D.\n");
+                sys.exit(0);
+            elif nozzle.dim == '2D':
+                multif.MEDIUMF.Run(nozzle, output=output, skipAero=1);
+            elif nozzle.dim == '3D':
+                multif.HIGHF.Run(nozzle, output=output, skipAero=1);
+            
+            tag_out, val_out, gra_out, gratag_out = nozzle.GetOutputFunctions();
+            
+            success = True;
+            
+        except:
+            sys.stdout = sav_stdout;
+            sys.stderr = sav_stderr;
+            sys.stderr.write("## Error : Run %d failed.\n" % run_id);
+            raise;
+            return success, val_out;
+        
+        sys.stdout = sav_stdout;
+        sys.stderr = sav_stderr;
+        
+        return success, val_out;
  
     
     def RunSampleVisu(self):
@@ -210,8 +295,11 @@ class Sample:
         run_id = self.run_id;
                         
         #--- Go to working dir
+        
+        runs_dirNam = "runs_%s_%d" % (self.samples_file, self.fidelity); # wrapping folder containing all local run dirs
+        
         dirNam = "run_%d" % run_id; # local run dir
-        locDir = os.path.join(self.working_rootdir,"runs",dirNam);
+        locDir = os.path.join(self.working_rootdir,runs_dirNam,dirNam);
         
         if not os.path.isdir(locDir):
             sys.stderr.write ("## ERROR : %s does not exit. Skip.\n" % locDir);

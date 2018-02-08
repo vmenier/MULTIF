@@ -16,6 +16,10 @@ def init(lock):
 # Wrapping function for independent nozzle analysis in separate directory
 def nozzleAnalysis(homedir, index, nozzle, skipAero=0, output='verbose'):
     
+    skipAeroPostPro = 0;
+    if skipAero == 1:
+        skipAeroPostPro = 1;    
+    
     if output == 'verbose':
         sys.stdout.write('Entered separate nozzle analysis for index %i\n' % index);
 
@@ -36,6 +40,7 @@ def nozzleAnalysis(homedir, index, nozzle, skipAero=0, output='verbose'):
         np.savetxt(nozzle.inputDVfilename,nozzle.dvList,fmt='%0.16f');
 
     # Link necessary files if aero analysis is to be skipped
+    
     if skipAero == 1:
         LOCK.acquire() # Only one process should link these files at a time
         if os.path.exists(os.path.join(homedir,'nozzle.dat')):
@@ -52,9 +57,9 @@ def nozzleAnalysis(homedir, index, nozzle, skipAero=0, output='verbose'):
     if nozzle.dim == '1D':
         LOWF.Run(nozzle, output=output, writeToFile=1, skipAero=skipAero);
     elif nozzle.dim == '2D':
-        MEDIUMF.Run(nozzle, output=output, writeToFile=1, skipAero=skipAero);
+        MEDIUMF.Run(nozzle, output=output, writeToFile=1, skipAero=skipAero, skipAeroPostPro=skipAeroPostPro);
     else: # nozzle.dim == '3D'
-        HIGHF.Run(nozzle, output=output, writeToFile=1, skipAero=skipAero);
+        HIGHF.Run(nozzle, output=output, writeToFile=1, skipAero=skipAero, skipAeroPostPro=skipAeroPostPro);
                     
     if output == 'verbose':
         sys.stdout.write('Nozzle analysis completed in directory %s\n' % dirname);    

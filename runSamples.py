@@ -12,9 +12,12 @@ def runSample_wrap(sample):
     sucess, val_out = sample.RunSample();
     return [sample.run_id, sucess, val_out];
     
-    
 def runSamplePostpro_wrap(sample):
     sucess, val_out = sample.RunSamplePostpro();
+    return [sample.run_id, sucess, val_out];
+    
+def runSampleSkipAero_wrap(sample):
+    sucess, val_out = sample.RunSampleSkipAero();
     return [sample.run_id, sucess, val_out];
     
 def runSampleVisu_wrap(sample):
@@ -70,7 +73,11 @@ def main():
     parser.add_option("-g", "--postpro",
                       dest="postpro", default=False, action="store_true",
                       help="Run post-processing functions only?")
-                      
+                     
+    parser.add_option("-k", "--skipaero",
+                      dest="skipaero", default=False, action="store_true",
+                      help="Skip aero analysis?")
+                           
     parser.add_option("-v", "--visu",
                       dest="visu", default=False, action="store_true",
                       help="Run visualization functions only?")
@@ -106,7 +113,9 @@ def main():
     if options.postpro :
         sys.stdout.write("  -- Info : Running postprocessing functions only.\n\n");
         
-
+    if options.skipaero :
+        sys.stdout.write("  -- Info : Skipping aero analysis.\n\n");
+    
     #--- Check number of samples in file
     
     Nbs = sum(1 for line in open(options.samples_filename))
@@ -176,7 +185,7 @@ def main():
     
     #--- Create ./runs folder
     
-    runs_dirNam = runs_dirNam = "runs_%s_%d" % (options.samples_filename, options.flevel); # wrapping folder containing all local run dirs
+    runs_dirNam = "runs_%s_%d" % (options.samples_filename, options.flevel); # wrapping folder containing all local run dirs
     
     ## Save it if it already exists
     #if os.path.isdir(runs_dirNam):
@@ -221,10 +230,12 @@ def main():
             
             if options.visu :
                 rEval[i] = runSampleVisu_wrap(samples_tab[i]); 
-            elif not options.postpro :
-                rEval[i] = runSample_wrap(samples_tab[i]); 
+            elif options.postpro :
+                rEval[i] = runSamplePostpro_wrap(samples_tab[i]);             
+            elif options.skipaero :
+                rEval[i] = runSampleSkipAero_wrap(samples_tab[i]); 
             else:
-                rEval[i] = runSamplePostpro_wrap(samples_tab[i]);
+                rEval[i] = runSample_wrap(samples_tab[i]);
     else:
         mEval = [];
         rEval = [];
@@ -237,14 +248,16 @@ def main():
             
             if options.visu :
                 mEval[i] = pool.apply_async(runSampleVisu_wrap,(samples_tab[i],));
-            elif not options.postpro :
-                mEval[i] = pool.apply_async(runSample_wrap,(samples_tab[i],));
-            else :
+            elif  options.postpro :
                 mEval[i] = pool.apply_async(runSamplePostpro_wrap,(samples_tab[i],));
+            elif  options.skipaero :
+                mEval[i] = pool.apply_async(runSampleSkipAero_wrap,(samples_tab[i],));
+            else :
+                mEval[i] = pool.apply_async(runSample_wrap,(samples_tab[i],));
     	
         pool.close();
         pool.join();
-    
+        
         for i in range(len(mEval)):
             rEval[i] = mEval[i].get();
     

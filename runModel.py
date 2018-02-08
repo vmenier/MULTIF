@@ -70,8 +70,7 @@ def main():
     skipaero = 0;
     if options.skipaero :
         skipaero = 1;
-    
-    
+        
     if nozzle.method == 'NONIDEALNOZZLE' :
         multif.LOWF.Run(nozzle, output=output);
     elif nozzle.dim == '2D':
