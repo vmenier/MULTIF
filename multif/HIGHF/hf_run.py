@@ -41,6 +41,7 @@ def Run( nozzle, **kwargs ):
     writeToFile=1;
     postpro = 0;  
     skipAero = 0;  
+    skipAeroPostPro = 0;
     
     if 'output' in kwargs:
         output = kwargs['output'];
@@ -53,6 +54,9 @@ def Run( nozzle, **kwargs ):
 
     if 'skipAero' in kwargs and kwargs['skipAero'] == 1:
         skipAero = 1;
+        
+    if 'skipAeroPostPro' in kwargs and kwargs['skipAeroPostPro'] == 1:
+        skipAeroPostPro = 1;
 
     # Raise warnings before calculations start for things high-fidelity model
     # does not support
@@ -84,7 +88,7 @@ def Run( nozzle, **kwargs ):
           
         CheckSU2Version(nozzle);    
         CheckOptions(nozzle);
-
+        
         if postpro != 1:
             if nozzle.aeroFlag == 1:
                 # Run aero analysis (no adjoint available yet)
@@ -92,14 +96,14 @@ def Run( nozzle, **kwargs ):
                 if nozzle.runDir != '':
                     os.chdir(nozzle.runDir);
 
-                if skipAero:
+                if skipAero == 1:
                     sys.stdout.write("WARNING: Skipping high-fidelity aero analysis.\n")
                 else:                    
                     gradCalc = HF_runSU2(nozzle);
             
             # Run thermal/structural analyses
             if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
-                runAEROS(nozzle, output);
+                multif.MEDIUMF.runAEROS(nozzle, output);
                 # try:
                 #     runAEROS.runAEROS(nozzle, output);
                 # except:
@@ -160,7 +164,7 @@ def Run( nozzle, **kwargs ):
         
         #AreaTot, PresAvg, TempAvg = hf_postprocessing.HF_Integrate_Sol_Wall(nozzle);
         
-        if nozzle.aeroFlag == 1 and skipAero != 1:
+        if nozzle.aeroFlag == 1 and skipAeroPostPro != 1:
             hf_postprocessing.PostProcess(nozzle, output);
         
         # Assign thermal/structural QoI if required

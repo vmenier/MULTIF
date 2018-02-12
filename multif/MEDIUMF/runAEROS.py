@@ -16,7 +16,7 @@ def getMass ( nozzle, output='verbose' ):
     # Check that runAEROS has previously been called to generate the mesh and
     # AeroS input files. If not, call runAEROS to generate mesh etc.
     if not os.path.exists('nozzle.aeros.mass'):
-        runAEROS(nozzle, output=output, run_analysis=0);
+        multif.MEDIUMF.runAEROS(nozzle, output=output, run_analysis=0);
 
     # Calculate mass of thermal layer
     os.system("aeros nozzle.aeros.cmc.mass");
@@ -39,7 +39,7 @@ def getMass ( nozzle, output='verbose' ):
 
 
 def runAEROS ( nozzle, output='verbose', run_analysis=1, mesh_params=None ):      
-
+    
     # --- Set important flags
     
     # Determine how stringer height is defined:
