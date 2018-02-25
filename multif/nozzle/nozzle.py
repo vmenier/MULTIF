@@ -237,6 +237,8 @@ class Nozzle:
                     dv_n.append([12,1,2,1,1,2,[2,3],3,5,5,[1,2],1]); 
                     
             # Inlet, atmosphere, and heat transfer properties
+            dv_keys.append(['MACH'])
+            dv_n.append([1])
             dv_keys.append(['INLET_PSTAG']);
             dv_n.append([1]);
             dv_keys.append(['INLET_TSTAG']);
@@ -3385,6 +3387,15 @@ class Nozzle:
                     NbrChanged = NbrChanged + 1;
                     check = 1;            
             if check == 1:
+                continue;
+
+            if Tag == 'MACH':
+                id_dv = nozzle.DV_Head[iTag];
+                prt_name.append('Freestream Mach number');
+                prt_basval.append('%.2lf'% nozzle.mission.mach);
+                prt_newval.append('%.2lf'% nozzle.dvList[id_dv]);                
+                nozzle.mission.setMach(nozzle.dvList[id_dv]);
+                NbrChanged = NbrChanged + 1;
                 continue;
 
             if Tag == 'INLET_PSTAG':                
