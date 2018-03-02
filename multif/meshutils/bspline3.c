@@ -116,6 +116,7 @@ void bSplineGeo3(double *knots, double *coefs, double *x, double *y,
   int p = k - c - 1;
   if(p != 3) {
 		printf("  ## ERROR : Only B-splines of degree 3 are implemented\n");
+		printf("     Degree = %d - %d - 1 = %d \n", k, c, p);
     //std::cout << "Only B-splines of degree 3 are implemented"<< " (degree " << p << " given)" << std::endl;
     return;
   }
@@ -166,8 +167,8 @@ void bSplineGeo3(double *knots, double *coefs, double *x, double *y,
       //std::cout << "x (" << x[ii] << ") not within range specified by coefs vector"<< std::endl;
       return;
     }
-    if(x[ii] < coefs[0]) {
-			printf("x (%lf) not within range specified by knots vector\n", x[ii]);
+    if(x[ii] < coefs[0] - 1e-5) {
+			printf("x (%le) not within range specified by knots vector (min %le)\n", x[ii], coefs[0]);
       //std::cout <<  "x (" << x[ii] << ") not within range specified by knots vector" << std::endl;
       return;
     }

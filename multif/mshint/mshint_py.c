@@ -42,8 +42,6 @@ int copyMesh(Mesh *mesh, VMesh *VMesh) {
     mesh->adja = (int*)calloc(3*mesh->nt+5,sizeof(int));
     assert(mesh->adja);
   }
-
-
 	
   /* read mesh vertices */
 	
@@ -265,7 +263,6 @@ int returnValuesToPython(Mesh *mesh, Sol *sol, PyObject *pyInfo, PyObject *pyCrd
 			PyList_Append(pyTet, PyInt_FromLong(pt->v[j]));
 	}
 	
-	
 	// --- Solution
 	
 	for (i=0; i<((sol->np+1)*sol->size[0]); i++) {
@@ -289,7 +286,6 @@ int py_Interpolation( char *MshNam, char *BakMshNam, char *BakSolNam, PyObject *
 	int ier, FilTyp;
 	
 	fprintf(stdout,"  -- MSHINT Python module\n");
-	
   
 	tminit(par_py.ctim,TIMEMAX);
 	chrono(ON,&par_py.ctim[0]);
@@ -317,6 +313,7 @@ int py_Interpolation( char *MshNam, char *BakMshNam, char *BakSolNam, PyObject *
 
 		MshBak = SetupMeshAndSolution (BakMshNam, BakSolNam);
 		
+		if ( !MshBak->Sol ) return(1);	
 		if ( !copyMesh(&mesh1, MshBak) ) return(1);		
 		if ( !copySol(&sol1, MshBak) ) return(1);
 		
@@ -406,6 +403,8 @@ int py_Interpolation( char *MshNam, char *BakMshNam, char *BakSolNam, PyObject *
 	if ( !unscaleMesh(&mesh2,&sol2) )  return(1);
 	
 	if ( !saveSol(&sol2,sol2.name) )   return(1);
+	
+	
 	
   
 	/*

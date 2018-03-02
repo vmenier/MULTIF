@@ -310,6 +310,7 @@ int LoadSU2Elements(FILE *FilHdl, Mesh *Msh)
       for (s=0; s<5; s++) {
         fscanf(FilHdl, "%d", &buf);
         swi[s] = buf+1;
+				is[s] = buf+1;
       }
       fscanf(FilHdl, "%d", &idx);
 			Msh->NbrPyr++;
@@ -321,6 +322,10 @@ int LoadSU2Elements(FILE *FilHdl, Mesh *Msh)
     
 			//switchPyrIdx(swi,is);
       AddPyramid(Msh,Msh->NbrPyr,is,ref);
+			
+			int i=Msh->NbrPyr;
+			if ( i== 1 )
+				printf("PYR %d : %d %d %d %d %d\n", i, Msh->Pyr[i][0], Msh->Pyr[i][1], Msh->Pyr[i][2], Msh->Pyr[i][3], Msh->Pyr[i][4]);
     
     }
     else if ( typ == SU2_RECTANGLE ) {
@@ -341,9 +346,11 @@ int LoadSU2Elements(FILE *FilHdl, Mesh *Msh)
 			AddQuadrilateral(Msh,Msh->NbrQua,is,ref);
     }
     else if ( typ == SU2_WEDGE ) {
+			
       for (s=0; s<6; s++) {
         fscanf(FilHdl, "%d", &buf);
         swi[s] = buf+1;
+				is[s] = buf+1;
       }
       fscanf(FilHdl, "%d", &idx);
      	Msh->NbrPri++;
@@ -481,7 +488,7 @@ int LoadSU2Elements(FILE *FilHdl, Mesh *Msh)
 	      AddTriangle(Msh,Msh->NbrTri,is,iMark);
       }
       else if ( typ == SU2_RECTANGLE ) {
-		
+								
 	      for (s=0; s<4; s++) {
 	        fscanf(FilHdl, "%d", &buf);
 	        swi[s] = buf+1;
@@ -706,6 +713,10 @@ int LoadSU2Solution(char *SolNam, Mesh *Msh)
 			if ( idx == SolSiz )
 				break;
 		}
+		
+		if ( NbrLin == Msh->NbrVer )
+			break;
+		
 	}
 	
 	
@@ -760,18 +771,19 @@ int LoadSU2Vertices(FILE *FilHdl, Mesh *Msh)
 
 void WriteSU2Mesh(char *nam, Mesh *Msh)
 {
-  int       i, s;
-  int       iVer,iTri,iEfr, iTet, NbrElt=0;
+  int       i, j, s, idx;
+  int       iVer,iTri,iEfr, iTet, iHex, iPri, iPyr, iQua, NbrElt=0;
   char      OutNam[512];
   
   int Dim = Msh->Dim;
 	
-	int2 *BdrTag=NULL;
+	int3 *BdrTag=NULL;
 	int NbrBdr, NbrTag, start, iTag, cpt;
 	
 	FILE *OutFil=NULL;
 	
-	sprintf(OutNam, "%s.su2", nam);
+	GetBasNam (nam, OutNam);
+	strcat(OutNam, ".su2");
  
 	OutFil = fopen(OutNam, "wb");
 	
@@ -784,15 +796,13 @@ void WriteSU2Mesh(char *nam, Mesh *Msh)
   fprintf(OutFil, "NDIME= %d\n", Dim);
 
 	if ( Msh->Dim == 2 ) {
-		NbrElt = Msh->NbrTri;
+		NbrElt = Msh->NbrTri+Msh->NbrQua;
 	}
 	else {
-		NbrElt = Msh->NbrTet;
+		NbrElt = Msh->NbrTet+Msh->NbrHex+Msh->NbrPri+Msh->NbrPyr;
 	}
 
   fprintf(OutFil, "NELEM= %d\n", NbrElt);
-
-	
 	
 	if ( Msh->Dim == 2 ){
 		//--- Write triangles
@@ -803,6 +813,16 @@ void WriteSU2Mesh(char *nam, Mesh *Msh)
   	  }
   	  fprintf(OutFil, "%d\n", iTri-1); 
   	}
+		
+		//--- Write quads
+		for (iQua=1; iQua<=Msh->NbrQua; iQua++) {
+  	  fprintf(OutFil, "%d ", SU2_RECTANGLE); 
+			for (i=0; i<4; ++i) {
+  	    fprintf(OutFil, "%d ",Msh->Qua[iQua][i]-1);
+  	  }
+  	  fprintf(OutFil, "%d\n", iQua-1); 
+  	}
+		
 	}
 	
 	
@@ -813,7 +833,34 @@ void WriteSU2Mesh(char *nam, Mesh *Msh)
     }
     fprintf(OutFil, "%d\n", iTet-1); 
   }
-
+	
+	for (i=1; i<=Msh->NbrHex; i++) {
+    fprintf(OutFil, "%d ", SU2_HEXAHEDRAL); 
+		for (j=0; j<8; ++j) {
+      fprintf(OutFil, "%d ",Msh->Hex[i][j]-1);
+    }
+    fprintf(OutFil, "%d\n", i-1); 
+  }
+	
+	for (i=1; i<=Msh->NbrPri; i++) {
+    fprintf(OutFil, "%d ", SU2_WEDGE); 
+		for (j=0; j<6; ++j) {
+      fprintf(OutFil, "%d ",Msh->Pri[i][j]-1);
+    }
+    fprintf(OutFil, "%d\n", i-1); 
+  }
+	
+	for (i=1; i<=Msh->NbrPyr; i++) {		
+    fprintf(OutFil, "%d ", SU2_PYRAMID); 
+		for (j=0; j<5; ++j) {
+      fprintf(OutFil, "%d ",Msh->Pyr[i][j]-1);
+    }
+		
+		if ( i== 1 )
+			printf("PYR %d : %d %d %d %d %d\n", i, Msh->Pyr[i][0], Msh->Pyr[i][1], Msh->Pyr[i][2], Msh->Pyr[i][3], Msh->Pyr[i][4]);
+    fprintf(OutFil, "%d\n", i-1); 
+  }
+	
   //--- Write vertices
   fprintf(OutFil, "NPOIN= %d\n", Msh->NbrVer);
 
@@ -831,7 +878,7 @@ void WriteSU2Mesh(char *nam, Mesh *Msh)
 	//--- Write bdry elements
 	
 	if ( Msh->Dim == 2 ) {
-		BdrTag = (int2*)malloc(sizeof(int2)*Msh->NbrEfr);
+		BdrTag = (int3*)malloc(sizeof(int3)*Msh->NbrEfr);
 	  for (iEfr=1; iEfr<=Msh->NbrEfr; iEfr++) {
 	    BdrTag[iEfr-1][0] = Msh->Efr[iEfr][2];
 	    BdrTag[iEfr-1][1] = iEfr;
@@ -839,17 +886,28 @@ void WriteSU2Mesh(char *nam, Mesh *Msh)
 	  NbrBdr = Msh->NbrEfr;
 	}
 	else {
-		BdrTag = (int2*)malloc(sizeof(int2)*Msh->NbrTri);
+		BdrTag = (int3*)malloc(sizeof(int3)*(Msh->NbrTri+Msh->NbrQua));
+		
+		idx = 0;
+		
 	  for (iTri=1; iTri<=Msh->NbrTri; iTri++) {
-	    BdrTag[iTri-1][0] = Msh->Tri[iTri][3];
-	    BdrTag[iTri-1][1] = iTri;
+	    BdrTag[idx][0] = Msh->Tri[iTri][3];
+	    BdrTag[idx][1] = iTri;
+			BdrTag[idx][2] = SU2_TRIANGLE;
+			idx++;
 	  }  
-	  NbrBdr = Msh->NbrTri;
+	  for (iQua=1; iQua<=Msh->NbrQua; iQua++) {
+	    BdrTag[idx][0] = Msh->Qua[iQua][4];
+	    BdrTag[idx][1] = iQua;
+			BdrTag[idx][2] = SU2_RECTANGLE;
+			idx++;
+	  }  
+	  NbrBdr = Msh->NbrTri+Msh->NbrQua;
 	}
-	  
+	
 	if ( NbrBdr > 0 ) {
 		
-		qsort(BdrTag, NbrBdr, sizeof(int2), cmp_int2 );
+		qsort(BdrTag, NbrBdr, sizeof(int3), cmp_int2 );
 	  NbrTag = 1;
 	
 	  for (i=1; i<NbrBdr; i++) {
@@ -887,15 +945,26 @@ void WriteSU2Mesh(char *nam, Mesh *Msh)
 	      	fprintf(OutFil, "\n");
 				}
 				else {
-					iTri = BdrTag[i][1];
-	      	fprintf(OutFil, "%d ", SU2_TRIANGLE);
-
-	      	for (s=0; s<3; s++) {
-	      	  iVer = Msh->Tri[iTri][s]-1;
-	      	  fprintf(OutFil, "%d ", iVer);
-	      	}
-	      	fprintf(OutFil, "\n");
-				}
+					
+					if ( BdrTag[i][2] == SU2_TRIANGLE ) {
+						iTri = BdrTag[i][1];
+	      		fprintf(OutFil, "%d ", SU2_TRIANGLE);
+	      		for (s=0; s<3; s++) {
+	      		  iVer = Msh->Tri[iTri][s]-1;
+	      		  fprintf(OutFil, "%d ", iVer);
+	      		}
+	      		fprintf(OutFil, "\n");
+					}
+					else if ( BdrTag[i][2] == SU2_RECTANGLE )  {
+						iQua = BdrTag[i][1];
+	      		fprintf(OutFil, "%d ", SU2_RECTANGLE);
+	      		for (s=0; s<4; s++) {
+	      		  iVer = Msh->Qua[iQua][s]-1;
+	      		  fprintf(OutFil, "%d ", iVer);
+	      		}
+	      		fprintf(OutFil, "\n");
+					}
+			}
       		
       	  
      }
@@ -905,7 +974,9 @@ void WriteSU2Mesh(char *nam, Mesh *Msh)
     }//for iTag 
     
 	}
-  
+  else
+		fprintf(OutFil, "NMARK= 0\n");
+	
   //--- close mesh file
 	if ( OutFil )
 		fclose(OutFil);

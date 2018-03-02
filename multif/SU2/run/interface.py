@@ -85,8 +85,6 @@ def CFD(config):
     """ run SU2_CFD
         partitions set by config.NUMBER_PART
     """
-
-    #config['SU2_RUN'] = 'toto';
 		
     base='';
 
@@ -127,17 +125,15 @@ def CFD(config):
     
         the_Command = 'SU2_CFD ' + tempname
 
+		
+    the_Command = os.path.join(base,the_Command);
 			
     the_Command = build_command( the_Command , processes )
 		
-    the_Command = '%s/%s' % (base,the_Command);
-
-    print "COMMAND = %s\n" % the_Command;
-    run_command( the_Command )
+	
+    return_code = run_command( the_Command )
     
-    #os.remove(tempname)
-    
-    return
+    return return_code
 
 def MSH(config):
     """ run SU2_MSH
@@ -166,6 +162,14 @@ def DEF(config):
         partitions set by config.NUMBER_PART
         forced to run in serial, expects merged mesh input
     """
+
+    base='';
+    if 'SU2_RUN' in config:
+    	print "SU2_RUN IN DICT";
+    	base = "{0}/".format(config['SU2_RUN']);
+    	del config['SU2_RUN'];
+
+
     konfig = copy.deepcopy(config)
     
     tempname = 'config_DEF.cfg'
@@ -175,7 +179,11 @@ def DEF(config):
     processes = konfig['NUMBER_PART']
     
     the_Command = 'SU2_DEF ' + tempname
+	
+    the_Command = os.path.join(base,the_Command);
+	
     the_Command = build_command( the_Command , processes )
+
     run_command( the_Command )
     
     #os.remove(tempname)
@@ -183,36 +191,53 @@ def DEF(config):
     return
 
 def DOT(config):
-    """ run SU2_DOT
-        partitions set by config.NUMBER_PART
-    """    
-    konfig = copy.deepcopy(config)
-
-    auto_diff = konfig.MATH_PROBLEM == 'DISCRETE_ADJOINT' or konfig.get('AUTO_DIFF','NO') == 'YES'
-
-    if auto_diff:
-
-        tempname = 'config_DOT_AD.cfg'
-        konfig.dump(tempname)
-
-        processes = konfig['NUMBER_PART']
-
-        the_Command = 'SU2_DOT_AD ' + tempname
-    else:
-    
-        tempname = 'config_DOT.cfg'
-        konfig.dump(tempname)
-    
-        processes = konfig['NUMBER_PART']
-    
-        the_Command = 'SU2_DOT ' + tempname
-
-    the_Command = build_command( the_Command , processes )
-    run_command( the_Command )
-    
-    #os.remove(tempname)
-    
-    return
+	""" run SU2_DOT
+	    partitions set by config.NUMBER_PART
+	"""  
+	
+	base='';
+	
+	if 'SU2_RUN' in config:
+		print "SU2_RUN IN DICT";
+		base = "{0}".format(config['SU2_RUN']);
+		del config['SU2_RUN'];
+	  
+	
+	
+	konfig = copy.deepcopy(config)
+	
+	
+	auto_diff = konfig.MATH_PROBLEM == 'DISCRETE_ADJOINT' or konfig.get('AUTO_DIFF','NO') == 'YES'
+	
+	if auto_diff:
+	
+	    tempname = 'config_DOT_AD.cfg'
+	    konfig.dump(tempname)
+	
+	    processes = konfig['NUMBER_PART']
+	
+	    the_Command = 'SU2_DOT_AD ' + tempname
+	else:
+		
+		tempname = 'config_DOT.cfg'
+		konfig.dump(tempname)
+		
+		processes = konfig['NUMBER_PART']
+		
+		the_Command = 'SU2_DOT ' + tempname
+		
+		
+	the_Command = os.path.join(base,the_Command);
+	
+	#print " -- Running SU2_DOT. Command = %s\n" % the_Command;
+	
+	
+	the_Command = build_command( the_Command , processes )
+	run_command( the_Command )
+	
+	#os.remove(tempname)
+	
+	return
 
 def GEO(config):
     """ run SU2_GEO

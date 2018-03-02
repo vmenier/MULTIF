@@ -24,6 +24,10 @@ int AddGMFMeshSize (char *MshNam, int *SizMsh)
   SizMsh[GmfEdges]      = GmfStatKwd(InpMsh, GmfEdges);
 	SizMsh[GmfPrisms]     = GmfStatKwd(InpMsh, GmfPrisms);
   SizMsh[GmfPyramids]   = GmfStatKwd(InpMsh, GmfPyramids);
+	SizMsh[GmfHexahedra]   = GmfStatKwd(InpMsh, GmfHexahedra);
+	SizMsh[GmfQuadrilaterals] = GmfStatKwd(InpMsh, GmfQuadrilaterals);
+	
+	//printf("Pri %d, Pyr %d, Hex %d\n", SizMsh[GmfPrisms], SizMsh[GmfPyramids], SizMsh[GmfHexahedra]);
 
   if ( SizMsh[GmfVertices] <= 0 ) {
     fprintf(stderr,"\n  ## ERROR: NO VERTICES. IGNORED\n");
@@ -40,7 +44,7 @@ int LoadGMFMesh (char *MshNam, Mesh *Msh)
 	double bufDbl[3];
 	int bufInt[8], is[8];
 	
-	int NbrVer, NbrTri, NbrEfr, NbrTet, NbrHex, NbrQua;
+	int NbrVer, NbrTri, NbrEfr, NbrTet, NbrHex, NbrQua, NbrPri, NbrPyr;
 	
   if ( !(InpMsh = GmfOpenMesh(MshNam,GmfRead,&FilVer,&dim)) ) {
     printf("  ## ERROR: Mesh data file %s.mesh[b] not found ! \n",MshNam);
@@ -57,7 +61,7 @@ int LoadGMFMesh (char *MshNam, Mesh *Msh)
 	Msh->NbrTet = Msh->NbrHex = Msh->NbrQua = 0;
 	
 	NbrVer = NbrTri = NbrEfr = 0;
-	NbrTet = NbrHex = NbrQua = 0;
+	NbrTet = NbrHex = NbrQua = NbrPri = NbrPyr = 0;
 	
 	//--- Read vertices
 	NbrVer = GmfStatKwd(InpMsh, GmfVertices);	
@@ -90,6 +94,16 @@ int LoadGMFMesh (char *MshNam, Mesh *Msh)
 		AddTriangle(Msh,Msh->NbrTri,is,ref);
   }
 	
+	//--- Read Quads
+	NbrQua = GmfStatKwd(InpMsh, GmfQuadrilaterals);	
+	GmfGotoKwd(InpMsh, GmfQuadrilaterals);
+  for (i=1; i<=NbrQua; ++i) {
+    GmfGetLin(InpMsh, GmfQuadrilaterals, &bufInt[0], &bufInt[1], &bufInt[2], &bufInt[3], &ref);
+		Msh->NbrQua++;
+		switchQuaIdx(bufInt,is);
+		AddQuadrilateral(Msh,Msh->NbrQua,is,ref);
+  }
+	
 	//--- Read boundary edges
 	NbrEfr = GmfStatKwd(InpMsh, GmfEdges);	
 	GmfGotoKwd(InpMsh, GmfEdges);
@@ -108,12 +122,41 @@ int LoadGMFMesh (char *MshNam, Mesh *Msh)
 		AddTetrahedron(Msh,Msh->NbrTet,bufInt,ref);
   }
 	
+
+	//--- Read Prisms
+	NbrPri = GmfStatKwd(InpMsh, GmfPrisms);	
+	GmfGotoKwd(InpMsh, GmfPrisms);
+  for (i=1; i<=NbrPri; ++i) {
+		GmfGetLin(InpMsh, GmfPrisms, &bufInt[0], &bufInt[1], &bufInt[2], &bufInt[3],  &bufInt[4],  &bufInt[5], &ref);
+		Msh->NbrPri++;
+		AddPrism(Msh,Msh->NbrPri,bufInt,ref);
+  }
+	
+	//--- Read Pyramids
+	NbrPyr = GmfStatKwd(InpMsh, GmfPyramids);	
+	GmfGotoKwd(InpMsh, GmfPyramids);
+  for (i=1; i<=NbrPyr; ++i) {
+		GmfGetLin(InpMsh, GmfPyramids, &bufInt[0], &bufInt[1], &bufInt[2], &bufInt[3],  &bufInt[4], &ref);
+		Msh->NbrPyr++;
+		AddPyramid(Msh,Msh->NbrPyr,bufInt,ref);
+  }
+	
+	//--- Read Hexahedra
+	NbrHex = GmfStatKwd(InpMsh, GmfHexahedra);	
+	GmfGotoKwd(InpMsh, GmfHexahedra);
+  for (i=1; i<=NbrHex; ++i) {
+		GmfGetLin(InpMsh, GmfHexahedra, &bufInt[0], &bufInt[1], &bufInt[2], &bufInt[3], &ref);
+		Msh->NbrHex++;
+		AddHexahedron(Msh,Msh->NbrHex,bufInt,ref);
+  }
+	
+	
 	if ( !GmfCloseMesh(InpMsh) ) {
     printf("  ## ERROR: Cannot close solution file %s ! \n",MshNam);
 		return 0;
   }
 	
-	printf("NbrVer %d NbrTri %d NbrEfr %d\n", Msh->NbrVer, Msh->NbrTri, Msh->NbrEfr);
+	//printf("NbrVer %d NbrTri %d NbrEfr %d NbrHex %d NbrPri %d NbrPyr %d\n", Msh->NbrVer, Msh->NbrTri, Msh->NbrEfr, Msh->NbrHex, Msh->NbrPri, Msh->NbrPyr);
 	
 	return 1;
 }
@@ -135,7 +178,6 @@ int LoadGMFSolution(char *SolNam, Mesh *Msh)
     return 0; 
   }
 	
-	printf("SolNam %s GmfRead %d \n", SolNam, GmfRead);
   if ( !(SolMsh = GmfOpenMesh(SolNam,GmfRead,&FilVer,&dim)) ) {
     printf(" Solution data file %s.sol[b] not found ! \n",SolNam);
 		return 0;
@@ -215,12 +257,97 @@ int LoadGMFSolution(char *SolNam, Mesh *Msh)
 	return 1;
 }
 
-
+//
+//int WriteSegMesh(char *nam, Mesh *Msh)
+//{
+//	int Dim = Msh->Dim;
+//	
+//	int NbrEfr  = Msh->NbrEfr;
+//	double3*Ver = Msh->Ver;
+//	int3*Efr    = Msh->Efr;
+//	
+//	int iEfr, refMax=-1, iRef, vid=-1, Nbv=0;
+//	
+//	char OutNam[1024];
+//	
+//	FILE *OutFil=NULL;
+//	
+//	sprintf(OutNam, "%s.seg", nam);
+// 
+//	OutFil = fopen(OutNam, "wb");
+//	
+//	//--- Get Max ref
+//	
+//	refMax=-1;
+//	
+//	for (iEfr=1; iEfr<=NbrEfr; iEfr++) {
+//		refMax = max(refMax, Efr[iEfr][2]);
+//	}
+//	
+//	//--- Nbr ver / ref?
+//	
+//	int* NbvRef = (int*) malloc(sizeof(int)*(refMax+1));
+//	memset(NbvRef, 0, sizeof(int)*(refMax+1));
+//	
+//	for (iEfr=1; iEfr<=NbrEfr; iEfr++) {
+//		NbvRef[Efr[iEfr][2]]++;
+//	}
+//	
+//	int * Tag = (int*) malloc(sizeof(int)*(Msh->NbrVer+1));
+//	
+//	for (iRef=1; iRef<=refMax; iRef++) {
+//		if ( NbvRef[iRef] < 1  )
+//			continue;
+//		
+//		printf("MARKER %d : %d edges\n", iRef, NbvRef[iRef]);
+//	
+//		memset(Tag,0,sizeof(int)*(Msh->NbrVer+1));
+//	
+//		for (iEfr=1; iEfr<=NbrEfr; iEfr++) {
+//			for (i=0; i<2; ++i) {
+//	      vid = Efr[iEfr][i];
+//				Tag[vid] = 1;
+//	    }
+//		}
+//		
+//		Nbv = 0;
+//		for (iVer=1; iVer<=NbrVer; iVer++) {
+//			if ( Tag[vid] == 1 )
+//				Nbv++;
+//		}
+//				
+//		for (iVer=1; iVer<=NbrVer; iVer++) {
+//			if ( Tag[iVer] != 1  )
+//				continue;
+//						
+//			fprintf(OutFil, "%d\n", vid);
+//		}
+//		
+//	}
+//
+//	
+//	
+//	for (iEfr=1; iEfr<=NbrEfr; iEfr++) {
+//		
+//		for (i=0; i<2; ++i) {
+//      idx[i] = (long long)(Efr[iEfr][i]);
+//    }
+//			
+//	}
+//	
+//	if (Tag)
+//		free(Tag);
+//	
+//	if (OutFil)
+//		fclose(OutFil);
+//	
+//}
+//
 
 int WriteGMFMesh(char *nam, Mesh *Msh, int OptBin)
 {
   int       OutMsh,FilVer,i, j;
-  int       iVer,iTri,iEfr,iTet; 
+  int       iVer,iTri,iEfr,iTet,iQua; 
   long long idx[6];
   char      OutFil[512];
   
@@ -228,10 +355,12 @@ int WriteGMFMesh(char *nam, Mesh *Msh, int OptBin)
 	int NbrVer  = Msh->NbrVer;
 	int NbrTri  = Msh->NbrTri;
 	int NbrEfr  = Msh->NbrEfr;
+	int NbrQua  = Msh->NbrQua;
 	double3*Ver = Msh->Ver;
 	int4*Tri    = Msh->Tri;
 	int3*Efr    = Msh->Efr;
 	int5*Tet    = Msh->Tet;
+	int5*Qua    = Msh->Qua;
 	
 	
   //--- Define file name extension 
@@ -260,56 +389,81 @@ int WriteGMFMesh(char *nam, Mesh *Msh, int OptBin)
   	}
   }
 	else {
+		
+		
 		for (iVer=1; iVer<=NbrVer; ++iVer) {
     	GmfSetLin(OutMsh, GmfVertices,Ver[iVer][0],Ver[iVer][1],Ver[iVer][2],0);  
   	}
 	}
+	
+	
+	if ( Msh->Tri > 0 ) {
+  	//--- Write triangles
+  	GmfSetKwd(OutMsh, GmfTriangles, NbrTri);
+  	for (iTri=1; iTri<=NbrTri; ++iTri) {
+  	  for (i=0; i<3; ++i) {
+  	    idx[i] = (long long)(Tri[iTri][i]);
+  	  }
+  	  GmfSetLin(OutMsh, GmfTriangles,idx[0],idx[1],idx[2],Tri[iTri][3]);  
+  	}
+	}
+	
+	if ( Msh->Qua > 0 ) {
+  	//--- Write quads
+  	GmfSetKwd(OutMsh, GmfQuadrilaterals, NbrQua);
+  	for (iQua=1; iQua<=NbrQua; ++iQua) {
+  	  for (i=0; i<4; ++i) {
+  	    idx[i] = (long long)(Qua[iQua][i]);
+  	  }
+  	  GmfSetLin(OutMsh, GmfQuadrilaterals,idx[0],idx[1],idx[2],idx[3],Qua[iQua][4]);  
+  	}
+	}
 
-  //--- Write triangles
-  GmfSetKwd(OutMsh, GmfTriangles, NbrTri);
-  for (iTri=1; iTri<=NbrTri; ++iTri) {
-    for (i=0; i<3; ++i) {
-      idx[i] = (long long)(Tri[iTri][i]);
-    }
-    GmfSetLin(OutMsh, GmfTriangles,idx[0],idx[1],idx[2],Tri[iTri][3]);  
+
+	if ( Msh->NbrTet > 0 ) {
+  	//--- Write tetrahedra
+  	GmfSetKwd(OutMsh, GmfTetrahedra, Msh->NbrTet);
+  	for (iTet=1; iTet<=Msh->NbrTet; ++iTet) {
+  	  for (i=0; i<4; ++i) {
+  	    idx[i] = (long long)(Tet[iTet][i]);
+  	  }
+  	  GmfSetLin(OutMsh, GmfTetrahedra,idx[0],idx[1],idx[2],idx[3],Tet[iTet][4]);  
+  	}
+	}
+
+	if ( Msh->NbrPri > 0  ) {
+  	//--- Write prisms
+  	GmfSetKwd(OutMsh, GmfPrisms, Msh->NbrPri);
+  	for (i=1; i<=Msh->NbrPri; ++i) {
+  	  for (j=0; j<6; ++j) {
+  	    idx[j] = (long long)(Msh->Pri[i][j]);
+  	  }
+  	  GmfSetLin(OutMsh, GmfPrisms,idx[0],idx[1],idx[2],idx[3],idx[4],idx[5],Msh->Pri[i][6]);  
+  	}
+	}
+
+	if ( Msh->NbrPyr > 0 ) {
+  	//--- Write pyr
+  	GmfSetKwd(OutMsh, GmfPyramids, Msh->NbrPyr);
+  	for (i=1; i<=Msh->NbrPyr; ++i) {
+  	  for (j=0; j<5; ++j) {
+  	    idx[j] = (long long)(Msh->Pyr[i][j]);
+  	  }
+  	  GmfSetLin(OutMsh, GmfPyramids,idx[0],idx[1],idx[2],idx[3],idx[4],Msh->Pyr[i][5]);  
+  	}
+	}	
+	
+	if ( Msh->NbrEfr ) {
+  	//--- Write Edges
+  	GmfSetKwd(OutMsh, GmfEdges, NbrEfr);
+  	for (iEfr=1; iEfr<=NbrEfr; ++iEfr) {
+  	  for (i=0; i<2; ++i) {
+  	    idx[i] = (long long)(Efr[iEfr][i]);
+  	  }
+  	  GmfSetLin(OutMsh, GmfEdges,idx[0],idx[1],Efr[iEfr][2]);  
+  	}
   }
 
-  //--- Write tetrahedra
-  GmfSetKwd(OutMsh, GmfTetrahedra, Msh->NbrTet);
-  for (iTet=1; iTet<=Msh->NbrTet; ++iTet) {
-    for (i=0; i<4; ++i) {
-      idx[i] = (long long)(Tet[iTet][i]);
-    }
-    GmfSetLin(OutMsh, GmfTetrahedra,idx[0],idx[1],idx[2],idx[3],Tet[iTet][4]);  
-  }
-
-  //--- Write prisms
-  GmfSetKwd(OutMsh, GmfPrisms, Msh->NbrPri);
-  for (i=1; i<=Msh->NbrPri; ++i) {
-    for (j=0; j<6; ++j) {
-      idx[j] = (long long)(Msh->Pri[i][j]);
-    }
-    GmfSetLin(OutMsh, GmfPrisms,idx[0],idx[1],idx[2],idx[3],idx[4],idx[5],Msh->Pri[i][6]);  
-  }
-
-  //--- Write pyr
-  GmfSetKwd(OutMsh, GmfPyramids, Msh->NbrPyr);
-  for (i=1; i<=Msh->NbrPyr; ++i) {
-    for (j=0; j<5; ++j) {
-      idx[j] = (long long)(Msh->Pyr[i][j]);
-    }
-    GmfSetLin(OutMsh, GmfPyramids,idx[0],idx[1],idx[2],idx[3],idx[4],Msh->Pyr[i][5]);  
-  }
-
-  //--- Write Edges
-  GmfSetKwd(OutMsh, GmfEdges, NbrEfr);
-  for (iEfr=1; iEfr<=NbrEfr; ++iEfr) {
-    for (i=0; i<2; ++i) {
-      idx[i] = (long long)(Efr[iEfr][i]);
-    }
-    GmfSetLin(OutMsh, GmfEdges,idx[0],idx[1],Efr[iEfr][2]);  
-  }
-  
   //--- close mesh file
   if ( !GmfCloseMesh(OutMsh) ) {
     printf("  ## ERROR: Cannot close mesh file %s ! \n",OutFil);
@@ -318,6 +472,7 @@ int WriteGMFMesh(char *nam, Mesh *Msh, int OptBin)
   
   return 1;
 }
+
 
 
 int WriteGMFSolution(char *SolNam, double *Sol, int SolSiz, int NbrVer, int Dim, int NbrFld, int* FldTab)

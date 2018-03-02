@@ -1,13 +1,15 @@
-
 from .. import nozzle
 from .. import SU2
 
 from run import *
 from meshgeneration import *
 from runSU2 import *
-from postprocessing import *
+import SU2postprocessing
+import AEROSpostprocessing
 
-try:
-	from runAEROS import *
-except ImportError:
-	pass;
+from SU2postprocessing import *
+
+#try:
+#	from runAEROS import *
+#except ImportError:
+#	pass;

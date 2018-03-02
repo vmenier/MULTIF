@@ -707,7 +707,11 @@ int LoadSU2Solution(char *SolNam, VMesh *Msh)
 			
 			if ( idx == SolSiz )
 				break;
+			
 		}
+		
+		if ( NbrLin == Msh->NbrVer )
+			break;
 	}
 	
 	

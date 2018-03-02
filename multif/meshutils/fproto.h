@@ -14,10 +14,17 @@ Victorien Menier Feb 2016
 //int  GetGeoSize (char *GeoNam, int *CadSiz);
 //int  ReadGeo (char *GeoNam, Cad *cad);
 
+//--- projection.c
+int NozzleWallProjection (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, int refUp, int refDown, char *OutNam);
+int ProjectToDV(double *Crd, CadNozzle *Noz, double *BasParam, int Patch);
+int NozzleWallProjection_DV (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, CadNozzle * CadNoz_bas, int refUp, int refDown, char *OutNam, int verbose);
+
+
 //--- extraction.c
 int SolutionExtraction(Options *mshopt, Mesh *Msh);
 double * ExtractAlongLine (Options *mshopt, Mesh *Msh, double *box, int *NbrRes, int *Siz);
 double * ExtractSolutionAtRef (Options *mshopt, Mesh *Msh, int *Ref, int NbrRef,  int *NbrRes, int *Siz);
+int Extract_Vertices_Ref (Options *mshopt, Mesh *Msh, int Ref, double *Crd_Out, int *Vid_Out, int *Nbv);
 
 //--- GMFio.c
 int AddGMFMeshSize (char *MshNam, int *SizMsh);
@@ -26,6 +33,7 @@ int LoadGMFSolution(char *SolNam, Mesh *Msh);
 int WriteGMFMesh(char *nam, Mesh *Msh, int OptBin);
 int WriteGMFSolution(char *SolNam, double *Sol, int SolSiz, int NbrVer, int Dim, int NbrFld, int* FldTab);
 int WriteGMFSolutionItf(char *SolNam, Mesh *Msh);
+int WriteSegMesh(char *nam, Mesh *Msh);
 
 //---- mesh.c
 Mesh* AllocMesh (int * SizMsh);
@@ -50,10 +58,14 @@ void  switchTetIdx(int *idx, int *swi);
 void  switchTriIdx(int *idx, int *swi);
 
 //--- modules.c
-int ConvertGMFtoSU2Sol (Options *mshopt);
-int ConvertSU2SolToGMF (Options *mshopt);
-int Extraction (Options *mshopt);
-int OutputMach (Options *mshopt);
+int    ConvertGMFtoSU2Sol (Options *mshopt);
+int    ConvertSU2SolToGMF (Options *mshopt);
+int    Extraction (Options *mshopt);
+int    OutputMach (Options *mshopt);
+int    ConvertSU2ToGMSH (Options *mshopt);
+int    ProjectNozzleWall (Options *mshopt);
+int    ConvertGMFtoSegMesh (Options *mshopt);
+Mesh * ExtractSurfacePatches(Mesh *Msh, int *Ref, int NbrRef) ;
 
 //--- option.c
 Options* AllocOptions(void);
@@ -77,10 +89,28 @@ int  LoadSU2Vertices (FILE *FilHdl, Mesh *Msh);
 void WriteSU2Mesh(char *nam, Mesh *Msh);
 int  WriteSU2Solution (char *SolNam, Mesh *Msh, double *Sol, int NbrVer, int SolSiz, char SolTag[100][256]);
 
+//--- GMSHio.c
+void WriteGMSHMesh(char *nam, Mesh *Msh);
+
 //--- utils.c
 int  Str2Lower(char *buff);
 void StrRemoveChars (char* str, char c);
 
+//--- nozzle.c
+int          FreeCadBspline (CadBspline *Bsp);
+int          LoadCadBspline (char *BasNam, CadBspline *Bsp, int verbose);
+int 		 SetCadBspline (CadBspline *Bsp, double *Knots, int NbrKnots, double *Coefs, int NbrCoefs);
+CadBspline * AllocCadBspline (int NbrCoefs, int NbrKnots);
+int          GetCadBsplineSize ( char *BasNam , int *NbrCoefs, int *NbrKnots );
+CadNozzle *  AllocCadNozzle (int * SizCad);
+int          FreeCadNozzle (CadNozzle *Noz) ;
+double       fzcut (double x,  double *BasParam);
+double       fycut (double x,  double *BasParam);
+double 		 fz_bas (double x,  double *BasParam);
+double 		 fr1_bas (double x,  double *BasParam);
+double 		 fr2_bas (double x,  double *BasParam);
+int        WriteCadBspline(char *BasNam, CadBspline *Bsp, int verbose);
+int        Evaluate_Nozzle ( CadNozzle *Noz, double *x, double *r1, double *r2, double *zcenter );
 
 //--- Bspline
 
@@ -97,3 +127,9 @@ void uMap3(double *knots, double *coefs, double u, double *x, double *y,
 void bSplineGeo3(double *knots, double *coefs, double *x, double *y,
 		 double *dydx, int nx, int k, int c);
 
+//--- Piecewise Linear
+//void piecewiseLinear(double *xnodes, double *ynodes, double *x, double *y,
+//		     double *dydx, int nx, int nn);
+void interp1(double *xn, double *yn, int nn, double *x, double *y, int nx, int js);
+void interp1grad(double *xn, double *yn, int nn, double *x, double *dydx, int nx, int js);
+		     

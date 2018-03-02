@@ -11,6 +11,7 @@ import mesh
 import eval
 import opt
 import util
+import amginria
 
 try:
     import readline

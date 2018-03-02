@@ -133,7 +133,7 @@ int ConvertSU2ToGMSH (Options *mshopt)
 
 	PrintMeshInfo (Msh);
 
-	WriteGMSHMesh(mshopt->OutNam, Msh, 1);
+	WriteGMSHMesh(mshopt->OutNam, Msh);
 
 	if ( Msh )
  		FreeMesh(Msh);
@@ -284,6 +284,223 @@ int CleanMesh (Options *mshopt)
 }
 
 
+int ProjectNozzleWall (Options *mshopt)
+{
+	int NbrFld = 1, i, iVer;
+	int FldTab[1] = {1};
+	double *Mach = NULL;
+	
+	int verbose = 1;
+	
+	Mesh *Msh = NULL;
+	Msh = SetupMeshAndSolution (mshopt->InpNam, mshopt->SolNam);
+	
+	PrintMeshInfo (Msh);
 
+	//--- Load bsplines from data files (temporary)
+	
+	double BasParam[BasMaxKwd];
+	memset(BasParam, 0.0, sizeof(double)*BasMaxKwd);
+	// { 
+	//	0.0, 0.0, 0.0999079,          // Crd of inlet circle center
+	//	0.438972,                     // r inlet
+	//	2.33702, 0.0, 0.19,           // Crd of outlet ellipse center
+	//	0.92, 0.24,                   // r1 r2 outlet
+	//	0.122638,                      // zcut out
+	//	0.099,                         // zcut in
+	//	0.879257,                     // ycut out
+	//	0.438972                      // ycut in
+	//};
+	BasParam[BasInletx    ]  = 0.0       ;
+	BasParam[BasInlety    ]  = 0.0       ;
+	BasParam[BasInletz    ]  = 0.0999079 ;
+	BasParam[BasInletr    ]  = 0.438972  ;
+	BasParam[BasOutletx   ]  = 2.33702   ;
+	BasParam[BasOutlety   ]  = 0.0       ;
+	BasParam[BasOutletz   ]  = 0.19      ;
+	BasParam[BasOutletr1  ]  = 0.92      ;
+	BasParam[BasOutletr2  ]  = 0.24      ;
+	BasParam[BasOutletzcut]  = 0.122638  ;
+	BasParam[BasInletzcut ]  = 0.099     ;
+	BasParam[BasOutletycut]  = 0.879257  ;
+	BasParam[BasInletycut ]  = 0.438972  ;
+	BasParam[BasInletTheta]  = 1.572865  ;
+	BasParam[BasOutletTheta] = 1.855294  ;
+	
+	
+	int SizCad[MaxKwdNozzleSize];
+	memset(SizCad, 0, sizeof(int)*MaxKwdNozzleSize);
+	
+	CadNozzle *CadNoz = NULL;
+	
+	GetCadBsplineSize ("centerline", &SizCad[KwdnCoefs_center], &SizCad[KwdnKnots_center]);
+	GetCadBsplineSize ("r1", &SizCad[KwdnCoefs_r1], &SizCad[KwdnKnots_r1]);
+	GetCadBsplineSize ("r2", &SizCad[KwdnCoefs_r2], &SizCad[KwdnKnots_r2]);
+	
+	CadNoz = AllocCadNozzle (SizCad);
+	
+	LoadCadBspline ("centerline", CadNoz->Bsp_center, verbose);
+	LoadCadBspline ("r1", CadNoz->Bsp_r1, verbose);
+	LoadCadBspline ("r2", CadNoz->Bsp_r2, verbose);
+	
+	//double cosTheta;
+	//cosTheta = max(-1.0, min(1.0,(BasParam[BasInletzcut]-BasParam[BasInletz])/BasParam[BasInletr]));
+	//CadNoz->ThetaCutIn  = acos(cosTheta);
+	//cosTheta = max(-1.0, min(1.0,(BasParam[BasOutletzcut]-BasParam[BasOutletz])/BasParam[BasOutletr2]));
+	//CadNoz->ThetaCutOut  = acos(cosTheta);
+	
+	CadNoz->ThetaCutIn  = 1.572865;
+	CadNoz->ThetaCutOut = 1.855294;
+	
+	WriteCadBspline ("centerline", CadNoz->Bsp_center, verbose);
+	WriteCadBspline ("r1", CadNoz->Bsp_r1, verbose);
+	WriteCadBspline ("r2", CadNoz->Bsp_r2, verbose);
+
+	//--- End load bsplines from files
+
+	int RefUp = 9;
+	int RefDown = 10;
+	
+	NozzleWallProjection (mshopt ,Msh, CadNoz, RefUp, RefDown, "mesh_motion.dat");
+	
+	if ( Msh )
+ 		FreeMesh(Msh);
+	
+	return 1;
+}
+
+Mesh * ExtractSurfacePatches(Mesh *Msh, int *Ref, int NbrRef) 
+{
+	
+	Mesh *MshOut = NULL;
+	
+	int iVer, iTri, j, i, flag=0, is[4];
+	int SizMsh[GmfMaxKwd+1];
+	int idx, idxOut;
+	int *Tag = (int*)malloc(sizeof(int)*(Msh->NbrVer+1));
+	int *TagTri = (int*)malloc(sizeof(int)*(Msh->NbrTri+1));
+	
+	memset(Tag,0,sizeof(int)*(Msh->NbrVer+1));
+	memset(TagTri,0,sizeof(int)*(Msh->NbrTri+1));
+	memset(SizMsh,0,sizeof(int)*(GmfMaxKwd+1));
+	
+	for (iTri=1; iTri<=Msh->NbrTri; iTri++) {	
+		flag = 0;
+		for (i=0; i<NbrRef; i++) {
+			if ( Msh->Tri[iTri][3] == Ref[i] ) {
+				flag = 1;
+				break;
+			}
+		}
+	
+		if ( flag == 0 )
+			continue;
+		
+		TagTri[iTri] = 1;
+		
+		SizMsh[GmfTriangles]++;
+		
+		for (j=0; j<3; j++) {
+			iVer = Msh->Tri[iTri][j];
+			Tag[iVer] = 1;
+		}	
+	}
+	
+	for (iVer=1; iVer<=Msh->NbrVer; iVer++) {
+		if ( Tag[iVer] < 1 )
+			continue;
+		SizMsh[GmfVertices]++;
+		Tag[iVer] = SizMsh[GmfVertices];
+	}
+	
+	//--- Alloc mesh
+	
+	MshOut = AllocMesh(SizMsh);
+	MshOut->Dim = 3;
+	
+	//--- Fill mesh
+	
+	for (iVer=1; iVer<=Msh->NbrVer; iVer++) {
+		if ( Tag[iVer] < 1 )
+			continue;
+		MshOut->NbrVer++;
+		AddVertex(MshOut, MshOut->NbrVer,  Msh->Ver[iVer]);
+		Tag[iVer] = MshOut->NbrVer;
+	}
+	
+	for (iTri=1; iTri<=Msh->NbrTri; iTri++) {
+		if ( TagTri[iTri] < 1 )
+			continue;
+		
+		for (j=0; j<3; j++) {
+			is[j] = Tag[Msh->Tri[iTri][j]];
+		}
+		
+		MshOut->NbrTri++;
+		AddTriangle(MshOut, MshOut->NbrTri, is, Msh->Tri[iTri][3]);
+	}
+	
+	//--- Solution
+	
+	MshOut->SolSiz = Msh->SolSiz;
+	MshOut->NbrFld = Msh->NbrFld;
+	MshOut->FldTab = (int*) malloc(sizeof(int)*Msh->SolSiz);
+	for (j=0; j<Msh->NbrFld; j++){
+		MshOut->FldTab[j] = Msh->FldTab[j];
+		strcpy(MshOut->SolTag[j],Msh->SolTag[j]);
+	}
+	MshOut->Sol = (double*) malloc(sizeof(double)*(MshOut->NbrVer+1)*MshOut->SolSiz);
+	memset(MshOut->Sol, 0, sizeof(double)*(MshOut->NbrVer+1)*MshOut->SolSiz);
+	
+	
+	for (iVer=1; iVer<=Msh->NbrVer; iVer++) {
+		if ( Tag[iVer] < 1 )
+			continue;
+		
+		idx = iVer*Msh->SolSiz;
+		idxOut = Tag[iVer]*MshOut->SolSiz;
+		
+		for (j=0; j<MshOut->SolSiz; j++) 
+			MshOut->Sol[idxOut+j] = Msh->Sol[idx+j];
+	}
+	
+	return MshOut;
+}
+
+//
+//int ConvertGMFtoSegMesh (Options *mshopt)
+//{
+//	Mesh *Msh = NULL;
+//	char OutSol[1024];
+//	
+//	FILE *FilHdl=NULL;
+//	char *tok=NULL, *lin=NULL;
+//
+//	int skip=0, SolSiz=0;
+//	size_t  len = 0;
+//
+//	Msh = SetupMeshAndSolution (mshopt->InpNam, mshopt->SolNam);
+//
+//	if ( Msh->FilTyp != FILE_GMF ) {
+//		printf("  ## ERROR : Input mesh file must be a .mesh (GMF) (FilTyp=%d)\n", Msh->FilTyp);
+//		return 0;
+//	}
+//
+//	PrintMeshInfo (Msh);
+//
+//	if ( Msh->Dim != 2 ) {
+//		printf("  ## ERROR : Mesh dimension must be 2.\n");
+//		return 0;
+//	}
+//	
+//	WriteSegMesh(mshopt->OutNam, Msh);
+//	
+//
+//	if ( Msh )
+// 		FreeMesh(Msh);
+//
+//	return 1;
+//}
+//
 
 
