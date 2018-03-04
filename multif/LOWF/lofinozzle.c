@@ -218,29 +218,37 @@ int integrateM2(double* xgeo, double* rgeo, int ngeo, int nbreaks,
 
     // Integrate for M^2 backward from throat to inlet
     // Assume subsonic flow in this region for now
-    yi = pow(1.+deltaMPrior,2);
-    xs = xt;
-    xf = xi;
-    hi = -himag;
-    hmin = -hminmag;
-    hmax = -hmaxmag;
-    xterm = odeint(xs, xf, yi, maxstep, hi, hmin, hmax, eps2, xsave1, ysave1, 
-        dxsave, ns, nsave1, evaldM2dx, xgeo, rgeo, ngeo, g, x, cf, ts, dts, 
-        nbreaks);
-    if( xterm < xi + 1e-6 ) {
+    if( xt <= xi ) {
+        xsave1[0] = xi;
+        ysave1[0] = pow(1.+deltaMPrior,2);
+        *nsave1 = 1;
+        //printf("skipping LHS integration\n");
         converged = 1;
     } else {
-        *xtguess = xterm; // update location for guess of throat
+        yi = pow(1.+deltaMPrior,2);
+        xs = xt;
+        xf = xi;
+        hi = -himag;
+        hmin = -hminmag;
+        hmax = -hmaxmag;
+        xterm = odeint(xs, xf, yi, maxstep, hi, hmin, hmax, eps2, xsave1, ysave1, 
+            dxsave, ns, nsave1, evaldM2dx, xgeo, rgeo, ngeo, g, x, cf, ts, dts, 
+            nbreaks);
+        if( xterm < xi + 1e-6 ) {
+            converged = 1;
+        } else {
+            *xtguess = xterm; // update location for guess of throat
+        }
+        //printf("completed LHS integration\n");
     }
-    printf("completed LHS integration\n");
 
     // Integrate for M^2 forward from throat to exit
     // Assume supersonic flow for now
     if( xt >= xe ) {
         xsave2[0] = xe;
-        ysave2[0] = 1.;
+        ysave2[0] = pow(1.+deltaMPost,2);
         *nsave2 = 1;
-        printf("skipping RHS integration\n");
+        //printf("skipping RHS integration\n");
     } else {
         yi = pow(1.+deltaMPost,2);
         xs = xt;
@@ -257,7 +265,7 @@ int integrateM2(double* xgeo, double* rgeo, int ngeo, int nbreaks,
             converged = 0;
             *xtguess = xterm; // update location for guess of throat
         }
-        printf("completed RHS integration\n");
+        //printf("completed RHS integration\n");
     }
 
     return converged; // 1 = converged, 0 = not converged
@@ -401,10 +409,10 @@ int analyzeNozzle(double* xgeo, double* rgeo, int ngeo, int nbreaks,
     int nsave2 = 0; 
     int nm;
     int counter;
-    int counter2;
     int maxattempts = 3;
     int maxattempts2 = 100;
-    double deltaM, deltaMold;
+    double deltaM;
+    double Mi, Mi1, Mi2;
     int converged = 0;
 
     // Allocate data arrays big enough to keep all integration results
@@ -447,29 +455,48 @@ int analyzeNozzle(double* xgeo, double* rgeo, int ngeo, int nbreaks,
             counter++;
 
             // If integration fails too many times (likely due to multiple 
-            // throats), enter a failsafe mode where only subsonic flow is 
-            // present in the nozzle with relaxed choking at selected throat.
-            // The Mach number at the throat is determined through bisection.
+            // throats), enter a failsafe mode where the nozzle flow is
+            // integrated forward from the inlet.
+            // The Mach number at the inlet is determined through bisection.
             if( counter > maxattempts ) {
 
                 printf("\n*****ODE integration failed after %d attempts.\n",maxattempts);
-                printf("*****Entering fail safe mode with subsonic flow.\n");
+                printf("*****Entering fail safe mode with integration forward from inlet.\n");
+                               
+                xt = xi;
+                Mi1 = 0.01; // lower bound, assume successful integration for Mi1
+                Mi = 0.5;
+                Mi2 = 1.0; // upper bound, assume successful integration for Mi2
 
-                counter2 = 0;
+                // Integrate forward from inlet with guess for Mi
+                deltaM = 1. - Mi;
+                converged = integrateM2(xgeo, rgeo, ngeo, nbreaks,
+                    g, maxstep, maxattempts, maxattempts2, dxsave,
+                    eps2, ns, himag, hminmag, hmaxmag, 
+                    -deltaM, -deltaM, xi, xt, xe,
+                    x, cf, ts, dts,
+                    xsave1, ysave1, xsave2, ysave2,
+                    &nsave1, &nsave2, &xtguess);   
 
-                printf("\nRetaining same throat location at: %f\n", xt);
+                if( converged == 1 ) {
+                    Mi1 = Mi;
+                } else {
+                    Mi2 = Mi;
+                }
 
-                deltaM = singularitydy;
+                printf("\n*****Bracketing of inlet Mach number succesful.\n");
+                //printf("Mi1: %0.6f\n",Mi1);
+                //printf("Mi2: %0.6f\n",Mi2);
 
-                // First bracket the Mach number
-                while( converged != 1 ) {
+                // Next bisect to obtain correct Mach number.
+                double relerrM = (Mi2 - Mi1)/Mi2;
+                printf("\n*****Beginning bisection.\n");
+                while( relerrM > 1e-3 ) {
+                    
+                    Mi = (Mi1 + Mi2)/2.;
+                    printf("Bisecting Mach number. Using new Mi = %0.6f\n",Mi);
 
-                    if( counter2 > 0 ) {
-                        // Increase deltaM to relax the integration more
-                        deltaM *= 2.;
-                        printf("Attempting integration with new DeltaM = %0.6f\n",deltaM);          
-                    }
-
+                    deltaM = 1. - Mi;
                     converged = integrateM2(xgeo, rgeo, ngeo, nbreaks,
                         g, maxstep, maxattempts, maxattempts2, dxsave,
                         eps2, ns, himag, hminmag, hmaxmag, 
@@ -478,46 +505,13 @@ int analyzeNozzle(double* xgeo, double* rgeo, int ngeo, int nbreaks,
                         xsave1, ysave1, xsave2, ysave2,
                         &nsave1, &nsave2, &xtguess); 
 
-                    if( counter2 > maxattempts2 ) {
-                        printf("*****ODE integration failed after %d attempts.\n",maxattempts2);
-                        break;
-                    }
-
-                    deltaMold = deltaM;
-                    counter2++;
-
-                }
-
-                printf("\n*****Bracketing of Mach number succesful.\n");
-
-                // Next bisect to obtain correct Mach number.
-                double dMhi = deltaM;
-                double dMlo = deltaM/2.;
-                double dMmid;
-                double relerrM = (dMhi-dMlo)/dMhi;
-                printf("\n*****Beginning bisection.\n");
-                printf("dMhi: %0.6f\n",dMhi);
-                printf("dMlo: %0.6f\n",dMlo);
-                while( relerrM > 1e-3 ) {
-
-                    dMmid = (dMhi + dMlo)/2.;
-                    printf("Bisecting Mach number. Using new DeltaM = %0.6f\n",dMmid);
-
-                    converged = integrateM2(xgeo, rgeo, ngeo, nbreaks,
-                        g, maxstep, maxattempts, maxattempts2, dxsave,
-                        eps2, ns, himag, hminmag, hmaxmag, 
-                        -dMmid, -dMmid, xi, xt, xe,
-                        x, cf, ts, dts,
-                        xsave1, ysave1, xsave2, ysave2,
-                        &nsave1, &nsave2, &xtguess); 
-
                     if( converged == 0 ) {
-                        dMlo = dMmid;
+                        Mi2 = Mi;
                     } else {
-                        dMhi = dMmid;
+                        Mi1 = Mi;
                     }
 
-                    relerrM = fabsf((dMhi-dMlo)/dMhi);
+                    relerrM = fabsf((Mi2 - Mi1)/Mi2);
 
                 }
                 
@@ -544,10 +538,6 @@ int analyzeNozzle(double* xgeo, double* rgeo, int ngeo, int nbreaks,
         interp1(xmach, machtmp, nm, x, mach, nbreaks, 0);
         
         // Free memory for temporary M^2 storage
-        free(xsave1);
-        free(ysave1);
-        free(xsave2);
-        free(ysave2);
         free(xmach);
         free(machtmp);
 
@@ -632,6 +622,12 @@ int analyzeNozzle(double* xgeo, double* rgeo, int ngeo, int nbreaks,
         tempold = temp[nbreaks-1];
 
     }
+
+    // Free arrays used in integration of M^2
+    free(xsave1);
+    free(ysave1);
+    free(xsave2);
+    free(ysave2);
 
     // Estimate nozzle thrust
     double drdxexit;
