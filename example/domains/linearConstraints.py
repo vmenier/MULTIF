@@ -2,14 +2,14 @@
 Functions used in the construction of linear constraints for the 3-D nozzle
 parameterization.
 
-Rick Fenrich 9/19/17
+Rick Fenrich 2/26/18
 """
 
 import numpy as np
 from scipy import optimize
 
 # General linear constraints which constrain a B-spline's motion by 1) preventing
-# x-coordinates from swapping, 2) enforcing a throat, and 3) limiting slopes
+# x-coordinates from swapping and 2) limiting slopes
 # These have the form Ax <= b
 # x = 1xN numpy array with equal number of x- and y-coordinates
 # v = 1xN numpy array giving variable number for each control point
@@ -25,7 +25,7 @@ from scipy import optimize
 #       a control point on either side of the throat which has been constrained
 #       to have the same y-coordinate
 def bspline(x, v, throatIndex, slopeLimits, xLimits=(None,None), delta=1e-2, 
-            throatIsLowest=0, minThroat=None, output='verbose'):
+            throatIsLowest=0, minThroat=None, maxThroat=None, output='verbose'):
     xleft = xLimits[0]; # minimum possible x-coordinate
     xright = xLimits[1]; # maximum possible x-coordinate
     delta2 = 1e-2; # for y-proximity to throat
@@ -85,6 +85,13 @@ def bspline(x, v, throatIndex, slopeLimits, xLimits=(None,None), delta=1e-2,
             B[m,i] = -1; c[m] = -minThroat; m = m+1
         if(output=='verbose'):
             print 'constraints %i through %i used for min throat radius constraint' %(m_initial+1,m);
+
+    if maxThroat is not None:
+        m_initial = m;
+        for i in range(nx,n_local):
+            B[m,i] = 1; c[m] = maxThroat; m = m+1
+        if(output=='verbose'):
+            print 'constraints %i through %i used for max throat radius constraint' %(m_initial+1,m);
         
     # Set lower bound in slope segments prior to throat
     if throatIndex != 0 and slopeLimits[0] is not None:
