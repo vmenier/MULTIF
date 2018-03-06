@@ -130,14 +130,14 @@ def SetupConfig (solver_options):
     
         config.NUM_METHOD_GRAD= 'WEIGHTED_LEAST_SQUARES';
         config.CFL_NUMBER= '5';
-        config.CFL_ADAPT= 'YES';
+        config.CFL_ADAPT= 'NO';
         config.CFL_ADAPT_PARAM= '( 1.5, 0.5, 1.25, 50.0 )'
         config.MAX_DELTA_TIME= '1E6';
         config.LINEAR_SOLVER= 'FGMRES';
         config.LINEAR_SOLVER_ERROR= '1E-6';
         config.LINEAR_SOLVER_ITER= '3';
         
-        config.LIMITER_ITER= '200';
+        config.LIMITER_ITER= '1000';
     
     elif method == 'RANS':
         config.PHYSICAL_PROBLEM= 'NAVIER_STOKES';
