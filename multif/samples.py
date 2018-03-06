@@ -116,7 +116,7 @@ class Sample:
                 sys.stdout = sav_stdout;
                 sys.stderr = sav_stderr;
             sys.stderr.write("## Error : Run %d failed.\n" % run_id);
-            raise;
+            #raise;
             return success, val_out;
         
         if redirect:
@@ -129,6 +129,10 @@ class Sample:
     def RunSamplePostpro(self):
         
         sys.stdout.write('-- Running sample %d postpro\n' % self.run_id);
+        
+        
+        success = False;
+        val_out = [False];
         
         run_id = self.run_id;
                         
@@ -147,23 +151,21 @@ class Sample:
             
             
         #--- Copy cfg file
+        
         shutil.copyfile(os.path.join(self.working_rootdir,self.cfg_file),self.cfg_file);
         
         if not self.cfg_file:
             sys.stderr.write ("## ERROR run %d: configuration file %s does not exit. Skip.\n" % (run_id, self.cfg_file));
-            sys.exit(0);
+            return success, val_out;
         
         if not self.input_file:
             sys.stderr.write ("## ERROR run %d: input file %s does not exit. Skip.\n" % (run_id, self.input_file));
-            sys.exit(0);
+            return success, val_out;
             
         #--- Open log files
         
         stdout_hdl = open("postpro_%s" % self.stdout,'w'); # new targets
         stderr_hdl = open("postpro_%s" % self.stderr,'w');
-        
-        success = False;
-        val_out = [False];
         
         try: # run with redirected outputs
             
@@ -199,7 +201,7 @@ class Sample:
             sys.stdout = sav_stdout;
             sys.stderr = sav_stderr;
             sys.stderr.write("## Error : Run %d failed.\n" % run_id);
-            raise;
+            #raise;
             return success, val_out;
         
         sys.stdout = sav_stdout;
@@ -281,7 +283,7 @@ class Sample:
             sys.stdout = sav_stdout;
             sys.stderr = sav_stderr;
             sys.stderr.write("## Error : Run %d failed.\n" % run_id);
-            raise;
+            #raise;
             return success, val_out;
         
         sys.stdout = sav_stdout;
