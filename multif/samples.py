@@ -145,7 +145,7 @@ class Sample:
         
         if not os.path.isdir(locDir):
             sys.stderr.write ("## ERROR : %s does not exit. Skip.\n" % locDir);
-            sys.exit(0);
+            return success, val_out;
         else:
             os.chdir(locDir);
             
