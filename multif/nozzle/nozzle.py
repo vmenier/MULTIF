@@ -2259,7 +2259,8 @@ class Nozzle:
         
         # Requiring aero analysis
         aero_scalar = ['THRUST', 'WALL_PRES_AVG', 'WALL_TEMP_AVG', 
-                       'SU2_RESIDUAL'];
+                       'SU2_RESIDUAL', 'SST_1C', 'SST_2C', 'SST_3C',
+                       'SST_P1C1', 'SST_P1C2'];
         aero_field = ['WALL_PRESSURE','PRESSURE','VELOCITY'];
         
         # Requiring structural analysis

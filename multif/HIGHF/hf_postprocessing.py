@@ -41,7 +41,27 @@ def PostProcess ( nozzle, output ):
 #        SolExtract, Size, Header  = ExtractSolutionAtExit(nozzle);
 #        nozzle.responses['THRUST'] = ComputeThrust ( nozzle, SolExtract, Size, Header );
         #nozzle.responses['THRUST'] = Get_Thrust_File(nozzle);
-        
+
+    if 'SST_1C' in nozzle.responses:
+
+        nozzle.responses['SST_1C'] = 0; # XXX Add implementation here
+
+    if 'SST_2C' in nozzle.responses:
+
+        nozzle.responses['SST_2C'] = 0; # XXX Add implementation here
+
+    if 'SST_3C' in nozzle.responses:
+
+        nozzle.responses['SST_3C'] = 0; # XXX Add implementation here
+
+    if 'SST_P1C1' in nozzle.responses:
+
+        nozzle.responses['SST_P1C1'] = 0; # XXX Add implementation here
+
+    if 'SST_P1C2' in nozzle.responses:
+
+        nozzle.responses['SST_P1C2'] = 0; # XXX Add implementation here
+
     if 'WALL_TEMPERATURE' in nozzle.responses:
         sys.stderr.write(' ## ERROR : WALL_TEMPERATURE not currently available from SU2\n\n');
         sys.exit(1);
