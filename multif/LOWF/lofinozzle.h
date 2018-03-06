@@ -20,6 +20,14 @@ double findApparentThroat(double xstart, double h0, double M2,
     double* xgeo, double* rgeo, int ngeo, double g, 
     double* x, double* Cf, double* Ts, double* dTs, int nb);
 
+int integrateM2(double* xgeo, double* rgeo, int ngeo, int nbreaks,
+    double g, int maxstep, int maxattempts, int maxattempts2, double dxsave,
+    double eps2, double ns, double himag, double hminmag, double hmaxmag, 
+    double deltaMPrior, double deltaMPost, double xi, double xt, double xe,
+    double* x, double* cf, double* ts, double* dts,
+    double* xsave1, double* ysave1, double* xsave2, double* ysave2,
+    int* nsave1, int* nsave2, double* xtguess);
+
 int analyzeNozzle(double* xgeo, double* rgeo, int ngeo, int nbreaks,
     double* xwalltemp, double* walltemp, int nwalltemp, 
     double* xlayer1, double* tlayer1, int nlayer1, double k1,
