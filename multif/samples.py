@@ -213,6 +213,9 @@ class Sample:
         
         sys.stdout.write('-- Running sample %d skipaero\n' % self.run_id);
         
+        success = False;
+        val_out = [False];
+        
         run_id = self.run_id;
                         
         #--- Go to working dir
@@ -225,7 +228,7 @@ class Sample:
         
         if not os.path.isdir(locDir):
             sys.stderr.write ("## ERROR : %s does not exit. Skip.\n" % locDir);
-            sys.exit(0);
+            return success, val_out;
         else:
             os.chdir(locDir);
             
@@ -235,19 +238,16 @@ class Sample:
         
         if not self.cfg_file:
             sys.stderr.write ("## ERROR run %d: configuration file %s does not exit. Skip.\n" % (run_id, self.cfg_file));
-            sys.exit(0);
+            return success, val_out;
         
         if not self.input_file:
             sys.stderr.write ("## ERROR run %d: input file %s does not exit. Skip.\n" % (run_id, self.input_file));
-            sys.exit(0);
+            return success, val_out;
             
         #--- Open log files
         
         stdout_hdl = open("skipaero_%s" % self.stdout,'w'); # new targets
         stderr_hdl = open("skipaero_%s" % self.stderr,'w');
-        
-        success = False;
-        val_out = [False];
         
         try: # run with redirected outputs
             
@@ -295,7 +295,10 @@ class Sample:
     def RunSampleVisu(self):
         sys.stdout.write('-- Running sample %d visualization\n' % self.run_id);
         run_id = self.run_id;
-                        
+        
+        success = False;
+        val_out = [False];
+        
         #--- Go to working dir
         
         runs_dirNam = "runs_%s_%d" % (self.samples_file, self.fidelity); # wrapping folder containing all local run dirs
@@ -305,25 +308,23 @@ class Sample:
         
         if not os.path.isdir(locDir):
             sys.stderr.write ("## ERROR : %s does not exit. Skip.\n" % locDir);
-            sys.exit(0);
+            return success, val_out;
         else:
             os.chdir(locDir);
         
         if not self.cfg_file:
             sys.stderr.write ("## ERROR run %d: configuration file %s does not exit. Skip.\n" % (run_id, self.cfg_file));
-            sys.exit(0);
+            return success, val_out;
         
         if not self.input_file:
             sys.stderr.write ("## ERROR run %d: input file %s does not exit. Skip.\n" % (run_id, self.input_file));
-            sys.exit(0);
+            return success, val_out;
             
         #--- Open log files
         
         stdout_hdl = open("visu_%s" % self.stdout,'w'); # new targets
         stderr_hdl = open("visu_%s" % self.stderr,'w');
-        
-        success = False;
-        val_out = [False];
+
         
         #--- Setup nozzle data structure
         
