@@ -1938,16 +1938,34 @@ def HF_GenerateMesh_Deform(nozzle):
     #Knots_r2, Coefs_r2  ,
     # "mesh_motion.dat");
     
+    #pathsrc = "%s/baseline_meshes/" % (os.path.dirname(os.path.abspath(__file__)));
+    #basNamGMF   = "%sbaseline_263_%s_%s.meshb" % (pathsrc, nozzle.method.lower(), nozzle.cfd.mesh_size.lower());
+    #basNamDV = "%sbaseline_263_DV.dat" % pathsrc;
+    #basNamSU2    = "baseline_%s_%s.su2" % (nozzle.method.lower(), nozzle.cfd.mesh_size.lower());
+    
+    #Knots_center_bas, Coefs_center_bas, \
+    #Knots_r1_bas, Coefs_r1_bas  , \
+    #Knots_r2_bas, Coefs_r2_bas  = LoadBSplineParameters(basNamDV);
+    
+    Knots_center_bas =  [0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 6.0, 6.0, 6.0] 
+    Coefs_center_bas =  [0.0, 0.0, 0.3, 0.5702282846052545, 0.855638134070282, 1.2131503687534813,      2.0, 2.33702, 2.33702, 0.099908, 0.099908, 0.099908, 0.02222045311937662, 0.012903618469065894,       0.02726816749042473, 0.19, 0.19, 0.19]
+    Knots_r1_bas     =  [0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 6.0, 6.0, 6.0]
+    Coefs_r1_bas     =  [0.0, 0.0, 0.3, 0.5676643378612197, 0.9160699460563718, 1.4194881607334815, 1.6457348192872563,      2.33702, 2.33702, 0.439461, 0.439461, 0.439461, 0.47040305819361683, 0.5036362549159014, 0.6934876326074211, 0.7014871379794511, 0.92, 0.92]
+    Knots_r2_bas     =  [0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 5.0, 5.0, 5.0]
+    Coefs_r2_bas     = [0.0, 0.0, 0.3, 0.5676643378612197, 0.9160699460563718, 1.5482642926542134, 2.33702, 2.33702, 0.439461, 0.439461,      0.439461, 0.4056974511826471, 0.3325501602507025, 0.22109512851773822, 0.24, 0.24]
+     
+    #Knots_center_bas = np.array(Knots_center_bas)
+    #Coefs_center_bas = np.array(Coefs_center_bas)
+    #Knots_r1_bas     = np.array(Knots_r1_bas    )
+    #Coefs_r1_bas     = np.array(Coefs_r1_bas    )
+    #Knots_r2_bas     = np.array(Knots_r2_bas    )
+    #Coefs_r2_bas     = np.array(Coefs_r2_bas    )
+         
     pathsrc = "%s/baseline_meshes/" % (os.path.dirname(os.path.abspath(__file__)));
-    basNamGMF   = "%sbaseline_263_%s_%s.meshb" % (pathsrc, nozzle.method.lower(), nozzle.cfd.mesh_size.lower());
-    basNamDV = "%sbaseline_263_DV.dat" % pathsrc;
+    basNamGMF   = "%sbaseline_3_%s_%s.meshb" % (pathsrc, nozzle.method.lower(), nozzle.cfd.mesh_size.lower());
+    basNamDV = "%sbaseline_3_DV.dat" % pathsrc;
     basNamSU2    = "baseline_%s_%s.su2" % (nozzle.method.lower(), nozzle.cfd.mesh_size.lower());
     
-    Knots_center_bas, Coefs_center_bas, \
-    Knots_r1_bas, Coefs_r1_bas  , \
-    Knots_r2_bas, Coefs_r2_bas  = LoadBSplineParameters(basNamDV);
-    
-
     
     #_meshutils_module.py_ProjectNozzleWall3D("%sbaseline_euler_coarse.meshb" % pathsrc, RefUp, RefDown,
     #Knots_center_bas, Coefs_center_bas,
@@ -1955,14 +1973,12 @@ def HF_GenerateMesh_Deform(nozzle):
     #Knots_r2_bas, Coefs_r2_bas  ,
     # "mesh_motion.dat");
      
-     
     #_meshutils_module.py_ProjectNozzleWall3D("%sbaseline_euler_coarse.meshb" % pathsrc, RefUp, RefDown,
     #Knots_center, Coefs_center,
     #Knots_r1, Coefs_r1  ,
     #Knots_r2, Coefs_r2  ,
     # "mesh_motion.dat");
-    #
-        
+            
     _meshutils_module.py_ProjectNozzleWall3D_DV(basNamGMF, RefUp, RefDown,
     Knots_center_bas, Coefs_center_bas,
     Knots_r1_bas, Coefs_r1_bas  ,
