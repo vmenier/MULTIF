@@ -57,81 +57,66 @@ def buildDesignDomain(output='verbose'):
     # ============================================================================
     # Wall design variables for fixed inlet
     # ============================================================================
-    # Centerline
-    WALL_COEFS1 = (0.0000,   0.0000,   0.3000,   0.5750, 1.1477, 1.1500, 1.1500, 1.1523, 1.7262, 2.0000, 2.33702, 2.33702, 
-                   0.099908, 0.099908, 0.099908, 0.12, 0.14, 0.14, 0.14, 0.14, 0.17, 0.19, 0.19, 0.19)
-    WALL_COEFS1_DV= (0,    0,      0,      1,      2,      3,      3,      4,      5,      0,      0,      0,     
-                     0,    0,      0,      6,      7,      7,      7,      7,      8,      0,      0,      0)
-    
-    # Major Axis
-    WALL_COEFS2= (0.0000,   0.0000,   0.3000,   0.5000, 0.7000, 0.9000, 1.1477, 1.1500, 
-                  1.1500,   1.1523,   1.4000,   1.6500, 1.9000, 2.1000, 2.33702, 2.33702, 
-                  0.439461, 0.439461, 0.439461, 0.3195, 0.3046, 0.2971, 0.2956, 0.2956, 
-                  0.2956, 0.2956, 0.3065, 0.3283, 0.3611, 0.4211, 0.92, 0.92)
-    WALL_COEFS2_DV= (0,   0,      0,      9,     10,     11,     12,     3,
-                     3,   13,     14,     15,     16,     17,     0,      0,
-                     0,   0,      0,      18,     19,     20,     21,     21,
-                     21,  21,     22,     23,     24,     25,     0,      0)
-                     
-    # Minor axis
-    WALL_COEFS3= (0.0000,   0.0000,   0.3000,   0.5500,  0.9000, 
-                  1.1500,   1.8000,   2.1000,   2.33702, 2.33702, 
-                  0.439461, 0.439461, 0.439461, 0.3195,  0.2956, 
-                  0.2750, 0.2338, 0.2167, 0.24, 0.24)
-    WALL_COEFS3_DV= (0,   0,      0,      26,     27,
-                     28,  29,     30,     0,      0, 
-                     0,   0,      0,      31,     32,  
-                     33,  34,     35,     0,      0)    
-                     
-    # Thermal layer                 
-    LAYER1_THICKNESS_LOCATIONS= (0, 0.3, 0.6, 1.0)
+    # Wall parameterization (centerline, major axis, minor axis, shovel exit height, and inlet angle)
+    WALL_COEFS1= (0.0000, 0.0000, 0.3000, 0.5750, 1.1500, 1.7262, 2.0000, 2.33702, 2.33702, 0.099908, 0.099908, 0.099908, 0.12, 0.14, 0.17, 0.19, 0.19, 0.19)
+    WALL_COEFS1_DV= (0, 0, 0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 4, 5, 6, 0, 0, 0)
+    WALL_COEFS2= (0.0000, 0.0000, 0.3000, 0.7000, 1.1500, 1.6000, 1.8, 2.33702, 2.33702, 0.439461, 0.439461, 0.439461, 0.6, 0.7, 0.8, 0.85, 0.92, 0.92)
+    WALL_COEFS2_DV= (0, 0, 0, 7, 8, 9, 10, 0, 0, 0, 0, 0, 11, 12, 13, 14, 0, 0)
+    WALL_COEFS3= (0.0000, 0.0000, 0.3000, 0.7000, 1.1500, 1.6000, 2.33702, 2.33702, 0.439461, 0.439461, 0.439461, 0.3, 0.29, 0.26, 0.24, 0.24)
+    WALL_COEFS3_DV= (0, 0, 0, 7, 8, 15, 0, 0, 0, 0, 0, 16, 17, 18, 0, 0)    
+    WALL_SHOVEL_HEIGHT= -0.1
+    WALL_SHOVEL_START_ANGLE= 20
+
+    # ---- LAYER THICKNESS GEOMETRIC PARAMETERIZATION ----
+
+    # Inner thermal layer takes the heat load
+    # LAYER1= (THERMAL_LAYER, PIECEWISE_BILINEAR, CMC)
+    LAYER1_THICKNESS_LOCATIONS= (0, 0.5, 1.0)
     LAYER1_THICKNESS_ANGLES= (0, 90, 180, 270)
-    LAYER1_THICKNESS_VALUES= (0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 
-                              0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03)
-    LAYER1_DV= (0, 1, 2, 0, 0, 0, 0, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 
-                15, 16, 17, 18)
-                
-    # Inner load layer
-    LAYER3_THICKNESS_LOCATIONS= (0, 0.3, 0.6, 1.0)
+    LAYER1_THICKNESS_VALUES= (0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03)
+    LAYER1_DV= (0, 1, 0, 0, 0, 0, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
+
+    # Air gap between thermal and load layers
+    # LAYER2= (AIR_GAP, CONSTANT, AIR)
+    LAYER2_THICKNESS = 0.0254
+
+    # Lower layer of load layer (Gr/BMI composite material)
+    # LAYER3= (LOAD_LAYER_INSIDE, PIECEWISE_BILINEAR, GR-BMI)
+    LAYER3_THICKNESS_LOCATIONS= (0, 0.5, 1.0)
     LAYER3_THICKNESS_ANGLES= (0, 90, 180, 270)
-    LAYER3_THICKNESS_VALUES= (0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 
-                              0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 
-                              0.002, 0.002)
-    LAYER3_DV= (0, 1, 2, 0, 0, 0, 0, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 
-                14, 15, 16, 17, 18)
-                
-    # Middle load layer
-    LAYER4_THICKNESS_LOCATIONS= (0, 0.3, 0.6, 1.0)
+    LAYER3_THICKNESS_VALUES= (0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002)
+    LAYER3_DV= (0, 1, 0, 0, 0, 0, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
+
+    # Middle layer of load layer (Ti-honeycomb)
+    # LAYER4= (LOAD_LAYER_MIDDLE, PIECEWISE_BILINEAR, GR-BMI)
+    LAYER4_THICKNESS_LOCATIONS= (0, 0.5, 1.0)
     LAYER4_THICKNESS_ANGLES= (0, 90, 180, 270)
-    LAYER4_THICKNESS_VALUES= (0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 
-                              0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 
-                              0.013, 0.013)
-    LAYER4_DV= (0, 1, 2, 0, 0, 0, 0, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 
-                14, 15, 16, 17, 18)
-    
-    # Outer load layer
-    LAYER5_THICKNESS_LOCATIONS= (0, 0.3, 0.6, 1.0)
+    LAYER4_THICKNESS_VALUES= (0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 0.013, 0.013)
+    LAYER4_DV= (0, 1, 0, 0, 0, 0, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
+
+    # Upper layer of load layer (Gr/BMI composite material)
+    # LAYER5= (LOAD_LAYER_OUTSIDE, PIECEWISE_BILINEAR, GR-BMI)
+    LAYER5_THICKNESS_LOCATIONS= (0, 0.5, 1.0)
     LAYER5_THICKNESS_ANGLES= (0, 90, 180, 270)
-    LAYER5_THICKNESS_VALUES= (0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 
-                              0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 
-                              0.002, 0.002)
-    LAYER5_DV= (0, 1, 2, 0, 0, 0, 0, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 
-                14, 15, 16, 17, 18)
-                                                 
-    # Baffles
+    LAYER5_THICKNESS_VALUES= (0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002)
+    LAYER5_DV= (0, 1, 0, 0, 0, 0, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
+
+    # ---- STRINGER GEOMETRIC PARAMETERIZATION ----
+    # STRINGERS= (2,GR-BMI)
+    STRINGERS_BREAK_LOCATIONS= (0, 0.2, 0.4, 0.6, 0.8, 1)
+    STRINGERS_ANGLES= (90, 270)
+    # STRINGERS_HEIGHT_VALUES= EXTERIOR
+    STRINGERS_THICKNESS_VALUES= (0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01)
+    STRINGERS_DV= (0, 1, 2, 3, 4, 0, 0, 0, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)
+
+    # ---- BAFFLE GEOMETRIC PARAMETERIZATION ----
+    # BAFFLES= (5,PANEL)
     BAFFLES_LOCATION= (0, 0.2, 0.4, 0.6, 0.8)
     BAFFLES_THICKNESS= (0.01, 0.01, 0.01, 0.01, 0.01)
-    BAFFLES_TRANSVERSE_EXTENT= (1.1)
+    # BAFFLES_HEIGHT= EXTERIOR
+    BAFFLES_HALF_WIDTH= (1.1)
     BAFFLES_DV= (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
-
-    # Top and bottom stringer
-    STRINGERS_ANGLES= (90, 270)
-    STRINGERS_BREAK_LOCATIONS= (0, 0.2, 0.4, 0.6, 0.8, 1)
-    STRINGERS_THICKNESS_VALUES= (0.005, 0.005, 0.005, 0.005, 0.005, 0.005,
-                                 0.005, 0.005, 0.005, 0.005, 0.005, 0.005)
-    STRINGERS_DV= (0, 1, 2, 3, 4, 0, 0, 0, 5, 6, 7, 8, 9, 10, 11, 12, 13, 
-                   14, 15, 16)
-        
+      
     # ============================================================================
     # Build constraints & domain information
     # ============================================================================
@@ -139,57 +124,51 @@ def buildDesignDomain(output='verbose'):
     # -------------------------------- WALL --------------------------------------
     # Centerline constraints
     # For sampling purposes, we require overlap between the slope ranges on either side of the throat
-    A1, b1 = bspline(WALL_COEFS1, WALL_COEFS1_DV, 5, (-0.2,0.01,-0.01,0.3), 
-                     xLimits=[None,2.3], delta=0.2, output=output)
+    A1, b1 = bspline(WALL_COEFS1, WALL_COEFS1_DV, 0, (-0.3,0.3,-0.3,0.3), 
+                     xLimits=[None,2.3], delta=0.2, minThroat=-0.05, maxThroat=0.1, output=output)
     # Major axis constraints
-    A2, b2 = bspline(WALL_COEFS2, WALL_COEFS2_DV, 7, (-0.4,0.0,-0.05,1.2), 
-                     xLimits=[None,2.3], delta=0.15, throatIsLowest=1, 
-                     minThroat=0.2, output=output)
+    A2, b2 = bspline(WALL_COEFS2, WALL_COEFS2_DV, 0, (0.05,1.2,[0.05,0.05,0.05,-0.2,-0.2,-0.1],[0.6,0.6,0.6,0.5,0.4,0.3]), 
+                     xLimits=[None,2.3], delta=0.2, minThroat=0.44, output=output)
     # Minor axis constraints
     # Likewise for sampling here, we set max slope to 0.01, in reality this could be 0
     # For some reason the sampling does not deal well with 0 slopes
-    A3, b3 = bspline(WALL_COEFS3, WALL_COEFS3_DV, 0, (-0.3,0.01,-0.3,0.01),
-                     xLimits=[None,2.3], delta=0.2, minThroat=0.2133, output=output)                 
+    A3, b3 = bspline(WALL_COEFS3, WALL_COEFS3_DV, 0, (-1.2,0.6,-0.3,0.6),
+                     xLimits=[None,2.3], delta=0.2, minThroat=0.0, maxThroat=0.44, output=output)                 
     Awall, bwall = cleanupConstraintMatrix(Alist=[A1,A2,A3],blist=[b1,b2,b3])
+
+    # Manually add coupling constraints for major/minor axis pre-throat slopes
+    Acouple = np.zeros((2,18))
+    bcouple = np.zeros((2,1))
+    Acouple[0,10] = 1.
+    Acouple[0,15] = 1.
+    bcouple[0,0] = 0.439461*2
+    Acouple[1,11] = 1.
+    Acouple[1,10] = -1.
+    Acouple[1,16] = 1.
+    Acouple[1,15] = -1.
+    Awall = np.vstack((Awall,Acouple))
+    bwall = np.vstack((bwall,bcouple))
+
     inner_wall_domain = LinIneqDomain(Awall, np.squeeze(bwall))
-    # Use x_wall, lb and ub below for free inlet:
-    # x_wall = np.array([0., 2.11625813e-01,  4.33456653e-01,
-    #      6.40008709e-01,   6.94218975e-01,   7.47699639e-01,
-    #      9.63367938e-01,   0.,               0.,
-    #      0.,               0.,               3.19606406e-01,
-    #      4.25187066e-01,   5.26621220e-01,   6.43854797e-01,
-    #      7.45326057e-01,   8.49338274e-01,   9.66198899e-01,
-    #      1.06819478e+00,   1.18163314e+00,   3.25177592e-01,
-    #      3.25078539e-01,   2.97088172e-01,   2.56513305e-01,
-    #      2.79231344e-01,   3.10313168e-01,   3.51101683e-01,
-    #      3.70116145e-01,   4.15313111e-01,   6.23135788e-01,
-    #      8.29455873e-01,   1.03225119e+00,   1.24925362e+00,
-    #      3.22570448e-01,   3.19918913e-01,   3.01938440e-01,
-    #      2.60902178e-01,   2.19374337e-01])    
-    # lb = np.hstack((-0.1,-np.inf*np.array(6*[1]),-0.05,-np.inf*np.array(30*[1]))) # centerline can move down 5 cm, back 10 cm
-    # ub = np.hstack((0.1,np.inf*np.array(6*[1]),0.05,np.inf*np.array(30*[1]))) # centerline can move up 5 cm, forward 10 cm
-    # Use x_wall, lb, and ub below for fixed inlet:
-#    x_wall = inner_wall_domain.center; # use center shape as baseline
-    x_wall = np.array([0.75221887, 0.99267767, 1.06767767, 1.14267767, 
-        1.36767767, 0.02749198, 0.00489532, 0.02764657, 0.46767767, 0.64267767, 
-        0.81767767, 0.99267767, 1.14267767, 1.31767767, 1.49267767, 1.66767767, 
-        1.84267767, 0.39142936, 0.34835519, 0.30528101, 0.26220684, 0.43315559, 
-        0.60410434, 0.75606861, 0.92701736, 0.51767767, 0.74267767, 0.96767767, 
-        1.19267767, 1.41767767, 0.41408206, 0.37268283, 0.33128360, 0.28988436, 
-        0.24848513])
+
+    x_wall = inner_wall_domain.center; # use center shape as baseline
+    # x_wall = np.array([0.75221887, 0.99267767, 1.06767767, 1.14267767, 
+    #     1.36767767, 0.02749198, 0.00489532, 0.02764657, 0.46767767, 0.64267767, 
+    #     0.81767767, 0.99267767, 1.14267767, 1.31767767, 1.49267767, 1.66767767, 
+    #     1.84267767, 0.39142936, 0.34835519, 0.30528101, 0.26220684, 0.43315559, 
+    #     0.60410434, 0.75606861, 0.92701736, 0.51767767, 0.74267767, 0.96767767, 
+    #     1.19267767, 1.41767767, 0.41408206, 0.37268283, 0.33128360, 0.28988436, 
+    #     0.24848513])
     # import sys
     # sys.stdout.write('x_wall = np.array([')
     # for i in range(len(x_wall)-1):
     #     sys.stdout.write('%0.8f, ' % x_wall[i])
     # sys.stdout.write('%0.8f])\n' % x_wall[-1])
     # print x_wall
-    lb = -np.inf*np.array(35*[1])
-    ub = np.inf*np.array(35*[1])
+    lb = x_wall - 0.5
+    ub = x_wall + 0.5
     inner_wall_domain = LinIneqDomain(Awall, np.squeeze(bwall), lb = lb, ub = ub, center = x_wall)
-    
-    wall_shovel_height_domain = UniformDomain(-0.15, -0.05, center = -0.1)
-    wall_shovel_angle_domain = UniformDomain(5., 35., center = 20.)
-                     
+                         
     # -------------------------------- THERMAL LAYER -----------------------------
     A4, b4 = piecewiseBilinearAxial(LAYER1_THICKNESS_LOCATIONS, LAYER1_THICKNESS_ANGLES,
                                LAYER1_THICKNESS_VALUES, LAYER1_DV, (-0.2,0.2), 
@@ -199,12 +178,12 @@ def buildDesignDomain(output='verbose'):
     x_thermal = list(LAYER1_THICKNESS_LOCATIONS) + list(LAYER1_THICKNESS_ANGLES) + \
         list(LAYER1_THICKNESS_VALUES);
     x_thermal = np.array([x_thermal[i] for i in range(len(x_thermal)) if LAYER1_DV[i] != 0 ]);
-    lb = np.hstack((lb_perc*x_thermal[0:2], 0.01*np.ones(16)))
-    ub = np.hstack((ub_perc*x_thermal[0:2], 0.05*np.ones(16)))
+    lb = np.hstack((lb_perc*x_thermal[0], 0.01*np.ones(12)))
+    ub = np.hstack((ub_perc*x_thermal[0], 0.05*np.ones(12)))
     thermal_layer_domain = LinIneqDomain(Athermal, np.squeeze(bthermal), lb = lb, ub = ub, center = x_thermal)
     
     # -------------------------------- AIR GAP -----------------------------------
-    air_gap_domain  = UniformDomain(0.003, 0.01, center = 0.005)
+    air_gap_domain  = UniformDomain(0.003, 0.05, center = 0.0254)
     
     # -------------------------------- INNER LOAD LAYER --------------------------
     A5, b5 = piecewiseBilinearAxial(LAYER3_THICKNESS_LOCATIONS, LAYER3_THICKNESS_ANGLES,
@@ -215,8 +194,8 @@ def buildDesignDomain(output='verbose'):
     x_load1 = list(LAYER3_THICKNESS_LOCATIONS) + list(LAYER3_THICKNESS_ANGLES) + \
         list(LAYER3_THICKNESS_VALUES);                       
     x_load1 = np.array([x_load1[i] for i in range(len(x_load1)) if LAYER3_DV[i] != 0 ]);  
-    lb = np.hstack((lb_perc*x_load1[0:2], 0.001*np.ones(16)))
-    ub = np.hstack((ub_perc*x_load1[0:2], 0.006*np.ones(16)))
+    lb = np.hstack((lb_perc*x_load1[0], 0.001*np.ones(12)))
+    ub = np.hstack((ub_perc*x_load1[0], 0.006*np.ones(12)))
     load_layer_inner_domain = LinIneqDomain(Aload1, np.squeeze(bload1), lb = lb, ub = ub, center = x_load1)
     
     # -------------------------------- MIDDLE LOAD LAYER -------------------------
@@ -228,8 +207,8 @@ def buildDesignDomain(output='verbose'):
     x_load2 = list(LAYER4_THICKNESS_LOCATIONS) + list(LAYER4_THICKNESS_ANGLES) + \
         list(LAYER4_THICKNESS_VALUES);                       
     x_load2 = np.array([x_load2[i] for i in range(len(x_load2)) if LAYER4_DV[i] != 0 ]);  
-    lb = np.hstack((lb_perc*x_load2[0:2], 0.0064*np.ones(16)))
-    ub = np.hstack((ub_perc*x_load2[0:2], 0.0159*np.ones(16)))
+    lb = np.hstack((lb_perc*x_load2[0], 0.0064*np.ones(12)))
+    ub = np.hstack((ub_perc*x_load2[0], 0.0159*np.ones(12)))
     load_layer_middle_domain = LinIneqDomain(Aload2, np.squeeze(bload2), lb = lb, ub = ub, center = x_load2)
     
     # -------------------------------- OUTER LOAD LAYER --------------------------
@@ -241,8 +220,8 @@ def buildDesignDomain(output='verbose'):
     x_load3 = list(LAYER5_THICKNESS_LOCATIONS) + list(LAYER5_THICKNESS_ANGLES) + \
         list(LAYER5_THICKNESS_VALUES);                       
     x_load3 = np.array([x_load3[i] for i in range(len(x_load3)) if LAYER5_DV[i] != 0 ]);  
-    lb = np.hstack((lb_perc*x_load3[0:2], 0.001*np.ones(16)))
-    ub = np.hstack((ub_perc*x_load3[0:2], 0.006*np.ones(16)))
+    lb = np.hstack((lb_perc*x_load3[0], 0.001*np.ones(12)))
+    ub = np.hstack((ub_perc*x_load3[0], 0.006*np.ones(12)))
     load_layer_outer_domain = LinIneqDomain(Aload3, np.squeeze(bload3), lb = lb, ub = ub, center = x_load3)
     
     # -------------------------------- STRINGERS ---------------------------------
@@ -260,7 +239,7 @@ def buildDesignDomain(output='verbose'):
     
     # -------------------------------- BAFFLES -----------------------------------
     A9, b9 = baffles(BAFFLES_LOCATION, BAFFLES_THICKNESS, 
-                     BAFFLES_TRANSVERSE_EXTENT, BAFFLES_DV, 0.1, 
+                     0., BAFFLES_DV, 0.1, 
                      0.26, output=output);
     Abaffles, bbaffles = cleanupConstraintMatrix(Alist=[A9],blist=[b9]);
     x_baffles = list(BAFFLES_LOCATION) + list(BAFFLES_THICKNESS);
@@ -271,8 +250,7 @@ def buildDesignDomain(output='verbose'):
     
     # -------------------------------- FULL CONSTRAINTS --------------------------
     
-    design_domain = ComboDomain([inner_wall_domain, wall_shovel_height_domain,
-                                 wall_shovel_angle_domain, thermal_layer_domain,
+    design_domain = ComboDomain([inner_wall_domain, thermal_layer_domain,
                                  air_gap_domain, load_layer_inner_domain, 
                                  load_layer_middle_domain, 
                                  load_layer_outer_domain, stringers_domain,
@@ -282,6 +260,9 @@ def buildDesignDomain(output='verbose'):
 
 
 def buildRandomDomain(output='verbose', clip = None):
+    '''
+    The standard random domain with 40 random variables.
+    '''
 
     random_domains = [
     #            CMC_DENSITY, 1,
