@@ -217,7 +217,7 @@ def HF_SetupConfig (solver_options):
     
     config.MUSCL_FLOW= 'YES'
     config.VENKAT_LIMITER_COEFF= 0.05;
-    config.JST_SENSOR_COEFF= '( 0.5, 0.02 )';
+    config.JST_SENSOR_COEFF= '( 0.5, 0.03 )';
     
     # --- Flow numerical method
     if method == 'EULER':
