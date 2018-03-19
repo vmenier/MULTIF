@@ -195,8 +195,9 @@ int py_ProjectNozzleWall3D( char *MshNam,
 	
 	//--- Project
 	
-	NozzleWallProjection (mshopt, Msh, CadNoz,  RefUp[0], RefDown[0], OutNam);
+	//NozzleWallProjection (mshopt, Msh, CadNoz,  RefUp[0], RefDown[0], OutNam);
 	
+	NozzleWallProjection_test (mshopt, Msh, CadNoz,  RefUp[0], RefDown[0], OutNam);
 	//--- Free memory
 	
 	if ( Msh )

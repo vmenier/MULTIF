@@ -800,9 +800,9 @@ int ProjectToDV(double *Crd, CadNozzle *Noz, double *BasParam, int Patch)
 	theta = acos(Crd[2]);
 	theta *= thetaMaxDV/thetaMaxBas;
 	
-	printf("CMP : acos %lf sin %lf sin(acos) %lf\n", acos(Crd[2]), Crd[1], sin(acos(Crd[2])));
-	printf(" sin(theta) %lf, cos(theta) %lf, Crd[1] %lf, Crd[2] %lf",  sin(theta), cos(theta), Crd[1], Crd[2]);
-	printf("thetaMaxDV %lf, thetaMaxBas %lf\n", thetaMaxDV, thetaMaxBas);
+	//printf("CMP : acos %lf sin %lf sin(acos) %lf\n", acos(Crd[2]), Crd[1], sin(acos(Crd[2])));
+	//printf(" sin(theta) %lf, cos(theta) %lf, Crd[1] %lf, Crd[2] %lf",  sin(theta), cos(theta), Crd[1], Crd[2]);
+	//printf("thetaMaxDV %lf, thetaMaxBas %lf\n", thetaMaxDV, thetaMaxBas);
 	
 	//printf("thetaMaxBas %lf thetaMaxDV %lf\n", thetaMaxBas, thetaMaxDV);
 	//CrdNew[0] = x;
@@ -824,7 +824,7 @@ int ProjectToDV(double *Crd, CadNozzle *Noz, double *BasParam, int Patch)
 		alp = Crd[0];
 		//CrdNew[2] = zcut;
 		CrdNew[2] = alp*zcut + (1.0-alp)*CrdNew[2];
-		
+		CrdNew[2] = zcut;
 	}
 	
 	//---
@@ -907,6 +907,374 @@ int ProjectToDV_DV(double *Crd, CadNozzle *Noz, CadNozzle *Noz_bas, int Patch)
 
 
 
+int ProjectToDV_test(double *Crd, CadNozzle *Noz, double *BasParam, int Patch) 
+{
+	
+	//--- Baseline parameters
+	
+	double cen_inlet[3]  = { BasParam[BasInletx], \
+													 BasParam[BasInlety], \
+													 BasParam[BasInletz]}; 
+												
+	double cen_outlet[3]  = { BasParam[BasOutletx], \
+	                     		  BasParam[BasOutlety], \
+	                     		  BasParam[BasOutletz]}; 
+	
+	double cut_inlet[3]  = {0,  0.439,  0.0999};
+	double cut_outlet[3] = {2.33702,  0.88272, 0.122373};
+	
+	if ( Crd[0] < cen_inlet[0]-1e-6 || Crd[0] > cen_outlet[0]+1e-6  ) {
+		printf("  ## ERROR ProjectNozzleWall_Down : x out of range!\n");
+		exit(1);
+	}
+		
+	double zbas=0, r1_bas=0, r2_bas=0, alp=0;
+	double ycut_bas=0, zcut_bas=0;
+	double x=0, y=0, z=0;
+	double r1=0, r2=0, dydx=0, zcenter=0;
+	double ycut=0, zcut=0;
+	double alpy=0, alpz=0;
+	
+	//--- Evaluate baseline at current x location
+	
+	x = Crd[0];
+	y = Crd[1];
+	z = Crd[2];
+	
+	alp = (x-cen_inlet[0])/(cen_outlet[0]-cen_inlet[0]);
+	
+	r1_bas = fr1_bas (x,  BasParam);
+	r2_bas = fr2_bas (x,  BasParam);
+	zbas   = fz_bas  (x,  BasParam);
+	
+	ycut_bas = alp*cut_outlet[1] + (1.0-alp)*cut_inlet[1];
+	zcut_bas = alp*cut_outlet[2] + (1.0-alp)*cut_inlet[2];
+	
+	//--- Evaluate bsplines to project on
+	
+	CadBspline * Bsp_center = Noz->Bsp_center;
+	CadBspline * Bsp_r1     = Noz->Bsp_r1;
+	CadBspline * Bsp_r2     = Noz->Bsp_r2;
+	
+	//--- Centerline
+	bSplineGeo3 (Bsp_center->Knots, Bsp_center->Coefs, &x, &zcenter, &dydx, 1, Bsp_center->NbrKnots, Bsp_center->NbrCoefs/2);
+	
+	//--- R1
+	bSplineGeo3 (Bsp_r1->Knots, Bsp_r1->Coefs, &x, &r1, &dydx, 1, Bsp_r1->NbrKnots, Bsp_r1->NbrCoefs/2);
+	
+	//--- R2
+	bSplineGeo3 (Bsp_r2->Knots, Bsp_r2->Coefs, &x, &r2, &dydx, 1, Bsp_r2->NbrKnots, Bsp_r2->NbrCoefs/2);
+	
+	Crd[1] = y/r1_bas*r1;
+	Crd[2] = zcenter+(z-zbas)/r2_bas*r2;
+	
+	if ( Patch == NOZZLEDOWN ) {
+					
+		ycut = ycut_bas/r1_bas*r1;
+		zcut = zcenter+(zcut_bas-zbas)/r2_bas*r2;
+		
+		alpy = y/ycut_bas;
+		alpz = z/zcut_bas;
+		
+		Crd[1] = alp*alpy*ycut + (1.0-alp)*Crd[1];
+		Crd[2] = alp*alpz*zcut + (1.0-alp)*Crd[2];
+		
+	}
+	
+	return 0;
+}
+
+
+
+int ProjectToDV_DV_test(double *Crd, CadNozzle *Noz, CadNozzle *NozBas, double *BasParam, int Patch) 
+{
+	
+		
+	double zbas=0, r1_bas=0, r2_bas=0, alp=0;
+	double ycut_bas=0, zcut_bas=0;
+	double x=0, y=0, z=0;
+	double r1=0, r2=0, dydx=0, zcenter=0;
+	double ycut=0, zcut=0;
+	double alpy=0, alpz=0;
+	double x_in, x_out;
+	
+	double zrou, r1_rou, r2_rou, ycut_rou, zcut_rou;
+	
+	//--- "rounded" baseline parameters
+	
+	double cen_inlet[3]  = { BasParam[BasInletx], \
+													 BasParam[BasInlety], \
+													 BasParam[BasInletz]}; 
+												
+	double cen_outlet[3]  = { BasParam[BasOutletx], \
+	                     		  BasParam[BasOutlety], \
+	                     		  BasParam[BasOutletz]}; 
+	
+	double cut_inlet[3]  = {0,  0.439,  0.0999};
+	double cut_outlet[3] = {2.33702,  0.88272, 0.122373};
+	
+	//--- Evaluate baseline at current x location
+	
+	x = Crd[0];
+	y = Crd[1];
+	z = Crd[2];
+	
+	////alp = (x-cen_inlet[0])/(cen_outlet[0]-cen_inlet[0]);
+	////
+	////r1_bas = fr1_bas (x,  BasParam);
+	////r2_bas = fr2_bas (x,  BasParam);
+	////zbas   = fz_bas  (x,  BasParam);
+		
+	////ycut_bas = alp*cut_outlet[1] + (1.0-alp)*cut_inlet[1];
+	////zcut_bas = alp*cut_outlet[2] + (1.0-alp)*cut_inlet[2];
+	
+	x_in   = NozBas->Bsp_center->Coefs[0];
+	x_out  = NozBas->Bsp_center->Coefs[NozBas->Bsp_center->NbrCoefs/2-1];
+	alp = (x-x_in)/(x_out-x_in);
+		
+	//--- Evaluate baseline nozzle
+	Evaluate_Nozzle ( NozBas, &x, &r1_bas, &r2_bas, &zbas );
+	
+	//--- Evaluate current nozzle
+	Evaluate_Nozzle ( Noz, &x, &r1, &r2, &zcenter );
+	
+	//--- Compute "blending" parameters (flat shovel)
+	
+	//alp = (x-cen_inlet[0])/(cen_outlet[0]-cen_inlet[0]);
+	
+	r1_rou = fr1_bas (x,  BasParam);
+	r2_rou = fr2_bas (x,  BasParam);
+	zrou   = fz_bas  (x,  BasParam);
+	
+	ycut_rou = alp*cut_outlet[1] + (1.0-alp)*cut_inlet[1];
+	zcut_rou = alp*cut_outlet[2] + (1.0-alp)*cut_inlet[2];	
+	
+	ycut_bas = ycut_rou/r1_rou*r1;
+	zcut_bas = zcenter+(zcut_rou-zrou)/r2_rou*r2;
+	
+	
+	FILE *tmphdl = fopen("zcut.dat", "a");
+	fprintf(tmphdl, "%lf %lf %lf %lf %lf\n", x, ycut_rou, zcut_rou, ycut_bas, zcut_bas);
+	fclose(tmphdl);
+	
+	
+	Crd[1] = y/r1_bas*r1;
+	Crd[2] = zcenter+(z-zbas)/r2_bas*r2;
+		
+	if ( Patch == NOZZLEDOWN ) {
+		
+					
+		ycut = ycut_bas/r1_bas*r1;
+		zcut = zcenter+(zcut_bas-zbas)/r2_bas*r2;
+		
+		alpy = y/ycut_bas;
+		alpz = z/zcut_bas;
+		
+		//Crd[1] = alp*alpy*ycut + (1.0-alp)*Crd[1];
+		//Crd[2] = alp*alpz*zcut + (1.0-alp)*Crd[2];
+					
+	}
+	
+	return 0;
+}
+
+
+
+
+int NozzleWallProjection_test (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, int refUp, int refDown, char *OutNam)
+{
+		
+	//---
+	
+	int WrtMsh = 1, patch=-1, WrtFullMsh=0;
+	
+	int iTri, ref=0, i, j, iVer, vid=-1, is[3];
+	
+	double CrdNew[3];
+	
+	int NbrVerPrj=0 , NbrTriPrj=0;
+	
+	int *Tag = (int*) malloc(sizeof(int)*(Msh->NbrVer+1));
+	memset(Tag, 0, sizeof(int)*(Msh->NbrVer+1));
+	
+	//--- Parameters
+	
+	double BasParam[BasMaxKwd];
+	memset(BasParam, 0.0, sizeof(double)*BasMaxKwd);
+	
+	BasParam[BasInletx    ]  = 0.0       ;
+	BasParam[BasInlety    ]  = 0.0       ;
+	BasParam[BasInletz    ]  = 0.099908 ;
+	BasParam[BasInletr    ]  = 0.439461   ;
+	BasParam[BasOutletx   ]  = 2.33702   ;
+	BasParam[BasOutlety   ]  = 0.0       ;
+	BasParam[BasOutletz   ]  = 0.19      ;
+	BasParam[BasOutletr1  ]  = 0.92      ;
+	BasParam[BasOutletr2  ]  = 0.24      ;
+	BasParam[BasOutletzcut]  = 0.122638  ;
+	BasParam[BasInletzcut ]  = 0.099     ;
+	BasParam[BasOutletycut]  = 0.879257  ;
+	BasParam[BasInletycut ]  = 0.438972  ;
+	BasParam[BasInletTheta]  = 1.572865  ;
+	BasParam[BasOutletTheta] = 1.855294  ;
+	
+	
+	//--- Tag one ref after the other for consistent line re-projection
+	
+	NbrTriPrj = 0;
+	
+	for (iTri=1; iTri<=Msh->NbrTri; iTri++) {
+		ref = Msh->Tri[iTri][3];
+		if ( ref != refDown )
+			continue;
+		for (j=0; j<3; j++) {
+			vid = Msh->Tri[iTri][j];
+			Tag[vid] = ref;
+		}
+		NbrTriPrj++;
+	} 
+	
+	for (iTri=1; iTri<=Msh->NbrTri; iTri++) {
+		ref = Msh->Tri[iTri][3];
+		if ( ref != refUp  )
+			continue;
+		for (j=0; j<3; j++) {
+			vid = Msh->Tri[iTri][j];
+			Tag[vid] = ref;
+		}
+		NbrTriPrj++;
+	}	
+	
+	//--- Create mesh for visu
+	
+	NbrVerPrj = 0;
+	for (iVer=1; iVer<=Msh->NbrVer; iVer++) {
+		if ( Tag[iVer] > 0 )
+			NbrVerPrj++;
+	}
+	
+	int SizMsh[GmfMaxKwd+1];
+	
+	for (i=0; i<GmfMaxKwd; i++)
+		SizMsh[i] = 0;
+	
+	SizMsh[GmfDimension]  = 3;
+	SizMsh[GmfVertices]   = NbrVerPrj;
+	SizMsh[GmfTriangles]  = NbrTriPrj;
+	
+	//printf("NbrVerPrj %d NbrRTriPrj %d\n", NbrVerPrj, NbrTriPrj);
+	
+	Mesh *MshViz = NULL;
+	
+	if ( WrtMsh == 1 ) {
+		MshViz = AllocMesh(SizMsh);
+		MshViz->Dim = 3;		
+	}	
+		
+	FILE *motionHdl = fopen(OutNam, "wb");
+	
+	if ( motionHdl ) {
+		printf("%%%% %s OPENED (WRITE).\n", OutNam);
+	}
+	else
+	{
+		printf("  ## ERROR : Could not open %s.\n", OutNam);
+		exit(1);
+	}
+	
+	//--- Project points
+	
+	for (iVer=1; iVer<=Msh->NbrVer; iVer++) {
+		
+		if ( Tag[iVer] <= 0 )
+			continue;
+		
+		CrdNew[0] = Msh->Ver[iVer][0];
+		CrdNew[1] = Msh->Ver[iVer][1];
+		CrdNew[2] = Msh->Ver[iVer][2];
+		
+		patch = -1;
+		
+		
+		if ( Tag[iVer] == refUp ) {
+			//ProjectNozzleWall_Up (Msh->Ver[iVer], CrdNew, BasParam);			
+			patch = NOZZLEUP;
+		}
+		else if ( Tag[iVer] == refDown ) {
+			
+			//---
+			//ProjectNozzleWall_Down_Save (Msh->Ver[iVer], CrdNew, BasParam);
+			patch = NOZZLEDOWN;
+		}
+		
+		if ( patch == -1 ) {
+			printf("  ## ERROR : Wrong nozzle CAD patch.\n");
+			exit(1);
+		}
+				
+		ProjectToDV_test(CrdNew, CadNoz, BasParam, patch);
+		
+		if ( WrtMsh == 1 ) {
+			MshViz->NbrVer++;
+			AddVertex(MshViz, MshViz->NbrVer, CrdNew);
+			Tag[iVer] = MshViz->NbrVer;
+		}
+		
+		if (WrtFullMsh == 1) {
+			Msh->Ver[iVer][0] = CrdNew[0];
+			Msh->Ver[iVer][1] = CrdNew[1];
+			Msh->Ver[iVer][2] = CrdNew[2];
+		}
+		
+		fprintf(motionHdl, "%d %le %le %le\n", iVer-1, CrdNew[0], CrdNew[1], CrdNew[2]);
+		
+	}
+	
+	//--- Write visu mesh
+	
+	if ( WrtMsh == 1 ) {
+		
+		for (iTri=1; iTri<=Msh->NbrTri; iTri++) {
+			ref = Msh->Tri[iTri][3];
+			if ( ref != refUp && ref != refDown )
+				continue;
+			
+			for (j=0; j<3; j++) {
+				vid = Msh->Tri[iTri][j];
+				is[j] = Tag[vid];
+			}
+			
+			MshViz->NbrTri++;
+			AddTriangle(MshViz,MshViz->NbrTri,is,ref);
+		}
+		
+		printf("%d ver, %d tri\n", MshViz->NbrVer, MshViz->NbrTri);
+		WriteGMFMesh("visu", MshViz, 1);
+	}
+	
+	if (WrtFullMsh == 1) {
+		WriteGMFMesh("visu_full", Msh, 1);
+	}
+	
+	if (motionHdl)
+		fclose(motionHdl);
+	
+	if ( Tag )
+		free(Tag);
+	
+	if ( MshViz )
+		FreeMesh(MshViz);
+	
+	if ( CadNoz )
+		FreeCadNozzle (CadNoz);
+	
+	return 0;
+	
+}
+
+
+
+
 int NozzleWallProjection (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, int refUp, int refDown, char *OutNam)
 {
 		
@@ -928,10 +1296,27 @@ int NozzleWallProjection (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, int re
 	double BasParam[BasMaxKwd];
 	memset(BasParam, 0.0, sizeof(double)*BasMaxKwd);
 	
+	//BasParam[BasInletx    ]  = 0.0       ;
+	//BasParam[BasInlety    ]  = 0.0       ;
+	//BasParam[BasInletz    ]  = 0.0999079 ;
+	//BasParam[BasInletr    ]  = 0.438972  ;
+	//BasParam[BasOutletx   ]  = 2.33702   ;
+	//BasParam[BasOutlety   ]  = 0.0       ;
+	//BasParam[BasOutletz   ]  = 0.19      ;
+	//BasParam[BasOutletr1  ]  = 0.92      ;
+	//BasParam[BasOutletr2  ]  = 0.24      ;
+	//BasParam[BasOutletzcut]  = 0.122638  ;
+	//BasParam[BasInletzcut ]  = 0.099     ;
+	//BasParam[BasOutletycut]  = 0.879257  ;
+	//BasParam[BasInletycut ]  = 0.438972  ;
+	//BasParam[BasInletTheta]  = 1.572865  ;
+	//BasParam[BasOutletTheta] = 1.855294  ;
+	
+	
 	BasParam[BasInletx    ]  = 0.0       ;
 	BasParam[BasInlety    ]  = 0.0       ;
-	BasParam[BasInletz    ]  = 0.0999079 ;
-	BasParam[BasInletr    ]  = 0.438972  ;
+	BasParam[BasInletz    ]  = 0.099908 ;
+	BasParam[BasInletr    ]  = 0.439461   ;
 	BasParam[BasOutletx   ]  = 2.33702   ;
 	BasParam[BasOutlety   ]  = 0.0       ;
 	BasParam[BasOutletz   ]  = 0.19      ;
@@ -944,13 +1329,14 @@ int NozzleWallProjection (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, int re
 	BasParam[BasInletTheta]  = 1.572865  ;
 	BasParam[BasOutletTheta] = 1.855294  ;
 	
+	
 	//--- Tag one ref after the other for consistent line re-projection
 	
 	NbrTriPrj = 0;
 	
 	for (iTri=1; iTri<=Msh->NbrTri; iTri++) {
 		ref = Msh->Tri[iTri][3];
-		if ( ref != refUp )
+		if ( ref != refDown )
 			continue;
 		for (j=0; j<3; j++) {
 			vid = Msh->Tri[iTri][j];
@@ -961,7 +1347,7 @@ int NozzleWallProjection (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, int re
 	
 	for (iTri=1; iTri<=Msh->NbrTri; iTri++) {
 		ref = Msh->Tri[iTri][3];
-		if ( ref != refDown  )
+		if ( ref != refUp  )
 			continue;
 		for (j=0; j<3; j++) {
 			vid = Msh->Tri[iTri][j];
@@ -1036,7 +1422,7 @@ int NozzleWallProjection (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, int re
 			exit(1);
 		}
 		
-		ProjectToDV(CrdNew, CadNoz, BasParam, patch);
+		//ProjectToDV(CrdNew, CadNoz, BasParam, patch);
 		
 		if ( WrtMsh == 1 ) {
 			MshViz->NbrVer++;
@@ -1098,50 +1484,193 @@ int NozzleWallProjection (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, int re
 
 
 
-//int GetThetaInOut(Mesh *Msh, CadNozzle *Noz_bas)
-//{
-//	
-//	int iVer, iTri, j, ref;
-//	double x_in=1e6, x_out=-1e6, ymin_in=1e6, ymin_out=-1e6;
-//	double xmin=0, xmax=0;
-//	
-//	int *tag = (int*)malloc(sizeof(int)*(Msh->NbrVer+1));
-//	memset(tag,0,sizeof(int)*(Msh->NbrVer+1));
-//	
-//	//x_in = Noz_bas->Bsp_center->Coefs[0];
-//	//x_out = x_in + Noz_bas->Bsp_center->Coefs[Noz_bas->Bsp_center->NbrCoefs/2-1];
-//	
-//	xmin = 1e6;
-//	xmax = -1e6;
-//	
-//	for (iTri=1; iTri<=Msh->NbrTri; iTri++) {
-//		ref = Msh->Tri[iTri][3];
-//		if ( ref == refUp  ) {
-//			for (j=0; j<3; j++) {
-//				iVer = Msh->Tri[iTri][j];
-//				
-//				xmin = min(xmin, Msh->Ver[iVer][0]);
-//				
-//				if ( fabs(Msh->Ver[iVer][0]-x_in) < 1e-6 ) {
-//					zmin_in = min(zmin_in, Msh->Ver[iVer][2]);
-//				}
-//			}
-//		}
-//	}
-//	
-//	
-//	for (iVer=1; iVer<=Msh->NbrVer; iVer++) {
-//		
-//		if ( )
-//		
-//		if ( fabs(Msh->Ver[iVer][0]-x)in) <  )
-//	}
-//	
-//}
-
 
 
 int NozzleWallProjection_DV (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, CadNozzle *CadNoz_bas,  int refUp, int refDown, char *OutNam, int verbose)
+{
+	
+	//---
+	
+	int WrtMsh = 1, patch=-1;
+		
+	int iTri, ref=0, i, j, iVer, vid=-1, is[3];
+	
+	double CrdNew[3];
+	
+	int NbrVerPrj=0 , NbrTriPrj=0;
+	
+	int *Tag = (int*) malloc(sizeof(int)*(Msh->NbrVer+1));
+	memset(Tag, 0, sizeof(int)*(Msh->NbrVer+1));
+	
+	
+	double BasParam[BasMaxKwd];
+	memset(BasParam, 0.0, sizeof(double)*BasMaxKwd);
+	
+	BasParam[BasInletx    ]  = 0.0       ;
+	BasParam[BasInlety    ]  = 0.0       ;
+	BasParam[BasInletz    ]  = 0.099908 ;
+	BasParam[BasInletr    ]  = 0.439461   ;
+	BasParam[BasOutletx   ]  = 2.33702   ;
+	BasParam[BasOutlety   ]  = 0.0       ;
+	BasParam[BasOutletz   ]  = 0.19      ;
+	BasParam[BasOutletr1  ]  = 0.92      ;
+	BasParam[BasOutletr2  ]  = 0.24      ;
+	BasParam[BasOutletzcut]  = 0.122638  ;
+	BasParam[BasInletzcut ]  = 0.099     ;
+	BasParam[BasOutletycut]  = 0.879257  ;
+	BasParam[BasInletycut ]  = 0.438972  ;
+	BasParam[BasInletTheta]  = 1.572865  ;
+	BasParam[BasOutletTheta] = 1.855294  ;
+	
+	//--- Tag one ref after the other for consistent line re-projection
+	
+	NbrTriPrj = 0;
+	
+	for (iTri=1; iTri<=Msh->NbrTri; iTri++) {
+		ref = Msh->Tri[iTri][3];
+		if ( ref != refUp  )
+			continue;
+		for (j=0; j<3; j++) {
+			vid = Msh->Tri[iTri][j];
+			Tag[vid] = ref;
+		}
+		NbrTriPrj++;
+	}	
+	
+	for (iTri=1; iTri<=Msh->NbrTri; iTri++) {
+		ref = Msh->Tri[iTri][3];
+		if ( ref != refDown )
+			continue;
+		for (j=0; j<3; j++) {
+			vid = Msh->Tri[iTri][j];
+			Tag[vid] = ref;
+		}
+		NbrTriPrj++;
+	}
+	
+	//--- Create mesh for visu
+	
+	NbrVerPrj = 0;
+	for (iVer=1; iVer<=Msh->NbrVer; iVer++) {
+		if ( Tag[iVer] > 0 )
+			NbrVerPrj++;
+	}
+	
+	int SizMsh[GmfMaxKwd+1];
+	
+	for (i=0; i<GmfMaxKwd; i++)
+		SizMsh[i] = 0;
+	
+	SizMsh[GmfDimension]  = 3;
+	SizMsh[GmfVertices]   = NbrVerPrj;
+	SizMsh[GmfTriangles]  = NbrTriPrj;
+	
+	//printf("NbrVerPrj %d NbrRTriPrj %d\n", NbrVerPrj, NbrTriPrj);
+	
+	Mesh *MshViz = NULL;
+	
+	if ( WrtMsh == 1 ) {
+		MshViz = AllocMesh(SizMsh);
+		MshViz->Dim = 3;		
+	}	
+		
+	FILE *motionHdl = fopen(OutNam, "wb");
+	
+	if ( motionHdl ) {
+		if ( verbose > 0 )
+			printf("%%%% %s OPENED (WRITE).\n", OutNam);
+	}
+	else
+	{
+		if ( verbose > 0  )
+			printf("  ## ERROR : Could not open %s.\n", OutNam);
+		exit(1);
+	}
+	
+	//--- Project points
+	
+	
+	for (iVer=1; iVer<=Msh->NbrVer; iVer++) {
+		
+		if ( Tag[iVer] <= 0 )
+			continue;
+		
+		CrdNew[0] = Msh->Ver[iVer][0];
+		CrdNew[1] = Msh->Ver[iVer][1];
+		CrdNew[2] = Msh->Ver[iVer][2];
+		
+		patch = -1;
+
+		if ( Tag[iVer] == refUp ) {
+			patch = NOZZLEUP;
+		}
+		else if ( Tag[iVer] == refDown ) {			
+			patch = NOZZLEDOWN;
+		}
+		
+		if ( patch == -1 ) {
+			if ( verbose > 0 )
+				printf("  ## ERROR : Wrong nozzle CAD patch.\n");
+			exit(1);
+		}
+		
+		//ProjectToDV_DV_test(double *Crd, CadNozzle *Noz, CadNozzle *NozBas, int Patch) 
+		ProjectToDV_DV_test(CrdNew, CadNoz, CadNoz_bas,BasParam,  patch);
+		
+		
+		if ( WrtMsh == 1 ) {
+			MshViz->NbrVer++;
+			AddVertex(MshViz, MshViz->NbrVer, CrdNew);
+			Tag[iVer] = MshViz->NbrVer;
+		}
+		
+		fprintf(motionHdl, "%d %le %le %le\n", iVer-1, CrdNew[0], CrdNew[1], CrdNew[2]);
+		
+	}
+	
+	//--- Write visu mesh
+	
+	if ( WrtMsh == 1 ) {
+		
+		for (iTri=1; iTri<=Msh->NbrTri; iTri++) {
+			ref = Msh->Tri[iTri][3];
+			if ( ref != refUp && ref != refDown )
+				continue;
+			
+			for (j=0; j<3; j++) {
+				vid = Msh->Tri[iTri][j];
+				is[j] = Tag[vid];
+			}
+			
+			MshViz->NbrTri++;
+			AddTriangle(MshViz,MshViz->NbrTri,is,ref);
+		}
+		
+		WriteGMFMesh("visu", MshViz, 1);
+		
+	}
+	
+	if (motionHdl)
+		fclose(motionHdl);
+	
+	if ( Tag )
+		free(Tag);
+	
+	if ( MshViz )
+		FreeMesh(MshViz);
+	
+	if ( CadNoz )
+		FreeCadNozzle (CadNoz);
+	
+	return 0;
+	
+}
+
+
+
+
+
+int NozzleWallProjection_DV_save (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, CadNozzle *CadNoz_bas,  int refUp, int refDown, char *OutNam, int verbose)
 {
 	
 	//---
@@ -1324,6 +1853,7 @@ int NozzleWallProjection_DV (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, Cad
 	return 0;
 	
 }
+
 
 
 
