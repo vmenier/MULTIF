@@ -1962,11 +1962,10 @@ def HF_GenerateMesh_Deform(nozzle):
     #Coefs_r2_bas     = np.array(Coefs_r2_bas    )
          
     pathsrc = "%s/baseline_meshes/" % (os.path.dirname(os.path.abspath(__file__)));
-    basNamGMF   = "%sbaseline_3_%s_%s.meshb" % (pathsrc, nozzle.method.lower(), nozzle.cfd.mesh_size.lower());
-    basNamDV = "%sbaseline_3_DV.dat" % pathsrc;
+    basNamGMF   = "baseline_3_%s_%s.meshb" % (nozzle.method.lower(), nozzle.cfd.mesh_size.lower());
     basNamSU2    = "baseline_%s_%s.su2" % (nozzle.method.lower(), nozzle.cfd.mesh_size.lower());
     
-    
+    #    basNamDV = "%sbaseline_3_DV.dat" % pathsrc;
     #_meshutils_module.py_ProjectNozzleWall3D("%sbaseline_euler_coarse.meshb" % pathsrc, RefUp, RefDown,
     #Knots_center_bas, Coefs_center_bas,
     #Knots_r1_bas, Coefs_r1_bas  ,
@@ -1978,7 +1977,21 @@ def HF_GenerateMesh_Deform(nozzle):
     #Knots_r1, Coefs_r1  ,
     #Knots_r2, Coefs_r2  ,
     # "mesh_motion.dat");
-            
+    
+    #--- Uncompress baseline mesh
+    
+    import tarfile
+    
+    tarNam = "%s.tar.gz" % basNamGMF;
+    
+    tar = tarfile.open(os.path.join(pathsrc, tarNam))
+    tar.extractall()
+    tar.close()
+    
+    if not os.path.exists(basNamGMF):
+        sys.stderr.write("## ERROR : Unable to untar %s" % basNamGMF);
+        sys.exit(1)
+                
     _meshutils_module.py_ProjectNozzleWall3D_DV(basNamGMF, RefUp, RefDown,
     Knots_center_bas, Coefs_center_bas,
     Knots_r1_bas, Coefs_r1_bas  ,
@@ -2042,5 +2055,15 @@ def HF_GenerateMesh_Deform(nozzle):
     # --- Run SU2
     
     info = SU2.run.DEF(config)
+    
+    # --- Clean directory
+    
+    if os.path.exists(basNamGMF):
+        os.remove(basNamGMF);
+    
+    if os.path.exists(basNamSU2):
+        os.remove(basNamSU2);
+    
+    
 
 
