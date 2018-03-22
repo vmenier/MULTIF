@@ -2,23 +2,10 @@
 Victorien Menier Feb 2016
 */
 
-////--- cad.c
-//int        Geo2Egads ();
-//static int spline1d(ego    context, int    imax, double *x, double *y, double *z, ego    *ecurv);
-//int 			 WriteEgads (char *Nam, Cad *cad);
-//int				 WriteEgadsSurf (char *Nam, Cad *cad);
-//
-////--- cad_gmsh.c
-//Cad* AllocGeo (int *CadSiz);
-//Cad* FreeGeo (Cad *cad);
-//int  GetGeoSize (char *GeoNam, int *CadSiz);
-//int  ReadGeo (char *GeoNam, Cad *cad);
 
 //--- projection.c
-int NozzleWallProjection (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, int refUp, int refDown, char *OutNam);
-int ProjectToDV(double *Crd, CadNozzle *Noz, double *BasParam, int Patch);
-int NozzleWallProjection_DV (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, CadNozzle * CadNoz_bas, int refUp, int refDown, char *OutNam, int verbose);
 int NozzleWallProjection_test (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, int refUp, int refDown, char *OutNam);
+int NozzleVolumeProjection (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, CadNozzle *CadNoz_bas,  int refUp, int refDown, char *OutNam, int verbose);
 
 //--- extraction.c
 int SolutionExtraction(Options *mshopt, Mesh *Msh);

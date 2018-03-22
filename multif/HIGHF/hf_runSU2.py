@@ -919,8 +919,6 @@ def setupConfig_DOT (solver_options):
     config.FREESTREAM_TEMPERATURE= 216.700000
     config.REF_DIMENSIONALIZATION= 'DIMENSIONAL'
     
-    
-    
     #config.MARKER_EULER= '( ( PhysicalLine1, PhysicalLine2, PhysicalLine3 ) )'
     #config.MARKER_INLET= '( PhysicalLine8, 955.000000, 97585.000000, 1.0, 0.0, 0.0, PhysicalLine4,  228.016984, 22181.944264, 1.0, 0.0, 0.0 )'
     #config.MARKER_FAR= '( ( PhysicalLine5 ) )'

@@ -197,7 +197,14 @@ int py_ProjectNozzleWall3D( char *MshNam,
 	
 	//NozzleWallProjection (mshopt, Msh, CadNoz,  RefUp[0], RefDown[0], OutNam);
 	
-	NozzleWallProjection_test (mshopt, Msh, CadNoz,  RefUp[0], RefDown[0], OutNam);
+	//NozzleWallProjection_test (mshopt, Msh, CadNoz,  RefUp[0], RefDown[0], OutNam);
+	
+	
+	CadNozzle *CadNozBas = NULL;
+	NozzleVolumeProjection(mshopt, Msh, CadNoz, CadNozBas,  RefUp[0], RefDown[0], OutNam, 1);
+	
+	// (Options *mshopt, Mesh *Msh, CadNozzle * CadNoz, CadNozzle *CadNoz_bas,  int refUp, int refDown, char *OutNam, int verbose)
+	
 	//--- Free memory
 	
 	if ( Msh )
@@ -532,7 +539,8 @@ int py_ProjectNozzleWall3D_DV( char *MshNam,
 	
 	//--- Project
 	
-	NozzleWallProjection_DV (mshopt, Msh, Noz_to, Noz_from, RefUp[0], RefDown[0], OutNam, verbose);
+	NozzleVolumeProjection(mshopt, Msh, Noz_to, Noz_from,  RefUp[0], RefDown[0], OutNam, 1);
+	//NozzleWallProjection_DV (mshopt, Msh, Noz_to, Noz_from, RefUp[0], RefDown[0], OutNam, verbose);
 	
 	//--- Free memory
 	

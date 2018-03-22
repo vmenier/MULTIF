@@ -1991,7 +1991,7 @@ def HF_GenerateMesh_Deform(nozzle):
     if not os.path.exists(basNamGMF):
         sys.stderr.write("## ERROR : Unable to untar %s" % basNamGMF);
         sys.exit(1)
-                
+        
     _meshutils_module.py_ProjectNozzleWall3D_DV(basNamGMF, RefUp, RefDown,
     Knots_center_bas, Coefs_center_bas,
     Knots_r1_bas, Coefs_r1_bas  ,
@@ -1999,63 +1999,77 @@ def HF_GenerateMesh_Deform(nozzle):
     Knots_center, Coefs_center,
     Knots_r1, Coefs_r1  ,
     Knots_r2, Coefs_r2  ,
-     "mesh_motion.dat");
+    nozzle.cfd.mesh_name);
     
-    
-    _meshutils_module.py_ConvertGMFToSU2(basNamGMF,"",basNamSU2);
-    
-    # --- Call SU2_DEF to deform baseline mesh
-    # --- Setup config file
-    
-    from .. import SU2
-    
-    config = SU2.io.Config();
-    
-    # -- Note : the values don't matter. All markers must be defined otherwise SU2 exits.
-    #config.MARKER_EULER  = '( 7, 8, 9, 10, 12, 13, 14, 15, 16)'    
-    #config.MARKER_INLET  = '(11, 601, 275000, 1.0, 0.0, 0.0 )'
-    #config.MARKER_FAR    = '( 1, 2, 3, 5, 6)'
-    #config.MARKER_SYM    = '( 4 )'
-    #config.MARKER_MOVING = "( 9, 10 )"
-    
-    config.MARKER_EULER = '(7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 20)'
-    config.MARKER_INLET = '(12, 601, 275000, 1.0, 0.0, 0.0 )'
-    config.MARKER_FAR   = '( 1, 2, 3, 5, 6 )'
-    config.MARKER_SYM   = '(4, 21)'
-    config.MARKER_THRUST= '(19)'
-    config.MARKER_MOVING = '( 9, 10 )'
-    
-    config.MESH_FILENAME= basNamSU2;
-    config.DV_KIND= "SURFACE_FILE"
-    
-    config.DV_PARAM = { 'FFDTAG' : [[]]     ,
-                       'PARAM'  : [[1]] ,
-                       'SIZE'   : [1]}
-    config.DV_VALUE = [0.001];
-    
-    config.DV_MARKER= "( 9, 10 )"
-    config.MOTION_FILENAME= "mesh_motion.dat"
-    
-    config.DEFORM_LINEAR_SOLVER  = "FGMRES"
-    config.DEFORM_LINEAR_ITER    = "500"
-    config.DEFORM_NONLINEAR_ITER = "5"
-    config.DEFORM_CONSOLE_OUTPUT = "YES"
-    config.DEFORM_TOL_FACTOR     = "1e-6"
-    config.DEFORM_STIFFNESS_TYPE = "WALL_DISTANCE"
-    
-    config.HOLD_GRID_FIXED       = "NO"
-    config.HOLD_GRID_FIXED_COORD = "(-1e6,-1e6,-1e6,1e6,1e6,1e6)"
-    config.VISUALIZE_DEFORMATION = "YES"
-    
-    config.MESH_OUT_FILENAME      = nozzle.cfd.mesh_name;
-    
-    #config.NUMBER_PART = nozzle.partitions;
-    config.NUMBER_PART = nozzle.cpusPerTask;
-    
-    # --- Run SU2
-    
-    info = SU2.run.DEF(config)
-    
+    if not os.path.exists(nozzle.cfd.mesh_name):
+        sys.stderr.write("## ERROR : Unable to generate %s" % nozzle.cfd.mesh_name);
+        sys.exit(1)
+                    
+    #_meshutils_module.py_ProjectNozzleWall3D_DV(basNamGMF, RefUp, RefDown,
+    #Knots_center_bas, Coefs_center_bas,
+    #Knots_r1_bas, Coefs_r1_bas  ,
+    #Knots_r2_bas, Coefs_r2_bas  ,
+    #Knots_center, Coefs_center,
+    #Knots_r1, Coefs_r1  ,
+    #Knots_r2, Coefs_r2  ,
+    # "mesh_motion.dat");
+    #
+    #
+    #_meshutils_module.py_ConvertGMFToSU2(basNamGMF,"",basNamSU2);
+    #
+    #
+    ## --- Call SU2_DEF to deform baseline mesh
+    ## --- Setup config file
+    #
+    #from .. import SU2
+    #
+    #config = SU2.io.Config();
+    #
+    ## -- Note : the values don't matter. All markers must be defined otherwise SU2 exits.
+    ##config.MARKER_EULER  = '( 7, 8, 9, 10, 12, 13, 14, 15, 16)'    
+    ##config.MARKER_INLET  = '(11, 601, 275000, 1.0, 0.0, 0.0 )'
+    ##config.MARKER_FAR    = '( 1, 2, 3, 5, 6)'
+    ##config.MARKER_SYM    = '( 4 )'
+    ##config.MARKER_MOVING = "( 9, 10 )"
+    #
+    #config.MARKER_EULER = '(7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 20)'
+    #config.MARKER_INLET = '(12, 601, 275000, 1.0, 0.0, 0.0 )'
+    #config.MARKER_FAR   = '( 1, 2, 3, 5, 6 )'
+    #config.MARKER_SYM   = '(4, 21)'
+    #config.MARKER_THRUST= '(19)'
+    #config.MARKER_MOVING = '( 9, 10 )'
+    #
+    #config.MESH_FILENAME= basNamSU2;
+    #config.DV_KIND= "SURFACE_FILE"
+    #
+    #config.DV_PARAM = { 'FFDTAG' : [[]]     ,
+    #                   'PARAM'  : [[1]] ,
+    #                   'SIZE'   : [1]}
+    #config.DV_VALUE = [0.001];
+    #
+    #config.DV_MARKER= "( 9, 10 )"
+    #config.MOTION_FILENAME= "mesh_motion.dat"
+    #
+    #config.DEFORM_LINEAR_SOLVER  = "FGMRES"
+    #config.DEFORM_LINEAR_ITER    = "500"
+    #config.DEFORM_NONLINEAR_ITER = "5"
+    #config.DEFORM_CONSOLE_OUTPUT = "YES"
+    #config.DEFORM_TOL_FACTOR     = "1e-6"
+    #config.DEFORM_STIFFNESS_TYPE = "WALL_DISTANCE"
+    #
+    #config.HOLD_GRID_FIXED       = "NO"
+    #config.HOLD_GRID_FIXED_COORD = "(-1e6,-1e6,-1e6,1e6,1e6,1e6)"
+    #config.VISUALIZE_DEFORMATION = "YES"
+    #
+    #config.MESH_OUT_FILENAME      = nozzle.cfd.mesh_name;
+    #
+    ##config.NUMBER_PART = nozzle.partitions;
+    #config.NUMBER_PART = nozzle.cpusPerTask;
+    #
+    ## --- Run SU2
+    #
+    #info = SU2.run.DEF(config)
+    #
     # --- Clean directory
     
     if os.path.exists(basNamGMF):

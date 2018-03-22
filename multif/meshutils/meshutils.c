@@ -48,9 +48,9 @@ int main(int argc, char *argv[])
 		//	CleanMesh ();
 		//break;
 		
-		case 7:
-			return ProjectNozzleWall (mshopt);
-		break;
+		//case 7:
+		//	return ProjectNozzleWall (mshopt);
+		//break;
 		
 		//case 8:
 		//	return ConvertGMFtoSegMesh (mshopt);
