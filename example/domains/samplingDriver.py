@@ -18,7 +18,7 @@ dNplot = 10000; # plot every dNplot sampled geometries (avoid plot clutter)
 output = 'verbose'; # print notifications to screen
 plot = 'yes'; # plot a selection of sampled nozzle geometries
 
-Rick Fenrich 9/28/17
+Rick Fenrich 3/19/18
 Based on domain code supplied by Jeffrey Hokanson
 """
 
@@ -30,7 +30,8 @@ from matplotlib import pyplot as plt
 sys.path.append('../..');
 from multif.nozzle import geometry
 
-import multifDomains3D
+#import multifDomains3D
+import multifDomains3D_reduced as multifDomains3D
 import multifDomains2D
 
 from domains import ComboDomain
@@ -39,7 +40,7 @@ from util import find_feasible_boundary
 # ============================================================================
 # Controls for sampling and sweeps
 # ============================================================================
-param = '2D'; # nozzle parameterization, either 2D or 3D
+param = '3D'; # nozzle parameterization, either 2D or 3D
 N = 10000; # number of samples
 P = 1; # number of sweeps
 S = 10; # number of points in each sweep
@@ -160,30 +161,23 @@ if( plot == 'yes' ):
         # Wall design variables for fixed inlet
         # ============================================================================
         # Centerline
-        WALL_COEFS1 = (0.0000,   0.0000,   0.3000,   0.5750, 1.1477, 1.1500, 1.1500, 1.1523, 1.7262, 2.0000, 2.33702, 2.33702, 
-                    0.099908, 0.099908, 0.099908, 0.12, 0.14, 0.14, 0.14, 0.14, 0.17, 0.19, 0.19, 0.19)
-        WALL_COEFS1_DV= (0,    0,      0,      1,      2,      3,      3,      4,      5,      0,      0,      0,     
-                        0,    0,      0,      6,      7,      7,      7,      7,      8,      0,      0,      0)
+        WALL_COEFS1 = (0.0000,   0.0000,   0.3000,   0.5750, 1.1500, 1.7262, 2.0000, 2.33702, 2.33702, 
+                       0.099908, 0.099908, 0.099908, 0.12,   0.14,   0.17,   0.19,   0.19,    0.19)
+        WALL_COEFS1_DV= (0,      0,        0,        1,      2,      3,      0,      0,      0,     
+                         0,      0,        0,        4,      5,      6,      0,      0,      0)
         
         # Major Axis
-        WALL_COEFS2= (0.0000,   0.0000,   0.3000,   0.5000, 0.7000, 0.9000, 1.1477, 1.1500, 
-                    1.1500,   1.1523,   1.4000,   1.6500, 1.9000, 2.1000, 2.33702, 2.33702, 
-                    0.439461, 0.439461, 0.439461, 0.3195, 0.3046, 0.2971, 0.2956, 0.2956, 
-                    0.2956, 0.2956, 0.3065, 0.3283, 0.3611, 0.4211, 0.92, 0.92)
-        WALL_COEFS2_DV= (0,   0,      0,      9,     10,     11,     12,     3,
-                        3,   13,     14,     15,     16,     17,     0,      0,
-                        0,   0,      0,      18,     19,     20,     21,     21,
-                        21,  21,     22,     23,     24,     25,     0,      0)
-                        
+        WALL_COEFS2= (0.0000,   0.0000,   0.3000,   0.7000, 1.1500, 1.6000, 1.8,     2.33702, 2.33702, 
+                      0.439461, 0.439461, 0.439461, 0.6,    0.7,    0.8,    0.85,     0.92,    0.92)
+        WALL_COEFS2_DV= (0,     0,        0,        7,      8,      9,      10,      0,       0,
+                         0,     0,        0,        11,     12,     13,     14,      0,       0)
+                         
         # Minor axis
-        WALL_COEFS3= (0.0000,   0.0000,   0.3000,   0.5500,  0.9000, 
-                    1.1500,   1.8000,   2.1000,   2.33702, 2.33702, 
-                    0.439461, 0.439461, 0.439461, 0.3195,  0.2956, 
-                    0.2750, 0.2338, 0.2167, 0.24, 0.24)
-        WALL_COEFS3_DV= (0,   0,      0,      26,     27,
-                        28,  29,     30,     0,      0, 
-                        0,   0,      0,      31,     32,  
-                        33,  34,     35,     0,      0)          
+        WALL_COEFS3= (0.0000,   0.0000,   0.3000,   0.7000, 1.1500, 1.6000,   2.33702, 2.33702, 
+                      0.439461, 0.439461, 0.439461, 0.3,    0.29,   0.26,     0.24,    0.24)
+        WALL_COEFS3_DV= (0,     0,        0,        7,       8,     15,       0,       0,  
+                         0,     0,        0,        16,      17,    18,       0,      0)    
+        
                      
         # Centerline
         plt.figure()
