@@ -155,13 +155,7 @@ int ProjectToDV_DV_test(double *Crd, CadNozzle *Noz, CadNozzle *NozBas, double *
 	
 	ycut_bas = ycut_rou/r1_rou*r1;
 	zcut_bas = zcenter+(zcut_rou-zrou)/r2_rou*r2;
-	
-	
-	FILE *tmphdl = fopen("zcut.dat", "a");
-	fprintf(tmphdl, "%lf %lf %lf %lf %lf\n", x, ycut_rou, zcut_rou, ycut_bas, zcut_bas);
-	fclose(tmphdl);
-	
-	
+		
 	Crd[1] = y/r1_bas*r1;
 	Crd[2] = zcenter+(z-zbas)/r2_bas*r2;
 		

@@ -1962,7 +1962,7 @@ def HF_GenerateMesh_Deform(nozzle):
     #Coefs_r2_bas     = np.array(Coefs_r2_bas    )
          
     pathsrc = "%s/baseline_meshes/" % (os.path.dirname(os.path.abspath(__file__)));
-    basNamGMF   = "baseline_3_%s_%s.meshb" % (nozzle.method.lower(), nozzle.cfd.mesh_size.lower());
+    basNamGMF   = "baseline_5_%s_%s.meshb" % (nozzle.method.lower(), nozzle.cfd.mesh_size.lower());
     basNamSU2    = "baseline_%s_%s.su2" % (nozzle.method.lower(), nozzle.cfd.mesh_size.lower());
     
     #    basNamDV = "%sbaseline_3_DV.dat" % pathsrc;
