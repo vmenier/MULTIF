@@ -85,7 +85,7 @@ def HF_SetupConfig (solver_options):
     
     LocalRelax = solver_options.LocalRelax;
     
-    NbrIte = 5000;#solver_options.NbrIte;
+    NbrIte = 7000;#solver_options.NbrIte;
         
     mesh_name = solver_options.mesh_name;
     restart_name = solver_options.restart_name;
