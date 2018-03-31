@@ -1,32 +1,16 @@
 """
-Perform quasi-1D area-averaged Navier-Stokes analysis on axisymmetric nozzle
+Perform quasi-1D area-averaged Navier-Stokes analysis on axisymmetric nozzle.
 
-Rick Fenrich 9/24/17
+Rick Fenrich 3/30/18
 """
 
 import numpy as np
 import scipy.optimize
 import scipy.integrate
-import sys, os
+import sys
 
 import quasi1dnozzle
 
-from .. import nozzle as nozzlemod
-from multif.MEDIUMF.AEROSpostprocessing import PostProcess as AEROSPostProcess
-
-try:
-    from multif.MEDIUMF.runAEROS import *
-except ImportError as e: 
-    print 'Error importing all functions from runAEROS in runlowf.py.'
-    print e
-    print
-
-try:
-	from matplotlib import pyplot as plt
-except ImportError as e:
-    print 'Error importing matplotlib in runlowf.py.'
-    print e
-    print
 
 #==============================================================================
 # Sutherland's Law of dynamic viscosity of air
@@ -47,7 +31,7 @@ def areaMachFunc(g,M):
 #==============================================================================
 def massFlowRate(fluid,Pstag,Area,Tstag,M):
     gam = fluid.gam
-    R = fluid.R;
+    R = fluid.R
     mdot = (gam/((gam+1)/2)**((gam+1)/(2*(gam-1))))*Pstag*Area*              \
       areaMachFunc(gam,M)/np.sqrt(gam*R*Tstag)
     return mdot
@@ -126,7 +110,7 @@ def findApparentThroat(nozzle,tol,params):
     # when M = 1+delta, then M will have a tendency to decrease and will choke
     # the flow again. We require M to increase after this point.
     dM2dx = np.zeros((n,))
-    #params = (xInterp,Cf,Tstag,dTstagdx);    
+    #params = (xInterp,Cf,Tstag,dTstagdx)    
     xRight = nozzle.xoutlet
     
     # Search to the right:
@@ -590,13 +574,13 @@ def Quasi1D_old(nozzle,output='verbose'):
     # yield an additional 1 or 2 decimal places of accuracy at nearly 10 times
     # the computational expense. Unfortunately, adaptive timesteps are not
     # implemented.
-    nOdeIntegrationSteps = 1000;
+    nOdeIntegrationSteps = 1000
     
-    tol = {};
-    tol["exitTempPercentError"]         = nozzle.tolerance.exitTempPercentError;
-    tol["solverRelTol"]                 = nozzle.tolerance.solverRelTol;
-    tol["solverAbsTol"]                 = nozzle.tolerance.solverAbsTol;
-    tol["solverApparentThroatLocation"] = nozzle.tolerance.solverApparentThroatLocation;
+    tol = {}
+    tol["exitTempPercentError"]         = nozzle.tolerance.exitTempPercentError
+    tol["solverRelTol"]                 = nozzle.tolerance.solverRelTol
+    tol["solverAbsTol"]                 = nozzle.tolerance.solverAbsTol
+    tol["solverApparentThroatLocation"] = nozzle.tolerance.solverApparentThroatLocation
     
     # Determine state of nozzle assuming ideal conditions
     pressureRatio = nozzle.inlet.Pstag/nozzle.environment.P
@@ -632,15 +616,15 @@ def Quasi1D_old(nozzle,output='verbose'):
     #------------------------------ Begin Solver -----------------------------
     
     if output == 'verbose':
-        introString = " Begin Solver ";
-        nch = (60-len(introString))/2;
-        sys.stdout.write('-' * nch);
-        sys.stdout.write(introString);
-        sys.stdout.write('-' * nch);
-        sys.stdout.write('\n\n');
+        introString = " Begin Solver "
+        nch = (60-len(introString))/2
+        sys.stdout.write('-' * nch)
+        sys.stdout.write(introString)
+        sys.stdout.write('-' * nch)
+        sys.stdout.write('\n\n')
     
-        sys.stdout.write(" Running non ideal nozzle computation (target error in exit temp %.3le): \n\n" % tolerance);
-        sys.stdout.write('\t %s %s\n' % ("Iter".ljust(10), "Error %".ljust(10)));
+        sys.stdout.write(" Running non ideal nozzle computation (target error in exit temp %.3le): \n\n" % tolerance)
+        sys.stdout.write('\t %s %s\n' % ("Iter".ljust(10), "Error %".ljust(10)))
         
     while( 1 ):
         
@@ -669,7 +653,7 @@ def Quasi1D_old(nozzle,output='verbose'):
         if any(M2<0.):
             print 'Impossible flow scenario: Square of Mach number < 0'
             print 'No flow in nozzle.'
-            sys.exit(0);
+            sys.exit(0)
             
         if( np.isnan(M2.any()) or np.isinf(M2.any()) ):
             raise RuntimeError("Unrealistic Mach number calculated")    
@@ -774,7 +758,7 @@ def Quasi1D_old(nozzle,output='verbose'):
             (status,shock) = nozzleState(nozzle,pressureRatio,PstagThroat,   \
               TstagThroat,PstagExit,TstagExit)
             PstagExit = Pstag[-1]
-        else: # no shock in nozzle; assume no Pstag loss
+        else: # no shock in nozzle assume no Pstag loss
             pressureRatio = Pstag[-1]/nozzle.environment.P
             PstagExit = Pstag[-1]
             (status,shock) = nozzleState(nozzle,pressureRatio,PstagThroat,   \
@@ -788,17 +772,17 @@ def Quasi1D_old(nozzle,output='verbose'):
         Texit_old = T[-1]
         
         if( counter >= maxIterations ):
-            sys.stdout.write("\n WARNING: Done (max number of iterations (%i) reached)\n" % maxIterations);
-            sys.stdout.write("Terminated with error in exit temp: %le\n\n" % percentError);
+            sys.stdout.write("\n WARNING: Done (max number of iterations (%i) reached)\n" % maxIterations)
+            sys.stdout.write("Terminated with error in exit temp: %le\n\n" % percentError)
             #print "Iteration limit for quasi-1D heat xfer & friction reached\n"
             break
                 
         if output == 'verbose':
-            sys.stdout.write("\t %s %s\n" % (("%d" % counter).ljust(10), ("%.3le" % percentError).ljust(10)));
+            sys.stdout.write("\t %s %s\n" % (("%d" % counter).ljust(10), ("%.3le" % percentError).ljust(10)))
                 
         if( percentError < tolerance ):
             if output == 'verbose':
-                sys.stdout.write("\n Done (converged)\n\n");
+                sys.stdout.write("\n Done (converged)\n\n")
             #print "%i iterations to converge quasi-1D heat xfer & friction \
 #calcs\n" % counter    
             break
@@ -820,9 +804,9 @@ def Quasi1D_old(nozzle,output='verbose'):
     
     if nozzle.structuralFlag == 1:
 #        # Simplified stress calculation (calculate stresses IN LOAD LAYER ONLY)
-#        # Assumptions: nozzle is a cylinder; nozzle length is not constrained;
+#        # Assumptions: nozzle is a cylinder nozzle length is not constrained
 #        #              thermal mismatch at interface of both material layers is 
-#        #              neglected; steady state
+#        #              neglected steady state
 #    
 #        # Determine hoop stress for outermost layer only
 #        stressHoop = P*(D/2.+tTempUpper)/nozzle.wall.layer[-1].thickness.radius(xPosition)
@@ -857,22 +841,25 @@ def Quasi1D_old(nozzle,output='verbose'):
     
         # --- Run AEROS
         nozzle.wallResults = np.transpose(np.array([xPosition,Tinside,P]))
-        nozzle.runAEROS = 0;
-        if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
+        np.savetxt('wall_results.txt',nozzle.wallResults)
+        # nozzle.runAEROS = 0
+        # if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1:
             
-            #try:
-            #    runAEROS(nozzle, output);
-            #    AEROSPostProcess(nozzle, output);
-            #except:
-            #    sys.stdout.write("  ## WARNING : CALL TO AEROS IGNORED.\n");
-            multif.MEDIUMF.runAEROS(nozzle, output);
-            AEROSPostProcess(nozzle, output);
+        #     #try:
+        #     #    runAEROS(nozzle, output)
+        #     #    AEROSPostProcess(nozzle, output)
+        #     #except:
+        #     #    sys.stdout.write("  ## WARNING : CALL TO AEROS IGNORED.\n")
+        #     multif.MEDIUMF.runAEROS(nozzle, output)
+        #     AEROSPostProcess(nozzle, output)
 
     else: # do not perform structural analysis
-        pass;
+        pass
     
     # Calculate volume of nozzle material (approximately using trap. integ.)
-    volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle)    
+    # volume, mass = geometry.calcVolumeAndMass(nozzle)    
+    volume = -1
+    mass = -1
     
     # Assign all data for output
     flowTuple = (M, U, density, P, Pstag, T, Tstag, Re)
@@ -1004,10 +991,11 @@ def Quasi1D(nozzle,output='verbose'):
 
     # Gauss-Seidel fluid-thermal iteration properties
     eps1 = nozzle.tolerance.exitTempPercentError # relative tolerance for exit temp b/w iterations
-    if nozzle.thermalFlag == 1:
-        maxiter = 12 # max number of iterations for conjugate heat xfer
-    else: # do not perform thermal analysis
-        maxiter = 1
+    maxiter = 12 # max number of iterations for conjugate heat xfer
+    # if nozzle.thermalFlag == 1:
+    #     maxiter = 12 # max number of iterations for conjugate heat xfer
+    # else: # do not perform thermal analysis
+    #     maxiter = 1
 
     # ODE integration properties
     maxstep = 100000 # max number of steps
@@ -1054,187 +1042,41 @@ def Quasi1D(nozzle,output='verbose'):
 
     ps = p*(1+(g-1)*mach**2/2.)**(g/(g-1.)) # stagnation pressure
     
-    # Run secondary thermal analysis and structural analysis if necessary
+    # Save files for secondary thermostructural analysis if necessary
     nozzle.wallResults = np.transpose(np.array([x, tempinside, ps]))
-    nozzle.runAEROS = 0
-    if nozzle.thermalFlag == 1 or nozzle.structuralFlag == 1 or \
-        'MASS' in nozzle.responses or 'MASS_WALL_ONLY' in nozzle.responses:
-            multif.MEDIUMF.runAEROS(nozzle, output)
-            AEROSPostProcess(nozzle, output)
+    np.savetxt('wall_results.txt',nozzle.wallResults)
 
     return netthrust, x, tempinside, ps, p, u
 
 
-    
-def Run(nozzle, **kwargs):
+def run(nozzle, output='verbose'):
+    """
+    Run low-fidelity nozzle analysis and post-process aero results only.
+    """
+
+    thrust, x, walltemp, wallpress, press, velocity = Quasi1D(nozzle, output)
+
+    # Assign function values        
+    if 'THRUST' in nozzle.qoi.names:
+        nozzle.qoi.setValue('THRUST', thrust)
         
-    output = 'verbose';
-    writeToFile = 1;
-    skipAero = 0;
-    
-    if 'output' in kwargs:
-        output = kwargs['output'];
-        
-    if 'writeToFile' in kwargs:
-        writeToFile = int(kwargs['writeToFile']);
+    if 'WALL_TEMPERATURE' in nozzle.qoi.names:
+        wt = np.interp(nozzle.qoi.getLocation('WALL_TEMPERATURE'), x, walltemp)
+        nozzle.qoi.setValue('WALL_TEMPERATURE', wt)
 
-    if 'skipAero' in kwargs and kwargs['skipAero'] == 1:
-        skipAero = 1;
-    
-    # Obtain mass and volume
-    # if 'MASS' in nozzle.responses or 'VOLUME' in nozzle.responses:
-    #     volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle)
-    #     if 'MASS' in nozzle.responses:
-    #         nozzle.responses['MASS'] = np.sum(mass)
-    #     if 'VOLUME' in nozzle.responses:
-    #         nozzle.responses['VOLUME'] = np.sum(volume)
-        
-    # Calculate mass gradients if necessary
-    # if 'MASS' in nozzle.gradients and nozzle.gradients['MASS'] is not None:
-    #     if ( nozzle.gradientsMethod == 'ADJOINT' ):
-    #         # Convergence study using B-spline coefs show finite difference mass gradients
-    #         # converge. Most accurate gradients use absolute step size 1e-8. RWF 5/10/17
-    #         nozzle.gradients['MASS'] = nozzlemod.geometry.calcMassGradientsFD(nozzle,1e-8);
-    #     elif ( nozzle.gradientsMethod == 'FINITE_DIFF' ):
-    #         nozzle.gradients['MASS'] = nozzlemod.geometry.calcMassGradientsFD(\
-    #           nozzle,nozzle.fd_step_size);
-    #     else:
-	# 	    sys.stderr.write('  ## ERROR : Unknown gradients computation '
-	# 	      'method.\n');
-	# 	    sys.exit(1);
-	
-	# Calculate volume gradients if necessary
-    # if 'VOLUME' in nozzle.gradients and nozzle.gradients['VOLUME'] is not None:
-    #     sys.stderr.write('\n ## ERROR : gradients for VOLUME are not supported\n\n');
-    #     sys.exit(1);
- 
-    # # Obtain mass of wall and gradients only if requested
-    # if 'MASS_WALL_ONLY' in nozzle.responses:
-    #     volume, mass = nozzlemod.geometry.calcVolumeAndMass(nozzle)
-    #     n_layers = len(nozzle.wall.layer);
-    #     nozzle.responses['MASS_WALL_ONLY'] = np.sum(mass[:n_layers]);
+    if 'WALL_PRESSURE' in nozzle.qoi.names:
+        wp = np.interp(nozzle.qoi.getLocation('WALL_PRESSURE'), x, wallpress)
+        nozzle.qoi.setValue('WALL_PRESSURE', wp)
 
-    # if 'MASS_WALL_ONLY' in nozzle.gradients and nozzle.gradients['MASS_WALL_ONLY'] is not None:
-    #     if ( nozzle.gradientsMethod == 'ADJOINT' ):
-    #         # Convergence study using B-spline coefs show finite difference mass gradients
-    #         # converge. Most accurate gradients use absolute step size 1e-8. RWF 5/10/17
-    #         nozzle.gradients['MASS_WALL_ONLY'] = nozzlemod.geometry.calcMassGradientsFD(nozzle,1e-8,components='wall-only');
-    #     elif ( nozzle.gradientsMethod == 'FINITE_DIFF' ):
-    #         nozzle.gradients['MASS_WALL_ONLY'] = nozzlemod.geometry.calcMassGradientsFD(\
-    #           nozzle,nozzle.fd_step_size,components='wall-only');
-    #     else:
-	# 	    sys.stderr.write('  ## ERROR : Unknown gradients computation '
-	# 	      'method.\n');
-	# 	    sys.exit(1);
+    if 'PRESSURE' in nozzle.qoi.names:
+        p = np.interp(nozzle.qoi.getLocation('PRESSURE')[:,0], x, press)
+        nozzle.qoi.setValue('PRESSURE', p)
 
-    # Run aero-thermal-structural analysis if necessary
-    runAeroThermalStructuralProblem = 0;
-    for k in nozzle.responses:
-        if k not in ['MASS','VOLUME','MASS_WALL_ONLY']:
-            runAeroThermalStructuralProblem = 1;  
-            break;  
-    
-    # Run aero-thermal-structural gradient analysis if necessary
-    if nozzle.gradientsFlag == 1:
-        runAeroThermalStructuralGradients = 0;        
-        for k in nozzle.gradients:
-            #if k not in ['MASS','VOLUME','MASS_WALL_ONLY']:
-            if nozzle.gradients[k] is not None:
-                runAeroThermalStructuralGradients = 1;  
-                break;
-   
-    if runAeroThermalStructuralProblem:
-        
-        # # Run aero analysis (+ 1D thermal analysis if requested)
-        # xPosition, flowTuple, heatTuple, geoTuple, \
-        #     performanceTuple = Quasi1D_old(nozzle,output);
+    if 'VELOCITY' in nozzle.qoi.names:
+        v_loc = nozzle.qoi.getLocation('VELOCITY')
+        nr, nc = v_loc.shape
+        v = np.zeros((nr,3))
+        v[:,0] = np.interp(v_loc[:,0], x, velocity)
+        nozzle.qoi.setValue('VELOCITY', v)
 
-        # # Assign function values        
-        # if 'THRUST' in nozzle.responses:
-        #     nozzle.responses['THRUST'] = performanceTuple[2]  
-
-        # if 'WALL_TEMPERATURE' in nozzle.responses:
-        #     nozzle.responses['WALL_TEMPERATURE'] = np.interp(\
-        #         nozzle.outputLocations['WALL_TEMPERATURE'], xPosition, heatTuple[0])
-        
-        # if 'WALL_PRESSURE' in nozzle.responses:
-        #     nozzle.responses['WALL_PRESSURE'] = np.interp(\
-        #         nozzle.outputLocations['WALL_PRESSURE'], xPosition, flowTuple[3])
-
-        # if 'PRESSURE' in nozzle.responses:
-        #     nozzle.responses['PRESSURE'] = np.interp(\
-        #         nozzle.outputLocations['PRESSURE'][:,0], xPosition, flowTuple[3])
-
-        # if 'VELOCITY' in nozzle.responses:
-        #     nr, nc = nozzle.outputLocations['VELOCITY'].shape
-        #     nozzle.responses['VELOCITY'] = np.zeros((nr,3))
-        #     nozzle.responses['VELOCITY'][:,0] = np.interp(\
-        #         nozzle.outputLocations['VELOCITY'][:,0], xPosition, flowTuple[1])
-
-        # Run aero analysis, and thermal and structural analyses if necessary
-        if skipAero:
-            sys.stdout.write("WARNING: Skipping low-fidelity aero analysis.\n")
-        else:
-            thrust, x, walltemp, wallpress, press, velocity = Quasi1D(nozzle, output)
-        
-        # Assign function values        
-        if 'THRUST' in nozzle.responses:
-            nozzle.responses['THRUST'] = thrust
-            
-        if 'WALL_TEMPERATURE' in nozzle.responses:
-            nozzle.responses['WALL_TEMPERATURE'] = np.interp(\
-                nozzle.outputLocations['WALL_TEMPERATURE'], x, walltemp)
-
-        if 'WALL_PRESSURE' in nozzle.responses:
-            nozzle.responses['WALL_PRESSURE'] = np.interp(\
-                nozzle.outputLocations['WALL_PRESSURE'], x, wallpress)
-
-        if 'PRESSURE' in nozzle.responses:
-            nozzle.responses['PRESSURE'] = np.interp(\
-                nozzle.outputLocations['PRESSURE'][:,0], x, press)
-
-        if 'VELOCITY' in nozzle.responses:
-            nr, nc = nozzle.outputLocations['VELOCITY'].shape
-            nozzle.responses['VELOCITY'] = np.zeros((nr,3))
-            nozzle.responses['VELOCITY'][:,0] = np.interp(\
-                nozzle.outputLocations['VELOCITY'][:,0], x, velocity)
-
-    # Obtain mass (volume is currently not accepted as a nozzle response)
-    if 'MASS' in nozzle.responses or 'MASS_WALL_ONLY' in nozzle.responses:
-        total_mass, wall_mass = getMass(nozzle, output)
-        if 'MASS' in nozzle.responses:
-            nozzle.responses['MASS'] = total_mass;
-        if 'MASS_WALL_ONLY' in nozzle.responses:
-            nozzle.responses['MASS_WALL_ONLY'] = wall_mass;
-
-    # Calculate gradients if necessary
-    if nozzle.gradientsFlag == 1 and runAeroThermalStructuralGradients:
-    
-        if ( output == 'verbose' ):
-            sys.stdout.write('Running gradient analysis\n');
-    
-        if ( nozzle.gradientsMethod == 'ADJOINT' ):
-            sys.stderr.write('\n ## ERROR : Adjoint gradients for low-fidelity '
-                'thrust calculation are not available.\n');
-            sys.exit(1);
-        elif ( nozzle.gradientsMethod == 'FINITE_DIFF' ):
-            multif.gradients.calcGradientsFD(nozzle,nozzle.fd_step_size,output);           
-        else:
-            sys.stderr.write('  ## ERROR : Unknown gradients computation '
-                'method.\n');
-            sys.exit(1);
-            
-        # Write separate gradients file
-        # gradFile = open(nozzle.gradientsFile,'w');
-        # for k in nozzle.outputTags:
-        #     np.savetxt(gradFile,nozzle.gradients[k]);
-        # gradFile.close();
-    
-    # Write data
-    if writeToFile:
-        if nozzle.outputFormat == 'PLAIN':
-            nozzle.WriteOutputFunctions_Plain();
-        else:
-            nozzle.WriteOutputFunctions_Dakota();
-        
-    return 0;
+    return

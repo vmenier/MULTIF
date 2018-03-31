@@ -58,30 +58,22 @@ def buildDesignDomain(output='verbose'):
     # Wall design variables for fixed inlet
     # ============================================================================
     # Centerline
-    WALL_COEFS1 = (0.0000,   0.0000,   0.3000,   0.5750, 1.1477, 1.1500, 1.1500, 1.1523, 1.7262, 2.0000, 2.33702, 2.33702, 
-                   0.099908, 0.099908, 0.099908, 0.12, 0.14, 0.14, 0.14, 0.14, 0.17, 0.19, 0.19, 0.19)
-    WALL_COEFS1_DV= (0,    0,      0,      1,      2,      3,      3,      4,      5,      0,      0,      0,     
-                     0,    0,      0,      6,      7,      7,      7,      7,      8,      0,      0,      0)
+    WALL_COEFS1 = (0.0000,   0.0000,   0.3000,   0.5750, 1.1500, 1.7262, 2.0000, 2.33702, 2.33702, 
+                   0.099908, 0.099908, 0.099908, 0.12,   0.14,   0.17,   0.19,   0.19,    0.19)
+    WALL_COEFS1_DV= (0,      0,        0,        1,      2,      3,      0,      0,      0,     
+                     0,      0,        0,        4,      5,      6,      0,      0,      0)
     
     # Major Axis
-    WALL_COEFS2= (0.0000,   0.0000,   0.3000,   0.5000, 0.7000, 0.9000, 1.1477, 1.1500, 
-                  1.1500,   1.1523,   1.4000,   1.6500, 1.9000, 2.1000, 2.33702, 2.33702, 
-                  0.439461, 0.439461, 0.439461, 0.3195, 0.3046, 0.2971, 0.2956, 0.2956, 
-                  0.2956, 0.2956, 0.3065, 0.3283, 0.3611, 0.4211, 0.92, 0.92)
-    WALL_COEFS2_DV= (0,   0,      0,      9,     10,     11,     12,     3,
-                     3,   13,     14,     15,     16,     17,     0,      0,
-                     0,   0,      0,      18,     19,     20,     21,     21,
-                     21,  21,     22,     23,     24,     25,     0,      0)
+    WALL_COEFS2= (0.0000,   0.0000,   0.3000,   0.7000, 1.1500, 1.6000, 1.8,     2.33702, 2.33702, 
+                  0.439461, 0.439461, 0.439461, 0.6,    0.7,    0.8,    0.85,     0.92,    0.92)
+    WALL_COEFS2_DV= (0,     0,        0,        7,      8,      9,      10,      0,       0,
+                     0,     0,        0,        11,     12,     13,     14,      0,       0)
                      
     # Minor axis
-    WALL_COEFS3= (0.0000,   0.0000,   0.3000,   0.5500,  0.9000, 
-                  1.1500,   1.8000,   2.1000,   2.33702, 2.33702, 
-                  0.439461, 0.439461, 0.439461, 0.3195,  0.2956, 
-                  0.2750, 0.2338, 0.2167, 0.24, 0.24)
-    WALL_COEFS3_DV= (0,   0,      0,      26,     27,
-                     28,  29,     30,     0,      0, 
-                     0,   0,      0,      31,     32,  
-                     33,  34,     35,     0,      0)    
+    WALL_COEFS3= (0.0000,   0.0000,   0.3000,   0.7000, 1.1500, 1.6000,   2.33702, 2.33702, 
+                  0.439461, 0.439461, 0.439461, 0.3,    0.29,   0.26,     0.24,    0.24)
+    WALL_COEFS3_DV= (0,     0,        0,        7,       8,     15,       0,       0,  
+                     0,     0,        0,        16,      17,    18,       0,      0)    
                      
     # Thermal layer                 
     LAYER1_THICKNESS_LOCATIONS= (0, 0.3, 0.6, 1.0)
@@ -139,18 +131,31 @@ def buildDesignDomain(output='verbose'):
     # -------------------------------- WALL --------------------------------------
     # Centerline constraints
     # For sampling purposes, we require overlap between the slope ranges on either side of the throat
-    A1, b1 = bspline(WALL_COEFS1, WALL_COEFS1_DV, 5, (-0.2,0.01,-0.01,0.3), 
-                     xLimits=[None,2.3], delta=0.2, output=output)
+    A1, b1 = bspline(WALL_COEFS1, WALL_COEFS1_DV, 0, (-0.3,0.3,-0.3,0.3), 
+                     xLimits=[None,2.3], delta=0.2, minThroat=-0.05, maxThroat=0.1, output=output)
     # Major axis constraints
-    A2, b2 = bspline(WALL_COEFS2, WALL_COEFS2_DV, 7, (-0.4,0.0,-0.05,1.2), 
-                     xLimits=[None,2.3], delta=0.15, throatIsLowest=1, 
-                     minThroat=0.2, output=output)
+    A2, b2 = bspline(WALL_COEFS2, WALL_COEFS2_DV, 0, (0.05,1.2,[0.05,0.05,0.05,-0.2,-0.2,-0.1],[0.6,0.6,0.6,0.5,0.4,0.3]), 
+                     xLimits=[None,2.3], delta=0.2, minThroat=0.44, output=output)
     # Minor axis constraints
     # Likewise for sampling here, we set max slope to 0.01, in reality this could be 0
     # For some reason the sampling does not deal well with 0 slopes
-    A3, b3 = bspline(WALL_COEFS3, WALL_COEFS3_DV, 0, (-0.3,0.01,-0.3,0.01),
-                     xLimits=[None,2.3], delta=0.2, minThroat=0.2133, output=output)                 
+    A3, b3 = bspline(WALL_COEFS3, WALL_COEFS3_DV, 0, (-1.2,0.6,-0.3,0.6),
+                     xLimits=[None,2.3], delta=0.2, minThroat=0.0, maxThroat=0.44, output=output)                 
     Awall, bwall = cleanupConstraintMatrix(Alist=[A1,A2,A3],blist=[b1,b2,b3])
+
+    # Manually add coupling constraints for major/minor axis pre-throat slopes
+    Acouple = np.zeros((2,18))
+    bcouple = np.zeros((2,1))
+    Acouple[0,10] = 1.
+    Acouple[0,15] = 1.
+    bcouple[0,0] = 0.439461*2
+    Acouple[1,11] = 1.
+    Acouple[1,10] = -1.
+    Acouple[1,16] = 1.
+    Acouple[1,15] = -1.
+    Awall = np.vstack((Awall,Acouple))
+    bwall = np.vstack((bwall,bcouple))
+
     inner_wall_domain = LinIneqDomain(Awall, np.squeeze(bwall))
     # Use x_wall, lb and ub below for free inlet:
     # x_wall = np.array([0., 2.11625813e-01,  4.33456653e-01,
@@ -169,22 +174,24 @@ def buildDesignDomain(output='verbose'):
     # lb = np.hstack((-0.1,-np.inf*np.array(6*[1]),-0.05,-np.inf*np.array(30*[1]))) # centerline can move down 5 cm, back 10 cm
     # ub = np.hstack((0.1,np.inf*np.array(6*[1]),0.05,np.inf*np.array(30*[1]))) # centerline can move up 5 cm, forward 10 cm
     # Use x_wall, lb, and ub below for fixed inlet:
-#    x_wall = inner_wall_domain.center; # use center shape as baseline
-    x_wall = np.array([0.75221887, 0.99267767, 1.06767767, 1.14267767, 
-        1.36767767, 0.02749198, 0.00489532, 0.02764657, 0.46767767, 0.64267767, 
-        0.81767767, 0.99267767, 1.14267767, 1.31767767, 1.49267767, 1.66767767, 
-        1.84267767, 0.39142936, 0.34835519, 0.30528101, 0.26220684, 0.43315559, 
-        0.60410434, 0.75606861, 0.92701736, 0.51767767, 0.74267767, 0.96767767, 
-        1.19267767, 1.41767767, 0.41408206, 0.37268283, 0.33128360, 0.28988436, 
-        0.24848513])
+    x_wall = inner_wall_domain.center; # use center shape as baseline
+    # x_wall = np.array([0.75221887, 0.99267767, 1.06767767, 1.14267767, 
+    #     1.36767767, 0.02749198, 0.00489532, 0.02764657, 0.46767767, 0.64267767, 
+    #     0.81767767, 0.99267767, 1.14267767, 1.31767767, 1.49267767, 1.66767767, 
+    #     1.84267767, 0.39142936, 0.34835519, 0.30528101, 0.26220684, 0.43315559, 
+    #     0.60410434, 0.75606861, 0.92701736, 0.51767767, 0.74267767, 0.96767767, 
+    #     1.19267767, 1.41767767, 0.41408206, 0.37268283, 0.33128360, 0.28988436, 
+    #     0.24848513])
     # import sys
     # sys.stdout.write('x_wall = np.array([')
     # for i in range(len(x_wall)-1):
     #     sys.stdout.write('%0.8f, ' % x_wall[i])
     # sys.stdout.write('%0.8f])\n' % x_wall[-1])
     # print x_wall
-    lb = -np.inf*np.array(35*[1])
-    ub = np.inf*np.array(35*[1])
+    lb = -np.inf*np.array(16*[1])
+    ub = np.inf*np.array(16*[1])
+    lb = x_wall - 0.5
+    ub = x_wall + 0.5
     inner_wall_domain = LinIneqDomain(Awall, np.squeeze(bwall), lb = lb, ub = ub, center = x_wall)
     
     wall_shovel_height_domain = UniformDomain(-0.15, -0.05, center = -0.1)

@@ -29,7 +29,7 @@ nozzle*.su2
 *.blg
 *.lot
 *.toc
-./docs/auto
+docs/auto
 
 # Python files
 *.pyc
@@ -50,10 +50,19 @@ Makefile
 ./multif/meshutils/meshutils_py_wrap.c
 ./multif/mshint/mshint_module.py
 ./multif/LOWF/quasi1dnozzle.py
+./multif/SU2/amginria/amgio/amgio.py
+
+# Regression files
+regression.out
 
 ./multif/build
+./docs/auto
 
 ./example/*.su2
 ./example/*.dat
 ./example/config_CFD.cfg
 ./example/*.csv
+
+# Local directories
+local
+.vscode

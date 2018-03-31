@@ -183,9 +183,14 @@ def buildDesignDomain(output='verbose'):
     A, b = bspline(WALL_COEFS, WALL_COEFS_DV, 7, (-0.3,0.005,-0.025,0.35), 
                      xLimits=[None,2.3], delta=0.1, throatIsLowest=1, 
                      minThroat=0.2, output=output) 
+    lb = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2])
+    ub = np.array([2.3371, 2.3371, 2.3371, 2.3371, 2.3371, 2.3371, 2.3371, 
+                   2.3371, 2.3371, 0.4395, 0.4395, 0.4395, 0.4395, 0.4395, 
+                   0.4395, 0.4395])
     A, b = cleanupConstraintMatrix(Alist=[A],blist=[b])
-    inner_wall_domain = LinIneqDomain(A, np.squeeze(b), center = x_wall)
-                     
+    inner_wall_domain = LinIneqDomain(A, np.squeeze(b), lb = lb, ub = ub, center = x_wall)
+#    inner_wall_domain = LinIneqDomain(A, np.squeeze(b), center = x_wall)
+                      
     #             THERMAL_LAYER, 6
     # Thermal Layer 6-dimensions (first 2 correspond to the x-position between 2nd and 3rd break)
     x_thermal = np.array([0.3, 0.6, 0.03, 0.03, 0.03, 0.03])

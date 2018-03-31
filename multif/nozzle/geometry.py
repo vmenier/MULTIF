@@ -13,7 +13,7 @@ import scipy.integrate
 
 #import matplotlib.pyplot as plt
 
-from .. import _meshutils_module
+from multif.models import _meshutils_module
 
 class Bspline():
     def __init__(self, coefs): # assumes 3rd degree B-spline
