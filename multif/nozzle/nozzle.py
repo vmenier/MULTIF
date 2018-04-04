@@ -2285,7 +2285,7 @@ class Nozzle:
         return locations
             
             
-    def initializeOutput(self, config, qoi, value=-1, gradients=np.array([])):
+    def initializeOutput(self, config, config_qoi, value=-1, gradients=np.array([])):
         """
         Provided a list of output quantities of interest, and a standard initial
         value for each quantity's numerical value and gradients, initialize
@@ -2319,6 +2319,9 @@ class Nozzle:
 
         # Define SST tags
         self.cfd.sst_tags = ['SSTC1', 'SSTC2', 'SSTC3', 'SSTP1C1', 'SSTP1C2']
+    
+        # Define agglomeration tags requiring multiple coupled analyses
+        self.cfd.sst_agglom_tags = ['SSTMAX', 'SSTMIN', 'SSTMED']
 
         # Check all user provided QoI using preset nozzle responses
         self.qoi = response.Response() # initialize response class instance
@@ -2327,16 +2330,17 @@ class Nozzle:
 
         self.qoi.addAnalyses(nozzleResponse.getAnalyses())
 
-        for q in qoi:
+        for q in config_qoi:
             standard_name, analysis = nozzleResponse.exists(q, comp_tags)
             dep = nozzleResponse.getDependencies(standard_name, self.method)
-            print q, standard_name, dep, analysis
             kind = nozzleResponse.getKind(standard_name)
+            red = nozzleResponse.getReduction(standard_name)
+            print q, standard_name, dep, analysis, kind, red
             loc = []
             if kind == 'field': # record location for field QoI
                 loc = self.__getResponseLocations(config, q)
             self.qoi.addResponse(standard_name, analysis=analysis, kind=kind, dependencies=dep,
-                location=loc)
+                location=loc, reduction=red)
             print
 
         # Check that user specifies correct analysis type. Check only that the
@@ -2345,7 +2349,7 @@ class Nozzle:
         # a user wants to run a thermostructural analysis only and they provide
         # an aerodynamic output file for the analysis that is used for the 
         # thermostructural boundary conditions.
-        for q in qoi:
+        for q in self.qoi.names:
 
             a = self.qoi.getAnalysis(q)
             if 'AERO' in a and not self.aeroFlag:
@@ -2378,13 +2382,13 @@ class Nozzle:
         #             raise RuntimeError("Response %s requires THERMAL analysis" % q)                                    
 
         # Initilize to specified value
-        for q in self.qoi.names:
-            if self.qoi.getKind(q) == 'field':
-                nn = len(self.qoi.location[q])
-                self.qoi.setValue(q, np.array([float(value)]*nn))
-            else:
-                self.qoi.setValue(q, float(value))
-            self.qoi.setGradient(q, gradients)
+        # for q in self.qoi.names:
+        #     if self.qoi.getKind(q) == 'field':
+        #         nn = len(self.qoi.location[q])
+        #         self.qoi.setValue(q, np.array([float(value)]*nn))
+        #     else:
+        #         self.qoi.setValue(q, float(value))
+        #     self.qoi.setGradient(q, gradients)
         
         return
       
@@ -3705,6 +3709,13 @@ class Nozzle:
             if code == 1 or code == 3 or code == 5:
 
                 value = self.qoi.getValue(tag)
+                if len(value) == 0:
+                    value = -1.
+                elif len(value) == 1:
+                    value = value[0]
+                else:
+                    print("WARNING: Multiple values for QoI %s will not be output." % tag)
+                    value = value[0]
             
                 # if isinstance(self.responses[tag],list):
                 #     for i in range(len(self.responses[tag])):
@@ -3769,6 +3780,15 @@ class Nozzle:
             if code == 2 or code == 3 or code == 6:
 
                 grad = self.qoi.getGradient(tag)
+                if grad is None:
+                    pass
+                elif len(grad) == 0:
+                    grad = [0]
+                elif len(grad) == 1:
+                    grad = grad[0]                        
+                else:
+                    print("WARNING: Multiple gradients for QoI %s will not be output." % tag)
+                    grad = grad[0]
 
                 if isinstance(value, np.ndarray):
                     raise NotImplementedError("Writing gradients for vector QoI is not available.")                        
@@ -3838,6 +3858,13 @@ class Nozzle:
             if code == 1 or code == 3 or code == 5:
                 
                 value = self.qoi.getValue(tag)
+                if len(value) == 0:
+                    value = -1.
+                elif len(value) == 1:
+                    value = value[0]
+                else:
+                    print("WARNING: Multiple values for QoI %s will not be output." % tag)
+                    value = value[0]
 
                 # if isinstance(self.responses[tag],list):
                 #     for i in range(len(self.responses[tag])):
@@ -3890,6 +3917,15 @@ class Nozzle:
                 if code == 2 or code == 3 or code == 6:
                     
                     grad = self.qoi.getGradient(tag)
+                    if grad is None:
+                        pass
+                    elif len(grad) == 0:
+                        grad = [0]
+                    elif len(grad) == 1:
+                        grad = grad[0]                        
+                    else:
+                        print("WARNING: Multiple gradients for QoI %s will not be output." % tag)
+                        grad = grad[0]
 
                     # if isinstance(self.gradients[tag][0],list):
                     
@@ -3940,6 +3976,15 @@ class Nozzle:
                 if code == 2 or code == 3 or code == 6:
                     
                     grad = self.qoi.getGradient(tag)
+                    if grad is None:
+                        pass
+                    elif len(grad) == 0:
+                        grad = [0]
+                    elif len(grad) == 1:
+                        grad = grad[0]                        
+                    else:
+                        print("WARNING: Multiple gradients for QoI %s will not be output." % tag)
+                        grad = grad[0]
 
                     # if isinstance(self.gradients[tag][0],list):
                     

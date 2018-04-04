@@ -206,7 +206,7 @@ def runFullAnalysis(nozzle, output='verbose', post_process_only=False,
             # this analysis
             noz = copy.deepcopy(nozzle)
             for q in nozzle.qoi.names:
-                if analysis != nozzle.qoi.getAnalysis(q):
+                if analysis not in nozzle.qoi.getAnalysis(q):
                     noz.qoi.remove(q)
 
             # print analysis
@@ -247,14 +247,17 @@ def runFullAnalysis(nozzle, output='verbose', post_process_only=False,
             analysis_values[analysis] = noz.qoi
             analysis_gradients[analysis] = noz.qoi
 
-    # Assign all analysis results
+    # Assign responses
     for k, v in analysis_values.iteritems():
         for q in v.names:
             nozzle.qoi.setValue(q, v.getValue(q))
-    for k, v in analysis_gradients.iteritems():
-        for q in v.names:
-            print v.getGradient(q)
-            nozzle.qoi.setGradient(q, v.getGradient(q))
+
+    if nozzle.gradientsFlag:
+        for k, v in analysis_gradients.iteritems():
+            for q in v.names:
+                grad = v.getGradient(q)
+                if grad is not None and len(grad) > 0:
+                    nozzle.qoi.setGradient(q, v.getGradient(q))
         
     return
 
@@ -285,7 +288,7 @@ def run(nozzle, output='verbose', write_to_file=True, post_process_only=False,
         noz = copy.deepcopy(nozzle)
         for q in nozzle.qoi.names:
             grad = nozzle.qoi.getGradient(q)
-            if grad is not None and len(grad) > 0:
+            if grad is None or len(grad) > 0:
                 noz.qoi.remove(q)
 
         # All gradients not yet calculated will be approximated by forward

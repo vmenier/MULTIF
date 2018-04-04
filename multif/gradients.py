@@ -11,6 +11,24 @@ def init(lock):
 
     return
 
+def getValue(qoi, q):
+    """
+    Wrapper function with warnings for obtaining function value.
+    """
+
+    value = qoi.getValue(q)
+
+    if len(value) == 0:
+        value = -1.
+    elif len(value) == 1:
+        value = value[0]
+    else:
+        print("WARNING: Multiple values for QoI %s will not be output." % q)
+        value = value[0]
+
+    return value
+
+
 # Wrapping function for independent nozzle analysis in separate directory
 def systemAnalysis(index, nozzle, post_process_only=False, skip_aero=False, 
     skip_post_processing=False, output='verbose'):
@@ -121,6 +139,8 @@ def calcGradientsFFD(system, fd_step, post_process_only=False,
         systemEval[i].SetupWall(output='quiet')
         systemEval[i].gradientsFlag = False # do not request gradients
         for k in systemEval[i].qoi.names:
+            systemEval[i].qoi.initializeValue(k)
+            systemEval[i].qoi.initializeGradient(k)
             systemEval[i].qoi.setGradient(k, None) # do not request gradients
         for j in range(len(systemEval[i].outputCode)):
             if systemEval[i].outputCode <= 1:
@@ -150,8 +170,9 @@ def calcGradientsFFD(system, fd_step, post_process_only=False,
         for q in system.qoi.names:
 
             if system.qoi.getGradient(q) is not None:
+                
+                q0 = getValue(system.qoi, q)
 
-                q0 = system.qoi.getValue(q)
 
                 if system.qoi.getKind(q) == 'field':
                     localGrad = np.zeros((len(q0),len(systemEval)))
@@ -160,7 +181,7 @@ def calcGradientsFFD(system, fd_step, post_process_only=False,
 
                 for i, r in enumerate(systemEval):
 
-                    q1 = r.qoi.getValue(q)
+                    q1 = getValue(r.qoi, q)
 
                     if isinstance(fd_step,list):
                         localGrad[:,i] = (q1 - q0)/fd_step[derivativesDV[i]]
@@ -205,7 +226,7 @@ def calcGradientsFFD(system, fd_step, post_process_only=False,
 
             if system.qoi.getGradient(q) is not None:
 
-                q0 = system.qoi.getValue(q)
+                q0 = getValue(system.qoi, q)
                 
                 if system.qoi.getKind(q) == 'field':
                     localGrad = np.zeros((len(q0),len(rEval)))
@@ -214,7 +235,7 @@ def calcGradientsFFD(system, fd_step, post_process_only=False,
 
                 for i, r in enumerate(rEval):
 
-                    q1 = r.qoi.getValue(q)
+                    q1 = getValue(r.qoi, q)
 
                     if isinstance(fd_step,list):
                         localGrad[:,i] = (q1 - q0)/fd_step[derivativesDV[i]]
