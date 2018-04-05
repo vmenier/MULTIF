@@ -42,12 +42,12 @@ from util import find_feasible_boundary
 # ============================================================================
 param = '3D'; # nozzle parameterization, either 2D or 3D
 N = 10000; # number of samples
-P = 1; # number of sweeps
+P = 0; # number of sweeps
 S = 10; # number of points in each sweep
-samplefilename = '3d_samples.dat'; # filename to save samples in
-sweepfilenameprefix = '3d_sweep'; # prefix of filename to save sweep points in
-dN = 1000; # save every dN samples to the above samples file
-dNplot = 1000; # plot every dNplot sampled geometries (avoid plot clutter)
+samplefilename = '2d_samples.dat'; # filename to save samples in
+sweepfilenameprefix = '2d_sweep'; # prefix of filename to save sweep points in
+dN = 100; # save every dN samples to the above samples file
+dNplot = 100; # plot every dNplot sampled geometries (avoid plot clutter)
 output = 'quiet'; # 'verbose' prints notifications to screen
 plot = 'yes'; # plot sampled nozzle geometries
 
@@ -177,8 +177,7 @@ if( plot == 'yes' ):
                       0.439461, 0.439461, 0.439461, 0.3,    0.29,   0.26,     0.24,    0.24)
         WALL_COEFS3_DV= (0,     0,        0,        7,       8,     15,       0,       0,  
                          0,     0,        0,        16,      17,    18,       0,      0)    
-        
-                     
+
         # Centerline
         plt.figure()
         for i in range(0,N,dNplot):
@@ -194,7 +193,6 @@ if( plot == 'yes' ):
         plt.axis('equal');
         plt.grid();
         plt.title('Centerline');
-        plt.show();
         
         # Major axis
         plt.figure()
@@ -211,7 +209,6 @@ if( plot == 'yes' ):
         plt.axis('equal');
         plt.grid();
         plt.title('Major axis');
-        plt.show();
             
         # Minor axis
         plt.figure()
@@ -228,6 +225,7 @@ if( plot == 'yes' ):
         plt.axis('equal');
         plt.grid();
         plt.title('Minor axis');
+
         plt.show();
 
         print('Selected samples of major and minor axes and centerlines plotted.');

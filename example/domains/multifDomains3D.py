@@ -150,21 +150,9 @@ def buildDesignDomain(output='verbose'):
     bwall = np.vstack((bwall,bcouple))
 
     inner_wall_domain = LinIneqDomain(Awall, np.squeeze(bwall))
-
-    x_wall = inner_wall_domain.center; # use center shape as baseline
-    # x_wall = np.array([0.75221887, 0.99267767, 1.06767767, 1.14267767, 
-    #     1.36767767, 0.02749198, 0.00489532, 0.02764657, 0.46767767, 0.64267767, 
-    #     0.81767767, 0.99267767, 1.14267767, 1.31767767, 1.49267767, 1.66767767, 
-    #     1.84267767, 0.39142936, 0.34835519, 0.30528101, 0.26220684, 0.43315559, 
-    #     0.60410434, 0.75606861, 0.92701736, 0.51767767, 0.74267767, 0.96767767, 
-    #     1.19267767, 1.41767767, 0.41408206, 0.37268283, 0.33128360, 0.28988436, 
-    #     0.24848513])
-    # import sys
-    # sys.stdout.write('x_wall = np.array([')
-    # for i in range(len(x_wall)-1):
-    #     sys.stdout.write('%0.8f, ' % x_wall[i])
-    # sys.stdout.write('%0.8f])\n' % x_wall[-1])
-    # print x_wall
+    x_wall = inner_wall_domain.center # use center shape as baseline
+    # lb = -np.inf*np.array(18*[1])
+    # ub = np.inf*np.array(18*[1])
     lb = x_wall - 0.5
     ub = x_wall + 0.5
     inner_wall_domain = LinIneqDomain(Awall, np.squeeze(bwall), lb = lb, ub = ub, center = x_wall)
