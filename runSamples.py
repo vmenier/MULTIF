@@ -181,7 +181,9 @@ def main():
         samples_tab[-1].input_file      = "inputDV.in";
         samples_tab[-1].fidelity        = options.flevel;
         #samples_tab[-1].partitions      = options.partitions;
-        samples_tab[-1].cpusPerTask      = options.partitions;
+        samples_tab[-1].cpusPerTask     = options.partitions;
+        samples_tab[-1].postpro         = options.postpro;
+        samples_tab[-1].skipaero        = options.skipaero;
     
     #--- Create ./runs folder
     
@@ -228,14 +230,16 @@ def main():
         
         for i in range(NbrRun):
             
-            if options.visu :
-                rEval[i] = runSampleVisu_wrap(samples_tab[i]); 
-            elif options.postpro :
-                rEval[i] = runSamplePostpro_wrap(samples_tab[i]);             
-            elif options.skipaero :
-                rEval[i] = runSampleSkipAero_wrap(samples_tab[i]); 
-            else:
-                rEval[i] = runSample_wrap(samples_tab[i]);
+            
+            rEval[i] = runSample_wrap(samples_tab[i]);
+            #if options.visu :
+            #    rEval[i] = runSampleVisu_wrap(samples_tab[i]); 
+            #elif options.postpro :
+            #    rEval[i] = runSamplePostpro_wrap(samples_tab[i]);             
+            #elif options.skipaero :
+            #    rEval[i] = runSampleSkipAero_wrap(samples_tab[i]); 
+            #else:
+            #    rEval[i] = runSample_wrap(samples_tab[i]);
     else:
         mEval = [];
         rEval = [];

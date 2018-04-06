@@ -25,11 +25,14 @@ class Sample:
         self.nTasks = 1
         self.cpusPerTask = 1
         
+        self.postpro  = False;
+        self.skipaero = False;
+        
     def RunSample(self):
         
         sys.stdout.write('-- Running sample %d \n' % self.run_id)
         
-        redirect = True
+        redirect = False
         
         run_id = self.run_id
         
@@ -56,12 +59,12 @@ class Sample:
         
         #--- Open log files
         
-        
         stdout_hdl = open(self.stdout,'w') # new targets
         stderr_hdl = open(self.stderr,'w')
         
         success = False
         val_out = [False]
+        
         
         try: # run with redirected outputs
             
@@ -73,40 +76,68 @@ class Sample:
             #--- Copy cfg file
             shutil.copyfile(os.path.join(self.working_rootdir,self.cfg_file),self.cfg_file)
             
+            config = multif.models.aero.SU2.io.Config(self.cfg_file)
+            
+            self.input_file = config['INPUT_DV_NAME']
+            
             #--- Create DV file
             try:
                 self.FormatDVFile()
             except:
                 sys.exit(0)
-                    
-            #--- Setup nozzle data structure
-    	    config = multif.SU2.io.Config(self.cfg_file)
-            config.INPUT_DV_NAME = self.input_file
-            config.OUTPUT_GRADIENTS= 'NO'
-    	    nozzle = multif.nozzle.NozzleSetup(config, self.fidelity)
-    	    #nozzle.partitions = int(self.partitions)
-            nozzle.nTasks = int(self.nTasks)
-            nozzle.cpusPerTask = int(self.cpusPerTask)
             
-            tag_out, val_out, gra_out, gratag_out = nozzle.GetOutputFunctions()
             
-            # Hack to debug error handling: make it diverge
-            #if run_id == 2:
-            #    nozzle.mission.mach = 1e6
+            #UPDATE HERE
             
-            #--- Run analysis
+            ##--- Setup nozzle data structure
+    	    #config = multif.SU2.io.Config(self.cfg_file)
+            #config.INPUT_DV_NAME = self.input_file
+            #config.OUTPUT_GRADIENTS= 'NO'
+    	    #nozzle = multif.nozzle.NozzleSetup(config, self.fidelity)
+    	    ##nozzle.partitions = int(self.partitions)
+            #nozzle.nTasks = int(self.nTasks)
+            #nozzle.cpusPerTask = int(self.cpusPerTask)
+            #
+            #tag_out, val_out, gra_out, gratag_out = nozzle.GetOutputFunctions()
+            #
+            ## Hack to debug error handling: make it diverge
+            ##if run_id == 2:
+            ##    nozzle.mission.mach = 1e6
+            #
+            ##--- Run analysis
+            #
+            #output = 'verbose'
+            #
+            ##nozzle.cfd.su2_max_iterations = 2 # hack
+            #
+            #if nozzle.method == 'NONIDEALNOZZLE' :
+            #    multif.LOWF.Run(nozzle, output=output)
+            #elif nozzle.dim == '2D':
+            #    multif.MEDIUMF.Run(nozzle, output=output)
+            #elif nozzle.dim == '3D':
+            #    multif.HIGHF.Run(nozzle, output=output)
+            #
+            #tag_out, val_out, gra_out, gratag_out = nozzle.GetOutputFunctions()
+            
             
             output = 'verbose'
             
-            #nozzle.cfd.su2_max_iterations = 2 # hack
+            nozzle = multif.nozzle.nozzle.NozzleSetup(config, self.fidelity, output)
+            nozzle.nTasks = int(self.nTasks)
+            nozzle.cpusPerTask = int(self.cpusPerTask)
+
+            # --- Check parallel computing specifications
+            ncores = nozzle.nTasks*nozzle.cpusPerTask # requested by user
+            if output == 'verbose':
+                print("User has requested %i total cores for calculation." % ncores)
             
-            if nozzle.method == 'NONIDEALNOZZLE' :
-                multif.LOWF.Run(nozzle, output=output)
-            elif nozzle.dim == '2D':
-                multif.MEDIUMF.Run(nozzle, output=output)
-            elif nozzle.dim == '3D':
-                multif.HIGHF.Run(nozzle, output=output)
+            nozzle.cfd.su2_max_iterations = 2 # hack
+    
+            # --- Run analysis
+            multif.analysis.run(nozzle, output=output, post_process_only=self.postpro,
+                skip_aero=self.skipaero)
             
+            # --- Get outputs
             tag_out, val_out, gra_out, gratag_out = nozzle.GetOutputFunctions()
             
             success = True
@@ -375,7 +406,7 @@ class Sample:
         run_id = self.run_id
         
         samples_filename = os.path.join(self.working_rootdir,self.samples_file)
-                
+                        
         try:
             hdl = np.loadtxt(samples_filename)
         except:
@@ -385,6 +416,7 @@ class Sample:
         if run_id > len(hdl) or run_id < 0:
             sys.stderr.write("  ## ERROR : Invalid run_id=%d (%d samples in %s)\n" % (run_id, len(hdl), samples_filename))
             sys.exit(0)
+        
         
         # --- Write 
                 
@@ -396,6 +428,7 @@ class Sample:
         except:
             sys.stderr.write("  ## ERROR : run_id=%d : Unable to write DV file. \n" % (run_id))
             sys.exit(0)
+        
         
         return
         
