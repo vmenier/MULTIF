@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import subprocess
 
 import multif
 from ....models import _nozzle_module
@@ -21,7 +22,10 @@ def getMass(nozzle, run_analysis=True, output='verbose'):
 
     if run_analysis:
         # Calculate mass of thermal layer
-        os.system("aeros nozzle.aeros.cmc.mass")
+        if 'SLURM_NTASKS' in os.environ:
+            subprocess.call(['srun','-n','1','aeros','nozzle.aeros.cmc.mass'])
+        else:
+            subprocess.call(['aeros','nozzle.aeros.cmc.mass'])
 
         # Calculate mass of thermal model (thermal layers + approximate load layers)
         # Inaccurate since load layers are averaged.
@@ -29,7 +33,10 @@ def getMass(nozzle, run_analysis=True, output='verbose'):
         #m2 = float(np.loadtxt("MASS.txt.thermal")) # mass of thermal model
 
         # Calculate mass of load layers and stringers and baffles
-        os.system("aeros nozzle.aeros.mass")
+        if 'SLURM_NTASKS' in os.environ:
+            subprocess.call(['srun','-n','1','aeros','nozzle.aeros.mass'])
+        else:
+            subprocess.call(['aeros','nozzle.aeros.mass'])
 
     # Post-process
 
@@ -604,11 +611,19 @@ def prepareAEROS(nozzle, run_analysis=True, output='verbose'):
 def callThermalAnalysis():
 
     # Thermal analysis
-    os.system("aeros nozzle.aeroh")
+    if 'SLURM_NTASKS' in os.environ:
+        subprocess.call(['srun','-n','1','aeros','nozzle.aeroh'])
+    else:
+        subprocess.call(['aeros','nozzle.aeroh'])
+
     # Convert temp. output from thermal analysis to input for structural analysis
     _nozzle_module.convert()
+
     # Structural analysis of CMC layer
-    os.system("aeros nozzle.aeros.cmc")
+    if 'SLURM_NTASKS' in os.environ:
+        subprocess.call(['srun','-n','1','aeros','nozzle.aeros.cmc'])
+    else:
+        subprocess.call(['aeros','nozzle.aeros.cmc'])
 
     return
 
@@ -616,7 +631,10 @@ def callThermalAnalysis():
 def callStructuralAnalysis():
 
     # Structural analysis of load layers + baffles and stringers
-    os.system("aeros nozzle.aeros")
+    if 'SLURM_NTASKS' in os.environ:
+        subprocess.call(['srun','-n','1','aeros','nozzle.aeros'])
+    else:
+        subprocess.call(['aeros','nozzle.aeros'])
 
     return
 
