@@ -1950,10 +1950,26 @@ def HF_GenerateMesh_Deform(nozzle):
     #Coefs_r1_bas     = np.array(Coefs_r1_bas    )
     #Knots_r2_bas     = np.array(Knots_r2_bas    )
     #Coefs_r2_bas     = np.array(Coefs_r2_bas    )
-         
+    
     pathsrc = "%s/baseline_meshes/" % (os.path.dirname(os.path.abspath(__file__)))
-    basNamGMF   = "baseline_5_%s_%s.meshb" % (nozzle.method.lower(), nozzle.cfd.mesh_size.lower())
+    
+    basNamGMF   = ""
+    if nozzle.Geometry3D == "AFTEND_FLAT":
+        basNamGMF   = "baseline_5_%s_%s.meshb" % (nozzle.method.lower(), nozzle.cfd.mesh_size.lower())
+    elif nozzle.Geometry3D == "ELLIPTICAL":
+        basNamGMF   = "baseline_1_elliptical_%s_%s.meshb" % (nozzle.method.lower(), nozzle.cfd.mesh_size.lower())
+    
+    
     basNamSU2    = "baseline_%s_%s.su2" % (nozzle.method.lower(), nozzle.cfd.mesh_size.lower())
+    
+    #print "HERE"
+    #sys.exit(1)
+    #nozzle.cfd.markers = dict();
+    #nozzle.cfd.markers['WALL']     = [7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 20]
+    #nozzle.cfd.markers['INLET']    = [12]
+    #nozzle.cfd.markers['FARFIELD'] = [1, 2, 3, 5, 6]
+    #nozzle.cfd.markers['SYMMETRY'] = [4, 21]
+    #nozzle.cfd.markers['THRUST']   = [19]
     
     #    basNamDV = "%sbaseline_3_DV.dat" % pathsrc
     #_meshutils_module.py_ProjectNozzleWall3D("%sbaseline_euler_coarse.meshb" % pathsrc, RefUp, RefDown,

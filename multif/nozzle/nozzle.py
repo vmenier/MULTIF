@@ -838,7 +838,32 @@ class Nozzle:
         else:
             raise ValueError('keyword argument output can only be set to '    \
               '"verbose" or "quiet" mode')
-              
+        #
+        nozzle.cfd.local_relax = 'NO'
+        nozzle.cfd.su2_version = 'OK'
+        
+        #--- Setup markers
+        
+        # AFTEND_FLAT, ELLIPTICAL
+        nozzle.Geometry3D = "ELLIPTICAL"
+        nozzle.cfd.markers = dict()
+        
+        if nozzle.dim == "3D":
+            
+            if nozzle.Geometry3D == "AFTEND_FLAT":
+                nozzle.cfd.markers['WALL']     = [7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 20]
+                nozzle.cfd.markers['INLET']    = [12]
+                nozzle.cfd.markers['FARFIELD'] = [1, 2, 3, 5, 6]
+                nozzle.cfd.markers['SYMMETRY'] = [4, 21]
+                nozzle.cfd.markers['THRUST']   = [19]
+            
+            elif nozzle.Geometry3D == "ELLIPTICAL":
+                nozzle.cfd.markers['WALL']     = [1, 2, 5, 6, 12, 13, 14, 15]
+                nozzle.cfd.markers['INLET']    = [3]
+                nozzle.cfd.markers['FARFIELD'] = [7, 8, 9, 10, 17]
+                nozzle.cfd.markers['SYMMETRY'] = [4, 11]
+                nozzle.cfd.markers['THRUST']   = [16]
+            
         if output == 'verbose':
             sys.stdout.write('Setup Fidelity Levels complete\n')              
         
@@ -4416,6 +4441,7 @@ def NozzleSetup( config, flevel, output='verbose'):
         nozzle.runDir = tempfile.mkdtemp()    
     else:
         nozzle.runDir = ''
+    
 
 	# --- Mesh generation method
 	if 'MESH_GENERATION_METHOD' in config : 

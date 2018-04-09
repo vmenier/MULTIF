@@ -167,7 +167,8 @@ def CheckConvergence ( nozzle ) :
 
 def HF_Compute_Thrust_Wrap (nozzle):
 
-    HF_GenerateExitMesh_Direct(nozzle)
+    #HF_GenerateExitMesh_Direct(nozzle)
+
     
     P0  = nozzle.environment.P
     M0  = nozzle.mission.mach
@@ -183,9 +184,12 @@ def HF_Compute_Thrust_Wrap (nozzle):
                 'Gam'          : Gam,  \
                 'Rs'          : Rs ,  \
                 'T0'          : T0 ,  \
-                'U0'          : U0   \
+                'U0'          : U0  , \
+                'ref_thrust'  : nozzle.cfd.markers["THRUST"][0] \
+                
                }
     
+               
     return HF_Compute_Thrust (options)
     
 
@@ -456,7 +460,7 @@ def HF_Compute_Thrust (options):
     pyVer = []
     pyTri = []
     pySol = []
-    Ref = [19]
+    Ref = [options["ref_thrust"]]
     
     _meshutils_module.py_ExtractSurfacePatches (MshNam, SolNam, pyVer, pyTri, pySol, Ref)
     

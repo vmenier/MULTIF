@@ -17,11 +17,11 @@ def aeroAnalysis(nozzle, sst_perturbation=None, run_analysis=True,
         if nozzle.method == 'NONIDEALNOZZLE':
             LOWF.runQ1D.run(nozzle, output=output)
         elif nozzle.dim == '2D':
-            MEDIUMF.runSU2.CheckSU2Version(nozzle)
+            #MEDIUMF.runSU2.CheckSU2Version(nozzle)
             MEDIUMF.runSU2.runSU2(nozzle, sst_perturbation=sst_perturbation, 
                 output=output)
         else: # nozzle.dim == '3D':
-            HIGHF.runSU2.CheckSU2Version(nozzle)
+            #HIGHF.runSU2.CheckSU2Version(nozzle)
             HIGHF.runSU2.runSU2(nozzle, sst_perturbation=sst_perturbation, 
                 output=output)
 

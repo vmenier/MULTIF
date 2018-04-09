@@ -85,7 +85,7 @@ def HF_SetupConfig (solver_options):
     
     LocalRelax = solver_options.LocalRelax
     
-    NbrIte = 7000#solver_options.NbrIte
+    NbrIte = solver_options.NbrIte
         
     mesh_name = solver_options.mesh_name
     restart_name = solver_options.restart_name
@@ -116,8 +116,6 @@ def HF_SetupConfig (solver_options):
     
     if Dim == '2D' :
         config.AXISYMMETRIC= 'YES'
-    
-
     
     # --- Governing
     
@@ -185,20 +183,25 @@ def HF_SetupConfig (solver_options):
     if Dim == '2D':
         print "  ## ERROR : High fidelity model is 3D."
         sys.exit(1)
-
-
-
     else:
-        
+                
         if method == 'EULER':
-            config.MARKER_EULER = '(7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 20)'
+            marker_euler_format = ''.join(str(solver_options.Markers['WALL'])).strip('[]')
+            config.MARKER_EULER = "(%s)" % (marker_euler_format)
+            
         elif method == 'RANS':
-            config.MARKER_HEATFLUX = '( 7, 0.0, 8, 0.0, 9, 0.0, 10, 0.0, 11, 0.0, 13, 0.0, 14, 0.0, 15, 0.0, 16, 0.0, 17, 0.0, 18, 0.0, 20, 0.0)'
+            marker_heat_format = ''.join(str(solver_options.Markers['WALL'])).strip('[]').replace(',', ', 0.0, ')
+            config.MARKER_HEATFLUX =  "(%s, 0.0)" % marker_heat_format
+            
+        config.MARKER_INLET    = '(%s, %lf, %lf, 1.0, 0.0, 0.0 )' % (solver_options.Markers['INLET'][0],InletTstag,InletPstag)
         
-        config.MARKER_INLET    = '(12, %lf, %lf, 1.0, 0.0, 0.0 )' % (InletTstag,InletPstag)
-        config.MARKER_FAR      = '( 1, 2, 3, 5, 6)'
-        config.MARKER_SYM      = '( 4, 21 )'
-        config.MARKER_THRUST   = '( 19 )'
+        marker_far_format = ''.join(str(solver_options.Markers['FARFIELD'])).strip('[]')
+        config.MARKER_FAR      = '(%s)' % marker_far_format
+        
+        marker_far_symmetry = ''.join(str(solver_options.Markers['SYMMETRY'])).strip('[]')
+        config.MARKER_SYM      = '(%s)' % marker_far_symmetry
+        
+        config.MARKER_THRUST   = '( %s )' % solver_options.Markers['THRUST'][0]
         
     # --- Slope limiter
     
@@ -365,6 +368,11 @@ def runSU2(nozzle, sst_perturbation=None, output='verbose'):
     solver_options.convergence_order = nozzle.cfd.su2_convergence_order
     
     solver_options.dv_coefs = []
+    
+    
+    # --- Markers
+    
+    solver_options.Markers = nozzle.cfd.markers;
     
     ## --- Specify wall variable data when adjoint gradients are requested
     #if( nozzle.gradientsMethod == 'ADJOINT' ):
@@ -1258,6 +1266,10 @@ def Compute_Thrust_Gradients_FD (nozzle):
     
     solver_options.Pt = Ps + 0.5*rho*U*U
     solver_options.Tt = Ts*(1.+0.5*(gam-1.)*M*M)
+    
+    # --- Markers
+    
+    solver_options.Markers = nozzle.cfd.markers;
     
     # --- Setup wall temperature distribution
     
