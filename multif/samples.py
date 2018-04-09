@@ -32,7 +32,7 @@ class Sample:
         
         sys.stdout.write('-- Running sample %d \n' % self.run_id)
         
-        redirect = False
+        redirect = True
         
         run_id = self.run_id
         
