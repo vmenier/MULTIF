@@ -131,7 +131,7 @@ class Sample:
             if output == 'verbose':
                 print("User has requested %i total cores for calculation." % ncores)
             
-            nozzle.cfd.su2_max_iterations = 2 # hack
+            #nozzle.cfd.su2_max_iterations = 2 # hack
     
             # --- Run analysis
             multif.analysis.run(nozzle, output=output, post_process_only=self.postpro,
