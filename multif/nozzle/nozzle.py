@@ -844,8 +844,8 @@ class Nozzle:
         
         #--- Setup markers
         
-        # AFTEND_FLAT, ELLIPTICAL
-        nozzle.Geometry3D = "ELLIPTICAL"
+        # AFTEND_FLAT, ELLIPTICAL, ELLIPTICAL_NO_EDGE
+        nozzle.Geometry3D = "ELLIPTICAL_NO_EDGE"
         nozzle.cfd.markers = dict()
         
         if nozzle.dim == "3D":
@@ -863,6 +863,14 @@ class Nozzle:
                 nozzle.cfd.markers['FARFIELD'] = [7, 8, 9, 10, 17]
                 nozzle.cfd.markers['SYMMETRY'] = [4, 11]
                 nozzle.cfd.markers['THRUST']   = [16]
+            
+            elif nozzle.Geometry3D == "ELLIPTICAL_NO_EDGE":
+                nozzle.cfd.markers['WALL']     = [1, 2, 5, 6, 12, 13]
+                nozzle.cfd.markers['INLET']    = [3]
+                nozzle.cfd.markers['FARFIELD'] = [7, 8, 9, 10, 15]
+                nozzle.cfd.markers['SYMMETRY'] = [4, 11]
+                nozzle.cfd.markers['THRUST']   = [14]
+            
             
         if output == 'verbose':
             sys.stdout.write('Setup Fidelity Levels complete\n')              

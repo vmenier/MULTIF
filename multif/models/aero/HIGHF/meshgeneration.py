@@ -1958,6 +1958,8 @@ def HF_GenerateMesh_Deform(nozzle):
         basNamGMF   = "baseline_5_%s_%s.meshb" % (nozzle.method.lower(), nozzle.cfd.mesh_size.lower())
     elif nozzle.Geometry3D == "ELLIPTICAL":
         basNamGMF   = "baseline_1_elliptical_%s_%s.meshb" % (nozzle.method.lower(), nozzle.cfd.mesh_size.lower())
+    elif nozzle.Geometry3D == "ELLIPTICAL_NO_EDGE":
+        basNamGMF   = "baseline_3_elliptical_noedg_%s_%s.meshb" % (nozzle.method.lower(), nozzle.cfd.mesh_size.lower())
     
     
     basNamSU2    = "baseline_%s_%s.su2" % (nozzle.method.lower(), nozzle.cfd.mesh_size.lower())
