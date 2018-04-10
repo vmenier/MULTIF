@@ -533,56 +533,70 @@ def writeBoundaryConditions3D(nozzle, run_analysis=True, output='verbose'):
     #     1: both thermal and structural analyses
     thermalFlag = 1 if nozzle.thermalFlag == 1 else 0
 
-    if nozzle.dim == '3D' and run_analysis:
-        #--- Get solution from fluid calculation
+    try:
+        if nozzle.dim == '3D' and run_analysis:
+            #--- Get solution from fluid calculation
 
-        print "Interface AEROS"
+            print "Interface AEROS"
 
-        MshNam_str = "nozzle.mesh"
-        MshNam_cfd = "nozzle.su2"
-        SolNam_cfd = "nozzle.dat"
+            MshNam_str = "nozzle.mesh"
+            MshNam_cfd = "nozzle.su2"
+            SolNam_cfd = "nozzle.dat"
 
-        Crd, Tri, Pres, Temp = multif.models.aero.HIGHF.aeros.hf_FluidStructureInterpolation(MshNam_str, MshNam_cfd, SolNam_cfd)
+            Crd, Tri, Pres, Temp = multif.models.aero.HIGHF.aeros.hf_FluidStructureInterpolation(MshNam_str, MshNam_cfd, SolNam_cfd)
 
-        if thermalFlag > 0:
-            # temperatures for the thermal model
-            f0 = open("TEMPERATURES.txt.thermal", 'r')
+            if thermalFlag > 0:
+                # temperatures for the thermal model
+                f0 = open("TEMPERATURES.txt.thermal", 'r')
+                f0.readline()
+                f1 = open("TEMPERATURES.txt.thermal.3d", 'w')
+                print >> f1, "TEMPERATURE"
+                for line in f0:
+                    nodeId = int(line.split()[0])
+                    print >> f1, "%d %0.16e" % (nodeId, Temp[nodeId-1])
+                f0.close()
+                f1.close()
+                os.rename("TEMPERATURES.txt.thermal.3d", "TEMPERATURES.txt.thermal")
+            else:
+                # temperatures for the structural model
+                f0 = open("TEMPERATURES.txt", 'r')
+                f0.readline()
+                f1 = open("TEMPERATURES.txt.3d", 'w')
+                print >> f1, "TEMPERATURE"
+                for line in f0:
+                    nodeId = int(line.split()[0])
+                    print >> f1, "%d %0.16e" % (nodeId, Temp[nodeId-1])
+                f0.close()
+                f1.close()
+                os.rename("TEMPERATURES.txt.3d", "TEMPERATURES.txt")
+            
+            # pressures for the structural model
+            f0 = open("PRESSURES.txt", 'r')
             f0.readline()
-            f1 = open("TEMPERATURES.txt.thermal.3d", 'w')
-            print >> f1, "TEMPERATURE"
+            f1 = open("PRESSURES.txt.3d", 'w')
+            print >> f1, "PRESSURE"
+            i = 0
             for line in f0:
-                nodeId = int(line.split()[0])
-                print >> f1, "%d %0.16e" % (nodeId, Temp[nodeId-1])
+                elemId = int(line.split()[0])
+                avgPres = (Pres[Tri[i][0]]+Pres[Tri[i][1]]+Pres[Tri[i][2]])/3
+                print >> f1, "%d %0.16e" % (elemId, avgPres)
+                i = i+1
             f0.close()
             f1.close()
-            os.rename("TEMPERATURES.txt.thermal.3d", "TEMPERATURES.txt.thermal")
-        else:
-            # temperatures for the structural model
-            f0 = open("TEMPERATURES.txt", 'r')
-            f0.readline()
-            f1 = open("TEMPERATURES.txt.3d", 'w')
-            print >> f1, "TEMPERATURE"
-            for line in f0:
-                nodeId = int(line.split()[0])
-                print >> f1, "%d %0.16e" % (nodeId, Temp[nodeId-1])
-            f0.close()
-            f1.close()
-            os.rename("TEMPERATURES.txt.3d", "TEMPERATURES.txt")
-        
+            os.rename("PRESSURES.txt.3d", "PRESSURES.txt")
+
+    except:
+        print("WARNING: 3D AERO-S boundary condition files are filled with fluff.")
+        # temperatures for the structural model
+        f1 = open("TEMPERATURES.txt", 'w')
+        print >> f1, "TEMPERATURE"
+        print >> f1, "1 300"
+        f1.close()           
         # pressures for the structural model
-        f0 = open("PRESSURES.txt", 'r')
-        f0.readline()
-        f1 = open("PRESSURES.txt.3d", 'w')
+        f1 = open("PRESSURES.txt", 'w')
         print >> f1, "PRESSURE"
-        i = 0
-        for line in f0:
-            elemId = int(line.split()[0])
-            avgPres = (Pres[Tri[i][0]]+Pres[Tri[i][1]]+Pres[Tri[i][2]])/3
-            print >> f1, "%d %0.16e" % (elemId, avgPres)
-            i = i+1
-        f0.close()
+        print >> f1, "1 50000"
         f1.close()
-        os.rename("PRESSURES.txt.3d", "PRESSURES.txt")
 
     return
 
