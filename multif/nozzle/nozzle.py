@@ -666,19 +666,6 @@ class Nozzle:
                     else:
                         nozzle.cfd.output_format = 'TECPLOT'
 
-                    # --- Setup max iterations for SU2
-                    if 'SU2_MAX_ITERATIONS' in config:
-                        nozzle.cfd.su2_max_iterations = int(config['SU2_MAX_ITERATIONS'])
-                    elif nozzle.dim == '2D':
-                        if nozzle.method == 'EULER':
-                            nozzle.cfd.su2_max_iterations = 600
-                        else:
-                            nozzle.cfd.su2_max_iterations = 1000   
-                    else:
-                        if nozzle.method == 'EULER':
-                            nozzle.cfd.su2_max_iterations = 1200
-                        else:
-                            nozzle.cfd.su2_max_iterations = 5000
                 
                 # Set thermostructural parameters if necessary
                 
@@ -720,6 +707,20 @@ class Nozzle:
                     nozzle.cfd.bl_ratio     = 1.3 
                     nozzle.cfd.bl_thickness = 0.02
                     nozzle.cfd.bl_yplus     = 1.0
+                    
+                    # --- Setup max iterations for SU2
+                    if ('SU2_MAX_ITERATIONS' in config) and False:
+                        nozzle.cfd.su2_max_iterations = int(config['SU2_MAX_ITERATIONS'])
+                    elif nozzle.dim == '2D':
+                        if method == 'EULER':
+                            nozzle.cfd.su2_max_iterations = 600
+                        else:
+                            nozzle.cfd.su2_max_iterations = 1000   
+                    else:
+                        if method == 'EULER':
+                            nozzle.cfd.su2_max_iterations = 1200
+                        else:
+                            nozzle.cfd.su2_max_iterations = 5000
 					
                     if ( method == "EULER" ):
                     	scaleMesh = 1.0
