@@ -669,12 +669,13 @@ class Nozzle:
                 
                 # Set thermostructural parameters if necessary
                 
-                if len(cfgLvl)-idxLvl == 3:
+                if len(cfgLvl)-idxLvl >= 3:
                     
                     thermostructural = True
                     #analysisType                  = cfgLvl[idxLvl]
                     linear                        = cfgLvl[idxLvl+1]
                     thermostructuralFidelityLevel = float(cfgLvl[idxLvl+2])
+                    idxLvl += 3
                     
                     if linear == 'LINEAR':
                         description += ", linear structural analysis"
@@ -694,7 +695,7 @@ class Nozzle:
                           'fidelity level must range from 0 (low) to 1 '\
                           '(high). %f provided instead.\n\n' % 
                           thermostructuralFidelityLevel)
-                        sys.exit(0)                       
+                        sys.exit(0)
                     
                 if i == flevel:
                     
@@ -770,6 +771,25 @@ class Nozzle:
                     else:
                         nozzle.linearStructuralAnalysisFlag = 1
                         nozzle.thermostructuralFidelityLevel = 0.5
+
+                    # Setup nozzle geometry type if 3D
+                    if nozzle.dim == '3D':
+                        if len(cfgLvl) == idxLvl+1:
+                            if cfgLvl[idxLvl] == 'FLATTENED':
+                                nozzle.Geometry3D = 'AFTEND_FLAT'
+                            elif cfgLvl[idxLvl] == 'ELLIPTICAL':
+                                nozzle.Geometry3D = 'ELLIPTICAL'
+                            elif cfgLvl[idxLvl] == 'ELLIPTICAL_NO_EDGE':
+                                nozzle.Geometry3D = 'ELLIPTICAL_NO_EDGE'
+                            else:
+                                raise ValueError("Only FLATTENED, ELLIPTICAL " + \
+                                    "and ELLIPTICAL_NO_EDGE are supported, not " + \
+                                    "%s in the model definition" % cfgLvl[idxLvl])
+
+                        else:
+                            raise RuntimeError("Model definition should " + \
+                                "specify FLATTENED, ELLIPTICAL, or " + \
+                                "ELLIPTICAL_NO_EDGE for 3D geometry.")
                             
             else :
                 sys.stderr.write("\n ## ERROR : Unknown governing method "    \
@@ -844,9 +864,7 @@ class Nozzle:
         nozzle.cfd.su2_version = 'OK'
         
         #--- Setup markers
-        
-        # AFTEND_FLAT, ELLIPTICAL, ELLIPTICAL_NO_EDGE
-        nozzle.Geometry3D = "ELLIPTICAL_NO_EDGE"
+
         nozzle.cfd.markers = dict()
         
         if nozzle.dim == "3D":
@@ -2011,13 +2029,14 @@ class Nozzle:
         # Approximate top surface of internal aircraft cavity which nozzle
         # lies within
         nozzle.exterior.geometry['top'] = geometry.EllipticalExterior('top',
-            nozzle.xoutlet, zoutlettop=zoutlettop, zoutletbottom=zoutletbottom)
+            nozzle.xoutlet, zoutlettop=zoutlettop, zoutletbottom=zoutletbottom,
+            elliptical=True)
 
         # Approximate bottom surface of internal aircraft cavity which 
         # nozzle lies within
         nozzle.exterior.geometry['bottom'] = geometry.EllipticalExterior(
             'bottom', nozzle.xoutlet, zoutlettop=zoutlettop, 
-            zoutletbottom=zoutletbottom)
+            zoutletbottom=zoutletbottom, elliptical=True)
 
         # # Test nozzle exterior geometry
         # import matplotlib.pyplot as plt

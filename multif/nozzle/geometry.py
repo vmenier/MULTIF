@@ -305,7 +305,8 @@ class EllipticalExterior:
     # bottom of the interior nozzle wall exit shape is kept constant at 0.1. 
     # Thus, the exterior is adjustable in such cases.
 
-    def __init__(self,surface,xexit,zoutlettop=0.43,zoutletbottom=0.122638):
+    def __init__(self, surface, xexit, zoutlettop=0.43, zoutletbottom=0.122638,
+        elliptical=False):
 
         self.xexit = xexit;
         self.surface = surface;
@@ -318,13 +319,14 @@ class EllipticalExterior:
             # self.b = 0.2; # m, minor axis
 
             # Parameterization for 44cm inlet, fixed inlet
-            self.angle = 6.; # degrees
-            self.a = 3.0; # m, major axis
-            self.b = 0.4; # m, minor axis
-            self.spacer = 0.2; # m, minimum space between interior surface of
-                               # outlet and exterior in y-z plane. Maximum wall 
-                               # thickness is 0.0879 m.
-            self.offset = zoutlettop - self.b + self.spacer; # m
+            if True: # i.e. same, regardless of flattening at exit
+                self.angle = 6.; # degrees
+                self.a = 3.0; # m, major axis
+                self.b = 0.4; # m, minor axis
+                self.spacer = 0.2; # m, minimum space between interior surface of
+                                # outlet and exterior in y-z plane. Maximum wall 
+                                # thickness is 0.0879 m.
+                self.offset = zoutlettop - self.b + self.spacer; # m
 
         elif( surface == 'bottom' ):
             # Original parameterization
@@ -334,13 +336,23 @@ class EllipticalExterior:
             # self.b = 0.05; # m, minor axis
 
             # Parameterization for 44cm inlet, fixed inlet
-            self.angle = -12.; # degrees
-            self.a = 4.0; # m, major axis
-            self.b = 0.12; # m, minor axis
-            self.spacer = 0.2; # m, minimum space between interior surface of
-                               # outlet and exterior in y-z plane. Maximum wall 
-                               # thickness is 0.0879 m.
-            self.offset = zoutletbottom + self.b - self.spacer; # m
+            if not elliptical: # parameters tuned for flattening out at exit
+                self.angle = -12.; # degrees
+                self.a = 4.0; # m, major axis
+                self.b = 0.12; # m, minor axis
+                self.spacer = 0.2; # m, minimum space between interior surface of
+                                # outlet and exterior in y-z plane. Maximum wall 
+                                # thickness is 0.0879 m.
+                self.offset = zoutletbottom + self.b - self.spacer; # m
+            else: # elliptical exit
+                self.angle = -12.; # degrees
+                self.a = 3.0; # m, major axis
+                self.b = 0.4; # m, minor axis
+                self.spacer = 0.35; # m, minimum space between interior surface of
+                                # outlet and exterior in y-z plane. Maximum wall 
+                                # thickness is 0.0879 m.
+                self.offset = zoutletbottom + self.b - self.spacer; # m
+
 
         else:
             raise NotImplementedError('Only top or bottom can be used for ' + \
