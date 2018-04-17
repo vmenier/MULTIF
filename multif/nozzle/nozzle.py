@@ -773,6 +773,8 @@ class Nozzle:
                         nozzle.thermostructuralFidelityLevel = 0.5
 
                     # Setup nozzle geometry type if 3D
+                    nozzle.Geometry3D = 'ELLIPTICAL_NO_EDGE' # Default value
+                    
                     if nozzle.dim == '3D':
                         if len(cfgLvl) == idxLvl+1:
                             if cfgLvl[idxLvl] == 'FLATTENED':
@@ -875,6 +877,7 @@ class Nozzle:
                 nozzle.cfd.markers['FARFIELD'] = [1, 2, 3, 5, 6]
                 nozzle.cfd.markers['SYMMETRY'] = [4, 21]
                 nozzle.cfd.markers['THRUST']   = [19]
+                nozzle.cfd.markers['WALL_ITF'] = [9,10]
             
             elif nozzle.Geometry3D == "ELLIPTICAL":
                 nozzle.cfd.markers['WALL']     = [1, 2, 5, 6, 12, 13, 14, 15]
@@ -882,6 +885,7 @@ class Nozzle:
                 nozzle.cfd.markers['FARFIELD'] = [7, 8, 9, 10, 17]
                 nozzle.cfd.markers['SYMMETRY'] = [4, 11]
                 nozzle.cfd.markers['THRUST']   = [16]
+                nozzle.cfd.markers['WALL_ITF'] = [1,2]
             
             elif nozzle.Geometry3D == "ELLIPTICAL_NO_EDGE":
                 nozzle.cfd.markers['WALL']     = [1, 2, 5, 6, 12, 13]
@@ -889,6 +893,7 @@ class Nozzle:
                 nozzle.cfd.markers['FARFIELD'] = [7, 8, 9, 10, 15]
                 nozzle.cfd.markers['SYMMETRY'] = [4, 11]
                 nozzle.cfd.markers['THRUST']   = [14]
+                nozzle.cfd.markers['WALL_ITF'] = [1,2]
             
             
         if output == 'verbose':

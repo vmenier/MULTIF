@@ -513,7 +513,7 @@ def runSU2(nozzle, sst_perturbation=None, output='verbose'):
         GenerateNozzleMesh(nozzle)
         
     if nozzle.method == "RANS":
-        GenerateNozzleExitMesh(nozzle)
+        #GenerateNozzleExitMesh(nozzle)
         solver_options.NbrIte = max(solver_options.NbrIte,5000)
     
     # --- Setup config file options

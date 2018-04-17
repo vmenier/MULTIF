@@ -546,7 +546,8 @@ def writeBoundaryConditions3D(nozzle, run_analysis=True, output='verbose'):
         MshNam_cfd = "nozzle.su2"
         SolNam_cfd = "nozzle.dat"
 
-        Crd, Tri, Pres, Temp = multif.models.aero.HIGHF.aeros.hf_FluidStructureInterpolation(MshNam_str, MshNam_cfd, SolNam_cfd)
+        Ref_Itf = nozzle.Cfd.markers['WALL_ITF']
+        Crd, Tri, Pres, Temp = multif.models.aero.HIGHF.aeros.hf_FluidStructureInterpolation(MshNam_str, MshNam_cfd, SolNam_cfd, Ref_Itf)
 
         if thermalFlag > 0:
             # temperatures for the thermal model

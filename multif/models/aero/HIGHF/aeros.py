@@ -12,14 +12,15 @@ from multif.models import _mshint_module
 #   Extracts nozzle wall surface mesh
 #   Doubles the mesh (not just one symmetric part)
 #   Writes the full surface mesh
-def hf_SurfaceFluidMeshFull (MshNam, SolNam, BasNamOut):
+def hf_SurfaceFluidMeshFull (MshNam, SolNam, BasNamOut, Ref_Itf):
     
     #--- Extract surface patches from fluid mesh
     
     pyVer = []
     pyTri = []
     pySol = []
-    Ref = [9,10]
+    #Ref = [9,10]
+    Ref = Ref_Itf
     
     _meshutils_module.py_ExtractSurfacePatches (MshNam, SolNam, pyVer, pyTri, pySol, Ref)
     
@@ -60,10 +61,7 @@ def hf_SurfaceFluidMeshFull (MshNam, SolNam, BasNamOut):
     Ver = np.array(Ver).reshape(3*len(Ver)).tolist()
     Tri = np.array(Tri).reshape(4*len(Tri)).tolist()
     Sol = np.array(Sol).reshape(SolSiz*len(Sol)).tolist()
-    
-    for i in range(len(Tri)-10,len(Tri)):
-        print Tri[i]
-    
+        
     Ver = map(float, Ver)
     Tri = map(int,   Tri)
     Sol = map(float, Sol)
@@ -73,7 +71,7 @@ def hf_SurfaceFluidMeshFull (MshNam, SolNam, BasNamOut):
     _meshutils_module.py_WriteMesh("%s"%BasNamOut, Ver, Tri, Tet, Edg, Sol)
     
 
-def hf_FluidStructureInterpolation(MshNam_str, MshNam_cfd, SolNam_cfd):
+def hf_FluidStructureInterpolation(MshNam_str, MshNam_cfd, SolNam_cfd, Ref_Itf):
     """
     Interpolate fluid results from fluid mesh onto structural mesh.
     """
@@ -87,7 +85,7 @@ def hf_FluidStructureInterpolation(MshNam_str, MshNam_cfd, SolNam_cfd):
     #--- Extract nozzle wall surface mesh + solution
     #    and double the mesh along the y direction (i.e. no symmetry)
     
-    hf_SurfaceFluidMeshFull (MshNam_cfd, SolNam_cfd, BasNamOut)
+    hf_SurfaceFluidMeshFull (MshNam_cfd, SolNam_cfd, BasNamOut, Ref_Itf)
     
     #--- Interpolate solution
     
