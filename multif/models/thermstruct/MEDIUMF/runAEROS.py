@@ -167,7 +167,7 @@ def writeGeometry(nozzle, mesh_params=None, output='verbose'):
     # --- Set inner wall shape
 
     # Start and end angle of shovel geometry
-    if 'ELLIPTICAL' in nozzle.Geometry3D:
+    if nozzle.dim == '3D' and 'ELLIPTICAL' in nozzle.Geometry3D:
         theta_in = np.pi # eliminates shovel
         theta_out = np.pi # eliminates shovel
     else: # include a shovel geometry
