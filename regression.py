@@ -191,7 +191,7 @@ if( test['all'] or test['medfi'] ):
     medfi_2dparam_sst.cfg_file = 'general_sst.cfg'
     medfi_2dparam_sst.input_file = 'general.in'
     medfi_2dparam_sst.compare_file = 'example/regression/medfi_2dparam_sst.out'
-    medfi_2dparam_sst.fidelity = 5
+    medfi_2dparam_sst.fidelity = 0
     medfi_2dparam_sst.ntasks = nTasks
     medfi_2dparam_sst.cpus_per_task = cpusPerTask
     medfi_2dparam_sst.diff_tol = 1e-6
