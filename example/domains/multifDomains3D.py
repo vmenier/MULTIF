@@ -128,12 +128,12 @@ def buildDesignDomain(output='verbose'):
                      xLimits=[None,2.3], delta=0.2, minThroat=-0.05, maxThroat=0.1, output=output)
     # Major axis constraints
     A2, b2 = bspline(WALL_COEFS2, WALL_COEFS2_DV, 0, (0.05,1.2,[0.05,0.05,0.05,-0.2,-0.2,-0.1],[0.6,0.6,0.6,0.5,0.4,0.3]), 
-                     xLimits=[None,2.3], delta=0.2, minThroat=0.44, output=output)
+                     xLimits=[None,2.3], delta=0.2, minThroat=0.4, output=output)
     # Minor axis constraints
     # Likewise for sampling here, we set max slope to 0.01, in reality this could be 0
     # For some reason the sampling does not deal well with 0 slopes
     A3, b3 = bspline(WALL_COEFS3, WALL_COEFS3_DV, 0, (-1.2,0.6,-0.3,0.6),
-                     xLimits=[None,2.3], delta=0.2, minThroat=0.0, maxThroat=0.44, output=output)                 
+                     xLimits=[None,2.3], delta=0.2, minThroat=0.1, maxThroat=0.5, output=output)                 
     Awall, bwall = cleanupConstraintMatrix(Alist=[A1,A2,A3],blist=[b1,b2,b3])
 
     # Manually add coupling constraints for major/minor axis pre-throat slopes

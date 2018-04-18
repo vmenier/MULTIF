@@ -30,8 +30,8 @@ from matplotlib import pyplot as plt
 sys.path.append('../..');
 from multif.nozzle import geometry
 
-#import multifDomains3D
-import multifDomains3D_reduced as multifDomains3D
+import multifDomains3D
+#import multifDomains3D_reduced as multifDomains3D
 import multifDomains2D
 
 from domains import ComboDomain
@@ -41,7 +41,7 @@ from util import find_feasible_boundary
 # Controls for sampling and sweeps
 # ============================================================================
 param = '3D'; # nozzle parameterization, either 2D or 3D
-N = 10000; # number of samples
+N = 1000; # number of samples
 P = 0; # number of sweeps
 S = 10; # number of points in each sweep
 samplefilename = '2d_samples.dat'; # filename to save samples in
@@ -225,6 +225,30 @@ if( plot == 'yes' ):
         plt.axis('equal');
         plt.grid();
         plt.title('Minor axis');
+
+        # Cross-sectional area
+        plt.figure()
+        for i in range(0,N,dNplot):
+            # Build coefficient matrix for minor axis
+            coefs1 = list(WALL_COEFS3);
+            for j in range(len(coefs1)):
+                if( WALL_COEFS3_DV[j] > 0 ):
+                    coefs1[j] = Z[i,WALL_COEFS3_DV[j]-1];
+            spline1 = geometry.Bspline(coefs1);
+            xplot1 = np.linspace(min(coefs1[0:len(coefs1)/2]),max(coefs1[0:len(coefs1)/2]),200);
+            # Build coefficient matrix for major axis
+            coefs2 = list(WALL_COEFS2);
+            for j in range(len(coefs2)):
+                if( WALL_COEFS2_DV[j] > 0 ):
+                    coefs2[j] = Z[i,WALL_COEFS2_DV[j]-1];
+            spline2 = geometry.Bspline(coefs2);
+            xplot2 = np.linspace(min(coefs2[0:len(coefs2)/2]),max(coefs2[0:len(coefs2)/2]),200);
+
+            plt.plot(xplot,np.pi*spline1.radius(xplot)*spline2.radius(xplot)); # B-spline
+            #plt.plot(coefs[0:len(coefs)/2],coefs[len(coefs)/2:],'-o'); # bounding box
+        plt.axis('equal');
+        plt.grid();
+        plt.title('Cross-sectional area');
 
         plt.show();
 
