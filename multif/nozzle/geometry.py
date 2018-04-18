@@ -9,7 +9,8 @@ Rick Fenrich 9/4/17
 import copy
 import numpy as np 
 import scipy.optimize
-import scipy.integrate   
+import scipy.integrate  
+import scipy.interpolate 
 
 #import matplotlib.pyplot as plt
 
@@ -157,141 +158,53 @@ class PiecewiseLinear:
         
 class PiecewiseBilinear:
     def __init__(self,nx,ny,nodes):
-	    # nodes should be a Numpy array of nx*ny x 3, each row contains an
-	    # x-coordinate, y-coordinate, and thickness value for a node, nodes
-	    # should be arranged in a rectilinear grid
-	    # nodes = np.array([[x1, y1, t1],
-	    #                   [x2, y1, t2],
-	    #                       ...
-	    #                   [x1, y2, t_],
-	    #                       etc.
-	    self.type = "piecewise-bilinear"
-	    self.nodes = nodes # nx*ny x 3 Numpy array of nodes & thicknesses
-	    self.size = nx*ny # number of nodes
-	    self.nx = nx # dimension of grid in x-direction
-	    self.ny = ny # dimension of grid in y-direction
-	    
-	    # Build interpolating function
-	    #self.finterp = interpolate.RectBivariateSpline(nodes[0:nx,0], \
-	    #               np.array(list(nodes[:,1])[::nx]), \
-	    #               np.reshape(nodes[:,2],(nx,ny),'F'),kx=1,ky=1,s=0)
-	    
-    def findNearestPoints(self,x,y):
-	    # x and y should be scalar
-	
-	    # Check that point is valid. Extrapolation will not be performed.
-	    if( x > np.max(self.nodes[:,0])):
-	        raise ValueError('Requested interpolant (%f) > data range.' % x)
-	    if( y > np.max(self.nodes[:,1])):
-	        raise ValueError('Requested interpolant (%f) > data range.' % y)
-	    if( x < np.min(self.nodes[:,0])):
-	        raise ValueError('Requested interpolant (%f) < data range.' % x)
-	    if( y < np.min(self.nodes[:,1])):
-	        raise ValueError('Requested interpolant (%f) < data range.' % y)                    
-	    
-	    # Cycle through all nodes and find the four that bound point p:
-	    # y ^        
-	    #   |        
-	    #  z12 -- z22
-	    #   |  .p  |
-	    #  z11 -- z21 ---> x
-	    for i in range(self.size):
-	        # Find grid point which has x and y coordinates > than that desired
-	        if( self.nodes[i,0] >= x and self.nodes[i,1] >= y ):
-	            z22 = self.nodes[i,2]
-	            x2 = self.nodes[i,0]
-	            y2 = self.nodes[i,1]
-	            
-	            # If we are on left edge of domain
-	            if( self.nodes[i,0] == np.min(self.nodes[i,0]) ):
-	                # Collapse dimension in x-direction
-	                x1 = self.nodes[0,0]
-	                z12 = self.nodes[i,2]
-	            else:
-	                x1 = self.nodes[i-1,0]
-	                z12 = self.nodes[i-1,2]                        
-	            
-	            # If we are on bottom edge of domain
-	            if( self.nodes[i,1] == np.min(self.nodes[i,1]) ):
-	                # Collapse dimension in y-direction
-	                y1 = self.nodes[0,1]
-	                z21 = self.nodes[i,2]
-	            else:
-	                y1 = self.nodes[i-self.nx,1]
-	                z21 = self.nodes[i-self.nx,2]
-	            
-	            # If we are in bottom left corner of domain
-	            if( self.nodes[i,0] == np.min(self.nodes[i,0]) and \
-	                self.nodes[i,1] == np.min(self.nodes[i,1])):
-	                z11 = self.nodes[0,2]
-	            else:
-	                z11 = self.nodes[i-self.nx-1,2]
-	                
-	    return x1, x2, y1, y2, z11, z12, z21, z22        
+        # nodes should be a Numpy array of nx*ny x 3, each row contains an
+        # x-coordinate, y-coordinate, and thickness value for a node, nodes
+        # should be arranged in a rectilinear grid
+        # nodes = np.array([[x1, y1, t1],
+        #                   [x2, y1, t2],
+        #                       ...
+        #                   [x1, y2, t_],
+        #                       etc.
+        self.type = "piecewise-bilinear"
+        self.nodes = nodes # nx*ny x 3 Numpy array of nodes & thicknesses
+        self.size = nx*ny # number of nodes
+        self.nx = nx # dimension of grid in x-direction
+        self.ny = ny # dimension of grid in y-direction
+
+        # Build interpolating function
+        spacer = 0.1 # allows linear extrapolation for gradients at edge of domain
+        self.finterp = scipy.interpolate.RectBivariateSpline(nodes[0:nx,0], \
+                        np.array(list(nodes[:,1])[::nx]), \
+                        np.reshape(nodes[:,2],(nx,ny),'F'), 
+                        bbox=[np.min(nodes[0:nx,0])-spacer, np.max(nodes[0:nx,0])+spacer,
+                        np.min(np.array(list(nodes[:,1])[::nx]))-spacer, 
+                        np.max(np.array(list(nodes[:,1])[::nx]))+spacer],
+                        kx=1, ky=1, s=0)      
 	    
     def height(self,x,y):
-	    #z = self.finterp(x,y,grid=False)
-	
-	    # Perform bilinear interpolation with custom script here
-        if( isinstance(x,float) and isinstance(y,float) ):
-	        
-            x1, x2, y1, y2, z11, z12, z21, z22 = self.findNearestPoints(x,y)
-            z = 1./((x2-x1)*(y2-y1))*(z11*(x2-x)*(y2-y) + z21*(x-x1)*(y2-y) + \
-	            z12*(x2-x)*(y-y1) + z22*(x-x1)*(y-y1))
-            return z
-	            
-        else: # assume array
-            if isinstance(y,list):
-                z = np.zeros(len(y))
-            elif isinstance(y,np.ndarray):
-                z = np.zeros(y.size)
 
-            if isinstance(x,float):
-                for i in range(0,z.size):
-                    x1, x2, y1, y2, z11, z12, z21, z22 = self.findNearestPoints(x,y[i])
-                    z[i] = 1./((x2-x1)*(y2-y1))*(z11*(x2-x)*(y2-y[i]) + \
-                        z21*(x-x1)*(y2-y[i]) + \
-                        z12*(x2-x)*(y[i]-y1) + z22*(x-x1)*(y[i]-y1)) 
-            else:
-                for i in range(0,z.size):
-                    x1, x2, y1, y2, z11, z12, z21, z22 = self.findNearestPoints(x[i],y[i])
-                    z[i] = 1./((x2-x1)*(y2-y1))*(z11*(x2-x[i])*(y2-y[i]) + \
-                        z21*(x[i]-x1)*(y2-y[i]) + \
-                        z12*(x2-x[i])*(y[i]-y1) + z22*(x[i]-x1)*(y[i]-y1))                
-
-            return z
+        z = self.finterp(x,y,grid=False)
+        return z
 	    
-	def gradient(self,x,y):
-	    #temp = self.finterp(x,y,dx=1,dy=1,grid=False)
-	
-	    # Perform bilinear interpolation with custom script here
-	    if( isinstance(x,float) and isinstance(y,float) ):
-	        
-	        x1, x2, y1, y2, z11, z12, z21, z22 = self.findNearestPoints(x,y)
-	        dzdx = 1./((x2-x1)*(y2-y1))*(-z11*(y2-y) + z21*(y2-y) - z12*(y-y1) + \
-	               z22*(y-y1))
-	        dzdy = 1./((x2-x1)*(y2-y1))*(-z11*(x2-x) - z21*(x-x1) + z12*(x2-x) + \
-	               z22*(x-x1))
-	            
-	    else: # assume array
-	        if isinstance(x,list):
-	            dzdx = np.zeros(len(x))
-	            dzdy = np.zeros(len(x))
-	        else:
-	            dzdx = np.zeros(x.size)
-	            dzdy = np.zeros(x.size)
-	        for i in range(0,dzdx.size):
-	            x1, x2, y1, y2, z11, z12, z21, z22 = self.findNearestPoints(x[i],y[i])
-	            dzdx[i] = 1./((x2-x1)*(y2-y1))*(-z11*(y2-y[i]) + z21*(y2-y[i]) - \
-	                      z12*(y[i]-y1) + z22*(y[i]-y1))
-	            dzdy[i] = 1./((x2-x1)*(y2-y1))*(-z11*(x2-x[i]) - z21*(x[i]-x1) + \
-	                      z12*(x2-x[i]) + z22*(x[i]-x1))
-	            if dzdx[i] < pow(10,-16):
-	                dzdx[i] = 0.
-	            if dzdy[i] < pow(10,-16):
-	                dzdy[i] = 0.
-	                   
-	    return dzdx, dzdy
+    def gradient(self,x,y):
+        # NOTE: this gradient will be wrong at the edge of the domain if
+        # the domain is periodic
+
+        delta = 1e-4
+        x2 = copy.deepcopy(x) + delta
+        y2 = copy.deepcopy(y) + delta
+
+        z = self.height(x, y)
+        zdx = self.height(x2, y)
+        zdy = self.height(x, y2)
+        dzdx = (zdx - z)/delta
+        dzdy = (zdy - z)/delta
+        
+        # Does not work:
+        #dzdx = self.finterp(x, y, dx=1, dy=0, grid=False)
+
+        return dzdx, dzdy
         
 
 class EllipticalExterior:
