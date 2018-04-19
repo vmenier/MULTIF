@@ -201,7 +201,8 @@ def HF_SetupConfig (solver_options):
         marker_far_symmetry = ''.join(str(solver_options.Markers['SYMMETRY'])).strip('[]')
         config.MARKER_SYM      = '(%s)' % marker_far_symmetry
         
-        config.MARKER_THRUST   = '( %s )' % solver_options.Markers['THRUST'][0]
+        #config.MARKER_THRUST   = '( %s )' % solver_options.Markers['THRUST'][0]
+        config.MARKER_INTERNAL   = '( %s )' % solver_options.Markers['THRUST'][0]
         
     # --- Slope limiter
     
@@ -242,8 +243,8 @@ def HF_SetupConfig (solver_options):
         config.SLOPE_LIMITER_TURB= 'VENKATAKRISHNAN'
         #config.VISCOUS_LIMITER_TURB= 'NO'
         config.TIME_DISCRE_TURB= 'EULER_IMPLICIT'
-        config.CFL_REDUCTION_TURB= '0.5'
-        config.RELAXATION_FACTOR_TURB= '1.0'
+        config.CFL_REDUCTION_TURB= '0.7'
+        config.RELAXATION_FACTOR_TURB= '0.7'
     
     # --- Convergence parameters
     
