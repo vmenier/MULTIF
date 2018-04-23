@@ -378,7 +378,7 @@ def callSU2(config):
         su2history = open('about.txt','a')
         su2history.write('SU2 calculation with baseline params diverged.\n')
         su2history.close()
-        raise e
+        # raise e
     # any other failure should stop program and be reported
 
     # --- Check SU2 residual here    
