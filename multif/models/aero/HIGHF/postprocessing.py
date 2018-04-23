@@ -49,8 +49,12 @@ def PostProcess(nozzle, runDir, output='verbose'):
 
         if 'THRUST' in q:
 
-            thrust = HF_Compute_Thrust_Wrap(nozzle)
-            nozzle.qoi.setValue(q, thrust)
+            if ResDif < 0:
+                print("WARNING: CFD solution diverged. THRUST is set to None.")
+                nozzle.qoi.setValue(q, None)
+            else:
+                thrust = HF_Compute_Thrust_Wrap(nozzle)
+                nozzle.qoi.setValue(q, thrust)
         
             # SolExtract, Size, Header  = ExtractSolutionAtExit(nozzle)
             # nozzle.responses['THRUST'] = ComputeThrust ( nozzle, SolExtract, Size, Header )
@@ -75,24 +79,36 @@ def PostProcess(nozzle, runDir, output='verbose'):
 
         elif 'WALL_PRES_AVG' in q:
 
-            AreaTot, PresAvg, TempAvg = HF_Integrate_Sol_Wall(nozzle)
-            nozzle.qoi.setValue(q, PresAvg)
+            if ResDif < 0:
+                print("WARNING: CFD solution diverged. WALL_PRES_AVG is set to None.")
+                nozzle.qoi.setValue(q, None)
+            else:
+                AreaTot, PresAvg, TempAvg = HF_Integrate_Sol_Wall(nozzle)
+                nozzle.qoi.setValue(q, PresAvg)
 
         elif 'WALL_TEMP_AVG' in q:
 
-            AreaTot, PresAvg, TempAvg = HF_Integrate_Sol_Wall(nozzle)
-            nozzle.qoi.setValue(q, TempAvg)
+            if ResDif < 0:
+                print("WARNING: CFD solution diverged. WALL_TEMP_AVG is set to None.")
+                nozzle.qoi.setValue(q, None)
+            else:
+                AreaTot, PresAvg, TempAvg = HF_Integrate_Sol_Wall(nozzle)
+                nozzle.qoi.setValue(q, TempAvg)
 
         elif 'WALL_TEMPERATURE' in q:
             raise RuntimeError('WALL_TEMPERATURE not currently available from SU2')
 
         elif 'WALL_PRESSURE' in q:
-            
-# XXX        func = interp1d(SolExtract_w[:,0],  Pres, kind='linear')        
-# XXX        nozzle.responses['WALL_PRESSURE'] = np.squeeze(func(nozzle.outputLocations['WALL_PRESSURE']))
-            xloc = nozzle.qoi.getLocation(q)
-            wp = np.array([-1]*len(xloc)) # XXX Temporary
-            nozzle.qoi.setValue(q,wp)
+
+            if ResDif < 0:
+                print("WARNING: CFD solution diverged. WALL_PRESSURE is set to None.")
+                nozzle.qoi.setValue(q, None)
+            else:
+    # XXX        func = interp1d(SolExtract_w[:,0],  Pres, kind='linear')        
+    # XXX        nozzle.responses['WALL_PRESSURE'] = np.squeeze(func(nozzle.outputLocations['WALL_PRESSURE']))
+                xloc = nozzle.qoi.getLocation(q)
+                wp = np.array([-1]*len(xloc)) # XXX Temporary
+                nozzle.qoi.setValue(q,wp)
 
             # --- CHECK INTERPOLATION :
             #import matplotlib.pyplot as plt
@@ -104,29 +120,37 @@ def PostProcess(nozzle, runDir, output='verbose'):
         
         elif 'PRESSURE' in q:
 
-            loc = nozzle.qoi.getLocation(q)
-            x = loc[:,0]
-            y = loc[:,1]
-            #p = np.squeeze(ExtractSolutionAtXY (x, y, ["Pressure"]))
-            p = np.array([-1]*len(loc)) # XXX temporary
-            nozzle.qoi.setValue(q, p)
+            if ResDif < 0:
+                print("WARNING: CFD solution diverged. PRESSURE is set to None.")
+                nozzle.qoi.setValue(q, None)
+            else:
+                loc = nozzle.qoi.getLocation(q)
+                x = loc[:,0]
+                y = loc[:,1]
+                #p = np.squeeze(ExtractSolutionAtXY (x, y, ["Pressure"]))
+                p = np.array([-1]*len(loc)) # XXX temporary
+                nozzle.qoi.setValue(q, p)
 
         elif 'VELOCITY' in q:
 
-            loc = nozzle.qoi.getLocation(q)
-            x = loc[:,0]
-            y = loc[:,1]
-            #cons = ExtractSolutionAtXY (x, y, ["Density","X-Momentum","Y-Momentum"])
-            v = [[],[],[]]
-            # for i in range(len(cons)):
-            #     v[0].append(cons[i][1]/cons[i][0])
-            #     v[1].append(cons[i][2]/cons[i][0])
-            #     v[2].append(0.0)
-            for i in range(len(x)):
-                v[0].append(-1)
-                v[1].append(-1)
-                v[2].append(-1)
-            nozzle.qoi.setValue(q, np.array(v))            
+            if ResDif < 0:
+                print("WARNING: CFD solution diverged. Thrust is set to None.")
+                nozzle.qoi.setValue(q, None)
+            else:
+                loc = nozzle.qoi.getLocation(q)
+                x = loc[:,0]
+                y = loc[:,1]
+                #cons = ExtractSolutionAtXY (x, y, ["Density","X-Momentum","Y-Momentum"])
+                v = [[],[],[]]
+                # for i in range(len(cons)):
+                #     v[0].append(cons[i][1]/cons[i][0])
+                #     v[1].append(cons[i][2]/cons[i][0])
+                #     v[2].append(0.0)
+                for i in range(len(x)):
+                    v[0].append(-1)
+                    v[1].append(-1)
+                    v[2].append(-1)
+                nozzle.qoi.setValue(q, np.array(v))            
 
         elif 'SU2_RESIDUAL' in q:
 

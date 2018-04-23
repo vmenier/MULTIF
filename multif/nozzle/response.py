@@ -136,13 +136,13 @@ class GroupResponse(object):
         if reduction == 'none':
             return self.value[name]
         elif reduction == 'max':
-            return [np.max(np.array(self.value[name]), axis=0)]
+            return [np.max(np.array([v for v in self.value[name] if v is not None]), axis=0)]
         elif reduction == 'min':
-            return [np.min(np.array(self.value[name]), axis=0)]
+            return [np.min(np.array([v for v in self.value[name] if v is not None]), axis=0)]
         elif reduction == 'median':
-            return [np.median(np.array(self.value[name]), axis=0)]
+            return [np.median(np.array([v for v in self.value[name] if v is not None]), axis=0)]
         elif reduction == 'mean':
-            return [np.mean(np.array(self.value[name]), axis=0)]
+            return [np.mean(np.array([v for v in self.value[name] if v is not None]), axis=0)]
         else:
             raise NotImplementedError("Reduction %s not implemented." % self.reduction)
 
