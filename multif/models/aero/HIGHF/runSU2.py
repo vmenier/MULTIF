@@ -243,8 +243,8 @@ def HF_SetupConfig (solver_options):
         config.SLOPE_LIMITER_TURB= 'VENKATAKRISHNAN'
         #config.VISCOUS_LIMITER_TURB= 'NO'
         config.TIME_DISCRE_TURB= 'EULER_IMPLICIT'
-        config.CFL_REDUCTION_TURB= '0.7'
-        config.RELAXATION_FACTOR_TURB= '0.7'
+        config.CFL_REDUCTION_TURB= '0.6'
+        config.RELAXATION_FACTOR_TURB= '0.5'
     
     # --- Convergence parameters
     
