@@ -56,10 +56,11 @@ def PostProcess(nozzle, runDir, output='verbose'):
                 print("WARNING: CFD solution diverged. THRUST is set to None.")
                 nozzle.qoi.setValue(q, None)
             else:
-                if nozzle.method == "EULER":
-                    SolExtract, Size, Header  = ExtractSolutionAtExit(nozzle)
-                else :            
-                    SolExtract, Size, Header  = ExtractExitRANS("exit.mesh", "nozzle.su2", "nozzle.dat")
+                SolExtract, Size, Header  = ExtractSolutionAtExit(nozzle)
+                #if nozzle.method == "EULER":
+                #    SolExtract, Size, Header  = ExtractSolutionAtExit(nozzle)
+                #else :            
+                #    SolExtract, Size, Header  = ExtractExitRANS("exit.mesh", "nozzle.su2", "nozzle.dat")
                 thrust = ComputeThrust(nozzle, SolExtract, Size, Header)
                 nozzle.qoi.setValue(q, thrust)
 

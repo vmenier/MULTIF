@@ -60,4 +60,6 @@ void py_ReadMesh2 (char *MshNam, char *SolNam, PyObject *pyVer, PyObject *pyTri,
 
 void py_WriteMesh(char *OutNam, PyObject *pyVer, PyObject *pyTri, PyObject *pyTet, PyObject *pyEdg, PyObject *pySol);
 
+void py_WriteMesh2(char *OutNam, PyObject *pyVer, PyObject *pyTri, PyObject *pyTet, PyObject *pyEdg, PyObject *pySol);
+
 void py_ExtractSurfacePatches (char *MshNam, char *SolNam, PyObject *pyVer, PyObject *pyTri, PyObject *pySol, PyObject *pyRefs);

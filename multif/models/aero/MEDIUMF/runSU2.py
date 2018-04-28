@@ -184,14 +184,15 @@ def SetupConfig (solver_options):
     
     if Dim == '2D':
         if method == 'EULER':
-            config.MARKER_EULER= '( 1, 2, 3, 10 )'
+            config.MARKER_EULER= '( 1, 2, 3 )'
         elif method == 'RANS':
-            config.MARKER_HEATFLUX= '( 1, 0.0, 2, 0.0, 3, 0.0, 10, 0.0 )'
+            config.MARKER_HEATFLUX= '( 1, 0.0, 2, 0.0, 3, 0.0 )'
         config.MARKER_INLET= '( 8, %lf, %lf, 1.0, 0.0, 0.0)' % (InletTstag,InletPstag)
         config.MARKER_FAR= '( 4, 5, 6 )'
         config.MARKER_SYM= '( 7 )'
         #config.MARKER_OUTLET= '( 6, %lf)' % (Pres)
-        config.MARKER_THRUST= '( 9 )'
+        #config.MARKER_THRUST= '( 9 )'
+        config.MARKER_INTERNAL= '( 9 )'
     else:
         config.MARKER_EULER= '( PhysicalSurface1, PhysicalSurface2, PhysicalSurface3, PhysicalSurface4, \
         PhysicalSurface5, PhysicalSurface6, PhysicalSurface7, PhysicalSurface8, PhysicalSurface9, PhysicalSurface10, \
@@ -831,7 +832,8 @@ def setupConfig_AD (solver_options):
         config.MARKER_FAR= '( 4, 5, 6 )'
         config.MARKER_SYM= '( 7 )'
         #config.MARKER_OUTLET= '( 6, %lf)' % (Pres)
-        config.MARKER_THRUST= '( 9 )'
+        #config.MARKER_THRUST= '( 9 )'
+        config.MARKER_INTERNAL= '( 9 )'
     else:
         config.MARKER_EULER= '( PhysicalSurface1, PhysicalSurface2, PhysicalSurface3, PhysicalSurface4, \
         PhysicalSurface5, PhysicalSurface6, PhysicalSurface7, PhysicalSurface8, PhysicalSurface9, PhysicalSurface10, \
@@ -1054,7 +1056,8 @@ def setupConfig_DOT (solver_options):
         config.MARKER_FAR= '( 5 )'
         config.MARKER_SYM= '( 7 )'
         config.MARKER_OUTLET= '( 6, %lf)' % (Pres)
-        config.MARKER_THRUST= '( 9 )'
+        #config.MARKER_THRUST= '( 9 )'
+        config.MARKER_INTERNAL= '( 9 )'
     else:
         config.MARKER_EULER= '( PhysicalSurface1, PhysicalSurface2, PhysicalSurface3, PhysicalSurface4, \
         PhysicalSurface5, PhysicalSurface6, PhysicalSurface7, PhysicalSurface8, PhysicalSurface9, PhysicalSurface10, \
@@ -1299,7 +1302,8 @@ def SetupConfig_DEF (solver_options):
         config.MARKER_FAR= '( 5 )'
         config.MARKER_SYM= '( 7 )'
         config.MARKER_OUTLET= '( 6, %lf)' % (Pres)
-        config.MARKER_THRUST= '( 9 )'
+        #config.MARKER_THRUST= '( 9 )'
+        config.MARKER_INTERNAL= '( 9 )'
     else:
         config.MARKER_EULER= '( PhysicalSurface1, PhysicalSurface2, PhysicalSurface3, PhysicalSurface4, \
         PhysicalSurface5, PhysicalSurface6, PhysicalSurface7, PhysicalSurface8, PhysicalSurface9, PhysicalSurface10, \
@@ -1495,7 +1499,8 @@ def Compute_Thrust_Gradients_FD (nozzle):
         config_CFD = SetupConfig(solver_options)
         
         config_CFD.OBJECTIVE_FUNCTION= 'THRUST_NOZZLE'
-        config_CFD.MARKER_THRUST= '( 9 ) '
+        #config_CFD.MARKER_THRUST= '( 9 ) '
+        config.MARKER_INTERNAL= '( 9 )'
         config_CFD.THRUST_FILENAME= thrust_filename
         config_CFD.MESH_FILENAME= config_DEF.MESH_OUT_FILENAME
         config_CFD.RESTART_FLOW_FILENAME= "nozzle_%d.dat" % idv

@@ -262,11 +262,96 @@ def GenerateNozzleMesh_Deform (nozzle):
     
     #--- Extract boundary vertices from mesh
     
+    basNamGMF   = "baseline_1_elliptical_%s_%s.meshb" % (nozzle.method.lower(), nozzle.cfd.mesh_size.lower())
+    mesh_name   = os.path.join(pathsrc, basNamGMF)
+        
+    if not os.path.exists(mesh_name):
+        sys.stderr.write("  ## ERROR mesh generation deform: baseline mesh not found!\n \
+        Expected: %s\n" % mesh_name)
+        sys.exit(1)
+        
+        
+    Ver = []
+    Tri = []
+    Tet = []
+    Edg = []
+    Sol = []
+    
+    _meshutils_module.py_ReadMesh2(mesh_name, "", Ver, Tri, Tet, Edg, Sol)
+    
+    NbrTri = len(Tri)/4
+    Tri = np.reshape(Tri,(NbrTri, 4)).astype(int)
+    
+    NbrVer = len(Ver)/3
+    Ver = np.reshape(Ver,(NbrVer, 3))
+    
+    NbrEdg = len(Edg)/3
+    Edg = np.reshape(Edg,(NbrEdg, 3)).astype(int)
+    
+    tag = np.zeros(NbrVer).astype(int)
+    
+    for iTri in range(0,NbrTri):
+        
+        if Tri[iTri][3] != 1:
+            continue
+        
+        for j in range(3):
+            iVer = Tri[iTri][j]-1
+            tag[iVer] = 1
+    
+    len_nozzle = 2.33702;
+    
+    r_in_bas  = 0.439461
+    r_out_bas = 0.469894
+    
+    for iVer in range(NbrVer):
+        
+        if tag[iVer] != 1:
+            continue
+        
+        x = Ver[iVer][0]
+        y = Ver[iVer][1]
+        
+        alp = x/len_nozzle
+        r_bas = alp*r_out_bas + (1.0-alp)*r_in_bas
+        
+        r_dv = Get3Dto2DEquivArea(nozzle, [x])
+        
+        Ver[iVer][1] = y/r_bas*r_dv[0]
+    
+    
+    for iEdg in range(10):
+        print "Edg %d, ref %d" % (iEdg, Edg[iEdg][2])
+        
+    
+    #--- Write projected mesh
+    
+    print "len edg : %d" % len(Edg)
+        
+    Ver = np.array(Ver).reshape(3*len(Ver)).tolist()
+    Tri = np.array(Tri).reshape(4*len(Tri)).tolist()
+    Edg = np.array(Edg).reshape(3*len(Edg)).tolist()
+    
+    
+    
+    _meshutils_module.py_WriteMesh2(nozzle.cfd.mesh_name, Ver, Tri, Tet, Edg, Sol)
+    
+
+def GenerateNozzleMesh_Deform_save (nozzle):
+    
+    print(" -- Generate nozzle mesh (deform)")
+    
+    h_tip = 0.012
+    
+    motion_hdl = []
+    
+    pathsrc = "%s/baseline_meshes_3d/" % (os.path.dirname(os.path.abspath(__file__)))
+    
+    #--- Extract boundary vertices from mesh
+        
     #mesh_name    = "%sbaseline_%s_%s.su2" % (pathsrc, nozzle.method, nozzle.meshsize)
     mesh_name   = "%sbaseline_%s_%s.su2" % (pathsrc, nozzle.method.lower(), nozzle.cfd.mesh_size.lower())
-    
-    print mesh_name  
-     
+        
     if not os.path.exists(mesh_name):
         sys.stderr.write("  ## ERROR mesh generation deform: baseline mesh not found!\n \
         Expected: %s\n" % mesh_name)
@@ -283,97 +368,6 @@ def GenerateNozzleMesh_Deform (nozzle):
     
     xwall_max = max(xwall)
     
-    #for iref in range(len(Bdr)):
-    #    Nbv = len(Bdr[iref])
-    #    
-    #    if Nbv < 1 :
-    #        continue
-    #        
-    #    sys.stdout.write("- Ref %d : \n" % iref)
-    #    
-    #    for i in range(Nbv):
-    #        sys.stdout.write("\t Ver %d : %lf %lf\n" % (Bdr[iref][i][0], Bdr[iref][i][1], Bdr[iref][i][2]))
-    #    
-    #sys.exit(1)
-    
-    ###--- Write outside of nozzle's deformation file
-    ##
-    ##ref_outside = 3
-    ##
-    ##xbas_max = max(float(l[1]) for l in Bdr[ref_outside])
-    ##xbas_min = min(float(l[1]) for l in Bdr[ref_outside])
-    ##
-    ###xx = [-0.67 , -0.65 , 0.1548, xwall[-1]]
-    ###yy = [0.7244, 0.4244, 0.41,   ywall[-1]+h_tip]
-    ##
-    ##xx = [-0.67 , -0.65 , 0.148,  xwall[-1]]
-    ##yy = [0.7244, 0.7244, 0.7,  ywall[-1]+h_tip]
-    ##
-    ###print "xwall %lf ywall end %lf h_tip %lf " % (xwall[-1],ywall[-1],h_tip)
-    ###sys.exit(1)
-    ##
-    ##tck = splrep(xx, yy, xb=xx[0], xe=xx[-1], k=2)
-    ##
-    ##f_outside = itp.interp1d(xx, yy, kind='cubic')
-    ##
-    ########## BEGIN PLOT
-    #####x3 = np.linspace(xx[0], xx[-1], 200)
-    #####y3 = splev(x3, tck)
-    #####
-    #####y32 = f_outside(x3)
-    #####
-    #####import matplotlib.pyplot as plt
-    #####plt.plot(x3,y3, '-')
-    #####plt.plot(x3,y32, '-')
-    #####plt.plot(xx,yy, 'o')
-    #####plt.show()
-    #####
-    #####sys.exit(1)
-    #####
-    ########## END PLOT
-    ##
-    ##Nbv = len(Bdr[ref_outside])
-    ##
-    ##for i in range(Nbv):
-    ##    
-    ##    vid = Bdr[ref_outside][i][0]
-    ##    x = Bdr[ref_outside][i][1]
-    ##    
-    ##    #print "x %lf xbax in %lf %lf xwall in %lf %lf " % (x, xbas_min, xbas_max, xx[0], xwall_max)
-    ##    xnew = xx[0] + (x-xbas_min)/(xbas_max-xbas_min)*(xwall_max-xx[0])
-    ##    #print "xnew %lf x %lf xbax in %lf %lf xwall in %lf %lf " % (xnew, x, xbas_min, xbas_max, xx[0], xwall_max)
-    ##    
-    ##    ynew = f_outside(xnew)
-    ##    
-    ##    motion_hdl.append([vid-1, xnew, ynew, Bdr[ref_outside][i][1], Bdr[ref_outside][i][2]])
-    ##    
-    ##    #fil.write("%d %le %le\n" % (vid-1, xnew, ynew))
-    ##
-    ###--- Project tip of nozzle
-    ##
-    ##ref_tip = 2
-    ##
-    ##Nbv = len(Bdr[ref_tip])
-    ##
-    ##ymax = max(float(l[2]) for l in Bdr[ref_tip])
-    ##ymin = min(float(l[2]) for l in Bdr[ref_tip])
-    ##
-    ##for i in range(Nbv):
-    ##    
-    ##    vid = Bdr[ref_tip][i][0]
-    ##    x   = Bdr[ref_tip][i][1]
-    ##    y   = Bdr[ref_tip][i][2]
-    ##    
-    ##    #print "x %lf xbax in %lf %lf xwall in %lf %lf " % (x, xbas_min, xbas_max, xx[0], xwall_max)
-    ##    xnew = xwall[-1]
-    ##    #print "xnew %lf x %lf xbax in %lf %lf xwall in %lf %lf " % (xnew, x, xbas_min, xbas_max, xx[0], xwall_max)
-    ##    ynew = ywall[-1] + (y-ymin)/(ymax-ymin)*h_tip
-    ##    
-    ##    #print "ref %d : ver %d : (%lf %lf) -> (%lf %lf)" % (ref_tip, vid, x, y, xnew, ynew)
-    ##    
-    ##    motion_hdl.append([vid-1, xnew, ynew, Bdr[ref_tip][i][1], Bdr[ref_tip][i][2]])
-    ##    #fil.write("%d %le %le\n" % (vid-1, xnew, ynew))
-        
     # --- Project inner wall
     
     ref_wall = 1
