@@ -168,7 +168,7 @@ def MF_GetRadius (x, nozzle):
         	rad[i] = MF_GetRadius (x[i],nozzle)
         return rad
     
-    if nozzle.dim == '2D':
+    if nozzle.param == '2D':
         majoraxisTmp = geometry.Bspline(nozzle.wall.coefs)
         minoraxisTmp = geometry.Bspline(nozzle.wall.coefs)    
     else: # 3D
@@ -181,7 +181,7 @@ def MF_GetRadius (x, nozzle):
     theta_in  = 1.572865
     theta_out = 1.855294
     
-    if nozzle.dim == '2D':
+    if nozzle.param == '2D':
         xi = nozzle.wall.coefs[0] # inlet x-coord
         xe = nozzle.wall.coefs[nozzle.wall.coefs_size/2-1] # exit x-coord   
         coefs_center = np.array([xi, xi, xe, xe, 0., 0., 0., 0.])

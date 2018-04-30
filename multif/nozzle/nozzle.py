@@ -563,7 +563,7 @@ class Nozzle:
                     "tolerance set to %le" % (tol)
                         
                 # Set thermostructural parameters if necessary
-                if len(cfgLvl) == 5:
+                if len(cfgLvl) >= 5:
                     if cfgLvl[3] == 'LINEAR':
                         description += ", linear structural analysis"
                     elif cfgLvl[3] == 'NONLINEAR':
@@ -575,6 +575,7 @@ class Nozzle:
                           % cfgLvl[3])
                         sys.exit(0) 
                     description += ', thermostructural fidelity level %s' % cfgLvl[4]
+                    idxLvl += 4
                 
                 if i == flevel:      
                     
@@ -771,27 +772,6 @@ class Nozzle:
                     else:
                         nozzle.linearStructuralAnalysisFlag = 1
                         nozzle.thermostructuralFidelityLevel = 0.5
-
-                    # Setup nozzle geometry type if 3D
-                    nozzle.Geometry3D = 'ELLIPTICAL_NO_EDGE' # Default value
-                    
-                    if nozzle.dim == '3D':
-                        if len(cfgLvl) == idxLvl+1:
-                            if cfgLvl[idxLvl] == 'FLATTENED':
-                                nozzle.Geometry3D = 'AFTEND_FLAT'
-                            elif cfgLvl[idxLvl] == 'ELLIPTICAL':
-                                nozzle.Geometry3D = 'ELLIPTICAL'
-                            elif cfgLvl[idxLvl] == 'ELLIPTICAL_NO_EDGE':
-                                nozzle.Geometry3D = 'ELLIPTICAL_NO_EDGE'
-                            else:
-                                raise ValueError("Only FLATTENED, ELLIPTICAL " + \
-                                    "and ELLIPTICAL_NO_EDGE are supported, not " + \
-                                    "%s in the model definition" % cfgLvl[idxLvl])
-
-                        else:
-                            raise RuntimeError("Model definition should " + \
-                                "specify FLATTENED, ELLIPTICAL, or " + \
-                                "ELLIPTICAL_NO_EDGE for 3D geometry.")
                             
             else :
                 sys.stderr.write("\n ## ERROR : Unknown governing method "    \
@@ -799,6 +779,28 @@ class Nozzle:
                 sys.stderr.write("  Note: it must be either NONIDEALNOZZLE,"  \
                   "EULER, or RANS\n")
                 sys.exit(0)
+
+            # Setup nozzle geometry type
+            nozzle.Geometry3D = 'ELLIPTICAL_NO_EDGE' # Default value
+            
+            #if nozzle.dim == '3D':
+            print cfgLvl
+            print idxLvl
+            if len(cfgLvl) == idxLvl+1:
+                if cfgLvl[idxLvl] == 'FLATTENED':
+                    nozzle.Geometry3D = 'AFTEND_FLAT'
+                elif cfgLvl[idxLvl] == 'ELLIPTICAL':
+                    nozzle.Geometry3D = 'ELLIPTICAL'
+                elif cfgLvl[idxLvl] == 'ELLIPTICAL_NO_EDGE':
+                    nozzle.Geometry3D = 'ELLIPTICAL_NO_EDGE'
+                else:
+                    raise ValueError("Only FLATTENED, ELLIPTICAL " + \
+                        "and ELLIPTICAL_NO_EDGE are supported, not " + \
+                        "%s in the model definition" % cfgLvl[idxLvl])
+            else:
+                raise RuntimeError("Model definition should " + \
+                    "specify FLATTENED, ELLIPTICAL, or " + \
+                    "ELLIPTICAL_NO_EDGE for 3D geometry.")
 
             if output == 'verbose':
                 sys.stdout.write("   %s | %s | %s \n" %                       \
@@ -1849,56 +1851,57 @@ class Nozzle:
             nozzle.length = nozzle.wall.coefs[nozzle.wall.coefs_size/2-1] - \
                             nozzle.wall.coefs[0]
         	
-            # Upscale 2D param to 3D, this may be useful for comparisons
-            if nozzle.dim == '3D':
+            # Create a 3D parameterization definition that is equivalent to the
+            # 2D parameterization (i.e. upscale 2D param to 3D, this may be 
+            # useful for comparisons
 
-                xi = nozzle.wall.coefs[0] # inlet x-coord
-                xe = nozzle.wall.coefs[nozzle.wall.coefs_size/2-1] # exit x-coord   
+            xi = nozzle.wall.coefs[0] # inlet x-coord
+            xe = nozzle.wall.coefs[nozzle.wall.coefs_size/2-1] # exit x-coord   
 
-                centerCoefs = np.array([xi, xi, xe, xe, 0., 0., 0., 0.])
+            centerCoefs = np.array([xi, xi, xe, xe, 0., 0., 0., 0.])
 
-                # Generate axisymmetric shape, which is used later
-                nozzle.wall.geometry = geometry.Bspline(nozzle.wall.coefs)
+            # Generate axisymmetric shape, which is used later
+            nozzle.wall.geometry = geometry.Bspline(nozzle.wall.coefs)
 
-                # Create centerline
-                nozzle.wall.centerline = component.Spline('CENTERLINE')
-                nozzle.wall.centerline.coefs = list(centerCoefs)
-                n = len(centerCoefs)/2-3
-                knots = [0,0,0,0] + range(1,n) + [n,n,n,n]
-                nozzle.wall.centerline.knots = [float(k) for k in knots]
-                nozzle.wall.centerline.coefs_size = len(centerCoefs)
-                nozzle.wall.centerline.geometry = geometry.Bspline(centerCoefs)
+            # Create centerline
+            nozzle.wall.centerline = component.Spline('CENTERLINE')
+            nozzle.wall.centerline.coefs = list(centerCoefs)
+            n = len(centerCoefs)/2-3
+            knots = [0,0,0,0] + range(1,n) + [n,n,n,n]
+            nozzle.wall.centerline.knots = [float(k) for k in knots]
+            nozzle.wall.centerline.coefs_size = len(centerCoefs)
+            nozzle.wall.centerline.geometry = geometry.Bspline(centerCoefs)
 
-                # Create major axis
-                nozzle.wall.majoraxis = component.Spline('MAJORAXIS')
-                nozzle.wall.majoraxis.coefs = nozzle.wall.coefs
-                nozzle.wall.majoraxis.knots = nozzle.wall.knots
-                nozzle.wall.majoraxis.coefs_size = nozzle.wall.coefs_size              
-                nozzle.wall.majoraxis.geometry = geometry.Bspline(nozzle.wall.coefs)
-                
-                # Create minor axis
-                nozzle.wall.minoraxis = nozzle.wall.majoraxis
+            # Create major axis
+            nozzle.wall.majoraxis = component.Spline('MAJORAXIS')
+            nozzle.wall.majoraxis.coefs = nozzle.wall.coefs
+            nozzle.wall.majoraxis.knots = nozzle.wall.knots
+            nozzle.wall.majoraxis.coefs_size = nozzle.wall.coefs_size              
+            nozzle.wall.majoraxis.geometry = geometry.Bspline(nozzle.wall.coefs)
+            
+            # Create minor axis
+            nozzle.wall.minoraxis = nozzle.wall.majoraxis
                                 
-            else:
+            # else:
                                             
-                nozzle.wall.geometry = geometry.Bspline(nozzle.wall.coefs)
+            #     nozzle.wall.geometry = geometry.Bspline(nozzle.wall.coefs)
                          
-                if nozzle.method == 'RANS' or nozzle.method == 'EULER':  
-                    x = []
-                    y = []
-                    nx = 4000 # use 4000 points to interpolate inner wall shape            
-                    _meshutils_module.py_BSplineGeo3 (nozzle.wall.knots, \
-                                                      nozzle.wall.coefs, x, y, nx)
+            #     if nozzle.method == 'RANS' or nozzle.method == 'EULER':  
+            #         x = []
+            #         y = []
+            #         nx = 4000 # use 4000 points to interpolate inner wall shape            
+            #         _meshutils_module.py_BSplineGeo3 (nozzle.wall.knots, \
+            #                                           nozzle.wall.coefs, x, y, nx)
                 
-                    nozzle.cfd.x_wall = x
-                    nozzle.cfd.y_wall = y
+            #         nozzle.cfd.x_wall = x
+            #         nozzle.cfd.y_wall = y
                     
-                    dx_exit = max(1.3*nozzle.cfd.meshhl[3], 0.001)   
-                    for i in range(0,nx) :
-                    	if (  x[nx-i-1] < x[-1]-dx_exit  ):
-                    		nozzle.cfd.x_thrust = x[nx-i-1]
-                    		nozzle.cfd.y_thrust = y[nx-i-1]
-                    		break
+            #         dx_exit = max(1.3*nozzle.cfd.meshhl[3], 0.001)   
+            #         for i in range(0,nx) :
+            #         	if (  x[nx-i-1] < x[-1]-dx_exit  ):
+            #         		nozzle.cfd.x_thrust = x[nx-i-1]
+            #         		nozzle.cfd.y_thrust = y[nx-i-1]
+            #         		break
 
         # ====================================================================        
         # Setup inner wall temperature if necessary
