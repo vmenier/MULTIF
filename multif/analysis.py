@@ -1,6 +1,7 @@
 import os, sys
 import copy
 import numpy as np
+import time
 
 import gradients
 import utils
@@ -197,6 +198,7 @@ def runFullAnalysis(nozzle, output='verbose', post_process_only=False,
                 requested[a] += 1
 
     # Perform each requested analysis
+    telapsed = {'AERO': 0., 'THERMAL': 0., 'STRUCTURAL': 0., 'MASS': 0.}
     for analysis in analysis_list:
 
         # At least 1 QoI uses this analysis
@@ -219,26 +221,38 @@ def runFullAnalysis(nozzle, output='verbose', post_process_only=False,
             # Run analysis
             if 'AERO' in analysis:
                 if not skip_aero and noz.aeroFlag:
+                    t0 = time.time()
                     runAeroAnalysis(noz, analysis, output=output, 
                         skip_post_processing=skip_post_processing,
                         post_process_only=post_process_only,
                         run_analysis=run_analysis)
+                    t1 = time.time()
+                    telapsed['AERO'] += t1-t0
                 else:
                     if output == 'verbose':
                         print('Skipping %s analysis.' % analysis)
                     next
             elif 'THERMAL' in analysis:
+                t0 = time.time()
                 runThermalAnalysis(noz, analysis, output=output,
                     post_process_only=post_process_only,
                     run_analysis=run_analysis)
+                t1 = time.time()
+                telapsed['THERMAL'] += t1-t0
             elif 'STRUCTURAL' in analysis:
+                t0 = time.time()
                 runStructuralAnalysis(noz, analysis, output=output,
                     post_process_only=post_process_only,
                     run_analysis=run_analysis)
+                t1 = time.time()
+                telapsed['STRUCTURAL'] += t1-t0
             elif 'MASS' in analysis:
+                t0 = time.time()
                 runMassAnalysis(noz, analysis, 
                     post_process_only=post_process_only,
                     run_analysis=run_analysis)
+                t1 = time.time()
+                telapsed['MASS'] += t1-t0
             else:
                 raise NotImplementedError("Analysis %s not implemented." 
                     % analysis)
@@ -258,6 +272,10 @@ def runFullAnalysis(nozzle, output='verbose', post_process_only=False,
                 grad = v.getGradient(q)
                 if grad is not None and len(grad) > 0:
                     nozzle.qoi.setGradient(q, v.getGradient(q))
+
+    # Save timing information
+    for k in nozzle.elapsedTime:
+        nozzle.elapsedTime[k] += telapsed[k]
         
     return
 
@@ -268,6 +286,9 @@ def run(nozzle, output='verbose', write_to_file=True, post_process_only=False,
     Dispatch analyses to determine QoI values and/or gradients w.r.t. design
     variables.
     """
+
+    # Timing information
+    nozzle.elapsedTime = {'AERO': 0., 'THERMAL': 0., 'STRUCTURAL': 0., 'MASS': 0.}
 
     # Run analyses to obtain function values
     # If there are special methods for obtaining gradients (i.e. adjoints),
@@ -308,6 +329,13 @@ def run(nozzle, output='verbose', write_to_file=True, post_process_only=False,
     if write_to_file:
         if output == 'verbose':
             print("Writing output function values to file")
-        nozzle.writeOutputFunctions(format=nozzle.outputFormat)   
+        nozzle.writeOutputFunctions(format=nozzle.outputFormat)  
+
+    # Write timing information
+    with open('timing.dat',mode='w') as f:
+        for k in nozzle.elapsedTime: 
+            f.write('%s, %0.16f\n' % (k,nozzle.elapsedTime[k]))
+            if output == 'verbose':
+                print("%s analysis took %0.2f seconds" % (k,nozzle.elapsedTime[k]))
 
     return
