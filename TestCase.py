@@ -51,6 +51,8 @@ class TestCase:
         f.close()
                 
         # Obtain data from example results file
+        if( not os.path.isfile(os.path.join(self.multif_dir,self.compare_file)) ):
+            return -5
         r1 = open(os.path.join(self.multif_dir,self.compare_file),'r')
         val1 = []
         grad1 = []
@@ -263,6 +265,12 @@ class TestCase:
             f.write('Test failed -- no results file\n')
             f.close()
             passed = 0
+        elif( return_flag == -5 ):
+            print 'Test failed -- no regression file to compare with'
+            f = open(self.log_file,'a')
+            f.write('Test failed -- no regression file to compare with\n')
+            f.close()
+            passed = 0            
         elif( timed_out ):
             print 'Test failed -- timed out'
             f = open(self.log_file,'a')
