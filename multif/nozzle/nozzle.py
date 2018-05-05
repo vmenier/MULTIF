@@ -711,7 +711,7 @@ class Nozzle:
                     nozzle.cfd.bl_yplus     = 1.0
                     
                     # --- Setup max iterations for SU2
-                    if ('SU2_MAX_ITERATIONS' in config) and False:
+                    if 'SU2_MAX_ITERATIONS' in config:
                         nozzle.cfd.su2_max_iterations = int(config['SU2_MAX_ITERATIONS'])
                     elif nozzle.dim == '2D':
                         if method == 'EULER':
