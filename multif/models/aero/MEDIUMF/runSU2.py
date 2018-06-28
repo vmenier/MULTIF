@@ -331,21 +331,16 @@ def checkResidual(config=[]):
         residualReduction = max(history[:,idRes]) - history[-1,idRes]
     elif( os.path.isfile('history.vtk') ):
         history = np.loadtxt('history.vtk',skiprows=1,delimiter=',')
-        
-        filres=open('history.vtk','r')
-        header=filres.readline()
-        kwd=filres.readline().split(",")
-        
-        idRes=-1
-        for i in range(len(kwd)):
-            if kwd[i] == '"Res_Flow[0]"':
-                idRes = i
+        with open('history.vtk','r') as f:
+            firstline = f.readline()
+        tags = firstline.rsplit(',')
+        ind = 13
+        for i, t in enumerate(tags):
+            if 'Res_Flow[0]' in t:
+                ind = i
                 break
-        
-        filres.close()
-        
-        finalResidual = history[-1,idRes]
-        residualReduction = max(history[:,idRes]) - history[-1,idRes]
+        finalResidual = history[-1,ind]
+        residualReduction = max(history[:,ind]) - history[-1,ind]
     else: # bypass solution checking
         history = -1
         finalResidual = -1
