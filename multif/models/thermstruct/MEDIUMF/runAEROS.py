@@ -546,6 +546,14 @@ def writeBoundaryConditions3D(nozzle, run_analysis=True, output='verbose'):
         MshNam_cfd = "nozzle.su2"
         SolNam_cfd = "nozzle.dat"
 
+        # Check for files
+        if (not os.path.isfile(MshNam_str) or not os.path.isfile(MshNam_cfd) or
+            not os.path.isfile(SolNam_cfd)):
+            print("WARNING: Necessary file(s) for fluid-structure interpolation "
+                "have not been found on path. Boundary conditions will not " 
+                "be written.")
+            return
+
         Ref_Itf = nozzle.cfd.markers['WALL_ITF']
         Crd, Tri, Pres, Temp = multif.models.aero.HIGHF.aeros.hf_FluidStructureInterpolation(MshNam_str, MshNam_cfd, SolNam_cfd, Ref_Itf)
 
