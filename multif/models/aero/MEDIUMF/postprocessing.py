@@ -142,7 +142,7 @@ def PostProcess(nozzle, runDir, output='verbose'):
                 loc = nozzle.qoi.getLocation(q)
                 x = loc[:,0]
                 y = loc[:,1]
-                cons = ExtractSolutionAtXY (x, y, ["Density","X-Momentum","Y-Momentum"])
+                cons = ExtractSolutionAtXY (x, y, ["Density","Momentum_x","Momentum_y"])
                 v = [[],[],[]]
                 for i in range(len(cons)):
                     v[0].append(cons[i][1]/cons[i][0])
@@ -253,8 +253,8 @@ def ComputeThrust_2 ( options, SolExtract, Size, Header )    :
     iMach  = Header['Mach']
     iTem   = Header['Temperature']
     iCons1 = Header['Density']
-    iCons2 = Header['X-Momentum']
-    iCons3 = Header['Y-Momentum']
+    iCons2 = Header['Momentum_x']
+    iCons3 = Header['Momentum_y']
     iCons4 = Header['Energy']
     iPres  = Header['Pressure']
     
@@ -441,8 +441,8 @@ def ComputeThrust ( nozzle, SolExtract, Size, Header )    :
     iMach  = Header['Mach']
     iTem   = Header['Temperature']
     iCons1 = Header['Density']
-    iCons2 = Header['X-Momentum']
-    iCons3 = Header['Y-Momentum']
+    iCons2 = Header['Momentum_x']
+    iCons3 = Header['Momentum_y']
     iCons4 = Header['Energy']
     iPres  = Header['Pressure']
     
@@ -701,7 +701,7 @@ def ExtractSolutionAtXY (x, y, tagField):
                 break
         
         if iFld == -1 :
-            sys.stderr.write("  ## ERROR Extraction solution : required field not found in solution file.\n")
+            sys.stderr.write("  ## ERROR Extraction solution : required field (%s) not found in solution file.\n" % tag)
             sys.exit(1)
         
         iFldTab.append(iFld)
