@@ -209,8 +209,8 @@ def HF_Compute_Thrust_Wrap (nozzle):
                 'Rs'          : Rs ,  \
                 'T0'          : T0 ,  \
                 'U0'          : U0  , \
-                'ref_thrust'  : nozzle.cfd.markers["THRUST"][0] \
-                
+                'ref_thrust'  : nozzle.cfd.markers["THRUST"][0], \
+                'method'      : nozzle.method # EULER or RANS
                }
     
                
@@ -505,8 +505,11 @@ def HF_Compute_Thrust (options):
     iCons2 = 1 #idHeader['X-Momentum']
     iCons3 = 2 #idHeader['Y-Momentum']
     iCons4 = 3 #idHeader['Energy']
-    iPres  = 5 #idHeader['Pressure']
-    
+    if options['method'] == "EULER":
+        iPres  = 5 #idHeader['Pressure']
+    else: # RANS
+        iPres  = 7 #idHeader['Pressure']
+
     #for iVer in range(10):
     #    
     #    dens = Sol[iVer][iCons1]
@@ -564,13 +567,13 @@ def HF_Compute_Thrust (options):
             dens = Sol[iVer][iCons1]
             
             velx = Sol[iVer][iCons2]/dens
-            vely = Sol[iVer][iCons3]/dens
-            velz = Sol[iVer][iCons4]/dens
+            # vely = Sol[iVer][iCons3]/dens
+            # velz = Sol[iVer][iCons4]/dens
             
-            vel  = math.sqrt(velx*velx+vely*vely+velz*velz)
+            # vel  = math.sqrt(velx*velx+vely*vely+velz*velz)
             pres = Sol[iVer][iPres]
             
-            Thrust += area/3.0*(dens*vel*(vel-vel_inf)+pres-pres_inf)
+            Thrust += area/3.0*(dens*velx*(velx-vel_inf)+pres-pres_inf)
     
     Thrust = 2*Thrust # symmetry
     
